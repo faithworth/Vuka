@@ -6,7 +6,7 @@ import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
 import { sendPurchaseConfirmation, sendArtistSaleNotification } from '@/lib/emails';
 import Stripe from 'stripe';
 
-export const config = { api: { bodyParser: false } };
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
