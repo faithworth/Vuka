@@ -15,7 +15,7 @@ export default function PurchasesPage() {
       <h1 className="text-2xl font-black mb-8" style={{ color: 'var(--text)' }}>Purchases</h1>
       {loading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--surface)' }} />)}</div>
-      {purchases.length === 0 ? (
+      ) : purchases.length === 0 ? (
         <div className="text-center py-24 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="text-5xl mb-4">🛒</p>
           <p className="font-bold mb-2" style={{ color: 'var(--text)' }}>No purchases yet</p>
