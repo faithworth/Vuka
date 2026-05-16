@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       take: 50,
     });
 
-    let totalNetAmount = pendingPayouts.reduce((sum, p) => sum + p.netAmount, 0);
+    let totalNetAmount = pendingPayouts.reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
     if (totalNetAmount < amount) {
       return NextResponse.json({
         error: `Only ${totalNetAmount.toFixed(2)} ZAR available in pending payouts`,
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
       runningTotal += payout.netAmount;
     }
 
-    const payoutIds = selectedPayouts.map(p => p.id);
-    const totalToProcess = selectedPayouts.reduce((sum, p) => sum + p.netAmount, 0);
+    const payoutIds = selectedPayouts.map((p: { id: string }) => p.id);
+    const totalToProcess = selectedPayouts.reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
 
     // Update payouts to processing
     await prisma.artistPayout.updateMany({

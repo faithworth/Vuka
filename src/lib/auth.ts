@@ -14,13 +14,13 @@ export async function getServerUser() {
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email },
       include: { artist: true },
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.error('[Auth] DB lookup failed:', err instanceof Error ? err.message.split('\n')[0] : err);
       return null;
     });
 
     return dbUser;
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[Auth] getServerUser error:', err instanceof Error ? err.message.split('\n')[0] : err);
     return null;
   }

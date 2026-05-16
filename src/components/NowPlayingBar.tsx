@@ -60,7 +60,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NowPlayingBar() {
+export function NowPlayingBar() {
   const { currentTrack, isPlaying, toggle, pause } = usePlayer();
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -79,23 +79,19 @@ function NowPlayingBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-4 px-4 py-3" style={{ background: 'rgba(13,11,20,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border)', height: 72 }}>
-      {/* Artwork */}
       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
         {currentTrack.artworkUrl
           ? <img src={currentTrack.artworkUrl} className="w-full h-full object-cover" alt="" />
           : <div className="w-full h-full flex items-center justify-center text-lg" style={{ background: 'var(--surface2)' }}>🎵</div>}
       </div>
-      {/* Info */}
       <div className="min-w-0 flex-1 md:w-48 md:flex-none">
         <p className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{currentTrack.title}</p>
         <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>{currentTrack.artist}</p>
       </div>
-      {/* Controls */}
       <div className="flex items-center gap-3 flex-1 justify-center">
         <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ background: 'var(--purple)' }}>
           {isPlaying ? '⏸' : '▶'}
         </button>
-        {/* Progress */}
         <div className="hidden md:flex items-center gap-2 flex-1 max-w-xs">
           <div
             className="flex-1 h-1 rounded-full cursor-pointer"
@@ -110,7 +106,6 @@ function NowPlayingBar() {
           </div>
         </div>
       </div>
-      {/* Volume + close */}
       <div className="flex items-center gap-3">
         <input
           type="range" min="0" max="1" step="0.1" value={volume}

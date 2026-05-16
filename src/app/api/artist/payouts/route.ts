@@ -34,16 +34,16 @@ export async function GET(req: NextRequest) {
 
     // Calculate balances by status
     const pending = allPayouts
-      .filter(p => p.status === 'pending')
-      .reduce((sum, p) => sum + p.netAmount, 0);
+      .filter((p: { status: string; netAmount: number }) => p.status === 'pending')
+      .reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
 
     const processed = allPayouts
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + p.netAmount, 0);
+      .filter((p: { status: string; netAmount: number }) => p.status === 'completed')
+      .reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
 
     const failed = allPayouts
-      .filter(p => p.status === 'failed')
-      .reduce((sum, p) => sum + p.netAmount, 0);
+      .filter((p: { status: string; netAmount: number }) => p.status === 'failed')
+      .reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
 
     // Get available payout methods
     const methods = [];
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      payouts: allPayouts.map(p => ({
+      payouts: allPayouts.map((p: any) => ({
         id: p.id,
         amount: p.amount,
         fee: p.fee,

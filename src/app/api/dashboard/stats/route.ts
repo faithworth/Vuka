@@ -33,7 +33,7 @@ export async function GET() {
       prisma.release.aggregate({ where: { artistId }, _sum: { plays: true, sales: true } }),
     ]);
 
-    const totalRevenue = purchases.reduce((s, p) => s + p.amount, 0);
+    const totalRevenue = purchases.reduce((s: number, p: { amount: number }) => s + p.amount, 0);
     const monthRevenue = monthPurchases._sum.amount || 0;
     const totalPlays = (beats._sum.plays || 0) + (releases._sum.plays || 0);
     const totalSales = (beats._sum.sales || 0) + (releases._sum.sales || 0);

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  const purchaseList = purchases.map(p => ({
+  const purchaseList = purchases.map((p: any) => ({
     itemName: p.beat?.title || p.release?.title || 'Purchase',
     downloadUrl: `${appUrl}/download/${p.downloadToken}`,
     date: p.createdAt.toLocaleDateString('en-ZA'),

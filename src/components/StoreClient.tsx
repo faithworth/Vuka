@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BeatCard } from '@/components/BeatCard';
 import { BuyModal } from '@/components/BuyModal';
-import { NowPlayingBar } from '@/components/NowPlayingBar';
 import { Search, Grid, List, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 
@@ -33,7 +32,6 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
   const [view, setView] = useState<'grid'|'list'>('grid');
   const [loading, setLoading] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [nowPlaying, setNowPlaying] = useState<Beat | null>(null);
   const [buyingBeat, setBuyingBeat] = useState<Beat | null>(null);
 
   useEffect(() => {
@@ -153,7 +151,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
       </div>
 
       {buyingBeat && <BuyModal beat={buyingBeat} onClose={() => setBuyingBeat(null)} />}
-      {nowPlaying && <NowPlayingBar beat={nowPlaying} onClose={() => setNowPlaying(null)} />}
+
     </div>
   );
 }
