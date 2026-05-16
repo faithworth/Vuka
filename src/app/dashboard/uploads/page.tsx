@@ -51,9 +51,15 @@ export default function UploadPage() {
     setRelArtwork(null);
   }
 
-  async function putToR2(url: string, file: File) {
-    const res = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-    if (!res.ok) throw new Error(`File upload failed: ${file.name}`);
+  async function uploadViaProxy(role: string, id: string, file: File): Promise<string> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('role', role);
+    form.append('id', id);
+    const res = await fetch('/api/upload-proxy', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Upload failed: ${file.name}`);
+    return data.publicUrl;
   }
 
   // ── BEAT SUBMIT ──
@@ -78,13 +84,12 @@ export default function UploadPage() {
       if (!res.ok) throw new Error(data.error || 'Could not create beat');
       const { beat, uploadUrls } = data;
 
-      const R2_PUBLIC = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '';
       const urlPayload: Record<string, string> = {};
-      if (files.artwork && uploadUrls?.artwork) { await putToR2(uploadUrls.artwork, files.artwork); urlPayload.artworkUrl = `${R2_PUBLIC}/artwork/beats/${beat.id}.jpg`; }
-      if (files.preview && uploadUrls?.preview) { await putToR2(uploadUrls.preview, files.preview); urlPayload.previewUrl = `${R2_PUBLIC}/previews/beats/${beat.id}.mp3`; }
-      if (files.wav && uploadUrls?.wav) { await putToR2(uploadUrls.wav, files.wav); urlPayload.fullWavUrl = `${R2_PUBLIC}/private/beats/${beat.id}.wav`; }
-      if (files.mp3 && uploadUrls?.mp3) { await putToR2(uploadUrls.mp3, files.mp3); urlPayload.fullMp3Url = `${R2_PUBLIC}/private/beats/${beat.id}.mp3`; }
-      else if (files.preview) { urlPayload.fullMp3Url = `${R2_PUBLIC}/private/beats/${beat.id}.mp3`; }
+      if (files.artwork) urlPayload.artworkUrl = await uploadViaProxy('beat-artwork', beat.id, files.artwork);
+      if (files.preview) urlPayload.previewUrl = await uploadViaProxy('beat-preview', beat.id, files.preview);
+      if (files.wav) urlPayload.fullWavUrl = await uploadViaProxy('beat-wav', beat.id, files.wav);
+      if (files.mp3) urlPayload.fullMp3Url = await uploadViaProxy('beat-mp3', beat.id, files.mp3);
+      else if (files.preview) urlPayload.fullMp3Url = urlPayload.previewUrl;
 
       await fetch('/api/beats/upload', {
         method: 'PATCH',
@@ -93,7 +98,7 @@ export default function UploadPage() {
       });
       setSuccess(true);
     } catch (e: any) {
-      setError(e.message || 'Upload failed — check your connection and try again');
+      setError(e.message || 'Upload failed. If this says "Failed to fetch", your R2 bucket needs CORS configured — see setup guide.');
     } finally { setLoading(false); }
   }
 
@@ -125,31 +130,26 @@ export default function UploadPage() {
       const { release, tracks: trackRecords, uploadUrls } = data;
 
       // Upload artwork
-      if (relArtwork && uploadUrls?.artwork) await putToR2(uploadUrls.artwork, relArtwork);
+      let artworkPublicUrl = '';
+      if (relArtwork) artworkPublicUrl = await uploadViaProxy('release-artwork', release.id, relArtwork);
 
       // Upload each track's files
       const trackUpdates: Record<string, { previewUrl: string; fullUrl: string }> = {};
       for (let i = 0; i < filled.length; i++) {
         const track = trackRecords[i];
         const entry = filled[i];
-        if (entry.previewFile && uploadUrls[`preview_${track.id}`]) {
-          await putToR2(uploadUrls[`preview_${track.id}`], entry.previewFile);
-        }
-        if (entry.fullFile && uploadUrls[`full_${track.id}`]) {
-          await putToR2(uploadUrls[`full_${track.id}`], entry.fullFile);
-        }
-        const R2_PUBLIC2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '';
-        trackUpdates[track.id] = {
-          previewUrl: entry.previewFile ? `${R2_PUBLIC2}/previews/tracks/${track.id}.mp3` : '',
-          fullUrl: entry.fullFile ? `${R2_PUBLIC2}/private/tracks/${track.id}.mp3` : '',
-        };
+        let previewUrl = '';
+        let fullUrl = '';
+        if (entry.previewFile) previewUrl = await uploadViaProxy('track-preview', track.id, entry.previewFile);
+        if (entry.fullFile) fullUrl = await uploadViaProxy('track-full', track.id, entry.fullFile);
+        trackUpdates[track.id] = { previewUrl, fullUrl };
       }
 
       // Finalize
       await fetch('/api/releases/upload', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ releaseId: release.id, artworkUrl: relArtwork ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ''}/artwork/releases/${release.id}.jpg` : '', trackUpdates }),
+        body: JSON.stringify({ releaseId: release.id, artworkUrl: artworkPublicUrl, trackUpdates }),
       });
       setSuccess(true);
     } catch (e: any) {
