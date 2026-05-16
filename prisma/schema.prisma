@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String
+  role         String         @default("fan")
+  createdAt    DateTime       @default(now())
+  artist       Artist?
+  purchases    Purchase[]
+  supportsSent SupportTxn[]
+  wishlist     WishlistItem[]
+}
+
+model Artist {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  user             User         @relation(fields: [userId], references: [id])
+  slug             String       @unique
+  name             String
+  bio              String       @default("")
+  city             String       @default("")
+  country          String       @default("ZA")
+  genreTags        String[]
+  photoUrl         String       @default("")
+  coverUrl         String       @default("")
+  socialLinks      Json         @default("{}")
+  stripeAccountId  String?
+  payfastMerchant  String?
+  currency         String       @default("ZAR")
+  isPublic         Boolean      @default(true)
+  totalPlays       Int          @default(0)
+  beats            Beat[]
+  releases         Release[]
+  supportReceived  SupportTxn[]
+  goals            Goal[]
+  payouts          ArtistPayout[]
+  createdAt        DateTime     @default(now())
+}
+
+model Beat {
+  id           String     @id @default(cuid())
+  artistId     String
+  artist       Artist     @relation(fields: [artistId], references: [id])
+  title        String
+  slug         String     @unique
+  bpm          Int        @default(0)
+  keySignature String     @default("")
+  mood         String     @default("")
+  genre        String     @default("")
+  tags         String[]
+  artworkUrl   String     @default("")
+  previewUrl   String
+  fullWavUrl   String     @default("")
+  fullMp3Url   String     @default("")
+  waveformData Float[]
+  basicPrice   Float      @default(0)
+  premiumPrice Float      @default(0)
+  exclPrice    Float      @default(0)
+  plays        Int        @default(0)
+  sales        Int        @default(0)
+  isActive     Boolean    @default(true)
+  isExclusive  Boolean    @default(false)
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+}
+
+model Release {
+  id          String     @id @default(cuid())
+  artistId    String
+  artist      Artist     @relation(fields: [artistId], references: [id])
+  title       String
+  slug        String     @unique
+  releaseType String     @default("single")
+  price       Float      @default(0)
+  minPrice    Float      @default(0)
+  payWhatWant Boolean    @default(false)
+  artworkUrl  String     @default("")
+  description String     @default("")
+  credits     String     @default("")
+  releaseDate DateTime?
+  plays       Int        @default(0)
+  sales       Int        @default(0)
+  isActive    Boolean    @default(true)
+  tracks      Track[]
+  purchases   Purchase[]
+  createdAt   DateTime   @default(now())
+}
+
+model Track {
+  id           String   @id @default(cuid())
+  releaseId    String
+  release      Release  @relation(fields: [releaseId], references: [id])
+  title        String
+  trackNumber  Int
+  duration     Int      @default(0)
+  previewUrl   String
+  fullUrl      String
+  waveformData Float[]
+}
+
+model Purchase {
+  id                 String    @id @default(cuid())
+  userId             String?
+  user               User?     @relation(fields: [userId], references: [id])
+  buyerEmail         String
+  buyerName          String
+  itemType           String
+  beatId             String?
+  beat               Beat?     @relation(fields: [beatId], references: [id])
+  releaseId          String?
+  release            Release?  @relation(fields: [releaseId], references: [id])
+  amount             Float
+  currency           String    @default("ZAR")
+  licenseType        String    @default("")
+  licenseId          String    @unique @default(cuid())
+  stripePaymentId    String?
+  payfastPfPaymentId String?
+  status             String    @default("pending")
+  licenseUrl         String?
+  receiptUrl         String?
+  downloadToken      String    @unique @default(cuid())
+  downloadCount      Int       @default(0)
+  createdAt          DateTime  @default(now())
+}
+
+model SupportTxn {
+  id              String   @id @default(cuid())
+  fanUserId       String?
+  fan             User?    @relation(fields: [fanUserId], references: [id])
+  fanEmail        String
+  fanName         String
+  artistId        String
+  artist          Artist   @relation(fields: [artistId], references: [id])
+  amount          Float
+  currency        String   @default("ZAR")
+  message         String   @default("")
+  tier            String   @default("Listener")
+  isPublic        Boolean  @default(true)
+  stripePaymentId String?
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  artistId      String
+  artist        Artist    @relation(fields: [artistId], references: [id])
+  title         String
+  description   String    @default("")
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  currency      String    @default("ZAR")
+  deadline      DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+model ArtistPayout {
+  id              String   @id @default(cuid())
+  artistId        String
+  artist          Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  purchaseId      String?
+  amount          Float
+  fee             Float    @default(0)
+  netAmount       Float
+  method          String   @default("payfast") // payfast, stripe, bank_transfer
+  currency        String   @default("ZAR")
+  status          String   @default("pending") // pending, processing, completed, failed
+  payfastRef      String?
+  bankAccountLast4 String?
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+  processedAt     DateTime?
+  @@index([artistId])
+  @@index([status])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  itemType  String
+  itemId    String
+  createdAt DateTime @default(now())
+}

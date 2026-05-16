@@ -1,0 +1,567 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    VUKA — FULL SETUP GUIDE                                  ║
+║              From zero to fully working, locally, for free                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Everything below is free. No domain needed. No credit card needed.
+You can test real payments, real emails, real uploads before spending a cent.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 0 — WHAT YOU NEED INSTALLED ON YOUR COMPUTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Node.js (v18 or newer)
+   → Download: https://nodejs.org  (click "LTS" version)
+   → After installing, open Terminal and check: node --version
+
+2. Git
+   → Download: https://git-scm.com/downloads
+   → Or on Mac: just type "git" in terminal, it prompts you to install
+
+3. VS Code (to edit files)
+   → Download: https://code.visualstudio.com
+
+4. Stripe CLI (for local webhook testing — free)
+   → Download: https://stripe.com/docs/stripe-cli
+   → Mac: brew install stripe/stripe-cli/stripe
+   → Windows: download the .exe from that page
+
+That's it. Everything else is web-based.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — UNZIP AND OPEN THE PROJECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Unzip vuka-app.zip somewhere easy, like your Desktop
+   → You'll get a folder called "vuka"
+
+2. Open Terminal (Mac) or Command Prompt / PowerShell (Windows)
+
+3. Navigate into the folder:
+   cd Desktop/vuka
+
+4. Open in VS Code:
+   code .
+
+5. Install all dependencies (takes 1-2 minutes):
+   npm install
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — SUPABASE (Database + Auth) — FREE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Supabase gives you a real PostgreSQL database + authentication for free.
+
+1. Go to https://supabase.com and click "Start your project"
+2. Sign up with GitHub (easiest)
+3. Click "New Project"
+   → Name: vuka
+   → Database Password: pick a strong one, WRITE IT DOWN
+   → Region: pick closest to you (e.g. eu-central-1 for SA users)
+   → Click "Create new project" (takes ~2 minutes to spin up)
+
+4. Once it's ready, go to Settings → API
+   You'll see:
+   → Project URL       → copy this (looks like: https://abcxyz.supabase.co)
+   → anon public key   → copy this (long string starting with "eyJ...")
+
+5. Still in Settings → API, scroll down to "Service role key"
+   → Click "Reveal" and copy it (keep this secret!)
+
+6. Go to Settings → Database
+   → Scroll to "Connection string" → select "URI"
+   → Copy the "Transaction" connection string (port 6543)
+     Looks like: postgresql://postgres.abcxyz:PASSWORD@aws-0-eu.pooler.supabase.com:6543/postgres
+   → Also copy the "Session" connection string (port 5432)
+
+7. Open your vuka folder → open the file called ".env.local"
+   Fill in:
+
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...your anon key...
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...your service role key...
+   DATABASE_URL=postgresql://postgres.XXX:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true
+   DIRECT_URL=postgresql://postgres.XXX:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
+
+   NOTE: In DATABASE_URL, add ?pgbouncer=true at the end (port 6543)
+   NOTE: DIRECT_URL uses port 5432 with no extra params
+
+8. In Supabase dashboard, go to Authentication → Providers
+   → Make sure "Email" is enabled (it should be by default)
+   → Optional: enable Google OAuth (Settings → Client ID / Secret from Google Cloud Console)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — PUSH THE DATABASE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This creates all the tables in your Supabase database.
+
+In your terminal (inside the vuka folder):
+
+   npm run db:push
+
+You should see "Your database is now in sync with your Prisma schema."
+
+To verify: go to Supabase → Table Editor
+You should see tables: User, Artist, Beat, Release, Track, Purchase, etc.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — STRIPE (Payments) — FREE TEST MODE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Go to https://stripe.com → click "Start now" → create a free account
+2. Verify your email
+3. You're now in TEST MODE (no real money, safe to use)
+
+4. In Stripe dashboard, click "Developers" (top right) → API keys
+   → Copy "Publishable key" (starts with pk_test_...)
+   → Click "Reveal test key" → copy "Secret key" (starts with sk_test_...)
+
+5. In your .env.local:
+   STRIPE_SECRET_KEY=sk_test_...
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+6. Set up the webhook for local testing:
+   Open a NEW terminal window (keep the first one open) and run:
+
+   stripe login
+   (opens browser, click "Allow access")
+
+   Then:
+   stripe listen --forward-to localhost:3000/api/checkout/stripe/webhook
+
+   It will print something like:
+   "Your webhook signing secret is whsec_abc123..."
+   → Copy that secret
+
+7. In your .env.local:
+   STRIPE_WEBHOOK_SECRET=whsec_abc123...
+
+   IMPORTANT: Keep this terminal running while testing payments.
+   Every time you run the app locally, re-run the stripe listen command.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — PAYFAST SANDBOX (SA Payments) — FREE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PayFast provides test credentials you can use immediately — no account needed
+for sandbox testing.
+
+In your .env.local, these sandbox credentials are already filled in:
+
+   PAYFAST_MERCHANT_ID=10000100
+   PAYFAST_MERCHANT_KEY=46f0cd694581a
+   PAYFAST_PASSPHRASE=
+   PAYFAST_SANDBOX=true
+
+Leave them exactly like that. PayFast sandbox works with these default values.
+
+NOTE: PayFast ITN (their webhook) cannot reach localhost, so to test PayFast
+payments end-to-end you need either:
+  a) Deploy to Vercel (free) and test there — see Step 9
+  b) Use ngrok (free): ngrok http 3000 → gives you a public URL
+
+For NOW, focus on testing Stripe (works perfectly with localhost).
+PayFast is just another payment method — the logic is identical.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — CLOUDFLARE R2 (File Storage) — FREE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+R2 is where your audio files live. Free tier = 10GB storage.
+
+1. Go to https://cloudflare.com → sign up (free)
+2. In the dashboard, click "R2 Object Storage" in the left menu
+3. Click "Create bucket"
+   → Name: vuka-audio
+   → Location: Automatic
+   → Click "Create bucket"
+
+4. Set up public access (for previews/artwork):
+   → Click on your bucket → Settings tab
+   → Under "Public access" → click "Allow Access"
+   → Copy the "Public bucket URL" (looks like: https://pub-XXX.r2.dev)
+
+5. Create API credentials:
+   → Go to R2 overview page (not inside the bucket)
+   → Click "Manage R2 API Tokens" (top right)
+   → Click "Create API token"
+   → Name: vuka-local
+   → Permissions: "Object Read & Write"
+   → Click "Create API Token"
+   → Copy the "Access Key ID" and "Secret Access Key"
+   → Also note your Account ID (shown on R2 overview page)
+
+6. In your .env.local:
+   CLOUDFLARE_R2_ACCOUNT_ID=your-account-id
+   CLOUDFLARE_R2_ACCESS_KEY_ID=your-access-key-id
+   CLOUDFLARE_R2_SECRET_ACCESS_KEY=your-secret-access-key
+   CLOUDFLARE_R2_BUCKET_NAME=vuka-audio
+   CLOUDFLARE_R2_PUBLIC_URL=https://pub-XXX.r2.dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 7 — RESEND (Emails) — FREE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Resend sends the confirmation emails, sale notifications, etc.
+Free tier = 3,000 emails/month.
+
+1. Go to https://resend.com → sign up
+2. Verify your email
+3. Click "API Keys" in the left menu → "Create API Key"
+   → Name: vuka-local
+   → Permission: Full access
+   → Copy the key (starts with re_...)
+
+4. In your .env.local:
+   RESEND_API_KEY=re_...
+
+5. For EMAIL_FROM:
+   → During testing, use: onboarding@resend.dev
+     (Resend's default domain — works immediately, no setup)
+   → When you have a real domain later, you'll verify it in Resend and use noreply@vuka.app
+
+   So for now:
+   EMAIL_FROM=onboarding@resend.dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 8 — RUN THE APP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+At this point your .env.local should be fully filled in.
+
+1. Make sure Stripe CLI is listening (in a separate terminal):
+   stripe listen --forward-to localhost:3000/api/checkout/stripe/webhook
+
+2. Start the app (in your main terminal):
+   npm run dev
+
+3. Open your browser:
+   http://localhost:3000
+
+You should see the Vuka landing page with the dark purple design.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 9 — TEST EVERYTHING (Full End-to-End Checklist)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Work through these in order. Each one confirms a different part is working.
+
+────────────────────────────────────────
+TEST 1: Register as an Artist
+────────────────────────────────────────
+1. Go to http://localhost:3000/auth/register
+2. Enter your name, email, password
+3. Make sure "Artist" is selected
+4. Click Register
+5. Check your email inbox for a verification link
+6. Click the link → you should land on /auth/verify
+✅ PASS: Email arrives, verification link works
+
+────────────────────────────────────────
+TEST 2: Artist Dashboard Loads
+────────────────────────────────────────
+1. Go to http://localhost:3000/auth/login
+2. Log in with the account you just created
+3. You should be redirected to /dashboard
+4. You should see "Your Hustle" with zero stats
+✅ PASS: Dashboard loads, sidebar shows all menu items
+
+────────────────────────────────────────
+TEST 3: Upload a Beat
+────────────────────────────────────────
+1. In the dashboard, click "Upload" in the sidebar
+2. Select "Beat" as the type
+3. Upload any MP3 file from your computer
+   (Use any music file you have — doesn't matter what it is for testing)
+4. Upload a JPG/PNG as artwork
+5. Fill in: Title, BPM (e.g. 140), Genre (e.g. Amapiano)
+6. Set prices: Basic R100, Premium R200, Exclusive R500
+7. Click "Publish"
+✅ PASS: Beat appears in your dashboard at /dashboard/beats
+
+────────────────────────────────────────
+TEST 4: Artist Public Profile
+────────────────────────────────────────
+1. Go to http://localhost:3000/artist/YOUR-NAME-SLUG
+   (the slug is your name lowercased with dashes, e.g. /artist/dj-vusi)
+2. You should see your profile with the beat you uploaded
+3. The beat card should show artwork, title, BPM, genre
+✅ PASS: Public profile works, beat is visible
+
+────────────────────────────────────────
+TEST 5: Store Page
+────────────────────────────────────────
+1. Go to http://localhost:3000/store
+2. Your beat should appear in the grid
+3. Try the filters (genre, sort by price, etc.)
+4. Try the search bar — type your beat title
+✅ PASS: Beat appears, filters and search work
+
+────────────────────────────────────────
+TEST 6: Buy a Beat with Stripe (TEST MODE)
+────────────────────────────────────────
+1. Click on your beat in the store
+2. Click "Buy" — a modal should slide up
+3. Select "Basic License"
+4. Enter a name and email (can be anything)
+5. Make sure "Stripe" is selected as payment method
+6. Click "Buy Now — Yebo ✓"
+7. You'll be redirected to Stripe Checkout page
+8. Use these TEST card details:
+   Card number: 4242 4242 4242 4242
+   Expiry: 12/28 (any future date)
+   CVC: 123 (any 3 digits)
+   Name: any name
+   Postcode: any postcode
+9. Click "Pay"
+10. You'll land on the success page
+✅ PASS: Payment completes, you see download button
+
+────────────────────────────────────────
+TEST 7: Download Works
+────────────────────────────────────────
+1. On the success page, click "Download"
+2. The file should start downloading
+3. Check: it's a zip or the actual audio file
+✅ PASS: File downloads successfully
+
+────────────────────────────────────────
+TEST 8: Emails Sent
+────────────────────────────────────────
+Check the email address you used at checkout:
+  - You should receive: "Sharp! Your beat is ready — Vuka"
+    → Contains download link + license reference
+Check the email of the artist account:
+  - You should receive: "💰 You just made a sale"
+    → Contains buyer name, amount, dashboard link
+✅ PASS: Both emails received
+
+────────────────────────────────────────
+TEST 9: PDF License
+────────────────────────────────────────
+1. In the purchase confirmation email, look for the PDF attachment
+2. Open it — should be a formatted license document
+3. Check: artist name, beat title, buyer name, license type, date all correct
+✅ PASS: PDF license generates correctly
+
+────────────────────────────────────────
+TEST 10: Dashboard Revenue
+────────────────────────────────────────
+1. Go to http://localhost:3000/dashboard
+2. You should see the sale reflected in stats
+3. Go to /dashboard/purchases — the sale should be listed
+✅ PASS: Sale appears in dashboard
+
+────────────────────────────────────────
+TEST 11: Re-Download Portal
+────────────────────────────────────────
+1. Go to http://localhost:3000/redownload
+2. Enter the email you used to buy the beat
+3. Click "Send Download Links"
+4. Check your email — you should receive fresh download links
+✅ PASS: Re-download email arrives with working links
+
+────────────────────────────────────────
+TEST 12: Fan Support Payment
+────────────────────────────────────────
+1. Go to http://localhost:3000/support/YOUR-ARTIST-SLUG
+2. Click "R50" quick amount
+3. Enter a name and message
+4. Click "Support"
+5. Complete with test card: 4242 4242 4242 4242
+✅ PASS: Support payment works, artist receives notification email
+
+────────────────────────────────────────
+TEST 13: QR Code
+────────────────────────────────────────
+1. In the dashboard, go to Settings
+2. Look for the QR Code section
+3. Click "Download QR Code"
+4. Scan it with your phone — should open your artist profile
+✅ PASS: QR code downloads and links to correct profile
+
+────────────────────────────────────────
+TEST 14: Stripe Connect (Artist Payouts)
+────────────────────────────────────────
+1. Go to /dashboard/payouts
+2. Click "Connect Stripe Account"
+3. This opens Stripe's onboarding — in test mode, use:
+   → Click "Skip this step" where possible
+   → Or fill test details (US test account, fake info is fine in test mode)
+4. After connecting, you'll return to /checkout/connect-return
+5. You should see "Sharp! You're connected"
+✅ PASS: Stripe Connect onboarding completes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 10 — DEPLOY TO VERCEL (Still Free, Still No Domain)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Vercel gives you a free public URL like https://vuka-app.vercel.app
+This lets you:
+  - Test PayFast end-to-end (PayFast can't reach localhost)
+  - Share with friends/testers
+  - Test on mobile
+  - Keep it running without your laptop being on
+
+1. Create a free account at https://vercel.com (sign up with GitHub)
+
+2. Push your code to GitHub first:
+   a. Go to https://github.com → New repository → name it "vuka-app"
+   b. In your terminal (inside vuka folder):
+      git init
+      git add .
+      git commit -m "Initial Vuka build"
+      git branch -M main
+      git remote add origin https://github.com/YOURUSERNAME/vuka-app.git
+      git push -u origin main
+
+3. In Vercel:
+   → Click "Add New Project"
+   → Import your GitHub repo "vuka-app"
+   → Framework: Next.js (auto-detected)
+   → Click "Environment Variables"
+   → Add ALL the variables from your .env.local (one by one)
+   → IMPORTANT: Change NEXT_PUBLIC_APP_URL to your Vercel URL
+     e.g. https://vuka-app.vercel.app
+   → Click "Deploy"
+
+4. After deploy, go to Stripe dashboard → Developers → Webhooks
+   → Click "Add endpoint"
+   → URL: https://vuka-app.vercel.app/api/checkout/stripe/webhook
+   → Events to listen to: checkout.session.completed
+   → Copy the new signing secret → update STRIPE_WEBHOOK_SECRET in Vercel env vars
+   → Redeploy (Vercel → your project → Redeploy)
+
+5. Now test PayFast:
+   → Go to your Vercel URL
+   → Buy a beat using PayFast
+   → PayFast will fire the ITN to your live URL
+   → Check dashboard for confirmed purchase
+   ✅ PayFast end-to-end confirmed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHEN YOU'RE READY TO GO LIVE (Real Money)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. STRIPE: In Stripe dashboard, click "Activate account" (top bar)
+   → Submit your business/personal details
+   → Replace test keys with live keys (pk_live_... / sk_live_...)
+   → Create a new live webhook endpoint in Stripe
+
+2. PAYFAST: Register a real account at https://www.payfast.co.za/registration
+   → Submit your ID and banking details
+   → Get your real merchant_id and merchant_key
+   → Set PAYFAST_SANDBOX=false in your env vars
+
+3. DOMAIN: Buy vuka.app (or whatever domain you want)
+   → Namecheap, GoDaddy, Cloudflare Registrar
+   → Point it to Vercel: in Vercel → your project → Settings → Domains → Add domain
+   → Update NEXT_PUBLIC_APP_URL=https://vuka.app
+
+4. EMAIL: In Resend → Domains → Add domain
+   → Add DNS records Resend gives you (takes 5 minutes in your domain registrar)
+   → Update EMAIL_FROM=noreply@vuka.app
+
+5. SUPABASE: In Supabase → Authentication → URL Configuration
+   → Add your live domain to "Site URL" and "Redirect URLs"
+
+That's it. Same codebase, just swap the environment variables.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK REFERENCE — TEST CARD NUMBERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Successful payment:     4242 4242 4242 4242
+Declined payment:       4000 0000 0000 0002
+Requires 3D Secure:     4000 0027 6000 3184
+(All use any future expiry date and any 3-digit CVC)
+
+PayFast sandbox test card:
+  Card number: 4000 0000 0000 0002 (PayFast sandbox)
+  Or use PayFast's "test payment" option on their sandbox page
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK REFERENCE — ALL LOCAL URLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+http://localhost:3000                    Landing page
+http://localhost:3000/store              Browse beats + music
+http://localhost:3000/store/beats        Beats only
+http://localhost:3000/store/releases     Music releases only
+http://localhost:3000/auth/register      Sign up
+http://localhost:3000/auth/login         Log in
+http://localhost:3000/dashboard          Your Hustle (artist dashboard)
+http://localhost:3000/dashboard/uploads  Upload a beat or release
+http://localhost:3000/dashboard/beats    Manage your beats
+http://localhost:3000/dashboard/settings Profile + payment settings
+http://localhost:3000/dashboard/payouts  Stripe Connect + payout history
+http://localhost:3000/redownload         Re-download portal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK REFERENCE — USEFUL COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+npm run dev                   Start the app locally
+npm run build                 Build for production
+npm run db:push               Sync Prisma schema to database
+npm run db:studio             Open visual database browser
+npm run db:seed               Load test data
+
+stripe login                  Authenticate Stripe CLI
+stripe listen \               Forward webhooks to localhost
+  --forward-to localhost:3000/api/checkout/stripe/webhook
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMMON ERRORS AND FIXES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Can't connect to database"
+  → Check DATABASE_URL in .env.local
+  → Make sure you ran: npm run db:push
+  → Check Supabase project is not paused (free tier pauses after 1 week idle)
+    → Go to supabase.com → click your project → click "Restore"
+
+"Webhook signature verification failed"
+  → Make sure stripe listen is running in a separate terminal
+  → Make sure STRIPE_WEBHOOK_SECRET matches what stripe listen printed
+
+"Invalid API key" (Stripe)
+  → Double-check you copied the full key including "sk_test_" prefix
+  → No spaces before or after the key in .env.local
+
+"Upload failed"
+  → Check Cloudflare R2 credentials
+  → Make sure the bucket name matches exactly: vuka-audio
+  → Make sure your R2 token has "Object Read & Write" permission
+
+"Email not sending"
+  → Check RESEND_API_KEY is correct
+  → Use EMAIL_FROM=onboarding@resend.dev for testing
+  → Check Resend dashboard → "Emails" tab to see if it was attempted
+
+"Module not found" errors
+  → Run: npm install
+  → If that fails: delete the node_modules folder and run npm install again
+
+Prisma errors after schema change
+  → Run: npm run db:push
+  → If that fails: npm run db:push -- --force-reset (WARNING: clears all data)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COST SUMMARY (before going live)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Supabase          FREE (free tier: 500MB DB, 50MB file storage)
+Stripe            FREE in test mode (2.9% + 30c per transaction when live)
+PayFast           FREE in sandbox (small fee per transaction when live)
+Cloudflare R2     FREE (10GB storage, 1M requests/month)
+Resend            FREE (3,000 emails/month)
+Vercel            FREE (hobby tier, plenty for testing)
+Domain (vuka.app) NOT needed yet — ~$15-20/year when you go live
+
+TOTAL COST TO TEST EVERYTHING: R0 / $0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Good luck. Vuka — Rise.
+

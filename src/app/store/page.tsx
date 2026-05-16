@@ -1,0 +1,145 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { Navbar } from '@/components/Navbar';
+import { BeatCard } from '@/components/BeatCard';
+import { BuyModal } from '@/components/BuyModal';
+
+const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House'];
+const MOODS = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic'];
+const SORTS = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'plays', label: 'Most Played' },
+  { value: 'price_asc', label: 'Price ↑' },
+  { value: 'price_desc', label: 'Price ↓' },
+];
+
+export default function StorePage({ defaultFilter }: { defaultFilter?: string }) {
+  const [beats, setBeats] = useState<any[]>([]);
+  const [releases, setReleases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState(false);
+  const [q, setQ] = useState('');
+  const [genre, setGenre] = useState('');
+  const [mood, setMood] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [tab, setTab] = useState<'all' | 'beats' | 'releases'>(defaultFilter === 'beat' ? 'beats' : defaultFilter === 'release' ? 'releases' : 'all');
+  const [buyBeat, setBuyBeat] = useState<any>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetch(`/api/store/beats?q=${q}&genre=${genre}&mood=${mood}&sort=${sort}`).then(r => r.json()),
+      fetch(`/api/store/releases?q=${q}&sort=${sort}`).then(r => r.json()),
+    ]).then(([b, r]) => {
+      setBeats(b.beats || []);
+      setReleases(r.releases || []);
+      if (b.dbError || r.dbError) setDbError(true);
+      setLoading(false);
+    }).catch(() => { setDbError(true); setLoading(false); });
+  }, [q, genre, mood, sort]);
+
+  const items = tab === 'beats' ? beats
+    : tab === 'releases' ? releases
+    : [...beats, ...releases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <Navbar />
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>Browse & Support</h1>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Every purchase supports independent artists directly 💚</p>
+          </div>
+          <div className="hidden lg:block text-right text-sm p-4 rounded-lg" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
+            <p style={{ color: 'var(--green)' }} className="font-bold">100% Artist-Friendly</p>
+            <p style={{ color: 'var(--text-muted)' }} className="text-xs mt-1">Just 1% platform fee</p>
+          </div>
+        </div>
+
+        {dbError && (
+          <div className="mb-6 p-4 rounded-xl" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--gold)' }}>
+            <strong>⚠️ Database not connected</strong> — The store is empty because your Supabase/Prisma database isn&apos;t configured yet. Set up your <code>.env.local</code> with real credentials and run <code>npx prisma db push</code> to get started.
+          </div>
+        )}
+
+        {/* Search + filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search beats, releases, artists…"
+            className="flex-1 px-4 py-3 rounded-xl"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          />
+          <select value={genre} onChange={e => setGenre(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+            <option value="">All Genres</option>
+            {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <select value={mood} onChange={e => setMood(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+            <option value="">All Moods</option>
+            {MOODS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select value={sort} onChange={e => setSort(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex gap-2 mb-8">
+          {(['all', 'beats', 'releases'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} className="px-5 py-2 rounded-lg font-medium capitalize transition-colors"
+              style={{ background: tab === t ? 'var(--purple)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--muted)' }}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-square rounded-2xl animate-pulse" style={{ background: 'var(--surface)' }} />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-24">
+            <p className="text-4xl mb-4">🎵</p>
+            <p style={{ color: 'var(--muted)' }}>Nothing matching that — try something else</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {items.map((item: any) => (
+              item.basicPrice !== undefined ? (
+                <BeatCard key={item.id} beat={item} onBuy={setBuyBeat} />
+              ) : (
+                <ReleaseCard key={item.id} release={item} />
+              )
+            ))}
+          </div>
+        )}
+      </div>
+      {buyBeat && <BuyModal beat={buyBeat} onClose={() => setBuyBeat(null)} />}
+    </div>
+  );
+}
+
+function ReleaseCard({ release }: { release: any }) {
+  return (
+    <a href={`/release/${release.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div className="aspect-square overflow-hidden">
+        {release.artworkUrl
+          ? <img src={release.artworkUrl} alt={release.title} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
+      </div>
+      <div className="p-4">
+        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{release.releaseType}</div>
+        <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>{release.artist.name}</p>
+        <p className="font-bold mt-2" style={{ color: 'var(--purple-light)' }}>
+          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
+        </p>
+      </div>
+    </a>
+  );
+}

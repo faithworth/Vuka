@@ -1,0 +1,92 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { formatCurrency } from '@/lib/utils';
+import Link from 'next/link';
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/dashboard/stats').then(r => r.json()).then(d => { setStats(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="p-6 md:p-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>Your Hustle</h1>
+        <p style={{ color: 'var(--muted)' }}>What You've Earned</p>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'var(--surface)' }} />)}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Total Revenue', value: formatCurrency(stats?.totalRevenue || 0), icon: '💰', color: 'var(--green)' },
+              { label: 'This Month', value: formatCurrency(stats?.monthRevenue || 0), icon: '📅', color: 'var(--purple-light)' },
+              { label: 'Total Sales', value: stats?.totalSales || 0, icon: '🛒', color: 'var(--gold)' },
+              { label: 'Total Plays', value: stats?.totalPlays || 0, icon: '▶️', color: 'var(--purple-light)' },
+            ].map(s => (
+              <div key={s.label} className="p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="text-2xl mb-2">{s.icon}</div>
+                <div className="text-2xl font-black mb-1" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-sm" style={{ color: 'var(--muted)' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Link href="/dashboard/uploads" className="flex items-center gap-4 p-6 rounded-2xl transition-colors hover:border-purple-500"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <span className="text-3xl">⬆️</span>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Upload New Beat</p><p className="text-sm" style={{ color: 'var(--muted)' }}>Add to your store</p></div>
+            </Link>
+            <Link href="/dashboard/settings" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <span className="text-3xl">💳</span>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Connect Stripe</p><p className="text-sm" style={{ color: 'var(--muted)' }}>Set up payouts</p></div>
+            </Link>
+            <button
+              onClick={() => { if (stats?.artistSlug) navigator.clipboard.writeText(`${window.location.origin}/artist/${stats.artistSlug}`); }}
+              className="flex items-center gap-4 p-6 rounded-2xl text-left transition-colors"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <span className="text-3xl">🔗</span>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Copy Your Link</p><p className="text-sm" style={{ color: 'var(--muted)' }}>Share on socials</p></div>
+            </button>
+          </div>
+
+          {/* Recent sales */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="font-bold" style={{ color: 'var(--text)' }}>Recent Sales</h2>
+            </div>
+            {stats?.recentSales?.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-4xl mb-3">🎵</p>
+                <p style={{ color: 'var(--muted)' }}>Nothing here yet, go create</p>
+                <Link href="/dashboard/uploads" className="inline-block mt-4 px-6 py-3 rounded-xl font-bold text-white" style={{ background: 'var(--purple)' }}>Upload a Beat</Link>
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {stats?.recentSales?.map((sale: any) => (
+                  <div key={sale.id} className="flex items-center justify-between p-4">
+                    <div>
+                      <p className="font-medium" style={{ color: 'var(--text)' }}>{sale.beat?.title || sale.release?.title || 'Item'}</p>
+                      <p className="text-sm" style={{ color: 'var(--muted)' }}>{sale.buyerName} · {sale.licenseType || sale.itemType}</p>
+                    </div>
+                    <span className="font-bold" style={{ color: 'var(--green)' }}>{formatCurrency(sale.amount, sale.currency)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
