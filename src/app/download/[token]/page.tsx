@@ -26,7 +26,7 @@ export default function DownloadPage() {
       <div className="max-w-lg mx-auto px-4 py-16">
         {loading ? (
           <div className="text-center">
-            <p style={{ color: 'var(--muted)' }}>Just now… fetching your files</p>
+            <p style={{ color: 'var(--text-muted)' }}>Just now… fetching your files</p>
           </div>
         ) : error ? (
           <div className="text-center p-8 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -41,7 +41,7 @@ export default function DownloadPage() {
             <div className="text-center mb-8">
               <div className="text-6xl mb-4">⬇️</div>
               <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>It's yours now, download below</h1>
-              <p style={{ color: 'var(--muted)' }}>{data.itemName} · {data.downloadsLeft} download{data.downloadsLeft !== 1 ? 's' : ''} remaining</p>
+              <p style={{ color: 'var(--text-muted)' }}>{data.itemName} · {data.downloadsLeft} download{data.downloadsLeft !== 1 ? 's' : ''} remaining</p>
             </div>
             <div className="space-y-3">
               {data.downloads?.map((d: { name: string; url: string }) => (
@@ -62,7 +62,7 @@ export default function DownloadPage() {
                 📄 Download License PDF
               </a>
             )}
-            <p className="text-center text-sm mt-6" style={{ color: 'var(--muted)' }}>
+            <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
               Need another copy? <a href="/redownload" className="underline">Re-download portal</a>
             </p>
           </div>

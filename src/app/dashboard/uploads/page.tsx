@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
+import { Loader2, CheckCircle2, Rocket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -9,9 +10,9 @@ const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqo
 const MOODS = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic', 'Motivational'];
 const RELEASE_TYPES = [
   { value: 'single', label: '🎵 Single', desc: '1 song' },
-  { value: 'ep', label: '🎶 EP', desc: '2–6 songs' },
-  { value: 'album', label: '💿 Album', desc: '7+ songs' },
-  { value: 'mixtape', label: '📼 Mixtape', desc: 'Any length' },
+  { value: 'ep', label: 'EP', desc: '2–6 songs' },
+  { value: 'album', label: 'Album', desc: '7+ songs' },
+  { value: 'mixtape', label: 'Mixtape', desc: 'Any length' },
 ];
 
 interface TrackEntry { title: string; previewFile?: File; fullFile?: File; }
@@ -77,16 +78,18 @@ export default function UploadPage() {
       if (!res.ok) throw new Error(data.error || 'Could not create beat');
       const { beat, uploadUrls } = data;
 
-      const flags: Record<string, boolean> = {};
-      if (files.artwork && uploadUrls?.artwork) { await putToR2(uploadUrls.artwork, files.artwork); flags.artworkUploaded = true; }
-      if (files.preview && uploadUrls?.preview) { await putToR2(uploadUrls.preview, files.preview); flags.previewUploaded = true; }
-      if (files.wav && uploadUrls?.wav) { await putToR2(uploadUrls.wav, files.wav); flags.wavUploaded = true; }
-      if (files.mp3 && uploadUrls?.mp3) { await putToR2(uploadUrls.mp3, files.mp3); flags.mp3Uploaded = true; }
+      const R2_PUBLIC = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '';
+      const urlPayload: Record<string, string> = {};
+      if (files.artwork && uploadUrls?.artwork) { await putToR2(uploadUrls.artwork, files.artwork); urlPayload.artworkUrl = `${R2_PUBLIC}/artwork/beats/${beat.id}.jpg`; }
+      if (files.preview && uploadUrls?.preview) { await putToR2(uploadUrls.preview, files.preview); urlPayload.previewUrl = `${R2_PUBLIC}/previews/beats/${beat.id}.mp3`; }
+      if (files.wav && uploadUrls?.wav) { await putToR2(uploadUrls.wav, files.wav); urlPayload.fullWavUrl = `${R2_PUBLIC}/private/beats/${beat.id}.wav`; }
+      if (files.mp3 && uploadUrls?.mp3) { await putToR2(uploadUrls.mp3, files.mp3); urlPayload.fullMp3Url = `${R2_PUBLIC}/private/beats/${beat.id}.mp3`; }
+      else if (files.preview) { urlPayload.fullMp3Url = `${R2_PUBLIC}/private/beats/${beat.id}.mp3`; }
 
       await fetch('/api/beats/upload', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ beatId: beat.id, ...flags }),
+        body: JSON.stringify({ beatId: beat.id, ...urlPayload }),
       });
       setSuccess(true);
     } catch (e: any) {
@@ -135,9 +138,10 @@ export default function UploadPage() {
         if (entry.fullFile && uploadUrls[`full_${track.id}`]) {
           await putToR2(uploadUrls[`full_${track.id}`], entry.fullFile);
         }
+        const R2_PUBLIC2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '';
         trackUpdates[track.id] = {
-          previewUrl: entry.previewFile ? `ok` : '',
-          fullUrl: entry.fullFile ? `ok` : '',
+          previewUrl: entry.previewFile ? `${R2_PUBLIC2}/previews/tracks/${track.id}.mp3` : '',
+          fullUrl: entry.fullFile ? `${R2_PUBLIC2}/private/tracks/${track.id}.mp3` : '',
         };
       }
 
@@ -145,7 +149,7 @@ export default function UploadPage() {
       await fetch('/api/releases/upload', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ releaseId: release.id, artworkUrl: relArtwork ? 'ok' : '', trackUpdates }),
+        body: JSON.stringify({ releaseId: release.id, artworkUrl: relArtwork ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ''}/artwork/releases/${release.id}.jpg` : '', trackUpdates }),
       });
       setSuccess(true);
     } catch (e: any) {
@@ -156,7 +160,7 @@ export default function UploadPage() {
   // ── SUCCESS ──
   if (success) return (
     <div className="p-6 md:p-10 flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="text-7xl mb-6">🎉</div>
+      <CheckCircle2 size={64} className="mb-6" style={{ color: "var(--green)" }} />
       <h2 className="text-3xl font-black mb-3" style={{ color: 'var(--text)' }}>Sharp! It's live.</h2>
       <p className="mb-2" style={{ color: 'var(--text-muted)' }}>
         Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka.
@@ -189,7 +193,7 @@ export default function UploadPage() {
               <button key={t} onClick={() => setUploadType(t)}
                 className="p-8 rounded-2xl text-center transition-all capitalize font-bold text-lg"
                 style={{ background: uploadType === t ? 'var(--surface2)' : 'var(--surface)', border: `2px solid ${uploadType === t ? 'var(--purple)' : 'var(--border)'}`, color: 'var(--text)' }}>
-                {t === 'beat' ? '🎵 Beat' : '🎶 Release'}
+                {t === 'beat' ? 'Beat' : 'Release'}
                 <p className="text-xs font-normal mt-2" style={{ color: 'var(--text-muted)' }}>
                   {t === 'beat' ? 'Instrumental with license tiers' : 'Single, EP, Album or Mixtape'}
                 </p>
@@ -288,7 +292,7 @@ export default function UploadPage() {
             <button onClick={handleBeatSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-bold text-white disabled:opacity-60 transition-opacity"
               style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}>
-              {loading ? '⏳ Uploading…' : '🚀 Publish to Store — Yebo'}
+              {loading ? <><Loader2 size={16} className="animate-spin inline mr-2" />Uploading…</> : 'Publish to Store — Yebo'}
             </button>
           </div>
         </div>
@@ -418,7 +422,7 @@ export default function UploadPage() {
             <button onClick={handleReleaseSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-bold text-white disabled:opacity-60 transition-opacity"
               style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}>
-              {loading ? '⏳ Uploading…' : '🚀 Publish to Store — Yebo'}
+              {loading ? <><Loader2 size={16} className="animate-spin inline mr-2" />Uploading…</> : 'Publish to Store — Yebo'}
             </button>
           </div>
         </div>

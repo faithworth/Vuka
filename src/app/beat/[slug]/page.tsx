@@ -44,7 +44,7 @@ export default function BeatDetailPage() {
   if (loading) return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
-      <div className="flex items-center justify-center py-24"><p style={{ color: 'var(--muted)' }}>Just now…</p></div>
+      <div className="flex items-center justify-center py-24"><p style={{ color: 'var(--text-muted)' }}>Just now…</p></div>
     </div>
   );
 
@@ -53,7 +53,7 @@ export default function BeatDetailPage() {
       <Navbar />
       <div className="flex flex-col items-center justify-center py-24">
         <p className="text-4xl mb-4">😬</p>
-        <p style={{ color: 'var(--muted)' }}>Eish. This beat doesn't exist.</p>
+        <p style={{ color: 'var(--text-muted)' }}>Eish. This beat doesn't exist.</p>
       </div>
     </div>
   );
@@ -99,7 +99,7 @@ export default function BeatDetailPage() {
                 style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
               >
                 {isPlaying ? '⏸ Pause Preview' : '▶ Play Preview'}
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>Watermarked</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Watermarked</span>
               </button>
             </div>
 
@@ -113,7 +113,7 @@ export default function BeatDetailPage() {
                 <div key={l.name} className="flex items-center justify-between p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div>
                     <p className="font-bold" style={{ color: 'var(--text)' }}>{l.name}</p>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>{l.desc}</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{l.desc}</p>
                   </div>
                   <span className="font-bold text-lg" style={{ color: 'var(--purple-light)' }}>{formatCurrency(l.price)}</span>
                 </div>
@@ -122,7 +122,7 @@ export default function BeatDetailPage() {
 
             {beat.isExclusive ? (
               <div className="mt-6 p-4 rounded-xl text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <p style={{ color: 'var(--muted)' }}>🔒 This beat has been sold exclusively and is no longer available.</p>
+                <p style={{ color: 'var(--text-muted)' }}>🔒 This beat has been sold exclusively and is no longer available.</p>
               </div>
             ) : (
               <button
@@ -146,7 +146,7 @@ export default function BeatDetailPage() {
 function Tag({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <span className="text-xs" style={{ color: 'var(--muted)' }}>{label}: </span>
+      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}: </span>
       <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{value}</span>
     </div>
   );

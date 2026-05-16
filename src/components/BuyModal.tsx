@@ -127,9 +127,9 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           )}
           <div className="flex-1">
             <h3 className="font-bold text-lg" style={{ color: 'var(--text)' }}>{item.title}</h3>
-            <p style={{ color: 'var(--muted)' }}>{item.artist.name}</p>
+            <p style={{ color: 'var(--text-muted)' }}>{item.artist.name}</p>
           </div>
-          <button onClick={onClose} className="text-2xl" style={{ color: 'var(--muted)' }}>×</button>
+          <button onClick={onClose} className="text-2xl" style={{ color: 'var(--text-muted)' }}>×</button>
         </div>
 
         {/* License picker (beats only) */}
@@ -150,7 +150,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
                   <span className="font-bold" style={{ color: 'var(--purple-light)' }}>{formatCurrency(prices[l.key])}</span>
                 </div>
                 <ul className="mt-1">
-                  {l.rights.map((r) => <li key={r} className="text-xs" style={{ color: 'var(--muted)' }}>· {r}</li>)}
+                  {l.rights.map((r) => <li key={r} className="text-xs" style={{ color: 'var(--text-muted)' }}>· {r}</li>)}
                 </ul>
               </button>
             ))}
@@ -160,7 +160,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         {/* Pay what you want */}
         {release?.payWhatWant && (
           <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--muted)' }}>Your price (min R{release.minPrice})</label>
+            <label className="text-sm mb-1 block" style={{ color: 'var(--text-muted)' }}>Your price (min R{release.minPrice})</label>
             <input
               type="number"
               value={customAmount}
@@ -201,7 +201,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
               style={{
                 background: payMethod === m ? 'var(--purple)' : 'var(--surface2)',
                 border: '1px solid var(--border)',
-                color: payMethod === m ? 'white' : 'var(--muted)',
+                color: payMethod === m ? 'white' : 'var(--text-muted)',
               }}
             >
               {m === 'stripe' ? '💳 Card / Apple Pay' : '🇿🇦 PayFast'}

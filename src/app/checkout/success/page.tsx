@@ -33,7 +33,7 @@ function SuccessContent() {
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
       <div className="text-6xl mb-6 animate-bounce">⏳</div>
       <h1 className="text-2xl font-bold mb-3" style={{ color: 'var(--text)' }}>Confirming your payment…</h1>
-      <p style={{ color: 'var(--muted)' }}>Just now — we're processing your purchase.</p>
+      <p style={{ color: 'var(--text-muted)' }}>Just now — we're processing your purchase.</p>
     </div>
   );
 
@@ -42,12 +42,12 @@ function SuccessContent() {
       <div className="max-w-md">
         <div className="text-7xl mb-6">🎉</div>
         <h1 className="text-4xl font-black mb-3" style={{ color: 'var(--text)' }}>Sharp! It's yours now.</h1>
-        <p className="mb-8" style={{ color: 'var(--muted)' }}>
+        <p className="mb-8" style={{ color: 'var(--text-muted)' }}>
           Your download link has been sent to <strong style={{ color: 'var(--purple-light)' }}>{purchase.buyerEmail}</strong>. Check your inbox.
         </p>
         <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="font-bold text-lg mb-2" style={{ color: 'var(--text)' }}>{purchase.beat?.title || purchase.release?.title || 'Your Purchase'}</p>
-          {purchase.licenseType && <p className="text-sm mb-1 capitalize" style={{ color: 'var(--muted)' }}>{purchase.licenseType} License</p>}
+          {purchase.licenseType && <p className="text-sm mb-1 capitalize" style={{ color: 'var(--text-muted)' }}>{purchase.licenseType} License</p>}
           <p className="text-sm font-mono" style={{ color: 'var(--purple-light)' }}>Ref: {purchase.licenseId}</p>
         </div>
         <Link
@@ -57,7 +57,7 @@ function SuccessContent() {
         >
           ⬇️ Download Now
         </Link>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>Link valid for 30 days · 5 downloads max · <Link href="/redownload" className="underline">Re-download anytime</Link></p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Link valid for 30 days · 5 downloads max · <Link href="/redownload" className="underline">Re-download anytime</Link></p>
       </div>
     </div>
   );
@@ -67,10 +67,10 @@ function SuccessContent() {
       <div className="max-w-md">
         <div className="text-6xl mb-6">📧</div>
         <h1 className="text-2xl font-bold mb-3" style={{ color: 'var(--text)' }}>Payment received!</h1>
-        <p className="mb-6" style={{ color: 'var(--muted)' }}>
+        <p className="mb-6" style={{ color: 'var(--text-muted)' }}>
           We're processing your purchase. You'll receive a download link by email shortly.
         </p>
-        <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>If you don't receive an email within 5 minutes, use the re-download portal below.</p>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>If you don't receive an email within 5 minutes, use the re-download portal below.</p>
         <Link href="/redownload" className="inline-block px-6 py-3 rounded-xl font-bold" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
           Re-download Portal
         </Link>

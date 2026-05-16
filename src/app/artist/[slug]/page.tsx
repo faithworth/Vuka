@@ -45,7 +45,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
           </div>
           <div className="flex-1 pt-16 md:pt-12">
             <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>{artist.name}</h1>
-            <p style={{ color: 'var(--muted)' }}>{artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}</p>
+            <p style={{ color: 'var(--text-muted)' }}>{artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}</p>
             {artist.genreTags?.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {artist.genreTags.map((g: string) => (
@@ -53,7 +53,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                 ))}
               </div>
             )}
-            {artist.bio && <p className="mt-3 max-w-xl" style={{ color: 'var(--muted)' }}>{artist.bio}</p>}
+            {artist.bio && <p className="mt-3 max-w-xl" style={{ color: 'var(--text-muted)' }}>{artist.bio}</p>}
           </div>
           <a href={`/support/${artist.slug}`} className="px-6 py-3 rounded-xl font-bold text-white flex-shrink-0" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
             ♥ Support Artist
@@ -69,7 +69,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
           ].map(s => (
             <div key={s.label}>
               <p className="text-xl font-bold" style={{ color: 'var(--text)' }}>{s.value}</p>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>{s.label}</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -96,7 +96,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                   </div>
                   <div className="p-4">
                     <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
-                    <p className="text-sm capitalize" style={{ color: 'var(--muted)' }}>{r.releaseType} · R{r.price}</p>
+                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{r.releaseType} · R{r.price}</p>
                   </div>
                 </a>
               ))}
@@ -117,7 +117,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                       <span className="font-bold" style={{ color: 'var(--text)' }}>{s.fanName}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--gold)' }}>{s.tier}</span>
                     </div>
-                    {s.message && <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>"{s.message}"</p>}
+                    {s.message && <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>"{s.message}"</p>}
                   </div>
                   <span className="font-bold" style={{ color: 'var(--green)' }}>{s.currency} {s.amount}</span>
                 </div>

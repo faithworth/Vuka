@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { Loader2, CheckCircle2, CreditCard, Mic2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [stripeError, setStripeError] = useState('');
   const [saved, setSaved] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -20,13 +22,19 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    // Store the file reference as a data URL for saving
-    const reader = new FileReader();
-    reader.onload = e => setArtist((p: any) => ({ ...p, [key]: e.target?.result as string }));
-    reader.readAsDataURL(file);
+  async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+    try {
+      const type = key === 'coverUrl' ? 'cover' : 'photo';
+      const res = await fetch(`/api/dashboard/settings/upload-url?type=${type}`);
+      if (!res.ok) throw new Error('Could not get upload URL');
+      const { uploadUrl, publicUrl } = await res.json();
+      await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+      setArtist((p: any) => ({ ...p, [key]: publicUrl }));
+    } catch (e: any) {
+      console.error('Image upload failed:', e.message);
+    }
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -44,16 +52,22 @@ export default function SettingsPage() {
 
   async function connectStripe() {
     setConnectingStripe(true);
-    const res = await fetch('/api/connect/onboard').catch(() => null);
-    if (!res) { setConnectingStripe(false); return; }
-    const { url } = await res.json();
-    if (url) window.location.href = url;
-    else setConnectingStripe(false);
+    setStripeError('');
+    try {
+      const res = await fetch('/api/connect/onboard');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Stripe connection failed');
+      if (!data.url) throw new Error('No onboarding URL returned. Check that Stripe Connect is enabled for your account.');
+      window.location.href = data.url;
+    } catch (e: any) {
+      setStripeError(e.message);
+      setConnectingStripe(false);
+    }
   }
 
   if (loading) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-      <span className="animate-pulse">⏳</span> Loading your profile…
+      <Loader2 size={20} className="animate-spin" /> Loading your profile…
     </div>
   );
   if (!artist) return (
@@ -77,11 +91,14 @@ export default function SettingsPage() {
             <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{artist.stripeAccountId.slice(0, 18)}…</span>
           </div>
         ) : (
-          <button onClick={connectStripe} disabled={connectingStripe}
-            className="px-6 py-3 rounded-xl font-bold text-white disabled:opacity-60 transition-opacity"
-            style={{ background: 'linear-gradient(135deg,#635bff,#4338ca)' }}>
-            {connectingStripe ? '⏳ Connecting…' : '⚡ Connect Stripe — Get Paid'}
-          </button>
+          <>
+            <button onClick={connectStripe} disabled={connectingStripe}
+              className="px-6 py-3 rounded-xl font-bold text-white disabled:opacity-60 transition-opacity"
+              style={{ background: 'linear-gradient(135deg,#635bff,#4338ca)' }}>
+              {connectingStripe ? <><Loader2 size={16} className="animate-spin inline mr-2" />Connecting…</> : <><CreditCard size={16} className="inline mr-2" />Connect Stripe — Get Paid</>}
+            </button>
+            {stripeError && <p className="mt-3 text-sm text-red-400">⚠️ {stripeError}</p>}
+          </>
         )}
       </div>
 
@@ -97,7 +114,7 @@ export default function SettingsPage() {
               style={{ background: 'var(--surface2)', border: '2px solid var(--border)' }}>
               {(photoPreview || artist.photoUrl)
                 ? <img src={photoPreview || artist.photoUrl} alt="Photo" className="w-full h-full object-cover" />
-                : '🎤'}
+                : <Mic2 size={24} style={{ color: 'var(--text-muted)' }} />}
             </div>
             <button type="button" onClick={() => photoRef.current?.click()}
               className="px-4 py-2 rounded-lg text-sm font-medium"
@@ -165,7 +182,7 @@ export default function SettingsPage() {
           <button type="submit" disabled={saving}
             className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-60 transition-all"
             style={{ background: saved ? 'var(--green)' : 'var(--purple)' }}>
-            {saving ? '⏳ Saving…' : saved ? '✓ Profile Saved!' : 'Save Profile'}
+            {saving ? <><Loader2 size={16} className="animate-spin inline mr-2" />Saving…</> : saved ? <><CheckCircle2 size={16} className="inline mr-2" />Profile Saved!</> : 'Save Profile'}
           </button>
         </div>
       </form>

@@ -76,12 +76,12 @@ export function BeatCard({ beat, onBuy }: { beat: Beat; onBuy?: (beat: Beat) => 
         <Link href={`/beat/${beat.slug}`}>
           <h3 className="font-bold text-base truncate hover:text-purple-400 transition-colors" style={{ color: 'var(--text)' }}>{beat.title}</h3>
         </Link>
-        <Link href={`/artist/${beat.artist.slug}`} className="text-sm hover:underline transition-colors" style={{ color: 'var(--muted)' }}>
+        <Link href={`/artist/${beat.artist.slug}`} className="text-sm hover:underline transition-colors" style={{ color: 'var(--text-muted)' }}>
           by {beat.artist.name}
         </Link>
         <div className="flex gap-2 mt-2 flex-wrap">
-          {beat.bpm > 0 && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}>🎚️ {beat.bpm} BPM</span>}
-          {beat.keySignature && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}>🎼 {beat.keySignature}</span>}
+          {beat.bpm > 0 && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>🎚️ {beat.bpm} BPM</span>}
+          {beat.keySignature && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>🎼 {beat.keySignature}</span>}
           {beat.genre && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{beat.genre}</span>}
         </div>
         <div className="flex items-center justify-between mt-3">

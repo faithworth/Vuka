@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';

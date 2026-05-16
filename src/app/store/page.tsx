@@ -89,7 +89,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         <div className="flex gap-2 mb-8">
           {(['all', 'beats', 'releases'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} className="px-5 py-2 rounded-lg font-medium capitalize transition-colors"
-              style={{ background: tab === t ? 'var(--purple)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--muted)' }}>
+              style={{ background: tab === t ? 'var(--purple)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--text-muted)' }}>
               {t}
             </button>
           ))}
@@ -104,7 +104,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         ) : items.length === 0 ? (
           <div className="text-center py-24">
             <p className="text-4xl mb-4">🎵</p>
-            <p style={{ color: 'var(--muted)' }}>Nothing matching that — try something else</p>
+            <p style={{ color: 'var(--text-muted)' }}>Nothing matching that — try something else</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -135,7 +135,7 @@ function ReleaseCard({ release }: { release: any }) {
       <div className="p-4">
         <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{release.releaseType}</div>
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>{release.artist.name}</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist.name}</p>
         <p className="font-bold mt-2" style={{ color: 'var(--purple-light)' }}>
           {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
         </p>

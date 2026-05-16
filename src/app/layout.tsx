@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Vuka — Rise. Buy beats & music directly from African artists.',
-  description: 'Premium independent music commerce. Buy beats, EPs, albums directly from producers and artists. Real payments. Real emails. No middleman.',
+  title: 'Vuka. Buy music and beats',
+  description: 'Buy beats and music directly from African artists. Real payments, instant downloads.',
+  icons: {
+    icon: '/favicon.svg',
+  },
   openGraph: {
-    title: 'Vuka — Rise',
-    description: 'Buy beats & music directly from African artists.',
+    title: 'Vuka. Buy music and beats',
+    description: 'Buy beats and music directly from African artists.',
     siteName: 'Vuka',
   },
 };
@@ -17,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
       </head>
       <body suppressHydrationWarning>
         {children}

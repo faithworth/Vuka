@@ -49,8 +49,8 @@ export default function SupportPage() {
     finally { setSubmitting(false); }
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}><p style={{ color: 'var(--muted)' }}>Just now…</p></div>;
-  if (!artist) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}><p style={{ color: 'var(--muted)' }}>Eish. Artist not found.</p></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}><p style={{ color: 'var(--text-muted)' }}>Just now…</p></div>;
+  if (!artist) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}><p style={{ color: 'var(--text-muted)' }}>Eish. Artist not found.</p></div>;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -62,7 +62,7 @@ export default function SupportPage() {
             {artist.photoUrl ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">🎤</div>}
           </div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>Support {artist.name} ♥</h1>
-          <p style={{ color: 'var(--muted)' }}>{artist.city}</p>
+          <p style={{ color: 'var(--text-muted)' }}>{artist.city}</p>
         </div>
 
         {/* Tier guide */}
@@ -70,8 +70,8 @@ export default function SupportPage() {
           {TIERS.map(t => (
             <div key={t.name} className="text-center p-3 rounded-xl" style={{ background: 'var(--surface)', border: `1px solid ${tier === t.name ? 'var(--purple)' : 'var(--border)'}` }}>
               <div className="text-xl">{t.icon}</div>
-              <div className="text-xs font-bold mt-1" style={{ color: tier === t.name ? 'var(--purple-light)' : 'var(--muted)' }}>{t.name}</div>
-              {t.min > 0 && <div className="text-xs" style={{ color: 'var(--muted)' }}>R{t.min}+</div>}
+              <div className="text-xs font-bold mt-1" style={{ color: tier === t.name ? 'var(--purple-light)' : 'var(--text-muted)' }}>{t.name}</div>
+              {t.min > 0 && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>R{t.min}+</div>}
             </div>
           ))}
         </div>
@@ -82,7 +82,7 @@ export default function SupportPage() {
             {QUICK_AMOUNTS.map(a => (
               <button key={a} onClick={() => { setAmount(a); setCustomAmount(''); }}
                 className="flex-1 py-2 rounded-lg font-bold text-sm transition-colors"
-                style={{ background: amount === a && !customAmount ? 'var(--purple)' : 'var(--surface2)', border: '1px solid var(--border)', color: amount === a && !customAmount ? 'white' : 'var(--muted)', minWidth: 60 }}>
+                style={{ background: amount === a && !customAmount ? 'var(--purple)' : 'var(--surface2)', border: '1px solid var(--border)', color: amount === a && !customAmount ? 'white' : 'var(--text-muted)', minWidth: 60 }}>
                 R{a}
               </button>
             ))}
@@ -110,7 +110,7 @@ export default function SupportPage() {
 
           <div className="flex items-center gap-3 mb-6">
             <input type="checkbox" id="pub" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
-            <label htmlFor="pub" className="text-sm" style={{ color: 'var(--muted)' }}>Show my support on the public wall</label>
+            <label htmlFor="pub" className="text-sm" style={{ color: 'var(--text-muted)' }}>Show my support on the public wall</label>
           </div>
 
           {error && <p className="text-sm text-red-400 mb-4">Eish — {error}</p>}

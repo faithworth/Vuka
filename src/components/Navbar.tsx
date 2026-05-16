@@ -27,8 +27,8 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50" style={{ background: 'rgba(13,11,20,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border)' }}>
       <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
-        <Link href="/" className="text-2xl font-black" style={{ background: 'linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          VUKA
+        <Link href="/" className="text-2xl font-black tracking-widest flex items-center gap-1" style={{ color: 'var(--accent, #c8f53a)', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.15em' }}>
+          <span style={{ fontSize: '0.75em' }}>▲</span>VUKA
         </Link>
 
         {/* Desktop nav */}
@@ -43,12 +43,12 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <Link href="/dashboard" className="px-4 py-2 rounded-lg font-medium text-sm transition-colors" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-              Your Hustle
+              Dashboard
             </Link>
           ) : (
             <>
               <Link href="/auth/login" className="px-4 py-2 rounded-lg font-medium text-sm" style={{ color: 'var(--text-muted)' }}>Log In</Link>
-              <Link href="/auth/register" className="px-4 py-2 rounded-lg font-bold text-sm text-white" style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}>
+              <Link href="/auth/register" className="px-4 py-2 rounded-lg font-bold text-sm" style={{ background: 'var(--accent, #c8f53a)', color: '#0a0a08' }}>
                 Sign Up
               </Link>
             </>
@@ -71,7 +71,7 @@ export function Navbar() {
           ))}
           <hr style={{ borderColor: 'var(--border)' }} />
           {user ? (
-            <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="py-2 font-medium" style={{ color: 'var(--text)' }}>Your Hustle</Link>
+            <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="py-2 font-medium" style={{ color: 'var(--text)' }}>Dashboard</Link>
           ) : (
             <>
               <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Log In</Link>

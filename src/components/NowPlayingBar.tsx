@@ -86,7 +86,7 @@ export function NowPlayingBar() {
       </div>
       <div className="min-w-0 flex-1 md:w-48 md:flex-none">
         <p className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{currentTrack.title}</p>
-        <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>{currentTrack.artist}</p>
+        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{currentTrack.artist}</p>
       </div>
       <div className="flex items-center gap-3 flex-1 justify-center">
         <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ background: 'var(--purple)' }}>
@@ -112,7 +112,7 @@ export function NowPlayingBar() {
           onChange={e => { setVolume(+e.target.value); if (audioRef.current) audioRef.current.volume = +e.target.value; }}
           className="hidden md:block w-20"
         />
-        <button onClick={pause} className="text-xl" style={{ color: 'var(--muted)' }}>✕</button>
+        <button onClick={pause} className="text-xl" style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
     </div>
   );

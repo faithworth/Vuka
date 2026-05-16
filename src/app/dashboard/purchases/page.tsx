@@ -28,21 +28,21 @@ export default function PurchasesPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['Date', 'Item', 'Buyer', 'License', 'Amount', 'Status'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-sm font-medium" style={{ color: 'var(--muted)' }}>{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {purchases.map((p: any) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>{formatDate(p.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{formatDate(p.createdAt)}</td>
                     <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text)' }}>{p.beat?.title || p.release?.title || '—'}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>{p.buyerName}</td>
-                    <td className="px-4 py-3 text-sm capitalize" style={{ color: 'var(--muted)' }}>{p.licenseType || p.itemType}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{p.buyerName}</td>
+                    <td className="px-4 py-3 text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{p.licenseType || p.itemType}</td>
                     <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--green)' }}>{formatCurrency(p.amount, p.currency)}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ background: p.status === 'confirmed' ? 'rgba(16,185,129,0.15)' : 'var(--surface2)', color: p.status === 'confirmed' ? 'var(--green)' : 'var(--muted)' }}>
+                        style={{ background: p.status === 'confirmed' ? 'rgba(16,185,129,0.15)' : 'var(--surface2)', color: p.status === 'confirmed' ? 'var(--green)' : 'var(--text-muted)' }}>
                         {p.status}
                       </span>
                     </td>
