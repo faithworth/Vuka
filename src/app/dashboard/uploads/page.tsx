@@ -207,10 +207,10 @@ export default function UploadPage() {
         <div>
           <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--text)' }}>Upload Files</h2>
           <div className="space-y-4 mb-8">
-            <FileDropzone label="Artwork (JPG/PNG)" accept="image/*" onFile={f => setFiles(p => ({ ...p, artwork: f }))} file={files.artwork} inputRef={artRef} />
-            <FileDropzone label="Preview MP3 — watermarked 30s snippet *" accept="audio/mpeg,audio/mp3" onFile={f => setFiles(p => ({ ...p, preview: f }))} file={files.preview} inputRef={prevRef} required />
-            <FileDropzone label="Full WAV (buyers unlock this)" accept="audio/wav,audio/wave" onFile={f => setFiles(p => ({ ...p, wav: f }))} file={files.wav} inputRef={wavRef} />
-            <FileDropzone label="Full MP3 (buyers unlock this)" accept="audio/mpeg,audio/mp3" onFile={f => setFiles(p => ({ ...p, mp3: f }))} file={files.mp3} inputRef={mp3Ref} />
+            <FileDropzone label="Artwork (JPG/PNG)" accept="image/*" onFile={(f: File) => setFiles(p => ({ ...p, artwork: f }))} file={files.artwork} inputRef={artRef} />
+            <FileDropzone label="Preview MP3 — watermarked 30s snippet *" accept="audio/mpeg,audio/mp3" onFile={(f: File) => setFiles(p => ({ ...p, preview: f }))} file={files.preview} inputRef={prevRef} required />
+           <FileDropzone label="Full WAV (buyers unlock this)" accept="audio/wav,audio/wave" onFile={(f: File) => setFiles(p => ({ ...p, wav: f }))} file={files.wav} inputRef={wavRef} />
+            <FileDropzone label="Full MP3 (buyers unlock this)" accept="audio/mpeg,audio/mp3" onFile={(f: File) => setFiles(p => ({ ...p, mp3: f }))} file={files.mp3} inputRef={mp3Ref} />
           </div>
           {error && <p className="text-red-400 text-sm mb-4">⚠️ {error}</p>}
           <div className="flex gap-3">
@@ -369,7 +369,7 @@ export default function UploadPage() {
         <div>
           <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--text)' }}>Artwork & Pricing</h2>
           <div className="space-y-4 mb-8">
-            <FileDropzone label="Cover Artwork (JPG/PNG) — recommended 3000×3000px" accept="image/*" onFile={f => setRelArtwork(f)} file={relArtwork || undefined} inputRef={relArtRef} />
+           <FileDropzone label="Cover Artwork (JPG/PNG) — recommended 3000×3000px" accept="image/*" onFile={(f: File) => setRelArtwork(f)} file={relArtwork || undefined} inputRef={relArtRef} />
             <PriceField label="Release Price (ZAR)" sublabel="Set to 0 for a free release" type="number" value={relMeta.price} onChange={v => setRelMeta(p => ({ ...p, price: v }))} />
             <label className="flex items-center gap-3 p-4 rounded-xl cursor-pointer" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <input type="checkbox" checked={relMeta.payWhatWant} onChange={e => setRelMeta(p => ({ ...p, payWhatWant: e.target.checked }))} className="w-5 h-5 accent-purple-500" />
