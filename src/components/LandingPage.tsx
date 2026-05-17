@@ -1,115 +1,246 @@
 import Link from 'next/link';
-import { Music, ArrowRight, Globe, Zap, DollarSign, Shield } from 'lucide-react';
+import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
     <>
       <Navbar />
       <main>
+
+        {/* ── HERO ── */}
         <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-          <div className="absolute inset-0 bg-gradient-glow opacity-60" />
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(124,58,237,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(245,158,11,0.05) 0%, transparent 40%)' }} />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 70%)' }} />
           <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
 
-            <h1 className="font-display text-5xl md:text-8xl font-black mb-6 leading-none">
-              <span style={{ color: "var(--accent, #c8f53a)", fontFamily: "'IBM Plex Mono', monospace" }}>VUKA</span><br />
-              <span style={{ color: "var(--text)" }}>Rise</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-8"
+              style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', color: 'var(--purple-light)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+              Africa's independent music platform
+            </div>
+
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight" style={{ color: 'var(--text)', lineHeight: 1.05 }}>
+              Your music.<br />
+              <span style={{ color: 'var(--purple-light)' }}>Your terms.</span><br />
+              Your money.
             </h1>
-            <p className="text-lg md:text-xl text-[var(--text-muted)] mb-4 max-w-2xl mx-auto leading-relaxed">
-              Sell your music to the world. Keep 99%, we take 1%.
+
+            <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              Sell beats and releases directly to your fans — in South Africa and worldwide.
+              Keep 99% of every sale.
             </p>
-            <p className="text-sm md:text-base text-[var(--text-muted)] mb-12 max-w-2xl mx-auto">
-              Upload beats and releases. Set your price. Fans buy directly. <strong className="text-[var(--green)]">Money goes straight to your bank.</strong>
+
+            <p className="text-sm mb-10 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+              PayFast for South African buyers. Stripe for the world. Money goes straight to your bank — no middlemen, no waiting.
             </p>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Link href="/auth/register" className="btn btn-primary text-lg px-8 py-4">
-                Rise Up — It&apos;s Free <ArrowRight size={20} />
+              <Link href="/auth/register" className="btn btn-primary text-base px-8 py-4">
+                Start Selling — It's Free <ArrowRight size={18} />
               </Link>
-              <Link href="/store" className="btn btn-secondary text-lg px-8 py-4">
-                Browse Store <Music size={20} />
+              <Link href="/store" className="btn btn-secondary text-base px-8 py-4">
+                Browse the Store <Music size={18} />
               </Link>
             </div>
-            <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
-              {[{ n: '99%', l: 'Artist Revenue' }, { n: '1%', l: 'Platform Fee' }, { n: 'Global', l: 'Reach' }].map(s => (
+
+            <div className="flex items-center justify-center gap-12">
+              {[
+                { n: '99%', l: 'Artist Revenue' },
+                { n: '1%', l: 'Platform Fee' },
+                { n: 'Global', l: 'Payments' },
+              ].map(s => (
                 <div key={s.n} className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold gradient-text">{s.n}</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">{s.l}</div>
+                  <div className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>{s.n}</div>
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.l}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
+        {/* ── FOR ARTISTS ── */}
         <section className="py-24 px-4">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-5xl font-bold text-center mb-4">Everything you need to <span style={{ color: "var(--accent, #c8f53a)" }}>get paid</span></h2>
-            <p className="text-[var(--text-muted)] text-center mb-16 max-w-xl mx-auto">One link. Your beats. Your music. Your rules.</p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center mb-16">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--purple-light)' }}>For Artists & Producers</p>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
+                Everything you need to get paid
+              </h2>
+              <p className="max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+                Upload your music in minutes. Set your price. Fans buy directly. Money lands in your bank.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
               {[
-                { icon: Globe, title: 'Global Payments', desc: 'Stripe for international buyers. PayFast for South Africa. Funds go straight to you.' },
-                { icon: Zap, title: 'Instant Downloads', desc: 'Buyers get secure download links immediately after payment. No friction.' },
-                { icon: DollarSign, title: 'Beat Licensing', desc: 'Basic, Premium, and Exclusive tiers with auto-generated PDF license agreements.' },
-                { icon: Shield, title: 'Fan Support', desc: 'Let your fans tip and back your goals. Build a real community.' },
+                {
+                  icon: DollarSign,
+                  title: 'Dual Payments',
+                  desc: 'PayFast for South African buyers with PayShap support. Stripe for international fans. Both fully automated.',
+                },
+                {
+                  icon: Zap,
+                  title: 'Instant Downloads',
+                  desc: 'Fans receive secure download links the moment payment clears. No manual work needed.',
+                },
+                {
+                  icon: Shield,
+                  title: 'Beat Licensing',
+                  desc: 'Basic, Premium, and Exclusive tiers. Auto-generated PDF license agreements sent to every buyer.',
+                },
+                {
+                  icon: Users,
+                  title: 'Fan Support',
+                  desc: 'Let fans tip you and back your recording goals. Build a real community around your music.',
+                },
               ].map(f => (
-                <div key={f.title} className="p-6 rounded-2xl transition-colors" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <div className="w-12 h-12 rounded-xl bg-[var(--purple)]/20 flex items-center justify-center mb-4">
-                    <f.icon size={24} className="text-[var(--purple-light)]" />
+                <div key={f.title} className="p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: 'rgba(124,58,237,0.15)' }}>
+                    <f.icon size={20} style={{ color: 'var(--purple-light)' }} />
                   </div>
-                  <h3 className="font-bold mb-2">{f.title}</h3>
-                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">{f.desc}</p>
+                  <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>{f.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="py-24 px-4 bg-[var(--surface)]">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-5xl font-bold mb-16">From studio to <span style={{ color: "var(--accent, #c8f53a)" }}>paid</span> in minutes</h2>
-            <div className="grid md:grid-cols-3 gap-8">
+        {/* ── HOW IT WORKS ── */}
+        <section className="py-24 px-4" style={{ background: 'var(--surface)' }}>
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
+                From studio to sold — in minutes
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-10">
               {[
-                { n: '01', t: 'Upload', d: 'Drag your beats or releases. We auto-detect BPM, key, and generate waveform previews.' },
-                { n: '02', t: 'Share', d: 'Get your link — vuka.app/artist/you. Share it everywhere. Fans buy directly.' },
-                { n: '03', t: 'Get Paid', d: 'Stripe moves money to your bank. You get a notification email every time a sale completes.' },
+                {
+                  n: '01',
+                  t: 'Upload your music',
+                  d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.',
+                },
+                {
+                  n: '02',
+                  t: 'Share your link',
+                  d: 'Get your personal store link — vuka.app/artist/you. Share it everywhere you already are.',
+                },
+                {
+                  n: '03',
+                  t: 'Get paid',
+                  d: 'PayFast and Stripe move money directly to your bank. You get a notification with every sale.',
+                },
               ].map(s => (
-                <div key={s.n}>
-                  <div className="text-6xl font-black text-[var(--border)] mb-4 font-mono">{s.n}</div>
-                  <h3 className="font-bold text-xl mb-2">{s.t}</h3>
-                  <p className="text-[var(--text-muted)] text-sm leading-relaxed">{s.d}</p>
+                <div key={s.n} className="text-center">
+                  <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
+                  <h3 className="font-semibold text-lg mb-3" style={{ color: 'var(--text)' }}>{s.t}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.d}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
+        {/* ── FOR FANS ── */}
         <section className="py-24 px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">The music industry had its run.<br /><span style={{ color: "var(--accent, #c8f53a)" }}>Vuka is what comes next.</span></h2>
-            <p className="text-[var(--text-muted)] mb-8">An artist in Katlehong uploads their EP tonight. Fans from London and Lagos buy it by morning. No label. No cuts. Just music.</p>
-            <Link href="/auth/register" className="btn btn-primary text-lg px-10 py-5">
-              Start for Free — Rise Up <ArrowRight size={20} />
+          <div className="max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-16 items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--purple-light)' }}>For Fans & Listeners</p>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: 'var(--text)' }}>
+                  Support the artists you love
+                </h2>
+                <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
+                  Discover independent artists from across Africa and the diaspora. Buy their music directly — every purchase goes almost entirely to the artist.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Browse and stream previews before you buy',
+                    'Secure checkout via PayFast or card',
+                    'Instant download links in your inbox',
+                    'Follow artists and get notified of new drops',
+                    'Tip artists and back their recording goals',
+                  ].map(item => (
+                    <div key={item} className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.15)' }}>
+                        <span style={{ color: 'var(--green)', fontSize: 10 }}>✓</span>
+                      </div>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/auth/register?role=fan" className="btn btn-secondary inline-flex">
+                  Create a Fan Account <ArrowRight size={16} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { icon: Globe, title: 'Global Discovery', desc: 'Artists from SA, Nigeria, Ghana, Kenya and beyond.' },
+                  { icon: TrendingUp, title: 'Support Goals', desc: "Back an artist's recording or tour fund directly." },
+                  { icon: Music, title: 'Build a Library', desc: 'Your purchases available for download anytime.' },
+                  { icon: Shield, title: 'Safe & Secure', desc: 'Protected checkout. Immediate delivery.' },
+                ].map(c => (
+                  <div key={c.title} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <c.icon size={20} className="mb-3" style={{ color: 'var(--purple-light)' }} />
+                    <h4 className="font-semibold text-sm mb-1.5" style={{ color: 'var(--text)' }}>{c.title}</h4>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── PRICING ── */}
+        <section className="py-24 px-4" style={{ background: 'var(--surface)' }}>
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
+              Honest pricing. Always.
+            </h2>
+            <p className="mb-12" style={{ color: 'var(--text-muted)' }}>
+              No monthly fees. No hidden charges. We take 1% only when you make a sale.
+            </p>
+            <div className="p-8 rounded-2xl mb-8" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+              <div className="text-6xl font-bold mb-3" style={{ color: 'var(--text)' }}>1%</div>
+              <div className="text-lg mb-6" style={{ color: 'var(--text-muted)' }}>platform fee per sale</div>
+              <div className="space-y-3">
+                {[
+                  'No monthly subscription',
+                  'No upfront costs',
+                  'No limit on uploads',
+                  'PayFast + Stripe both included',
+                  'PDF license generation included',
+                  'Secure download delivery included',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-3 text-sm justify-center" style={{ color: 'var(--text-muted)' }}>
+                    <span style={{ color: 'var(--green)' }}>✓</span> {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Link href="/auth/register" className="btn btn-primary text-base px-8 py-4">
+              Get Started Free <ArrowRight size={18} />
             </Link>
           </div>
         </section>
 
-        <footer className="border-t border-[var(--border)] py-8 px-4">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-[var(--purple)] flex items-center justify-center">
-                <Music size={12} className="text-white" />
-              </div>
-              <span className="font-bold" style={{ color: "var(--accent, #c8f53a)" }}>VUKA</span>
+        {/* ── FOOTER ── */}
+        <footer className="py-12 px-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <span className="text-xl font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>African music. Your money. Your terms.</span>
             </div>
-            <div className="flex gap-6 text-sm text-[var(--text-muted)]">
-              <Link href="/store">Store</Link>
-              <Link href="/auth/login">Login</Link>
-              <Link href="/auth/register">Register</Link>
-              <Link href="/redownload">Re-Download</Link>
+            <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+              <Link href="/store" className="hover:text-white transition-colors">Store</Link>
+              <Link href="/auth/login" className="hover:text-white transition-colors">Log In</Link>
+              <Link href="/auth/register" className="hover:text-white transition-colors">Sign Up</Link>
             </div>
-            <p className="text-xs text-[var(--text-muted)]">© 2026 Vuka. Artist-first music. 1% fee. Built for creators.</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>© 2025 Vuka. Built for independent artists.</p>
           </div>
         </footer>
+
       </main>
     </>
   );
