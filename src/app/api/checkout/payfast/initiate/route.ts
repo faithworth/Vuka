@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
           currency: 'ZAR',
           licenseType: licenseType || '',
           licenseId,
-          status: 'completed',
+          status: 'confirmed',
         },
       });
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

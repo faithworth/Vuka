@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 });
 
   const purchases = await prisma.purchase.findMany({
-    where: { buyerEmail: email.toLowerCase(), status: 'confirmed' },
+    where: { buyerEmail: { equals: email, mode: 'insensitive' }, status: 'confirmed' },
     include: { beat: true, release: true },
     orderBy: { createdAt: 'desc' },
     take: 20,

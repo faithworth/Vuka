@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
           currency,
           licenseType: licenseType || '',
           licenseId,
-          status: 'completed',
+          status: 'confirmed',
         },
       });
       return NextResponse.json({ url: `${appUrl}/checkout/success?purchaseId=${purchase.id}` });
