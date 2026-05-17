@@ -44,6 +44,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = new Audio(track.previewUrl);
     audioRef.current = audio;
     audio.addEventListener('ended', () => setIsPlaying(false));
+    // Record play once per track load
+    audio.addEventListener('play', () => {
+      fetch('/api/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: track.id, itemType: track.type }),
+      }).catch(() => {});
+    }, { once: true });
     audio.play();
     setCurrentTrack(track);
     setIsPlaying(true);

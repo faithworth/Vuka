@@ -53,9 +53,17 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
 
+    let itemName = 'your purchase';
+    let artistEmail = '';
+    let artistName = '';
+
     if (purchase.itemType === 'beat' && purchase.beatId) {
-      const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, include: { artist: true } });
+      const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, include: { artist: { include: { user: true } } } });
       if (beat) {
+        itemName = beat.title;
+        artistEmail = beat.artist.user.email;
+        artistName = beat.artist.name;
+
         const pdfBuffer = await generateLicensePDF({
           licenseId: purchase.licenseId,
           licenseType: purchase.licenseType,
@@ -76,7 +84,6 @@ export async function POST(req: NextRequest) {
         }
         await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
 
-        // Create artist payout record with 1% fee
         const feeAmount = purchase.amount * 0.01;
         const netAmount = purchase.amount - feeAmount;
         await prisma.artistPayout.create({
@@ -94,14 +101,17 @@ export async function POST(req: NextRequest) {
         });
       }
     } else if (purchase.itemType === 'release' && purchase.releaseId) {
-      const release = await prisma.release.findUnique({ 
-        where: { id: purchase.releaseId }, 
-        include: { artist: true }
+      const release = await prisma.release.findUnique({
+        where: { id: purchase.releaseId },
+        include: { artist: { include: { user: true } } }
       });
       if (release) {
+        itemName = release.title;
+        artistEmail = release.artist.user.email;
+        artistName = release.artist.name;
+
         await prisma.release.update({ where: { id: purchase.releaseId }, data: { sales: { increment: 1 } } });
 
-        // Create artist payout record with 1% fee
         const feeAmount = purchase.amount * 0.01;
         const netAmount = purchase.amount - feeAmount;
         await prisma.artistPayout.create({
@@ -120,10 +130,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Send buyer confirmation email with download link
     await sendPurchaseConfirmation({
       to: purchase.buyerEmail,
       buyerName: purchase.buyerName,
-      itemName: purchase.beatId ? 'your beat' : 'your release',
+      itemName,
       itemType: purchase.itemType,
       licenseType: purchase.licenseType || undefined,
       downloadUrl,
@@ -131,6 +142,20 @@ export async function POST(req: NextRequest) {
       currency: purchase.currency,
       licenseId: purchase.licenseId,
     });
+
+    // Send artist sale notification
+    if (artistEmail) {
+      await sendArtistSaleNotification({
+        to: artistEmail,
+        artistName,
+        buyerName: purchase.buyerName,
+        itemName,
+        licenseType: purchase.licenseType || undefined,
+        amount: purchase.amount,
+        currency: purchase.currency,
+        dashboardUrl: `${appUrl}/dashboard`,
+      });
+    }
   } catch (err) {
     console.error('PayFast webhook error:', err);
   }

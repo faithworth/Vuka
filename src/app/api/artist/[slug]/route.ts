@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
           select: { fanName: true, amount: true, currency: true, message: true, tier: true, createdAt: true },
         },
         goals: { where: { isActive: true } },
+        followers: { select: { id: true } },
       },
     });
     if (!artist) return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -24,13 +24,25 @@ interface Beat {
 export function BeatCard({ beat, onBuy }: { beat: Beat; onBuy?: (beat: Beat) => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playCountedRef = useRef(false);
   const waveform = beat.waveformData?.length ? beat.waveformData : generateWaveformFallback(beat.id.charCodeAt(0), 40);
+
+  const recordPlay = () => {
+    if (playCountedRef.current) return;
+    playCountedRef.current = true;
+    fetch('/api/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: beat.id, itemType: 'beat' }),
+    }).catch(() => {});
+  };
 
   const togglePlay = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!audioRef.current) {
       audioRef.current = new Audio(beat.previewUrl);
       audioRef.current.addEventListener('ended', () => setIsPlaying(false));
+      audioRef.current.addEventListener('play', recordPlay, { once: true });
     }
     if (isPlaying) {
       audioRef.current.pause();

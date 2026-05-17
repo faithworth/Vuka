@@ -18,6 +18,7 @@ model User {
   purchases    Purchase[]
   supportsSent SupportTxn[]
   wishlist     WishlistItem[]
+  follows      Follow[]
 }
 
 model Artist {
@@ -43,6 +44,7 @@ model Artist {
   supportReceived  SupportTxn[]
   goals            Goal[]
   payouts          ArtistPayout[]
+  followers        Follow[]
   createdAt        DateTime     @default(now())
 }
 
@@ -191,4 +193,17 @@ model WishlistItem {
   itemType  String
   itemId    String
   createdAt DateTime @default(now())
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, artistId])
+  @@index([userId])
+  @@index([artistId])
 }

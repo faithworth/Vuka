@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/Navbar';
 import { BeatCard } from '@/components/BeatCard';
 import { notFound } from 'next/navigation';
+import FollowButton from './FollowButton';
 
 async function getArtist(slug: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/artist/${slug}`, { next: { revalidate: 60 } });
@@ -55,9 +56,16 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
             )}
             {artist.bio && <p className="mt-3 max-w-xl" style={{ color: 'var(--text-muted)' }}>{artist.bio}</p>}
           </div>
-          <a href={`/support/${artist.slug}`} className="px-6 py-3 rounded-xl font-bold text-white flex-shrink-0" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
-            ♥ Support Artist
-          </a>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 md:flex-col md:items-stretch flex-shrink-0">
+            <a href={`/support/${artist.slug}`}
+              className="px-6 py-3 rounded-xl font-bold text-white text-center"
+              style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
+              ♥ Support Artist
+            </a>
+            <FollowButton artistId={artist.id} artistName={artist.name} />
+          </div>
         </div>
 
         {/* Stats */}
@@ -66,6 +74,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
             { label: 'Beats', value: artist.beats?.length || 0 },
             { label: 'Releases', value: artist.releases?.length || 0 },
             { label: 'Supporters', value: artist.supportReceived?.length || 0 },
+            { label: 'Followers', value: artist.followers?.length || 0 },
           ].map(s => (
             <div key={s.label}>
               <p className="text-xl font-bold" style={{ color: 'var(--text)' }}>{s.value}</p>

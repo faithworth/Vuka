@@ -1,9 +1,15 @@
 import { Resend } from "resend";
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY is not set. Add it to your .env.local / Vercel environment variables.');
+  return new Resend(key);
 }
-const FROM = () => process.env.EMAIL_FROM || "noreply@vuka.app";
+
+// EMAIL_FROM must be a verified domain/address in your Resend account.
+// Default uses Resend's shared domain for testing — will deliver to your own email only.
+// For production: set EMAIL_FROM="Vuka <no-reply@yourdomain.com>" in Vercel env vars.
+const FROM = () => process.env.EMAIL_FROM || 'Vuka <onboarding@resend.dev>';
 
 export async function sendPurchaseConfirmation({
   to, buyerName, itemName, itemType, licenseType, downloadUrl, amount, currency, licenseId, artworkUrl,

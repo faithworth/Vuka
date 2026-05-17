@@ -12,7 +12,7 @@ const ARTIST_NAV = [
   { href: '/dashboard/beats', label: 'Beats', icon: Music },
   { href: '/dashboard/releases', label: 'Releases', icon: Disc },
   { href: '/dashboard/uploads', label: 'Upload', icon: Upload, highlight: true },
-  { href: '/dashboard/purchases', label: 'Purchases', icon: ShoppingBag },
+  { href: '/dashboard/purchases', label: 'Sales', icon: ShoppingBag },
   { href: '/dashboard/support', label: 'Fan Support', icon: Heart },
   { href: '/dashboard/goals', label: 'Goals', icon: Target },
   { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet },
@@ -24,12 +24,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [userEmail, setUserEmail] = useState('');
+  const [artistName, setArtistName] = useState('');
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.replace('/auth/login'); return; }
       setUserEmail(data.user.email || '');
+      // Check role — redirect fans away from the artist dashboard
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const me = await res.json();
+          if (!me.isArtist) {
+            // Fan — they don't belong here
+            router.replace('/fan');
+            return;
+          }
+          setArtistName(me.name || '');
+        }
+      } catch {}
       setChecking(false);
     });
   }, [router]);
@@ -70,6 +84,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka</span>
           </Link>
+          {artistName && (
+            <p className="text-xs mt-2 truncate" style={{ color: 'var(--text-muted)' }}>Artist Dashboard</p>
+          )}
         </div>
 
         {/* Nav */}
@@ -96,6 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="px-3 py-2 mb-1">
             <p className="text-xs font-medium truncate" style={{ color: 'var(--text)' }}>{userEmail}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Artist</p>
           </div>
           <button onClick={logout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm w-full transition-colors hover:bg-[var(--surface2)]"

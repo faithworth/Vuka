@@ -28,14 +28,24 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    if (authError) {
+      setError(authError.message);
       setLoading(false);
-    } else {
-      router.push('/dashboard');
-      router.refresh();
+      return;
     }
+    // Determine role and redirect accordingly
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const me = await res.json();
+        router.push(me.isArtist ? '/dashboard' : '/fan');
+        router.refresh();
+        return;
+      }
+    } catch {}
+    router.push('/fan');
+    router.refresh();
   };
 
   const handleGoogle = async () => {
@@ -51,7 +61,6 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
 
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--purple)' }}>
@@ -65,7 +74,6 @@ export default function LoginPage() {
 
         <div className="card p-8">
 
-          {/* Google */}
           <button onClick={handleGoogle} disabled={googleLoading}
             className="btn btn-secondary w-full mb-5 gap-2 disabled:opacity-60">
             {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
