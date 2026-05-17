@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createCheckoutSession } from '@/lib/stripe';
 
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -62,6 +61,25 @@ export async function POST(req: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const licenseId = `VK-${Date.now().toString(36).toUpperCase()}`;
+
+    // ── FREE RELEASE: skip Stripe entirely ──
+    if (amount === 0) {
+      const purchase = await prisma.purchase.create({
+        data: {
+          buyerEmail,
+          buyerName,
+          itemType,
+          beatId: itemType === 'beat' ? itemId : null,
+          releaseId: itemType === 'release' ? itemId : null,
+          amount: 0,
+          currency,
+          licenseType: licenseType || '',
+          licenseId,
+          status: 'completed',
+        },
+      });
+      return NextResponse.json({ url: `${appUrl}/checkout/success?purchaseId=${purchase.id}` });
+    }
 
     // Create pending purchase
     const purchase = await prisma.purchase.create({
