@@ -1,4 +1,5 @@
 'use client';
+// src/components/BuyModal.tsx
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { formatCurrency } from '@/lib/utils';
@@ -71,6 +72,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         });
         const data = await res.json();
         if (!res.ok) { setError(data.error || 'Error'); return; }
+        // Both free bypass and Stripe redirect use data.url
         window.location.href = data.url;
       } else {
         // PayFast
@@ -88,7 +90,14 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         });
         const data = await res.json();
         if (!res.ok) { setError(data.error || 'Error'); return; }
-        // Build and submit form
+
+        // Free item: redirect directly
+        if (data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+
+        // Paid: submit PayFast form
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = data.actionUrl;
@@ -112,7 +121,8 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
   const item = beat || release!;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
       <div
         className="w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
@@ -123,7 +133,8 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           {item.artworkUrl ? (
             <img src={item.artworkUrl} className="w-16 h-16 rounded-xl object-cover" alt="" />
           ) : (
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{ background: 'var(--surface2)' }}>🎵</div>
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl"
+              style={{ background: 'var(--surface2)' }}>🎵</div>
           )}
           <div className="flex-1">
             <h3 className="font-bold text-lg" style={{ color: 'var(--text)' }}>{item.title}</h3>
@@ -160,7 +171,9 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         {/* Pay what you want */}
         {release?.payWhatWant && (
           <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--text-muted)' }}>Your price (min R{release.minPrice})</label>
+            <label className="text-sm mb-1 block" style={{ color: 'var(--text-muted)' }}>
+              Your price (min R{release.minPrice})
+            </label>
             <input
               type="number"
               value={customAmount}
@@ -191,41 +204,48 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           />
         </div>
 
-        {/* Payment method */}
-        <div className="flex gap-2 mb-6">
-          {(['stripe', 'payfast'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setPayMethod(m)}
-              className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: payMethod === m ? 'var(--purple)' : 'var(--surface2)',
-                border: '1px solid var(--border)',
-                color: payMethod === m ? 'white' : 'var(--text-muted)',
-              }}
-            >
-              {m === 'stripe' ? '💳 Card / Apple Pay' : '🇿🇦 PayFast'}
-            </button>
-          ))}
-        </div>
+        {/* Payment method — only show for paid items */}
+        {price > 0 && (
+          <div className="flex gap-2 mb-6">
+            {(['stripe', 'payfast'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setPayMethod(m)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  background: payMethod === m ? 'var(--purple)' : 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  color: payMethod === m ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                {m === 'stripe' ? '💳 Card / Apple Pay' : '🇿🇦 PayFast'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Fee breakdown */}
         <div className="mb-6 p-3 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
           <div className="flex justify-between text-sm mb-2">
             <span style={{ color: 'var(--text-muted)' }}>Price</span>
-            <span style={{ color: 'var(--text)' }}>{formatCurrency(price)}</span>
+            <span style={{ color: 'var(--text)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
           </div>
-          <div className="flex justify-between text-sm mb-3" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Vuka Fee (1%)</span>
-            <span style={{ color: 'var(--text)' }}>-{formatCurrency(price * 0.01)}</span>
-          </div>
+          {price > 0 && (
+            <div className="flex justify-between text-sm mb-3"
+              style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Vuka Fee (1%)</span>
+              <span style={{ color: 'var(--text)' }}>-{formatCurrency(price * 0.01)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span style={{ color: 'var(--text)' }}>Total</span>
-            <span style={{ color: 'var(--green)' }}>{formatCurrency(price)}</span>
+            <span style={{ color: 'var(--green)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
           </div>
-          <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-            💚 Artist receives {formatCurrency(price * 0.99)} after our 1% fee
-          </p>
+          {price > 0 && (
+            <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+              💚 Artist receives {formatCurrency(price * 0.99)} after our 1% fee
+            </p>
+          )}
         </div>
 
         {error && <p className="text-sm mb-4 text-red-400">Eish — {error}</p>}
@@ -236,7 +256,11 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           className="w-full py-4 rounded-xl font-bold text-white text-lg transition-opacity disabled:opacity-60"
           style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}
         >
-          {loading ? 'Just now…' : `Buy Now — Yebo ✓ · ${formatCurrency(price)}`}
+          {loading
+            ? 'Just now…'
+            : price === 0
+            ? 'Download Free →'
+            : `Buy Now — Yebo ✓ · ${formatCurrency(price)}`}
         </button>
       </div>
     </div>
