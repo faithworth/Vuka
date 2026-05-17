@@ -8,7 +8,24 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       id: true, slug: true, name: true, bio: true, city: true, country: true,
       photoUrl: true, coverUrl: true, genreTags: true, socialLinks: true,
       currency: true, totalPlays: true, payfastMerchant: true, stripeAccountId: true,
-      goals: { where: { isActive: true }, take: 1 },
+      goals: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+      beats: {
+        where: { isActive: true },
+        select: { id: true, title: true, slug: true, artworkUrl: true, previewUrl: true, basicPrice: true, bpm: true, keySignature: true, genre: true, tags: true, waveformData: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      releases: {
+        where: { isActive: true },
+        select: { id: true, title: true, slug: true, artworkUrl: true, releaseType: true, price: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      supportReceived: {
+        where: { isPublic: true, status: 'confirmed' },
+        select: { fanName: true, tier: true, message: true, amount: true, currency: true },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      },
+      followers: { select: { id: true } },
     },
   });
   if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });

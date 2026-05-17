@@ -26,12 +26,12 @@ export async function GET(
   if (new Date() > expires) {
     return NextResponse.json({ error: 'Download link expired — visit /redownload' }, { status: 410 });
   }
-  // Max 5 downloads
-  if (purchase.downloadCount >= 5) {
+  // Max 10 session downloads (one session = one page visit, not one file)
+  if (purchase.downloadCount >= 10) {
     return NextResponse.json({ error: 'Download limit reached — visit /redownload' }, { status: 429 });
   }
 
-  // Increment count
+  // Increment count once per session visit (not per file)
   await prisma.purchase.update({
     where: { id: purchase.id },
     data: { downloadCount: { increment: 1 } },
@@ -65,7 +65,7 @@ export async function GET(
   return NextResponse.json({
     downloads,
     itemName: purchase.beat?.title || purchase.release?.title || 'Your Purchase',
-    downloadsLeft: 5 - (purchase.downloadCount + 1),
+    downloadsLeft: 10 - (purchase.downloadCount + 1),
     licenseUrl: purchase.licenseUrl,
   });
 }
