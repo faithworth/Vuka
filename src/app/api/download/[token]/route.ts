@@ -1,65 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getPresignedDownloadUrl, r2Keys } from '@/lib/r2';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { token: string } }
 ) {
   const purchase = await prisma.purchase.findUnique({
     where: { downloadToken: params.token },
     include: {
       beat: true,
-      release: { include: { tracks: true } },
+      release: { include: { tracks: { orderBy: { trackNumber: 'asc' } } } },
     },
   });
 
-  if (!purchase) {
-    return NextResponse.json({ error: 'Eish — invalid download token' }, { status: 404 });
-  }
-  if (purchase.status !== 'confirmed') {
-    return NextResponse.json({ error: 'Payment not confirmed yet' }, { status: 402 });
-  }
-  // Token expiry: 30 days
+  if (!purchase) return NextResponse.json({ error: 'Eish — invalid download token' }, { status: 404 });
+  if (purchase.status !== 'confirmed') return NextResponse.json({ error: 'Payment not confirmed yet' }, { status: 402 });
+
   const expires = new Date(purchase.createdAt);
   expires.setDate(expires.getDate() + 30);
-  if (new Date() > expires) {
-    return NextResponse.json({ error: 'Download link expired — visit /redownload' }, { status: 410 });
-  }
-  // Max 10 session downloads (one session = one page visit, not one file)
-  if (purchase.downloadCount >= 10) {
-    return NextResponse.json({ error: 'Download limit reached — visit /redownload' }, { status: 429 });
-  }
+  if (new Date() > expires) return NextResponse.json({ error: 'Download link expired — visit /redownload' }, { status: 410 });
 
-  // Increment count once per session visit (not per file)
+  if (purchase.downloadCount >= 10) return NextResponse.json({ error: 'Download limit reached — visit /redownload' }, { status: 429 });
+
+  // Increment once per page visit
   await prisma.purchase.update({
     where: { id: purchase.id },
     data: { downloadCount: { increment: 1 } },
   });
 
-  // Build download URLs
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+  const base = `${appUrl}/api/download/${params.token}/file`;
+
+  // Build download list — all route through /file/[index] so metadata gets embedded
   const downloads: Array<{ name: string; url: string }> = [];
 
   if (purchase.beat) {
+    let i = 0;
     if (purchase.beat.fullWavUrl) {
-      const key = r2Keys.beatFullWav(purchase.beat.id);
-      downloads.push({ name: `${purchase.beat.title}.wav`, url: await getPresignedDownloadUrl(key) });
+      downloads.push({ name: `${purchase.beat.title}.wav`, url: `${base}/${i++}` });
     }
     if (purchase.beat.fullMp3Url) {
-      const key = r2Keys.beatFullMp3(purchase.beat.id);
-      downloads.push({ name: `${purchase.beat.title}.mp3`, url: await getPresignedDownloadUrl(key) });
+      downloads.push({ name: `${purchase.beat.title}.mp3`, url: `${base}/${i++}` });
     }
     if (purchase.licenseUrl) {
-      downloads.push({ name: `${purchase.beat.title}-License.pdf`, url: purchase.licenseUrl });
+      downloads.push({ name: `${purchase.beat.title}-License.pdf`, url: `${base}/${i}` });
     }
   } else if (purchase.release) {
-    for (const track of purchase.release.tracks) {
-      const key = r2Keys.trackFull(track.id);
-      downloads.push({
-        name: `${track.trackNumber.toString().padStart(2, '0')} - ${track.title}.mp3`,
-        url: await getPresignedDownloadUrl(key),
-      });
-    }
+    purchase.release.tracks.forEach((track, i) => {
+      const filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.mp3`;
+      downloads.push({ name: filename, url: `${base}/${i}` });
+    });
   }
 
   return NextResponse.json({

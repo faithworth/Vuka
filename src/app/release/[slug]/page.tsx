@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
@@ -13,12 +13,26 @@ export default function ReleasePage() {
   const [loading, setLoading] = useState(true);
   const [buyOpen, setBuyOpen] = useState(false);
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
+  const playedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetch(`/api/store/releases?slug=${slug}`)
       .then(r => r.json())
       .then(d => { setRelease(d.releases?.[0] || null); setLoading(false); });
   }, [slug]);
+
+  // Fire play event once per release per page load when any track starts
+  function handleTrackPlay(trackId: string, releaseId: string) {
+    setPlayingTrack(playingTrack === trackId ? null : trackId);
+    if (!playedRef.current.has(releaseId)) {
+      playedRef.current.add(releaseId);
+      fetch('/api/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: releaseId, itemType: 'release' }),
+      }).catch(() => {});
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
@@ -104,7 +118,7 @@ export default function ReleasePage() {
                     )}
                   </div>
                   {track.previewUrl && (
-                    <button onClick={() => setPlayingTrack(playingTrack===track.id?null:track.id)}
+                    <button onClick={() => handleTrackPlay(track.id, release.id)}
                       className="p-2 rounded-full" style={{ background: 'var(--purple)', color: 'white' }}>
                       <Play className="w-3 h-3" />
                     </button>

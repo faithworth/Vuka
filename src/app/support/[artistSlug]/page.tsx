@@ -49,6 +49,7 @@ export default function SupportPage() {
         window.location.href = data.url;
       } else if (data.method === 'payfast' && data.formData) {
         setPayfastForm({ formData: data.formData, actionUrl: data.actionUrl });
+        // Auto-submit via hidden form
         setTimeout(() => {
           const form = document.getElementById('payfast-auto-form') as HTMLFormElement;
           if (form) form.submit();
@@ -133,6 +134,7 @@ export default function SupportPage() {
           </button>
         </div>
       </div>
+    </div>
 
       {/* Hidden PayFast auto-submit form */}
       {payfastForm && (

@@ -20,6 +20,8 @@ export default function DownloadPage() {
       .catch(() => { setError('Network error'); setLoading(false); });
   }, [token]);
 
+  const isMultiple = data?.downloads?.length > 1;
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
@@ -40,9 +42,22 @@ export default function DownloadPage() {
           <div>
             <div className="text-center mb-8">
               <div className="text-6xl mb-4">⬇️</div>
-              <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>It's yours now, download below</h1>
+              <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>It's yours now</h1>
               <p style={{ color: 'var(--text-muted)' }}>{data.itemName} · {data.downloadsLeft} download{data.downloadsLeft !== 1 ? 's' : ''} remaining</p>
             </div>
+
+            {/* ZIP download button for multi-file (albums/EPs) */}
+            {isMultiple && (
+              <a
+                href={`/api/download/${token}/zip`}
+                className="flex items-center justify-center gap-3 w-full py-4 rounded-xl font-bold text-white text-lg mb-6 transition-all hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, var(--purple), #5b21b6)' }}
+              >
+                📦 Download All as ZIP ({data.downloads.length} files)
+              </a>
+            )}
+
+            {/* Individual file links */}
             <div className="space-y-3">
               {data.downloads?.map((d: { name: string; url: string }) => (
                 <a
@@ -52,16 +67,20 @@ export default function DownloadPage() {
                   className="flex items-center justify-between p-4 rounded-xl transition-colors"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 >
-                  <span className="font-medium">{d.name}</span>
-                  <span className="px-4 py-2 rounded-lg font-bold text-sm" style={{ background: 'var(--purple)', color: 'white' }}>Download</span>
+                  <span className="font-medium text-sm">{d.name}</span>
+                  <span className="px-3 py-1.5 rounded-lg font-bold text-xs flex-shrink-0 ml-3" style={{ background: 'var(--surface2)', color: 'var(--purple-light)', border: '1px solid var(--border)' }}>
+                    {isMultiple ? 'Individual' : 'Download'}
+                  </span>
                 </a>
               ))}
             </div>
+
             {data.licenseUrl && (
               <a href={data.licenseUrl} download className="block mt-4 p-4 rounded-xl text-center" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--purple-light)' }}>
                 📄 Download License PDF
               </a>
             )}
+
             <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
               Need another copy? <a href="/redownload" className="underline">Re-download portal</a>
             </p>
