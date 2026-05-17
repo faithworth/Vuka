@@ -126,6 +126,15 @@ export default function ReleasePage() {
       {buyOpen && (
         <BuyModal release={release} onClose={() => setBuyOpen(false)} />
       )}
+      {/* Hidden audio player */}
+      {playingTrack && (
+        <audio
+          key={playingTrack}
+          src={release.tracks.find((t: any) => t.id === playingTrack)?.previewUrl}
+          autoPlay
+          onEnded={() => setPlayingTrack(null)}
+        />
+      )}
     </div>
   );
 }
