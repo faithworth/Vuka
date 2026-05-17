@@ -10,7 +10,7 @@ export default function DownloadPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/download?token=${token}`)
+    fetch(`/api/download/${token}`)
       .then(async r => {
         const d = await r.json();
         if (!r.ok) setError(d.error || 'Download failed');
