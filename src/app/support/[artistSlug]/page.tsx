@@ -134,7 +134,6 @@ export default function SupportPage() {
           </button>
         </div>
       </div>
-    </div>
 
       {/* Hidden PayFast auto-submit form */}
       {payfastForm && (
