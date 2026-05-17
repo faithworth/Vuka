@@ -36,7 +36,7 @@ export function tagMp3(audioBuffer: Buffer, meta: TrackMeta): Buffer {
     bpm: meta.bpm ? String(meta.bpm) : undefined,
     initialKey: meta.key,
     comment: meta.comment
-      ? { language: 'eng', shortText: '', text: meta.comment }
+      ? { language: 'eng', text: meta.comment }
       : undefined,
     image: meta.artworkBuffer
       ? {
