@@ -30,11 +30,28 @@ export default function SettingsPage() {
     setPreview(objectUrl);
     try {
       const type = key === 'coverUrl' ? 'cover' : 'photo';
-      const res = await fetch(`/api/dashboard/settings/upload-url?type=${type}`);
+      // Pass the actual mime type so the presigned URL is signed with the correct Content-Type
+      const mimeType = file.type || 'image/jpeg';
+      const res = await fetch(`/api/dashboard/settings/upload-url?type=${type}&mimeType=${encodeURIComponent(mimeType)}`);
       if (!res.ok) throw new Error('Could not get upload URL');
       const { uploadUrl, publicUrl } = await res.json();
-      await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-      setArtist((p: any) => ({ ...p, [key]: publicUrl }));
+      // Upload directly to R2 — Content-Type must match what was signed
+      const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': mimeType } });
+      if (!uploadRes.ok) throw new Error(`R2 upload failed: ${uploadRes.status}`);
+      // Update local state with new URL
+      const updatedArtist = await new Promise<any>(resolve => {
+        setArtist((p: any) => {
+          const updated = { ...p, [key]: publicUrl };
+          resolve(updated);
+          return updated;
+        });
+      });
+      // Auto-save to database so it persists on reload
+      await fetch('/api/dashboard/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: publicUrl }),
+      });
     } catch (e: any) {
       console.error('Image upload failed:', e.message);
     }

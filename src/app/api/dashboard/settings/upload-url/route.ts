@@ -8,12 +8,16 @@ export async function GET(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const type = new URL(req.url).searchParams.get('type'); // 'photo' | 'cover'
+    const params = new URL(req.url).searchParams;
+    const type = params.get('type'); // 'photo' | 'cover'
+    const mimeType = params.get('mimeType') || 'image/jpeg';
+    // Use the correct extension based on mime type
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
     const key = type === 'cover'
-      ? `profiles/covers/${user.artist.id}.jpg`
-      : `profiles/photos/${user.artist.id}.jpg`;
+      ? `profiles/covers/${user.artist.id}.${ext}`
+      : `profiles/photos/${user.artist.id}.${ext}`;
 
-    const uploadUrl = await getPresignedUploadUrl(key, 'image/jpeg');
+    const uploadUrl = await getPresignedUploadUrl(key, mimeType);
     const publicUrl = getPublicUrl(key);
 
     return NextResponse.json({ uploadUrl, publicUrl });
