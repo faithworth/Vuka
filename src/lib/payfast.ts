@@ -39,12 +39,15 @@ export function buildPayFastForm(data: PayFastData, passphrase: string) {
     }
   }
 
-  // PayFast signature: encode like a query string, MD5 it
+  // PayFast signature: PHP urlencode() style — spaces as +, not %20
+  // encodeURIComponent gives %20 for spaces; we must convert to + to match PHP
+  const pfEncode = (v: string) => encodeURIComponent(v).replace(/%20/g, '+').replace(/'/g, '%27');
+
   const sigString =
     Object.entries(ordered)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, '+')}`)
+      .map(([k, v]) => `${k}=${pfEncode(v)}`)
       .join('&') +
-    (passphrase ? `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}` : '');
+    (passphrase ? `&passphrase=${pfEncode(passphrase)}` : '');
 
   const signature = crypto.createHash('md5').update(sigString).digest('hex');
   return { ...ordered, signature };
@@ -54,11 +57,12 @@ export function validatePayFastITN(data: Record<string, string>, passphrase: str
   const received = data.signature;
   const copy = { ...data };
   delete copy.signature;
+  const pfEncode = (v: string) => encodeURIComponent(v).replace(/%20/g, '+').replace(/'/g, '%27');
   const str =
     Object.entries(copy)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, '+')}`)
+      .map(([k, v]) => `${k}=${pfEncode(v)}`)
       .join('&') +
-    (passphrase ? `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}` : '');
+    (passphrase ? `&passphrase=${pfEncode(passphrase)}` : '');
   const expected = crypto.createHash('md5').update(str).digest('hex');
   return received === expected;
 }
