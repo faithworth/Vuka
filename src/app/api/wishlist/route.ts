@@ -11,7 +11,26 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json({ items });
+  // Hydrate with beat/release details
+  const hydrated = await Promise.all(items.map(async (item: { id: string; itemId: string; itemType: string; userId: string; createdAt: Date }) => {
+    let detail: any = null;
+    try {
+      if (item.itemType === 'beat') {
+        detail = await prisma.beat.findUnique({
+          where: { id: item.itemId },
+          select: { title: true, slug: true, artworkUrl: true, basicPrice: true, artist: { select: { name: true } } },
+        });
+      } else if (item.itemType === 'release') {
+        detail = await prisma.release.findUnique({
+          where: { id: item.itemId },
+          select: { title: true, slug: true, artworkUrl: true, price: true, artist: { select: { name: true } } },
+        });
+      }
+    } catch {}
+    return { ...item, detail };
+  }));
+
+  return NextResponse.json({ items: hydrated });
 }
 
 export async function POST(req: NextRequest) {
@@ -20,7 +39,6 @@ export async function POST(req: NextRequest) {
 
   const { itemType, itemId } = await req.json();
 
-  // Toggle: remove if exists
   const existing = await prisma.wishlistItem.findFirst({
     where: { userId: user.id, itemType, itemId },
   });

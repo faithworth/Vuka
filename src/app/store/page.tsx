@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { BeatCard } from '@/components/BeatCard';
 import { BuyModal } from '@/components/BuyModal';
+import { Heart } from 'lucide-react';
 
 const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House'];
 const MOODS = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic'];
@@ -16,27 +17,63 @@ const SORTS = [
 export default function StorePage({ defaultFilter }: { defaultFilter?: string }) {
   const [beats, setBeats] = useState<any[]>([]);
   const [releases, setReleases] = useState<any[]>([]);
+  const [artists, setArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
   const [q, setQ] = useState('');
   const [genre, setGenre] = useState('');
   const [mood, setMood] = useState('');
   const [sort, setSort] = useState('newest');
-  const [tab, setTab] = useState<'all' | 'beats' | 'releases'>(defaultFilter === 'beat' ? 'beats' : defaultFilter === 'release' ? 'releases' : 'all');
+  const [tab, setTab] = useState<'all' | 'beats' | 'releases'>(
+    defaultFilter === 'beat' ? 'beats' : defaultFilter === 'release' ? 'releases' : 'all'
+  );
   const [buyBeat, setBuyBeat] = useState<any>(null);
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
+  const searchTimer = useRef<NodeJS.Timeout>();
+
+  // Load wishlist state on mount
+  useEffect(() => {
+    fetch('/api/wishlist').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.items) setWishlist(new Set(d.items.map((i: any) => i.itemId)));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      fetch(`/api/store/beats?q=${q}&genre=${genre}&mood=${mood}&sort=${sort}`).then(r => r.json()),
-      fetch(`/api/store/releases?q=${q}&sort=${sort}`).then(r => r.json()),
-    ]).then(([b, r]) => {
-      setBeats(b.beats || []);
-      setReleases(r.releases || []);
-      if (b.dbError || r.dbError) setDbError(true);
-      setLoading(false);
-    }).catch(() => { setDbError(true); setLoading(false); });
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      Promise.all([
+        fetch(`/api/store/beats?q=${q}&genre=${genre}&mood=${mood}&sort=${sort}`).then(r => r.json()),
+        fetch(`/api/store/releases?q=${q}&sort=${sort}`).then(r => r.json()),
+        q.length >= 2 ? fetch(`/api/store/artists?q=${q}`).then(r => r.json()) : Promise.resolve({ artists: [] }),
+      ]).then(([b, r, a]) => {
+        setBeats(b.beats || []);
+        setReleases(r.releases || []);
+        setArtists(a.artists || []);
+        if (b.dbError || r.dbError) setDbError(true);
+        setLoading(false);
+      }).catch(() => { setDbError(true); setLoading(false); });
+    }, q ? 300 : 0);
   }, [q, genre, mood, sort]);
+
+  async function toggleWishlist(itemId: string, itemType: 'beat' | 'release', e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const res = await fetch('/api/wishlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, itemType }),
+    });
+    if (res.ok) {
+      setWishlist(prev => {
+        const next = new Set(prev);
+        if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+        return next;
+      });
+    } else if (res.status === 401) {
+      window.location.href = '/auth/login';
+    }
+  }
 
   const items = tab === 'beats' ? beats
     : tab === 'releases' ? releases
@@ -59,7 +96,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
 
         {dbError && (
           <div className="mb-6 p-4 rounded-xl" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--gold)' }}>
-            <strong>⚠️ Database not connected</strong> — The store is empty because your Supabase/Prisma database isn&apos;t configured yet. Set up your <code>.env.local</code> with real credentials and run <code>npx prisma db push</code> to get started.
+            <strong>⚠️ Database not connected</strong> — The store is empty because the database isn&apos;t configured yet.
           </div>
         )}
 
@@ -84,6 +121,34 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
             {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
+
+        {/* Artist search results — shown when searching */}
+        {q.length >= 2 && artists.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-bold mb-3 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Artists</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {artists.map((artist: any) => (
+                <a key={artist.id} href={`/artist/${artist.slug}`}
+                  className="flex flex-col items-center p-4 rounded-2xl text-center transition-all hover:scale-[1.02]"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden mb-3 flex items-center justify-center"
+                    style={{ background: 'var(--surface2)' }}>
+                    {artist.photoUrl
+                      ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" />
+                      : <span className="text-2xl">🎤</span>}
+                  </div>
+                  <p className="font-bold text-sm truncate w-full" style={{ color: 'var(--text)' }}>{artist.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {artist.city || artist.country}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--purple-light)' }}>
+                    {artist._count.beats} beats · {artist._count.releases} releases
+                  </p>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tab switcher */}
         <div className="flex gap-2 mb-8">
@@ -110,9 +175,13 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((item: any) => (
               item.basicPrice !== undefined ? (
-                <BeatCard key={item.id} beat={item} onBuy={setBuyBeat} />
+                <BeatCard key={item.id} beat={item} onBuy={setBuyBeat}
+                  wishlisted={wishlist.has(item.id)}
+                  onWishlist={(e) => toggleWishlist(item.id, 'beat', e)} />
               ) : (
-                <ReleaseCard key={item.id} release={item} />
+                <ReleaseCard key={item.id} release={item}
+                  wishlisted={wishlist.has(item.id)}
+                  onWishlist={(e) => toggleWishlist(item.id, 'release', e)} />
               )
             ))}
           </div>
@@ -123,21 +192,34 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
   );
 }
 
-function ReleaseCard({ release }: { release: any }) {
+function ReleaseCard({ release, wishlisted, onWishlist }: {
+  release: any;
+  wishlisted: boolean;
+  onWishlist: (e: React.MouseEvent) => void;
+}) {
   return (
-    <a href={`/release/${release.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+    <a href={`/release/${release.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <div className="aspect-square overflow-hidden">
+      <div className="aspect-square overflow-hidden relative">
         {release.artworkUrl
           ? <img src={release.artworkUrl} alt={release.title} className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
+        {/* Wishlist button */}
+        <button
+          onClick={onWishlist}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+          style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
+          title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          <Heart size={14} className={wishlisted ? 'fill-black' : 'text-white'} />
+        </button>
       </div>
       <div className="p-4">
         <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{release.releaseType}</div>
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist.name}</p>
         <p className="font-bold mt-2" style={{ color: 'var(--purple-light)' }}>
-          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
+          {release.payWhatYouWant ? `From R${release.minPrice}` : `R${release.price}`}
         </p>
       </div>
     </a>

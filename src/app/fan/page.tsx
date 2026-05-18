@@ -34,8 +34,9 @@ export default function FanDashboard() {
   const [userName, setUserName] = useState('');
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [follows, setFollows] = useState<FollowedArtist[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'library' | 'following'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'following' | 'wishlist'>('library');
 
   useEffect(() => {
     const supabase = createClient();
@@ -53,7 +54,7 @@ export default function FanDashboard() {
         }
       } catch {}
 
-      // Load purchases and follows in parallel
+      // Load purchases, follows, and wishlist in parallel
       await Promise.all([
         fetch('/api/dashboard/purchases')
           .then(r => r.json())
@@ -62,6 +63,10 @@ export default function FanDashboard() {
         fetch('/api/fan/follows')
           .then(r => r.json())
           .then(d => setFollows(d.follows || []))
+          .catch(() => {}),
+        fetch('/api/wishlist')
+          .then(r => r.json())
+          .then(d => setWishlistItems(d.items || []))
           .catch(() => {}),
       ]);
       setLoading(false);
@@ -106,7 +111,7 @@ export default function FanDashboard() {
           {[
             { icon: ShoppingBag, label: 'Purchases', value: purchases.length, tab: 'library' as const, color: 'var(--purple-light)' },
             { icon: UserCheck, label: 'Following', value: follows.length, tab: 'following' as const, color: 'var(--red)' },
-            { icon: Download, label: 'Downloads', value: purchases.filter(p => p.downloadToken).length, tab: 'library' as const, color: 'var(--green)' },
+            { icon: Heart, label: 'Wishlist', value: wishlistItems.length, tab: 'wishlist' as const, color: 'var(--gold)' },
           ].map(s => (
             <button key={s.label} onClick={() => setActiveTab(s.tab)}
               className="flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all text-left"
@@ -128,14 +133,14 @@ export default function FanDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: 'var(--surface)' }}>
-          {(['library', 'following'] as const).map(tab => (
+          {(['library', 'following', 'wishlist'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all capitalize"
               style={{
                 background: activeTab === tab ? 'var(--surface2)' : 'transparent',
                 color: activeTab === tab ? 'var(--text)' : 'var(--text-muted)',
               }}>
-              {tab === 'library' ? '🎵 Library' : '❤️ Following'}
+              {tab === 'library' ? '🎵 Library' : tab === 'following' ? '❤️ Following' : '🔖 Wishlist'}
             </button>
           ))}
         </div>
@@ -245,6 +250,50 @@ export default function FanDashboard() {
                     </div>
                     <ExternalLink size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Wishlist Tab */}
+        {activeTab === 'wishlist' && (
+          <section>
+            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Your Wishlist</h2>
+            {wishlistItems.length === 0 ? (
+              <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <Heart size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Nothing saved yet</h3>
+                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Hit the ♥ on any beat or release to save it here</p>
+                <Link href="/store" className="btn btn-primary">Browse the Store <ArrowRight size={16} /></Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {wishlistItems.map((item: any) => (
+                  <div key={item.id} className="flex items-center gap-4 p-4 rounded-xl"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                      style={{ background: 'var(--surface2)' }}>
+                      {item.detail?.artworkUrl
+                        ? <img src={item.detail.artworkUrl} alt="" className="w-full h-full object-cover" />
+                        : <span className="text-xl">{item.itemType === 'beat' ? '🎵' : '🎶'}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate" style={{ color: 'var(--text)' }}>
+                        {item.detail?.title || item.itemType}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.detail?.artist?.name} · {item.itemType === 'beat'
+                          ? `R${item.detail?.basicPrice}`
+                          : `R${item.detail?.price}`}
+                      </p>
+                    </div>
+                    <Link href={`/${item.itemType === 'beat' ? 'beat' : 'release'}/${item.detail?.slug || item.itemId}`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                      style={{ background: 'var(--surface2)', color: 'var(--purple-light)', border: '1px solid var(--border)' }}>
+                      View →
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}

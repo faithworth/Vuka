@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { Heart } from 'lucide-react';
 import { formatCurrency, generateWaveformFallback } from '@/lib/utils';
 
 interface Beat {
@@ -21,7 +22,12 @@ interface Beat {
   artist: { name: string; slug: string };
 }
 
-export function BeatCard({ beat, onBuy }: { beat: Beat; onBuy?: (beat: Beat) => void }) {
+export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
+  beat: Beat;
+  onBuy?: (beat: Beat) => void;
+  wishlisted?: boolean;
+  onWishlist?: (e: React.MouseEvent) => void;
+}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playCountedRef = useRef(false);
@@ -74,6 +80,16 @@ export function BeatCard({ beat, onBuy }: { beat: Beat; onBuy?: (beat: Beat) => 
         >
           <span className="text-5xl">{isPlaying ? '⏸️' : '▶️'}</span>
         </button>
+        {onWishlist && (
+          <button
+            onClick={onWishlist}
+            className="absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+            style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
+            title={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+          >
+            <Heart size={14} className={wishlisted ? 'fill-black text-black' : 'text-white'} />
+          </button>
+        )}
       </div>
 
       {/* Waveform */}
