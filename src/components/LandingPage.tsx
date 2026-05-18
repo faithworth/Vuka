@@ -27,11 +27,11 @@ export default function LandingPage() {
 
             <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Sell beats and releases directly to your fans — in South Africa and worldwide.
-              Keep 99% of every sale.
+              Keep 100% of every sale.
             </p>
 
             <p className="text-sm mb-10 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              PayFast for South African buyers. Stripe for the world. Money goes straight to your bank — no middlemen, no waiting.
+              PayFast for South African buyers. Money goes straight to your bank — no middlemen, no waiting, zero platform fee.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -45,8 +45,8 @@ export default function LandingPage() {
 
             <div className="flex items-center justify-center gap-12">
               {[
-                { n: '99%', l: 'Artist Revenue' },
-                { n: '1%', l: 'Platform Fee' },
+                { n: '100%', l: 'Artist Revenue' },
+                { n: '0%', l: 'Platform Fee' },
                 { n: 'Global', l: 'Payments' },
               ].map(s => (
                 <div key={s.n} className="text-center">
@@ -199,10 +199,10 @@ export default function LandingPage() {
               Honest pricing. Always.
             </h2>
             <p className="mb-12" style={{ color: 'var(--text-muted)' }}>
-              No monthly fees. No hidden charges. We take 1% only when you make a sale.
+              No monthly fees. No hidden charges. No platform fee — ever.
             </p>
             <div className="p-8 rounded-2xl mb-8" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <div className="text-6xl font-bold mb-3" style={{ color: 'var(--text)' }}>1%</div>
+              <div className="text-6xl font-bold mb-3" style={{ color: 'var(--text)' }}>0%</div>
               <div className="text-lg mb-6" style={{ color: 'var(--text-muted)' }}>platform fee per sale</div>
               <div className="space-y-3">
                 {[
