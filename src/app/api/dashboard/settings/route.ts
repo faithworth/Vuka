@@ -28,15 +28,16 @@ export async function PATCH(req: NextRequest) {
       where: { id: user.artist.id },
       data: {
         name: name || undefined,
-        bio: bio ?? undefined,
-        city: city ?? undefined,
+        bio: bio !== undefined ? bio : undefined,
+        city: city !== undefined ? city : undefined,
         country: country || undefined,
         genreTags: genreTags || undefined,
-        photoUrl: photoUrl ?? undefined,
-        coverUrl: coverUrl ?? undefined,
+        photoUrl: photoUrl !== undefined ? photoUrl : undefined,
+        coverUrl: coverUrl !== undefined ? coverUrl : undefined,
         socialLinks: socialLinks ? JSON.parse(JSON.stringify(socialLinks)) : undefined,
         currency: currency || undefined,
-        payfastMerchant: payfastMerchant ?? undefined,
+        // Allow saving empty string to clear, or a real value
+        ...(payfastMerchant !== undefined && { payfastMerchant: payfastMerchant.trim() || null }),
       },
     });
     return NextResponse.json({ artist });

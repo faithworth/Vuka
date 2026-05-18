@@ -69,11 +69,18 @@ export async function POST(req: NextRequest) {
     }
 
     // PayFast fallback
-    const merchantId = artist.payfastMerchant || process.env.PAYFAST_MERCHANT_ID;
-    const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
+    const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
+    const merchantId = isSandbox
+      ? (process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100')
+      : (artist.payfastMerchant || process.env.PAYFAST_MERCHANT_ID);
+    const merchantKey = isSandbox
+      ? (process.env.PAYFAST_SANDBOX_MERCHANT_KEY || '46f0cd694581a')
+      : process.env.PAYFAST_MERCHANT_KEY;
+
     if (merchantId && merchantKey) {
-      const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
-      const passphrase = process.env.PAYFAST_PASSPHRASE || '';
+      const passphrase = isSandbox
+        ? (process.env.PAYFAST_SANDBOX_PASSPHRASE || '')
+        : (process.env.PAYFAST_PASSPHRASE || '');
       const formData = buildPayFastForm(
         {
           merchant_id: merchantId,

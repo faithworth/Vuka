@@ -58,16 +58,23 @@ export async function POST(req: NextRequest) {
           status: 'confirmed',
         },
       });
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      return NextResponse.json({ redirect: `${appUrl}/checkout/success?purchaseId=${purchase.id}` });
+      const freeAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      return NextResponse.json({ redirect: `${freeAppUrl}/checkout/success?purchaseId=${purchase.id}` });
     }
 
-    // ── Determine which PayFast merchant to use ──
-    // If artist has their own PayFast merchant ID → pay them directly
-    // Otherwise fall back to platform merchant ID (you collect and pay manually)
-    const merchantId = artist?.payfastMerchant || process.env.PAYFAST_MERCHANT_ID!;
-    const merchantKey = artist?.payfastMerchantKey || process.env.PAYFAST_MERCHANT_KEY!;
-    const passphrase = artist?.payfastPassphrase || process.env.PAYFAST_PASSPHRASE || '';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
+
+    // Use sandbox test credentials when in sandbox mode
+    const merchantId = isSandbox
+      ? (process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100')
+      : (artist?.payfastMerchant || process.env.PAYFAST_MERCHANT_ID!);
+    const merchantKey = isSandbox
+      ? (process.env.PAYFAST_SANDBOX_MERCHANT_KEY || '46f0cd694581a')
+      : (process.env.PAYFAST_MERCHANT_KEY!);
+    const passphrase = isSandbox
+      ? (process.env.PAYFAST_SANDBOX_PASSPHRASE || '')
+      : (process.env.PAYFAST_PASSPHRASE || '');
 
     const licenseId = `VK-${Date.now().toString(36).toUpperCase()}`;
     const purchase = await prisma.purchase.create({
@@ -84,9 +91,6 @@ export async function POST(req: NextRequest) {
         status: 'pending',
       },
     });
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
 
     const formData = buildPayFastForm(
       {

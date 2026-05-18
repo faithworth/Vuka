@@ -9,6 +9,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [stripeError, setStripeError] = useState('');
+  const [savingPayfast, setSavingPayfast] = useState(false);
+  const [savedPayfast, setSavedPayfast] = useState(false);
   const [saved, setSaved] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -36,6 +38,20 @@ export default function SettingsPage() {
     } catch (e: any) {
       console.error('Image upload failed:', e.message);
     }
+  }
+
+  async function savePayfast() {
+    setSavingPayfast(true);
+    const res = await fetch('/api/dashboard/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payfastMerchant: artist.payfastMerchant || '' }),
+    });
+    const data = await res.json();
+    if (data.artist) setArtist((p: any) => ({ ...p, payfastMerchant: data.artist.payfastMerchant }));
+    setSavingPayfast(false);
+    setSavedPayfast(true);
+    setTimeout(() => setSavedPayfast(false), 3000);
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -162,6 +178,14 @@ export default function SettingsPage() {
                 . Required for SA buyers to pay you directly via PayShap or EFT.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={savePayfast}
+              disabled={savingPayfast}
+              className="mt-3 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
+              style={{ background: savedPayfast ? 'var(--green)' : 'linear-gradient(135deg,#00a05a,#007a44)' }}>
+              {savingPayfast ? 'Saving…' : savedPayfast ? '✓ Saved!' : 'Save PayFast ID'}
+            </button>
           </div>
         </div>
       </div>

@@ -10,6 +10,12 @@ export async function GET() {
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    // Always re-fetch from DB — session cache can be stale
+    const artist = await prisma.artist.findUnique({
+      where: { id: user.artist.id },
+      select: { id: true, stripeAccountId: true, payfastMerchant: true, currency: true },
+    });
+    if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
     // Get all payout records for this artist
     const payouts = await prisma.artistPayout.findMany({
       where: { artistId: user.artist.id },
@@ -25,11 +31,11 @@ export async function GET() {
     // Stripe balance if connected
     let stripeBalance = null;
     let stripePayouts: any[] = [];
-    if (user.artist.stripeAccountId) {
+    if (artist.stripeAccountId) {
       try {
         const [bal, sp] = await Promise.all([
-          stripe.balance.retrieve({ stripeAccount: user.artist.stripeAccountId }),
-          stripe.payouts.list({ limit: 10 }, { stripeAccount: user.artist.stripeAccountId }),
+          stripe.balance.retrieve({ stripeAccount: artist.stripeAccountId }),
+          stripe.payouts.list({ limit: 10 }, { stripeAccount: artist.stripeAccountId }),
         ]);
         stripeBalance = bal;
         stripePayouts = sp.data;
@@ -44,8 +50,8 @@ export async function GET() {
       stripeBalance,
       stripePayouts,
       connected: {
-        stripe: !!user.artist.stripeAccountId,
-        payfast: !!user.artist.payfastMerchant,
+        stripe: !!artist.stripeAccountId,
+        payfast: !!artist.payfastMerchant,
       },
     });
   } catch (err: any) {

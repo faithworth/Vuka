@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import FollowButton from './FollowButton';
 
 async function getArtist(slug: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/artist/${slug}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/artist/${slug}`, { cache: 'no-store' });
   if (!res.ok) return null;
   return res.json();
 }
@@ -32,7 +32,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
       <Navbar />
       {/* Cover */}
       <div className="relative h-48 md:h-72 overflow-hidden" style={{ background: 'var(--surface2)' }}>
-        {artist.coverUrl && <img src={artist.coverUrl} alt="" className="w-full h-full object-cover" />}
+        {artist.coverUrl && <img src={`${artist.coverUrl}?v=${Date.now()}`} alt="" className="w-full h-full object-cover" />}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent, var(--bg))' }} />
       </div>
 
@@ -41,7 +41,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         <div className="flex flex-col md:flex-row items-start gap-6 -mt-16 mb-8 relative z-10">
           <div className="w-28 h-28 rounded-2xl overflow-hidden flex-shrink-0 border-4" style={{ borderColor: 'var(--bg)' }}>
             {artist.photoUrl
-              ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" />
+              ? <img src={`${artist.photoUrl}?v=${Date.now()}`} alt={artist.name} className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎤</div>}
           </div>
           <div className="flex-1 pt-16 md:pt-12">
