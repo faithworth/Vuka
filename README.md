@@ -1,59 +1,60 @@
 # VUKA — Rise 🎵
 
-Premium independent music commerce platform for producers and artists.
+Africa's independent music commerce platform. Artists sell beats and releases directly to fans. Zero platform fee. Money goes straight to your bank.
 
-## Quick Start (Local Dev — No Domain Needed)
-
-### 1. Install dependencies
-```bash
-npm install
-```
-
-### 2. Set up environment
-Copy `.env.local` and fill in your keys (see below for free accounts).
-
-### 3. Push database schema
-```bash
-npm run db:push
-```
-
-### 4. Seed test data (optional)
-```bash
-npm run db:seed
-```
-
-### 5. Run dev server
-```bash
-npm run dev
-```
-Open http://localhost:3000
+**Live at:** https://vuka-distro.vercel.app
 
 ---
 
-## Free Services to Set Up (Test Mode — No Payment Needed)
+## What's Built
 
-| Service | What For | Sign Up |
-|---------|----------|---------|
-| **Supabase** | Database + Auth | https://supabase.com |
-| **Stripe** | Payments (test mode) | https://stripe.com |
-| **PayFast** | ZAR payments (sandbox) | https://www.payfast.co.za/registration |
-| **Cloudflare R2** | Audio file storage | https://cloudflare.com |
-| **Resend** | Emails (3k/month free) | https://resend.com |
+### For Artists
+- Register and create a public artist profile (`/artist/your-name`)
+- Upload beats with artwork, preview MP3, full MP3/WAV
+- Upload releases (singles, EPs, albums, mixtapes) with multiple tracks
+- Set prices per license type: Basic, Premium, Exclusive
+- Fan support page — fans pay what they want to support you directly
+- Funding goals with progress tracking
+- QR code for your store page
+- Dashboard: revenue overview, sales history, payout tracking
 
-### Stripe Test Cards
-- `4242 4242 4242 4242` — any future date, any CVC
-- `4000 0056 0000 0008` — test 3D Secure
+### For Fans / Buyers
+- Browse all beats and releases at `/store`
+- Preview beats before buying
+- Buy with PayFast (ZAR — SA buyers)
+- Token-gated downloads after purchase (valid 30 days, max 5 downloads)
+- Re-download portal at `/redownload` (email lookup)
+- Wishlist, follow artists, fan library
 
-### PayFast Sandbox
-- Use merchant ID `10000100`, key `46f0cd694581a`
-- Set `PAYFAST_SANDBOX=true` in `.env.local`
-
-### Stripe Webhooks (local)
-```bash
-npm install -g stripe
-stripe listen --forward-to localhost:3000/api/checkout/stripe/webhook
+### Payment Flow
 ```
-Copy the webhook secret shown → paste into `STRIPE_WEBHOOK_SECRET`
+Buyer clicks Buy
+  → POST /api/checkout/payfast/initiate
+  → Signed form POSTed to payfast.co.za/eng/process
+  → Buyer pays on PayFast
+  → PayFast fires ITN → POST /api/checkout/payfast/notify
+  → Purchase confirmed in DB
+  → PDF license generated
+  → Email sent to buyer with download link
+  → Money lands in artist's PayFast account
+```
+
+### Zero Platform Fee
+Artists keep 100% of every sale. Each artist connects their own PayFast Merchant ID in their dashboard settings — payments go directly to them with no middleman.
+
+---
+
+## Tech Stack
+
+| Layer | Service |
+|-------|---------|
+| Framework | Next.js 14 (App Router) |
+| Database | PostgreSQL via Supabase + Prisma ORM |
+| Auth | Supabase Auth (email/password) |
+| File Storage | Cloudflare R2 (direct browser → R2 uploads via presigned URLs) |
+| Payments | PayFast (ZAR, SA buyers) |
+| Emails | Resend |
+| Hosting | Vercel |
 
 ---
 
@@ -67,15 +68,14 @@ src/
 │   │   ├── page.tsx                → /store (All beats + releases)
 │   │   ├── beats/page.tsx          → /store/beats
 │   │   └── releases/page.tsx       → /store/releases
-│   ├── artist/[slug]/page.tsx      → /artist/dj-vusi
-│   ├── beat/[slug]/page.tsx        → /beat/fire-beat-2024
+│   ├── artist/[slug]/page.tsx      → /artist/faithworth
+│   ├── beat/[slug]/page.tsx        → /beat/iced-out
 │   ├── release/[slug]/page.tsx     → /release/my-ep
-│   ├── support/[artistSlug]/       → /support/dj-vusi
+│   ├── support/[artistSlug]/       → /support/faithworth
 │   ├── download/[token]/           → /download/abc123 (token-gated)
 │   ├── redownload/                 → Re-download portal
 │   ├── checkout/
-│   │   ├── success/                → Post-payment success
-│   │   └── connect-return/         → Stripe Connect callback
+│   │   └── success/                → Post-payment success page
 │   ├── auth/
 │   │   ├── login/
 │   │   ├── register/
@@ -88,20 +88,18 @@ src/
 │   │   ├── support/                → Fan support inbox
 │   │   ├── goals/                  → Funding goals
 │   │   ├── purchases/              → All sales
-│   │   ├── payouts/                → Stripe payouts
-│   │   └── settings/               → Profile + payment settings
+│   │   ├── payouts/                → Payout history
+│   │   └── settings/               → Profile + PayFast settings
 │   └── api/
 │       ├── store/beats             → GET beats with filters
 │       ├── store/releases          → GET releases with filters
 │       ├── artist/[slug]/          → GET artist profile
-│       ├── beats/upload            → POST upload beat
-│       ├── releases/upload         → POST upload release
-│       ├── checkout/stripe/        → Stripe checkout + webhook
-│       ├── checkout/payfast/       → PayFast initiate + ITN webhook
-│       ├── download/[token]        → Secure download API
-│       ├── redownload              → Re-download email request
+│       ├── beats/upload            → POST/PATCH upload beat (presigned R2)
+│       ├── releases/upload         → POST/PATCH upload release
+│       ├── checkout/payfast/       → PayFast initiate + ITN notify
+│       ├── download/[token]        → Secure download API (signed R2 URLs)
+│       ├── redownload              → Re-download email lookup
 │       ├── support/                → Fan support payments
-│       ├── connect/onboard         → Stripe Connect onboarding
 │       ├── dashboard/              → All dashboard data APIs
 │       └── wishlist                → Add/remove wishlist items
 ├── components/
@@ -113,62 +111,129 @@ src/
 │   └── StoreClient.tsx
 └── lib/
     ├── auth.ts       → Supabase server auth helpers
-    ├── emails.ts     → Resend email functions (all 6 templates)
-    ├── payfast.ts    → PayFast ITN validation + form builder
+    ├── emails.ts     → Resend email templates
+    ├── payfast.ts    → PayFast signature builder + ITN validator
     ├── pdf.ts        → PDF license + receipt generation
     ├── prisma.ts     → Prisma client singleton
-    ├── r2.ts         → Cloudflare R2 upload/download helpers
-    ├── stripe.ts     → Stripe + Connect helpers
+    ├── r2.ts         → Cloudflare R2 presigned URL helpers
     ├── supabase.ts   → Supabase client (browser + server)
-    └── utils.ts      → formatCurrency, slugify, cuid, etc.
+    └── utils.ts      → formatCurrency, slugify, etc.
 ```
 
 ---
 
-## Payment Flows
+## Environment Variables
 
-### Stripe (International)
-1. User clicks Buy → `POST /api/checkout/stripe/create-session`
-2. Redirect to Stripe Checkout
-3. Stripe fires webhook → `POST /api/checkout/stripe/webhook`
-   - Confirms purchase in DB
-   - Generates PDF license (beats)
-   - Sends confirmation email with download link
-4. User lands on `/checkout/success`
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=                        # port 6543 with ?pgbouncer=true
+DIRECT_URL=                          # port 5432
 
-### PayFast (South Africa - ZAR)
-1. User clicks Buy (PayFast) → `POST /api/checkout/payfast/initiate`
-2. Server builds signed form → browser POSTs to PayFast
-3. PayFast fires ITN → `POST /api/checkout/payfast/notify`
-   - Validates signature + IP + amount
-   - Same post-payment flow as Stripe
+# Cloudflare R2
+CLOUDFLARE_R2_ACCOUNT_ID=
+CLOUDFLARE_R2_ACCESS_KEY_ID=
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=
+CLOUDFLARE_R2_BUCKET_NAME=vuka-audio
+CLOUDFLARE_R2_PUBLIC_URL=            # https://pub-XXX.r2.dev
 
-### Downloads
-- Token-gated: each purchase gets a unique `downloadToken`
-- Valid 30 days, max 5 downloads
-- Returns signed R2 URLs (expire 1 hour)
-- Re-download portal at `/redownload` (email lookup)
+# PayFast (live)
+PAYFAST_MERCHANT_ID=                 # your merchant ID from payfast.co.za
+PAYFAST_MERCHANT_KEY=                # your merchant key
+PAYFAST_PASSPHRASE=                  # your security passphrase
+PAYFAST_SANDBOX=false
+
+# PayFast (sandbox — for local dev/testing only)
+PAYFAST_SANDBOX_MERCHANT_ID=10000100
+PAYFAST_SANDBOX_MERCHANT_KEY=46f0cd694581a
+PAYFAST_SANDBOX_PASSPHRASE=
+
+# Email
+RESEND_API_KEY=
+EMAIL_FROM=noreply@yourdomain.com
+
+# App
+NEXT_PUBLIC_APP_URL=https://vuka-distro.vercel.app
+```
 
 ---
 
-## Deploying to Vercel
+## R2 CORS Policy
 
-1. Push to GitHub
-2. Import to Vercel
-3. Add all env vars from `.env.local`
-4. Set `NEXT_PUBLIC_APP_URL=https://your-domain.com`
-5. Add Stripe webhook endpoint: `https://your-domain.com/api/checkout/stripe/webhook`
-6. Add PayFast notify URL: `https://your-domain.com/api/checkout/payfast/notify`
+Required for direct browser → R2 uploads to work. Set this in your R2 bucket settings:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://vuka-distro.vercel.app", "http://localhost:3000"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
 
 ---
 
-## South African Micro-copy Used Throughout
+## Local Development
 
-| Generic | Vuka |
-|---------|------|
-| Confirm | Yebo |
-| Error | Eish — |
-| Success | Sharp! |
-| Loading | Just now… |
-| Support sent | You just made someone's day |
-| Purchased | It's yours now, download below |
+```bash
+npm install
+cp .env.local.example .env.local   # fill in your keys
+npm run db:push                     # sync schema to Supabase
+npm run dev                         # start at http://localhost:3000
+```
+
+For local PayFast testing, set `PAYFAST_SANDBOX=true` and use ngrok to expose your local server (PayFast ITN can't reach localhost):
+```bash
+ngrok http 3000
+# update NEXT_PUBLIC_APP_URL to your ngrok URL
+```
+
+---
+
+## Deploying
+
+```bash
+git add .
+git commit -m "your message"
+git push
+# Vercel auto-deploys on push
+```
+
+After adding new environment variables in Vercel → always redeploy for them to take effect.
+
+---
+
+## PayFast ITN Notify URL
+
+Set this in your PayFast dashboard under Developer Settings → Notification Settings:
+```
+https://vuka-distro.vercel.app/api/checkout/payfast/notify
+```
+
+---
+
+## Artist Onboarding
+
+1. Register at `/auth/register`
+2. Go to `/dashboard/settings`
+3. Enter PayFast Merchant ID (from my.payfast.io → Developer Settings)
+4. Upload profile photo and cover image
+5. Fill in bio, city, genre tags
+6. Upload beats or releases at `/dashboard/uploads`
+7. Share your artist page: `vuka-distro.vercel.app/artist/your-name`
+
+---
+
+## Known Limitations
+
+- PayFast only (no Stripe — Stripe doesn't support SA-registered businesses directly)
+- PayFast account must be fully verified before payments can be received
+- File uploads go directly browser → R2 via presigned URLs (bypasses Vercel 4.5MB limit)
+
+---
+
+*Vuka — Rise. Built in Kroonstad, Free State, South Africa.*
