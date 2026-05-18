@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target, Wallet, Settings, LogOut, Music2, ChevronRight
+  BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target, Wallet, Settings, LogOut, Music2, ChevronRight, AlertTriangle
 } from 'lucide-react';
 
 const ARTIST_NAV = [
@@ -25,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [checking, setChecking] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [artistName, setArtistName] = useState('');
+  const [payfastMerchant, setPayfastMerchant] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -36,12 +37,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const me = await res.json();
-          if (!me.isArtist) {
+          if (me.isArtist) {
+            setArtistName(me.name || '');
+            // Check PayFast setup
+            try {
+              const settingsRes = await fetch('/api/dashboard/settings');
+              if (settingsRes.ok) {
+                const settingsData = await settingsRes.json();
+                setPayfastMerchant(settingsData.artist?.payfastMerchant || null);
+              }
+            } catch {}
+          } else {
             // Fan — they don't belong here
             router.replace('/fan');
             return;
           }
-          setArtistName(me.name || '');
         }
       } catch {}
       setChecking(false);
@@ -126,6 +136,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main content */}
       <main className="flex-1 min-w-0 pb-20 md:pb-0">
+
+        {/* PayFast setup banner — shown on all pages except settings */}
+        {!payfastMerchant && pathname !== '/dashboard/settings' && (
+          <div className="flex items-center gap-3 px-5 py-3 text-sm"
+            style={{ background: 'rgba(234,179,8,0.1)', borderBottom: '1px solid rgba(234,179,8,0.25)' }}>
+            <AlertTriangle size={16} style={{ color: '#eab308', flexShrink: 0 }} />
+            <p style={{ color: '#ca8a04' }}>
+              <strong>Action required:</strong> Connect your PayFast account to receive payments.{' '}
+              <Link href="/dashboard/settings" className="underline font-semibold" style={{ color: '#92400e' }}>
+                Set up now →
+              </Link>
+            </p>
+          </div>
+        )}
+
         {children}
       </main>
 

@@ -1,7 +1,8 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Loader2, CheckCircle2, Upload, Music, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type UploadType = 'beat' | 'release';
@@ -47,6 +48,47 @@ export default function UploadPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({});
+  const [payfastMerchant, setPayfastMerchant] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetch('/api/dashboard/settings')
+      .then(r => r.json())
+      .then(d => setPayfastMerchant(d.artist?.payfastMerchant || null))
+      .catch(() => setPayfastMerchant(null));
+  }, []);
+
+  // Block upload if PayFast not set up
+  if (payfastMerchant === undefined) return (
+    <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
+      <Loader2 size={20} className="animate-spin" /> Loading…
+    </div>
+  );
+
+  if (!payfastMerchant) return (
+    <div className="p-6 md:p-10 max-w-lg">
+      <div className="p-8 rounded-2xl text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(234,179,8,0.3)' }}>
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
+          style={{ background: 'rgba(234,179,8,0.1)' }}>
+          <AlertCircle size={32} style={{ color: '#eab308' }} />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text)' }}>Set up payments first</h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+          You need to connect your PayFast account before you can upload and sell music. This is how buyers pay you directly.
+        </p>
+        <div className="text-left p-4 rounded-xl mb-6 space-y-2 text-sm" style={{ background: 'var(--surface2)' }}>
+          <p style={{ color: 'var(--text-muted)' }}>1. Sign up at <a href="https://www.payfast.co.za/registration" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--purple-light)' }}>payfast.co.za</a> (free)</p>
+          <p style={{ color: 'var(--text-muted)' }}>2. Verify your ID and bank account</p>
+          <p style={{ color: 'var(--text-muted)' }}>3. Copy your Merchant ID from <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--purple-light)' }}>my.payfast.io</a></p>
+          <p style={{ color: 'var(--text-muted)' }}>4. Paste it in Settings and save</p>
+        </div>
+        <Link href="/dashboard/settings"
+          className="inline-block w-full py-3 rounded-xl font-bold text-white text-center"
+          style={{ background: 'var(--purple)' }}>
+          Go to Settings →
+        </Link>
+      </div>
+    </div>
+  );
 
   // Beat fields
   const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
@@ -234,7 +276,7 @@ export default function UploadPage() {
       <p className="mb-2 text-lg" style={{ color: 'var(--text-muted)' }}>
         Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka.
       </p>
-      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 99% of every sale is yours.</p>
+      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 100% of every sale is yours.</p>
       <div className="flex gap-4 flex-wrap justify-center">
         <button onClick={resetAll} className="px-6 py-3 rounded-xl font-semibold"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
@@ -255,7 +297,7 @@ export default function UploadPage() {
     <div className="p-6 md:p-10 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Upload to Your Store</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 99% of every sale — direct to your bank.</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 100% of every sale — direct to your bank.</p>
       </div>
 
       {/* Step progress */}
@@ -351,7 +393,7 @@ export default function UploadPage() {
       {step === 4 && uploadType === 'beat' && (
         <div>
           <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Set Your Prices</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 99% of every sale. Prices in ZAR (South African Rand).</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 100% of every sale. Prices in ZAR (South African Rand).</p>
           <div className="space-y-3 mb-8">
             <PriceField label="Basic License" sublabel="Non-exclusive · up to 5,000 streams · 2 music videos"
               value={beatPrices.basicPrice} onChange={v => setBeatPrices(p => ({ ...p, basicPrice: v }))} />
@@ -395,7 +437,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 99% of every sale · 1% Vuka platform fee · Direct to your bank
+            You earn 100% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -528,7 +570,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 99% of every sale · 1% Vuka platform fee · Direct to your bank
+            You earn 100% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}

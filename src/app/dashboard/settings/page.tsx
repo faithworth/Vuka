@@ -122,7 +122,7 @@ export default function SettingsPage() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Connect your payment accounts. Buyers in South Africa pay via PayFast; international buyers via Stripe. You keep 99%.
+            Connect your payment accounts. Buyers in South Africa pay via PayFast; international buyers via Stripe. You keep 100%.
           </p>
         </div>
 
@@ -187,10 +187,10 @@ export default function SettingsPage() {
               <Info size={12} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Find your Merchant ID in your{' '}
-                <a href="https://www.payfast.co.za/dashboard/settings" target="_blank" rel="noopener noreferrer"
+                <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer"
                   className="underline inline-flex items-center gap-0.5"
                   style={{ color: 'var(--purple-light)' }}>
-                  PayFast Dashboard <ExternalLink size={10} />
+                  my.payfast.io <ExternalLink size={10} />
                 </a>
                 . Required for SA buyers to pay you directly via PayShap or EFT.
               </p>
