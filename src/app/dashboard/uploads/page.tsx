@@ -72,6 +72,13 @@ export default function UploadPage() {
   const [tracks, setTracks] = useState<TrackEntry[]>([{ title: '' }]);
   const [relArtwork, setRelArtwork] = useState<File | null>(null);
 
+  // Refs — must be declared before any conditional returns (React rules of hooks)
+  const artRef = useRef<HTMLInputElement>(null);
+  const prevRef = useRef<HTMLInputElement>(null);
+  const wavRef = useRef<HTMLInputElement>(null);
+  const mp3Ref = useRef<HTMLInputElement>(null);
+  const relArtRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch('/api/dashboard/settings')
       .then(r => r.json())
@@ -111,12 +118,6 @@ export default function UploadPage() {
       </div>
     </div>
   );
-
-  const artRef = useRef<HTMLInputElement>(null);
-  const prevRef = useRef<HTMLInputElement>(null);
-  const wavRef = useRef<HTMLInputElement>(null);
-  const mp3Ref = useRef<HTMLInputElement>(null);
-  const relArtRef = useRef<HTMLInputElement>(null);
 
   const setFileProgress = useCallback((key: string, pct: number) => {
     setProgress(p => ({ ...p, [key]: pct }));
