@@ -16,7 +16,12 @@ const RELEASE_TYPES = [
   { value: 'mixtape', label: 'Mixtape', desc: 'Any length' },
 ];
 
-interface TrackEntry { title: string; previewFile?: File; fullFile?: File; }
+interface TrackEntry {
+  id: string;
+  title: string;
+  previewFile?: File;
+  fullFile?: File;
+}
 interface UploadProgress { [key: string]: number; }
 
 // Upload a file directly to R2 using a presigned PUT URL
@@ -69,7 +74,12 @@ export default function UploadPage() {
 
   // Release fields
   const [relMeta, setRelMeta] = useState({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
-  const [tracks, setTracks] = useState<TrackEntry[]>([{ title: '' }]);
+  const [tracks, setTracks] = useState<TrackEntry[]>([
+  {
+    id: crypto.randomUUID(),
+    title: '',
+    },
+  ]);
   const [relArtwork, setRelArtwork] = useState<File | null>(null);
 
   // Refs — must be declared before any conditional returns (React rules of hooks)
@@ -78,14 +88,19 @@ export default function UploadPage() {
   const wavRef = useRef<HTMLInputElement>(null);
   const mp3Ref = useRef<HTMLInputElement>(null);
   const relArtRef = useRef<HTMLInputElement>(null);
-
+  
+  // MOVE THIS HERE ↑ BEFORE ANY RETURNS
+  const setFileProgress = useCallback((key: string, pct: number) => {
+    setProgress(p => ({ ...p, [key]: pct }));
+  }, []);
+  
   useEffect(() => {
     fetch('/api/dashboard/settings')
       .then(r => r.json())
       .then(d => setPayfastMerchant(d.artist?.payfastMerchant || null))
       .catch(() => setPayfastMerchant(null));
   }, []);
-
+  
   // Block upload if PayFast not set up — conditional returns AFTER all hooks
   if (payfastMerchant === undefined) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
@@ -119,9 +134,7 @@ export default function UploadPage() {
     </div>
   );
 
-  const setFileProgress = useCallback((key: string, pct: number) => {
-    setProgress(p => ({ ...p, [key]: pct }));
-  }, []);
+
 
   function resetAll() {
     setStep(1); setUploadType('beat'); setError(''); setSuccess(false); setLoading(false); setProgress({});
@@ -129,7 +142,12 @@ export default function UploadPage() {
     setBeatPrices({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
     setFiles({});
     setRelMeta({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
-    setTracks([{ title: '' }]);
+    setTracks([
+      {
+        id: crypto.randomUUID(),
+        title: '',
+      },
+    ]);
     setRelArtwork(null);
   }
 
@@ -505,13 +523,22 @@ export default function UploadPage() {
           <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Files upload directly to cloud storage — no size limits.</p>
           <div className="space-y-3 mb-4">
             {tracks.map((track, i) => (
-              <TrackRow key={i} index={i} track={track}
+              <TrackRow key={track.id} index={i} track={track}
                 onChange={(updated) => setTracks(prev => prev.map((t, idx) => idx === i ? updated : t))}
                 onRemove={() => setTracks(prev => prev.filter((_, idx) => idx !== i))}
                 canRemove={tracks.length > 1} />
             ))}
           </div>
-          <button onClick={() => setTracks(p => [...p, { title: '' }])}
+          <button
+            onClick={() =>
+              setTracks(p => [
+                ...p,
+                {
+                  id: crypto.randomUUID(),
+                  title: '',
+                },
+              ])
+            }
             className="w-full py-3 rounded-xl border-2 border-dashed mb-6 text-sm font-semibold transition-colors"
             style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
             + Add Another Track
