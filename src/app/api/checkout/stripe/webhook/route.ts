@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
           // Increment sales
           await prisma.beat.update({ where: { id: itemId }, data: { sales: { increment: 1 } } });
 
-          // Create artist payout record with 1% fee
+          // Create artist payout record — no platform fee
           const feeAmount = purchase.amount * 0.01;
           const netAmount = purchase.amount - feeAmount;
           await prisma.artistPayout.create({
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
           beatArtist = release.artist;
           await prisma.release.update({ where: { id: itemId }, data: { sales: { increment: 1 } } });
 
-          // Create artist payout record with 1% fee
+          // Create artist payout record — no platform fee
           const feeAmount = purchase.amount * 0.01;
           const netAmount = purchase.amount - feeAmount;
           await prisma.artistPayout.create({
