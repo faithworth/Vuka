@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, hasWav, hasMp3 } = body;
+    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, hasWav, hasMp3, artworkType } = body;
 
     if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
 
@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
     const publicUrls: Record<string, string> = {};
 
     const artworkKey = r2Keys.beatArtwork(beat.id);
-    uploadUrls.artwork = await getPresignedUploadUrl(artworkKey, 'image/jpeg');
+    const artworkContentType = artworkType === 'image/png' ? 'image/png' : 'image/jpeg';
+    uploadUrls.artwork = await getPresignedUploadUrl(artworkKey, artworkContentType);
     publicUrls.artworkUrl = getPublicUrl(artworkKey);
 
     const previewKey = r2Keys.beatPreview(beat.id);

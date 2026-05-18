@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { title, releaseType, price, minPrice, payWhatWant, description, credits, releaseDate, tracks } = body;
+    const { title, releaseType, price, minPrice, payWhatWant, description, credits, releaseDate, tracks, artworkType, trackAudioTypes } = body;
 
     if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
     if (!tracks?.length) return NextResponse.json({ error: 'At least one track required' }, { status: 400 });
@@ -61,14 +61,17 @@ export async function POST(req: NextRequest) {
     const publicUrls: Record<string, string> = {};
 
     const artworkKey = r2Keys.releaseArtwork(release.id);
-    uploadUrls.artwork = await getPresignedUploadUrl(artworkKey, 'image/jpeg');
+    const artworkContentType = artworkType === 'image/png' ? 'image/png' : 'image/jpeg';
+    uploadUrls.artwork = await getPresignedUploadUrl(artworkKey, artworkContentType);
     publicUrls.artworkUrl = getPublicUrl(artworkKey);
 
     for (const track of trackRecords) {
       const previewKey = r2Keys.trackPreview(track.id);
-      const fullKey = r2Keys.trackFull(track.id);
+      // Per-track audio type: client sends {trackId: 'audio/wav'|'audio/mpeg'}
+      const fullAudioType = (trackAudioTypes && trackAudioTypes[track.id]) === 'audio/wav' ? 'audio/wav' : 'audio/mpeg';
+      const fullKey = fullAudioType === 'audio/wav' ? r2Keys.trackFullWav(track.id) : r2Keys.trackFull(track.id);
       uploadUrls[`preview_${track.id}`] = await getPresignedUploadUrl(previewKey, 'audio/mpeg');
-      uploadUrls[`full_${track.id}`] = await getPresignedUploadUrl(fullKey, 'audio/mpeg');
+      uploadUrls[`full_${track.id}`] = await getPresignedUploadUrl(fullKey, fullAudioType);
       publicUrls[`previewUrl_${track.id}`] = getPublicUrl(previewKey);
       publicUrls[`fullUrl_${track.id}`] = getPublicUrl(fullKey);
     }

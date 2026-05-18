@@ -20,6 +20,7 @@ export const r2Keys = {
   releaseArtwork: (id: string) => `artwork/releases/${id}.jpg`,
   trackPreview: (id: string) => `previews/tracks/${id}.mp3`,
   trackFull: (id: string) => `private/tracks/${id}.mp3`,
+  trackFullWav: (id: string) => `private/tracks/${id}.wav`,
   license: (id: string) => `licenses/${id}.pdf`,
   receipt: (id: string) => `receipts/${id}.pdf`,
 };

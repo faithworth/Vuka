@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     let itemName = 'your purchase';
     let artistEmail = '';
     let artistName = '';
+    let artworkUrl = '';
 
     if (purchase.itemType === 'beat' && purchase.beatId) {
       const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, include: { artist: { include: { user: true } } } });
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
         itemName = beat.title;
         artistEmail = beat.artist.user.email;
         artistName = beat.artist.name;
+        artworkUrl = beat.artworkUrl || '';
 
         const pdfBuffer = await generateLicensePDF({
           licenseId: purchase.licenseId,
@@ -84,15 +86,14 @@ export async function POST(req: NextRequest) {
         }
         await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
 
-        const feeAmount = purchase.amount * 0.01;
-        const netAmount = purchase.amount - feeAmount;
+        // Platform fee is 0% — artists keep 100% of every sale
         await prisma.artistPayout.create({
           data: {
             artistId: beat.artist.id,
             purchaseId: purchaseId,
             amount: purchase.amount,
-            fee: feeAmount,
-            netAmount: netAmount,
+            fee: 0,
+            netAmount: purchase.amount,
             method: beat.artist.payfastMerchant ? 'payfast' : 'stripe',
             currency: purchase.currency,
             status: 'pending',
@@ -109,18 +110,18 @@ export async function POST(req: NextRequest) {
         itemName = release.title;
         artistEmail = release.artist.user.email;
         artistName = release.artist.name;
+        artworkUrl = release.artworkUrl || '';
 
         await prisma.release.update({ where: { id: purchase.releaseId }, data: { sales: { increment: 1 } } });
 
-        const feeAmount = purchase.amount * 0.01;
-        const netAmount = purchase.amount - feeAmount;
+        // Platform fee is 0% — artists keep 100% of every sale
         await prisma.artistPayout.create({
           data: {
             artistId: release.artist.id,
             purchaseId: purchaseId,
             amount: purchase.amount,
-            fee: feeAmount,
-            netAmount: netAmount,
+            fee: 0,
+            netAmount: purchase.amount,
             method: release.artist.payfastMerchant ? 'payfast' : 'stripe',
             currency: purchase.currency,
             status: 'pending',
@@ -130,31 +131,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send buyer confirmation email with download link
-    await sendPurchaseConfirmation({
-      to: purchase.buyerEmail,
-      buyerName: purchase.buyerName,
-      itemName,
-      itemType: purchase.itemType,
-      licenseType: purchase.licenseType || undefined,
-      downloadUrl,
-      amount: purchase.amount,
-      currency: purchase.currency,
-      licenseId: purchase.licenseId,
-    });
+    // Send buyer confirmation email — wrapped separately so a Resend failure
+    // doesn't roll back the already-confirmed purchase or block artist notification.
+    // NOTE: If using Resend's free tier with onboarding@resend.dev as the sender,
+    // emails only deliver to your own verified address. Set EMAIL_FROM to an address
+    // on a domain you have verified in Resend (e.g. "Vuka <no-reply@yourdomain.com>")
+    // for emails to reach real buyers.
+    try {
+      const emailResult = await sendPurchaseConfirmation({
+        to: purchase.buyerEmail,
+        buyerName: purchase.buyerName,
+        itemName,
+        itemType: purchase.itemType,
+        licenseType: purchase.licenseType || undefined,
+        downloadUrl,
+        amount: purchase.amount,
+        currency: purchase.currency,
+        licenseId: purchase.licenseId,
+        artworkUrl: artworkUrl || undefined,
+      });
+      console.log('[notify] Buyer email sent to', purchase.buyerEmail, emailResult);
+    } catch (emailErr) {
+      console.error('[notify] Failed to send buyer email to', purchase.buyerEmail, emailErr);
+    }
 
     // Send artist sale notification
     if (artistEmail) {
-      await sendArtistSaleNotification({
-        to: artistEmail,
-        artistName,
-        buyerName: purchase.buyerName,
-        itemName,
-        licenseType: purchase.licenseType || undefined,
-        amount: purchase.amount,
-        currency: purchase.currency,
-        dashboardUrl: `${appUrl}/dashboard`,
-      });
+      try {
+        await sendArtistSaleNotification({
+          to: artistEmail,
+          artistName,
+          buyerName: purchase.buyerName,
+          itemName,
+          licenseType: purchase.licenseType || undefined,
+          amount: purchase.amount,
+          currency: purchase.currency,
+          dashboardUrl: `${appUrl}/dashboard`,
+        });
+        console.log('[notify] Artist email sent to', artistEmail);
+      } catch (emailErr) {
+        console.error('[notify] Failed to send artist email to', artistEmail, emailErr);
+      }
     }
   } catch (err) {
     console.error('PayFast webhook error:', err);

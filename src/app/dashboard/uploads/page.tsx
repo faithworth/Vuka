@@ -21,11 +21,23 @@ interface UploadProgress { [key: string]: number; }
 
 // Upload a file directly to R2 using a presigned PUT URL
 // This bypasses Vercel body limits entirely — files go browser → R2 directly
+// Normalize browser MIME types to the canonical type used when generating presigned URLs.
+// Some browsers report audio/x-wav or audio/wave for .wav files — R2 will reject the PUT
+// if the Content-Type doesn't exactly match the type the presigned URL was signed for.
+function normalizeContentType(file: File): string {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.wav') || file.type === 'audio/x-wav' || file.type === 'audio/wave') return 'audio/wav';
+  if (name.endsWith('.mp3') || file.type === 'audio/mp3') return 'audio/mpeg';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.png')) return 'image/png';
+  return file.type || 'application/octet-stream';
+}
+
 async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', presignedUrl);
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('Content-Type', normalizeContentType(file));
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
@@ -50,6 +62,16 @@ export default function UploadPage() {
   const [progress, setProgress] = useState<UploadProgress>({});
   const [payfastMerchant, setPayfastMerchant] = useState<string | null | undefined>(undefined);
 
+  // Beat fields — must be declared before any conditional returns (React rules of hooks)
+  const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
+  const [beatPrices, setBeatPrices] = useState({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
+  const [files, setFiles] = useState<{ artwork?: File; preview?: File; wav?: File; mp3?: File }>({});
+
+  // Release fields
+  const [relMeta, setRelMeta] = useState({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
+  const [tracks, setTracks] = useState<TrackEntry[]>([{ title: '' }]);
+  const [relArtwork, setRelArtwork] = useState<File | null>(null);
+
   useEffect(() => {
     fetch('/api/dashboard/settings')
       .then(r => r.json())
@@ -57,7 +79,7 @@ export default function UploadPage() {
       .catch(() => setPayfastMerchant(null));
   }, []);
 
-  // Block upload if PayFast not set up
+  // Block upload if PayFast not set up — conditional returns AFTER all hooks
   if (payfastMerchant === undefined) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
       <Loader2 size={20} className="animate-spin" /> Loading…
@@ -89,16 +111,6 @@ export default function UploadPage() {
       </div>
     </div>
   );
-
-  // Beat fields
-  const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
-  const [beatPrices, setBeatPrices] = useState({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
-  const [files, setFiles] = useState<{ artwork?: File; preview?: File; wav?: File; mp3?: File }>({});
-
-  // Release fields
-  const [relMeta, setRelMeta] = useState({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
-  const [tracks, setTracks] = useState<TrackEntry[]>([{ title: '' }]);
-  const [relArtwork, setRelArtwork] = useState<File | null>(null);
 
   const artRef = useRef<HTMLInputElement>(null);
   const prevRef = useRef<HTMLInputElement>(null);
@@ -138,6 +150,7 @@ export default function UploadPage() {
           tags: beatMeta.tags.split(',').map(t => t.trim()).filter(Boolean),
           hasWav: !!files.wav,
           hasMp3: !!files.mp3,
+          artworkType: files.artwork ? normalizeContentType(files.artwork) : 'image/jpeg',
         }),
       });
       const data = await res.json();

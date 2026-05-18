@@ -109,11 +109,22 @@ export async function GET(
       artworkBuffer: artworkBuf || undefined,
     };
 
-    const raw = await fetchR2Buffer(r2Keys.trackFull(track.id));
+    // Detect if the track was uploaded as WAV by checking the stored fullUrl or trying the WAV key first
+    const isWav = track.fullUrl?.endsWith('.wav') || false;
+    const raw = isWav
+      ? await fetchR2Buffer(r2Keys.trackFullWav(track.id))
+      : await fetchR2Buffer(r2Keys.trackFull(track.id));
     if (raw) {
-      fileBuffer = tagMp3(raw, meta);
-      filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.mp3`;
-      contentType = 'audio/mpeg';
+      const trackNum = String(track.trackNumber).padStart(2, '0');
+      if (isWav) {
+        fileBuffer = tagWav(raw, meta);
+        filename = `${trackNum} - ${track.title}.wav`;
+        contentType = 'audio/wav';
+      } else {
+        fileBuffer = tagMp3(raw, meta);
+        filename = `${trackNum} - ${track.title}.mp3`;
+        contentType = 'audio/mpeg';
+      }
     }
   }
 
