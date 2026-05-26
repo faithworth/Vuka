@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     width: 512,
     margin: 2,
     color: {
-      dark: '#a78bfa',
+      dark: '#38b6e8',
       light: '#0d0b14',
     },
     errorCorrectionLevel: 'H',

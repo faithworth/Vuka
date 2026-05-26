@@ -50,7 +50,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
             {artist.genreTags?.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {artist.genreTags.map((g: string) => (
-                  <span key={g} className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{g}</span>
+                  <span key={g} className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{g}</span>
                 ))}
               </div>
             )}
@@ -135,10 +135,10 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                     </div>
                     <div className="h-3 rounded-full overflow-hidden my-3" style={{ background: 'var(--surface2)' }}>
                       <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-light))' }} />
+                        style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--sky), var(--sky))' }} />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold" style={{ color: 'var(--purple-light)' }}>
+                      <span className="text-sm font-bold" style={{ color: 'var(--sky)' }}>
                         {goal.currency} {Number(goal.currentAmount).toFixed(2)} raised
                       </span>
                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -178,6 +178,13 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
             </div>
           </section>
         )}
+      </div>
+
+      {/* Fee transparency footer note */}
+      <div className="mt-6 mb-8 text-center">
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Vuka retains 2% of each sale to cover platform costs. The artist receives 98%.
+        </p>
       </div>
     </div>
   );

@@ -80,9 +80,9 @@ export default function SupportPage() {
         {/* Tier guide */}
         <div className="grid grid-cols-4 gap-2 mb-8">
           {TIERS.map(t => (
-            <div key={t.name} className="text-center p-3 rounded-xl" style={{ background: 'var(--surface)', border: `1px solid ${tier === t.name ? 'var(--purple)' : 'var(--border)'}` }}>
+            <div key={t.name} className="text-center p-3 rounded-xl" style={{ background: 'var(--surface)', border: `1px solid ${tier === t.name ? 'var(--sky)' : 'var(--border)'}` }}>
               <div className="text-xl">{t.icon}</div>
-              <div className="text-xs font-bold mt-1" style={{ color: tier === t.name ? 'var(--purple-light)' : 'var(--text-muted)' }}>{t.name}</div>
+              <div className="text-xs font-bold mt-1" style={{ color: tier === t.name ? 'var(--sky)' : 'var(--text-muted)' }}>{t.name}</div>
               {t.min > 0 && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>R{t.min}+</div>}
             </div>
           ))}
@@ -94,7 +94,7 @@ export default function SupportPage() {
             {QUICK_AMOUNTS.map(a => (
               <button key={a} onClick={() => { setAmount(a); setCustomAmount(''); }}
                 className="flex-1 py-2 rounded-lg font-bold text-sm transition-colors"
-                style={{ background: amount === a && !customAmount ? 'var(--purple)' : 'var(--surface2)', border: '1px solid var(--border)', color: amount === a && !customAmount ? 'white' : 'var(--text-muted)', minWidth: 60 }}>
+                style={{ background: amount === a && !customAmount ? 'var(--sky)' : 'var(--surface2)', border: '1px solid var(--border)', color: amount === a && !customAmount ? 'white' : 'var(--text-muted)', minWidth: 60 }}>
                 R{a}
               </button>
             ))}
@@ -107,7 +107,7 @@ export default function SupportPage() {
           {/* Current tier badge */}
           <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-xl" style={{ background: 'var(--surface2)' }}>
             <span>{TIERS.find(t => t.name === tier)?.icon}</span>
-            <span className="font-bold" style={{ color: 'var(--purple-light)' }}>{tier} tier · {formatCurrency(effectiveAmount)}</span>
+            <span className="font-bold" style={{ color: 'var(--sky)' }}>{tier} tier · {formatCurrency(effectiveAmount)}</span>
           </div>
 
           {/* Buyer info */}

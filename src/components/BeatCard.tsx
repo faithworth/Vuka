@@ -62,29 +62,45 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
   useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   return (
-    <div className="group rounded-2xl overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+    <div className="group rounded-2xl overflow-hidden transition-all hover:scale-[1.02]"
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 2px 12px rgba(56,182,232,0.06)',
+        transition: 'all 0.2s ease',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 32px rgba(56,182,232,0.18)';
+        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--sky)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 12px rgba(56,182,232,0.06)';
+        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)';
+      }}>
       {/* Artwork */}
-      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-purple-900/30 to-orange-900/20">
+      <div className="relative aspect-square overflow-hidden" style={{ background: 'var(--surface2)' }}>
         {beat.artworkUrl ? (
           <img src={beat.artworkUrl} alt={beat.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎵</div>
         )}
         {beat.isExclusive && (
-          <div className="absolute top-2 right-2 px-3 py-1 rounded-lg text-xs font-bold animate-pulse" style={{ background: 'var(--gold)', color: '#000' }}>SOLD</div>
+          <div className="absolute top-2 right-2 px-3 py-1 rounded-lg text-xs font-bold" style={{ background: 'var(--gold)', color: '#fff' }}>SOLD</div>
         )}
         <button
           onClick={togglePlay}
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
+          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: 'rgba(15,31,46,0.55)', backdropFilter: 'blur(4px)' }}
         >
-          <span className="text-5xl">{isPlaying ? '⏸️' : '▶️'}</span>
+          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(56,182,232,0.9)' }}>
+            <span className="text-2xl text-white">{isPlaying ? '⏸' : '▶'}</span>
+          </div>
         </button>
         {onWishlist && (
           <button
             onClick={onWishlist}
             className="absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-            style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
+            style={{ background: wishlisted ? 'var(--gold)' : 'rgba(15,31,46,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
             title={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
           >
             <Heart size={14} className={wishlisted ? 'fill-black text-black' : 'text-white'} />
@@ -95,37 +111,54 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
       {/* Waveform */}
       <div className="flex items-end gap-[2px] px-3 pt-3" style={{ height: 36 }}>
         {waveform.slice(0, 40).map((h, i) => (
-          <div key={i} className="flex-1 rounded-sm transition-all duration-200" style={{ height: `${h * 100}%`, background: isPlaying ? 'var(--purple-light)' : 'var(--border)', transition: 'background 0.2s' }} />
+          <div key={i} className={`flex-1 rounded-sm transition-all duration-200${isPlaying ? ' waveform-bar-playing' : ''}`}
+            style={{
+              height: `${h * 100}%`,
+              background: isPlaying ? 'var(--sky)' : 'var(--border)',
+              animationDelay: isPlaying ? `${i * 30}ms` : '0ms',
+            }} />
         ))}
       </div>
 
       {/* Info */}
       <div className="p-4">
         <Link href={`/beat/${beat.slug}`}>
-          <h3 className="font-bold text-base truncate hover:text-purple-400 transition-colors" style={{ color: 'var(--text)' }}>{beat.title}</h3>
+          <h3 className="font-bold text-base truncate transition-colors" style={{ color: 'var(--text)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text)')}>
+            {beat.title}
+          </h3>
         </Link>
-        <Link href={`/artist/${beat.artist.slug}`} className="text-sm hover:underline transition-colors" style={{ color: 'var(--text-muted)' }}>
+        <Link href={`/artist/${beat.artist.slug}`} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
           by {beat.artist.name}
         </Link>
         <div className="flex gap-2 mt-2 flex-wrap">
           {beat.bpm > 0 && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>🎚️ {beat.bpm} BPM</span>}
           {beat.keySignature && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>🎼 {beat.keySignature}</span>}
-          {beat.genre && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{beat.genre}</span>}
+          {beat.genre && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}>{beat.genre}</span>}
         </div>
         <div className="flex items-center justify-between mt-3">
-          <span className="font-bold text-lg" style={{ color: 'var(--purple-light)' }}>
+          <span className="font-bold text-lg" style={{ color: 'var(--sky)' }}>
             {formatCurrency(beat.basicPrice)}
           </span>
           <button
             onClick={(e) => { e.preventDefault(); onBuy?.(beat); }}
             disabled={beat.isExclusive}
             className="px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50"
-            style={{ background: beat.isExclusive ? 'var(--surface2)' : 'linear-gradient(135deg,var(--purple),#5b21b6)', color: 'white' }}
+            style={{
+              background: beat.isExclusive ? 'var(--surface2)' : 'var(--red)',
+              color: 'white',
+              border: 'none',
+            }}
+            onMouseEnter={e => { if (!beat.isExclusive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--red-dark)'; }}
+            onMouseLeave={e => { if (!beat.isExclusive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--red)'; }}
           >
             {beat.isExclusive ? 'Sold Out' : '✓ Buy'}
           </button>
         </div>
-        <p className="text-xs mt-2 text-center" style={{ color: 'var(--green)' }}>Artist gets 99% →</p>
+        <p className="text-xs mt-2 text-center font-medium" style={{ color: 'var(--gold)' }}>Artist gets 98% →</p>
       </div>
     </div>
   );

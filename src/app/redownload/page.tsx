@@ -39,7 +39,7 @@ export default function RedownloadPage() {
             <div className="text-center p-6 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
               <p className="text-3xl mb-3">✅</p>
               <p className="font-bold mb-2" style={{ color: 'var(--text)' }}>Sharp! Check your inbox.</p>
-              <p style={{ color: 'var(--text-muted)' }}>We've sent fresh download links to <strong style={{ color: 'var(--purple-light)' }}>{email}</strong></p>
+              <p style={{ color: 'var(--text-muted)' }}>We've sent fresh download links to <strong style={{ color: 'var(--sky)' }}>{email}</strong></p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -57,7 +57,7 @@ export default function RedownloadPage() {
                 type="submit"
                 disabled={loading}
                 className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}
+                style={{ background: 'var(--red)' }}
               >
                 {loading ? 'Just now…' : 'Send My Downloads'}
               </button>

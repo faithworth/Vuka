@@ -10,7 +10,7 @@ export default function NotFound() {
         <div className="flex gap-4 justify-center">
           <Link href="/"
             className="px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
-            style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}>
+            style={{ background: 'var(--red)' }}>
             Go Home
           </Link>
           <Link href="/store"

@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (checking) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div className="flex items-center gap-3">
-        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--purple)' }} />
+        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--sky)' }} />
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</span>
       </div>
     </div>
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--purple)' }}>
+              style={{ background: 'var(--sky)' }}>
               <Music2 size={13} className="text-white" />
             </div>
             <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka</span>
@@ -107,9 +107,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link key={n.href} href={n.href}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all group"
                 style={{
-                  background: active ? 'var(--surface2)' : n.highlight && !active ? 'rgba(124,58,237,0.08)' : 'transparent',
-                  color: active ? 'var(--text)' : n.highlight ? 'var(--purple-light)' : 'var(--text-muted)',
-                  border: n.highlight && !active ? '1px solid rgba(124,58,237,0.2)' : '1px solid transparent',
+                  background: active ? 'var(--surface2)' : n.highlight && !active ? 'rgba(56,182,232,0.08)' : 'transparent',
+                  color: active ? 'var(--text)' : n.highlight ? 'var(--sky)' : 'var(--text-muted)',
+                  border: n.highlight && !active ? '1px solid rgba(56,182,232,0.2)' : '1px solid transparent',
                 }}>
                 <n.icon size={16} className="flex-shrink-0" />
                 <span className="flex-1">{n.label}</span>
@@ -162,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return (
             <Link key={n.href} href={n.href}
               className="flex-1 flex flex-col items-center py-3 gap-1 transition-colors"
-              style={{ color: active ? 'var(--purple-light)' : 'var(--text-muted)' }}>
+              style={{ color: active ? 'var(--sky)' : 'var(--text-muted)' }}>
               <n.icon size={20} />
               <span className="text-xs">{n.label.split(' ')[0]}</span>
             </Link>

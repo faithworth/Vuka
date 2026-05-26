@@ -28,9 +28,9 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
               { label: 'Total Revenue', value: formatCurrency(stats?.totalRevenue || 0), icon: <TrendingUp size={20} />, color: 'var(--green)' },
-              { label: 'This Month', value: formatCurrency(stats?.monthRevenue || 0), icon: <Calendar size={20} />, color: 'var(--purple-light)' },
+              { label: 'This Month', value: formatCurrency(stats?.monthRevenue || 0), icon: <Calendar size={20} />, color: 'var(--sky)' },
               { label: 'Total Sales', value: stats?.totalSales || 0, icon: <ShoppingBag size={20} />, color: 'var(--gold)' },
-              { label: 'Total Plays', value: stats?.totalPlays || 0, icon: <Play size={20} />, color: 'var(--purple-light)' },
+              { label: 'Total Plays', value: stats?.totalPlays || 0, icon: <Play size={20} />, color: 'var(--sky)' },
             ].map(s => (
               <div key={s.label} className="p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div className="mb-2" style={{ color: s.color }}>{s.icon}</div>
@@ -40,23 +40,32 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {/* Fee transparency note */}
+          <div className="mb-6 px-4 py-3 rounded-xl flex items-center gap-3 text-sm"
+            style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
+            <span style={{ color: 'var(--gold)', fontSize: 14 }}>✦</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              Your earnings are 98% of total sales. Vuka retains 2% to cover hosting and operational costs.
+            </span>
+          </div>
+
           {/* Quick actions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Link href="/dashboard/uploads" className="flex items-center gap-4 p-6 rounded-2xl transition-colors hover:border-purple-500"
+            <Link href="/dashboard/uploads" className="flex items-center gap-4 p-6 rounded-2xl transition-colors hover:border-sky-400"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <Upload size={28} style={{ color: "var(--purple-light)" }} />
+              <Upload size={28} style={{ color: "var(--sky)" }} />
               <div><p className="font-bold" style={{ color: 'var(--text)' }}>Upload New Beat</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Add to your store</p></div>
             </Link>
             <Link href="/dashboard/settings" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <CreditCard size={28} style={{ color: "var(--purple-light)" }} />
+              <CreditCard size={28} style={{ color: "var(--sky)" }} />
               <div><p className="font-bold" style={{ color: 'var(--text)' }}>Connect Stripe</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Set up payouts</p></div>
             </Link>
             <button
               onClick={() => { if (stats?.artistSlug) navigator.clipboard.writeText(`${window.location.origin}/artist/${stats.artistSlug}`); }}
               className="flex items-center gap-4 p-6 rounded-2xl text-left transition-colors"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <Link2 size={28} style={{ color: "var(--purple-light)" }} />
+              <Link2 size={28} style={{ color: "var(--sky)" }} />
               <div><p className="font-bold" style={{ color: 'var(--text)' }}>Copy Your Link</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Share on socials</p></div>
             </button>
           </div>
@@ -70,7 +79,7 @@ export default function DashboardPage() {
               <div className="p-12 text-center">
                 <p className="text-4xl mb-3">🎵</p>
                 <p style={{ color: 'var(--text-muted)' }}>Nothing here yet, go create</p>
-                <Link href="/dashboard/uploads" className="inline-block mt-4 px-6 py-3 rounded-xl font-bold text-white" style={{ background: 'var(--purple)' }}>Upload a Beat</Link>
+                <Link href="/dashboard/uploads" className="inline-block mt-4 px-6 py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Upload a Beat</Link>
               </div>
             ) : (
               <div className="divide-y" style={{ borderColor: 'var(--border)' }}>

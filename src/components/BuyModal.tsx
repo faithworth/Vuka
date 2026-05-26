@@ -42,7 +42,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [customAmount, setCustomAmount] = useState('');
-  const [payMethod, setPayMethod] = useState<'stripe' | 'payfast'>('stripe');
+  const [payMethod, setPayMethod] = useState<'stripe' | 'payfast'>('payfast');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -72,7 +72,6 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         });
         const data = await res.json();
         if (!res.ok) { setError(data.error || 'Error'); return; }
-        // Both free bypass and Stripe redirect use data.url
         window.location.href = data.url;
       } else {
         // PayFast
@@ -83,7 +82,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
             itemType: beat ? 'beat' : 'release',
             itemId: beat ? beat.id : release!.id,
             licenseType: beat ? license : undefined,
-            customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
+            customAmount: release?.payWhatYouWant ? parseFloat(customAmount) : undefined,
             buyerEmail: email,
             buyerName: name,
           }),
@@ -91,7 +90,6 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         const data = await res.json();
         if (!res.ok) { setError(data.error || 'Error'); return; }
 
-        // Free item: redirect directly
         if (data.redirect) {
           window.location.href = data.redirect;
           return;
@@ -122,10 +120,10 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
+      style={{ background: 'rgba(15,31,46,0.75)', backdropFilter: 'blur(6px)' }} onClick={onClose}>
       <div
         className="w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 24px 80px rgba(56,182,232,0.15)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -140,7 +138,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
             <h3 className="font-bold text-lg" style={{ color: 'var(--text)' }}>{item.title}</h3>
             <p style={{ color: 'var(--text-muted)' }}>{item.artist.name}</p>
           </div>
-          <button onClick={onClose} className="text-2xl" style={{ color: 'var(--text-muted)' }}>×</button>
+          <button onClick={onClose} className="text-2xl leading-none" style={{ color: 'var(--text-muted)' }}>×</button>
         </div>
 
         {/* License picker (beats only) */}
@@ -150,15 +148,15 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
               <button
                 key={l.key}
                 onClick={() => setLicense(l.key)}
-                className={`w-full p-4 rounded-xl text-left transition-colors ${license === l.key ? 'border-2' : 'border'}`}
+                className={`w-full p-4 rounded-xl text-left transition-all`}
                 style={{
-                  background: license === l.key ? 'var(--surface2)' : 'transparent',
-                  borderColor: license === l.key ? 'var(--purple)' : 'var(--border)',
+                  background: license === l.key ? 'rgba(56,182,232,0.08)' : 'var(--bg)',
+                  border: `2px solid ${license === l.key ? 'var(--sky)' : 'var(--border)'}`,
                 }}
               >
                 <div className="flex justify-between items-center">
                   <span className="font-bold" style={{ color: 'var(--text)' }}>{l.name}</span>
-                  <span className="font-bold" style={{ color: 'var(--purple-light)' }}>{formatCurrency(prices[l.key])}</span>
+                  <span className="font-bold" style={{ color: 'var(--sky)' }}>{formatCurrency(prices[l.key])}</span>
                 </div>
                 <ul className="mt-1">
                   {l.rights.map((r) => <li key={r} className="text-xs" style={{ color: 'var(--text-muted)' }}>· {r}</li>)}
@@ -204,63 +202,62 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           />
         </div>
 
-        {/* Payment method — only show for paid items */}
+        {/* Payment method */}
         {price > 0 && (
-          <div className="flex gap-2 mb-6">
-            {(['stripe', 'payfast'] as const).map(m => (
+          <div className="flex gap-2 mb-4">
+            {(['payfast', 'stripe'] as const).map(m => (
               <button
                 key={m}
                 onClick={() => setPayMethod(m)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: payMethod === m ? 'var(--purple)' : 'var(--surface2)',
-                  border: '1px solid var(--border)',
+                  background: payMethod === m ? 'var(--sky)' : 'var(--surface2)',
+                  border: `1px solid ${payMethod === m ? 'var(--sky)' : 'var(--border)'}`,
                   color: payMethod === m ? 'white' : 'var(--text-muted)',
                 }}
               >
-                {m === 'stripe' ? '💳 Card / Apple Pay' : '🇿🇦 PayFast'}
+                {m === 'payfast' ? '🇿🇦 PayFast (ZAR)' : '💳 Card / Stripe'}
               </button>
             ))}
           </div>
         )}
 
-        {/* Fee breakdown */}
-        <div className="mb-6 p-3 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
-          <div className="flex justify-between text-sm mb-2">
-            <span style={{ color: 'var(--text-muted)' }}>Price</span>
-            <span style={{ color: 'var(--text)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
-          </div>
-          {price > 0 && (
-            <div className="flex justify-between text-sm mb-3"
-              style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Vuka Fee (1%)</span>
-              <span style={{ color: 'var(--text)' }}>-{formatCurrency(price * 0.01)}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold">
-            <span style={{ color: 'var(--text)' }}>Total</span>
-            <span style={{ color: 'var(--green)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
-          </div>
-          {price > 0 && (
-            <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-              💚 Artist receives {formatCurrency(price * 0.99)} after our 1% fee
+        {/* Fee note */}
+        {price > 0 && (
+          <div className="mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+              ✦ Vuka takes 2% to keep the platform running. The artist receives 98% of this sale.
             </p>
-          )}
+          </div>
+        )}
+
+        {/* Price summary */}
+        <div className="mb-5 p-4 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+          <div className="flex justify-between font-bold text-lg">
+            <span style={{ color: 'var(--text)' }}>Total</span>
+            <span style={{ color: 'var(--sky)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
+          </div>
         </div>
 
-        {error && <p className="text-sm mb-4 text-red-400">Eish — {error}</p>}
+        {error && (
+          <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(204,26,26,0.1)', border: '1px solid rgba(204,26,26,0.25)', color: 'var(--red)' }}>
+            {error}
+          </div>
+        )}
 
         <button
           onClick={handleBuy}
           disabled={loading}
-          className="w-full py-4 rounded-xl font-bold text-white text-lg transition-opacity disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}
+          className="w-full py-4 rounded-xl font-bold text-white text-base transition-all disabled:opacity-60"
+          style={{ background: price === 0 ? 'var(--green)' : 'var(--red)' }}
+          onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = price === 0 ? '#22834d' : 'var(--red-dark)'; }}
+          onMouseLeave={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = price === 0 ? 'var(--green)' : 'var(--red)'; }}
         >
           {loading
-            ? 'Just now…'
+            ? 'Processing…'
             : price === 0
             ? 'Download Free →'
-            : `Buy Now — Yebo ✓ · ${formatCurrency(price)}`}
+            : `Buy Now — ${formatCurrency(price)} →`}
         </button>
       </div>
     </div>

@@ -43,17 +43,17 @@ function SuccessContent() {
         <div className="text-7xl mb-6">🎉</div>
         <h1 className="text-4xl font-black mb-3" style={{ color: 'var(--text)' }}>Sharp! It's yours now.</h1>
         <p className="mb-8" style={{ color: 'var(--text-muted)' }}>
-          Your download link has been sent to <strong style={{ color: 'var(--purple-light)' }}>{purchase.buyerEmail}</strong>. Check your inbox.
+          Your download link has been sent to <strong style={{ color: 'var(--sky)' }}>{purchase.buyerEmail}</strong>. Check your inbox.
         </p>
         <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="font-bold text-lg mb-2" style={{ color: 'var(--text)' }}>{purchase.beat?.title || purchase.release?.title || 'Your Purchase'}</p>
           {purchase.licenseType && <p className="text-sm mb-1 capitalize" style={{ color: 'var(--text-muted)' }}>{purchase.licenseType} License</p>}
-          <p className="text-sm font-mono" style={{ color: 'var(--purple-light)' }}>Ref: {purchase.licenseId}</p>
+          <p className="text-sm font-mono" style={{ color: 'var(--sky)' }}>Ref: {purchase.licenseId}</p>
         </div>
         <Link
           href={`/download/${purchase.downloadToken}`}
           className="block w-full py-4 rounded-xl font-bold text-white text-lg mb-4"
-          style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}
+          style={{ background: 'var(--red)' }}
         >
           ⬇️ Download Now
         </Link>

@@ -82,13 +82,29 @@ function RegisterForm() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--purple)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
               <Music size={17} className="text-white" />
             </div>
             <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka</span>
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Create your account</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Join artists and fans from across Africa and beyond</p>
+
+          <div style={{
+            background: 'rgba(201,162,39,0.08)',
+            border: '1px solid var(--gold)',
+            borderRadius: 12,
+            padding: '12px 16px',
+            marginTop: 12,
+            marginBottom: 4,
+          }}>
+            <p style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginBottom: 4 }}>
+              Transparent pricing
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Vuka charges a 2% platform fee on all sales. This covers hosting, servers, payment processing overhead, and keeps the platform running. You keep 98% of everything you earn — paid directly to your bank.
+            </p>
+          </div>
         </div>
 
         <div className="card p-8">
@@ -141,7 +157,7 @@ function RegisterForm() {
             {role === 'artist' && name && (
               <div className="px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Your store: </span>
-                <span style={{ color: 'var(--purple-light)' }}>vuka.app/artist/{slugify(name) || 'your-name'}</span>
+                <span style={{ color: 'var(--sky)' }}>vuka.app/artist/{slugify(name) || 'your-name'}</span>
               </div>
             )}
 
@@ -159,7 +175,7 @@ function RegisterForm() {
 
           <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
             Already have an account?{' '}
-            <Link href="/auth/login" style={{ color: 'var(--purple-light)' }} className="hover:underline font-medium">Log in</Link>
+            <Link href="/auth/login" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">Log in</Link>
           </p>
         </div>
 

@@ -2,16 +2,30 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Vuka. Buy music and beats',
-  description: 'Buy beats and music directly from African artists. Real payments, instant downloads.',
-  icons: {
-    icon: '/favicon.svg',
+  title: 'Vuka — Buy Beats & Music from African Artists',
+  description: "Vuka is Africa's independent music platform. Buy beats and music directly from South African artists and producers. Instant downloads. PayFast & Stripe payments.",
+  keywords: ['vuka', 'vuka distro', 'buy beats', 'south african beats', 'african music platform', 'buy music south africa', 'beat store south africa', 'independent music africa', 'payfast beats', 'trap beats south africa'],
+  metadataBase: new URL('https://vuka-distro.vercel.app'),
+  alternates: { canonical: 'https://vuka-distro.vercel.app' },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka. Buy music and beats',
-    description: 'Buy beats and music directly from African artists.',
+    title: 'Vuka — Buy Beats & Music from African Artists',
+    description: "Africa's independent music platform. Buy beats & releases directly from artists. PayFast & Stripe. Instant downloads.",
+    url: 'https://vuka-distro.vercel.app',
     siteName: 'Vuka',
+    type: 'website',
+    locale: 'en_ZA',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Vuka — Buy Beats & Music from African Artists',
+    description: "Africa's independent music platform. Buy beats & releases directly from artists.",
+  },
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

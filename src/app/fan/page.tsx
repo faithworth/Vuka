@@ -81,7 +81,7 @@ export default function FanDashboard() {
 
   if (!user || loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--purple-light)' }} />
+      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
     </div>
   );
 
@@ -109,7 +109,7 @@ export default function FanDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {[
-            { icon: ShoppingBag, label: 'Purchases', value: purchases.length, tab: 'library' as const, color: 'var(--purple-light)' },
+            { icon: ShoppingBag, label: 'Purchases', value: purchases.length, tab: 'library' as const, color: 'var(--sky)' },
             { icon: UserCheck, label: 'Following', value: follows.length, tab: 'following' as const, color: 'var(--red)' },
             { icon: Heart, label: 'Wishlist', value: wishlistItems.length, tab: 'wishlist' as const, color: 'var(--gold)' },
           ].map(s => (
@@ -117,10 +117,10 @@ export default function FanDashboard() {
               className="flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all text-left"
               style={{
                 background: 'var(--surface)',
-                border: `1px solid ${activeTab === s.tab ? 'var(--purple)' : 'var(--border)'}`,
+                border: `1px solid ${activeTab === s.tab ? 'var(--sky)' : 'var(--border)'}`,
               }}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(124,58,237,0.1)' }}>
+                style={{ background: 'rgba(56,182,232,0.1)' }}>
                 <s.icon size={20} style={{ color: s.color }} />
               </div>
               <div>
@@ -169,7 +169,7 @@ export default function FanDashboard() {
                       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: 'var(--surface2)' }}>
-                        <Music2 size={18} style={{ color: 'var(--purple-light)' }} />
+                        <Music2 size={18} style={{ color: 'var(--sky)' }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate" style={{ color: 'var(--text)' }}>{title}</p>
@@ -290,7 +290,7 @@ export default function FanDashboard() {
                     </div>
                     <Link href={`/${item.itemType === 'beat' ? 'beat' : 'release'}/${item.detail?.slug || item.itemId}`}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
-                      style={{ background: 'var(--surface2)', color: 'var(--purple-light)', border: '1px solid var(--border)' }}>
+                      style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
                       View →
                     </Link>
                   </div>

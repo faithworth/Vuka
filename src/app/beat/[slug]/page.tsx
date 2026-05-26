@@ -75,9 +75,9 @@ export default function BeatDetailPage() {
           </div>
           {/* Info */}
           <div className="flex-1">
-            <div className="inline-block text-xs px-2 py-1 rounded-lg mb-3 font-bold uppercase" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>BEAT</div>
+            <div className="inline-block text-xs px-2 py-1 rounded-lg mb-3 font-bold uppercase" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>BEAT</div>
             <h1 className="text-3xl font-black mb-1" style={{ color: 'var(--text)' }}>{beat.title}</h1>
-            <a href={`/artist/${beat.artist?.slug}`} className="text-lg hover:underline" style={{ color: 'var(--purple-light)' }}>{beat.artist?.name}</a>
+            <a href={`/artist/${beat.artist?.slug}`} className="text-lg hover:underline" style={{ color: 'var(--sky)' }}>{beat.artist?.name}</a>
 
             <div className="flex gap-3 flex-wrap mt-4">
               {beat.bpm > 0 && <Tag label="BPM" value={String(beat.bpm)} />}
@@ -90,7 +90,7 @@ export default function BeatDetailPage() {
             <div className="mt-6">
               <div className="flex items-end gap-[2px]" style={{ height: 56 }}>
                 {waveform.slice(0, 60).map((h: number, i: number) => (
-                  <div key={i} className="flex-1 rounded-sm transition-colors" style={{ height: `${h * 100}%`, background: isPlaying ? 'var(--purple-light)' : 'var(--border)' }} />
+                  <div key={i} className="flex-1 rounded-sm transition-colors" style={{ height: `${h * 100}%`, background: isPlaying ? 'var(--sky)' : 'var(--border)' }} />
                 ))}
               </div>
               <button
@@ -115,7 +115,7 @@ export default function BeatDetailPage() {
                     <p className="font-bold" style={{ color: 'var(--text)' }}>{l.name}</p>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{l.desc}</p>
                   </div>
-                  <span className="font-bold text-lg" style={{ color: 'var(--purple-light)' }}>{formatCurrency(l.price)}</span>
+                  <span className="font-bold text-lg" style={{ color: 'var(--sky)' }}>{formatCurrency(l.price)}</span>
                 </div>
               ))}
             </div>
@@ -128,7 +128,7 @@ export default function BeatDetailPage() {
               <button
                 onClick={() => setShowBuy(true)}
                 className="mt-6 w-full py-4 rounded-xl font-bold text-white text-lg"
-                style={{ background: 'linear-gradient(135deg,var(--purple),#5b21b6)' }}
+                style={{ background: 'var(--red)' }}
               >
                 Buy Now — Yebo ✓
               </button>

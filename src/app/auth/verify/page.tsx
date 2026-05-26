@@ -42,15 +42,15 @@ function VerifyContent() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md text-center">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-          style={{ background: 'color-mix(in srgb, var(--purple) 15%, transparent)' }}>
-          <Mail size={32} style={{ color: 'var(--purple-light)' }} />
+          style={{ background: 'color-mix(in srgb, var(--sky) 15%, transparent)' }}>
+          <Mail size={32} style={{ color: 'var(--sky)' }} />
         </div>
         <h1 className="text-2xl font-bold mb-3" style={{ color: 'var(--text)' }}>Check your email</h1>
         <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
           We sent a verification link to:
         </p>
         {email && (
-          <p className="font-semibold mb-6" style={{ color: 'var(--purple-light)' }}>{email}</p>
+          <p className="font-semibold mb-6" style={{ color: 'var(--sky)' }}>{email}</p>
         )}
         <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
           Click the link in your email to activate your account. This page will automatically redirect once verified.

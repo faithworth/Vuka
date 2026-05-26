@@ -56,7 +56,7 @@ export default function PayoutsPage() {
   function statusBadge(status: string) {
     const map: Record<string, { label: string; color: string; bg: string }> = {
       pending:    { label: 'Pending',    color: 'var(--gold)',        bg: 'rgba(234,179,8,0.1)' },
-      processing: { label: 'Processing', color: 'var(--purple-light)', bg: 'rgba(124,58,237,0.1)' },
+      processing: { label: 'Processing', color: 'var(--sky)', bg: 'rgba(56,182,232,0.1)' },
       completed:  { label: 'Paid',       color: 'var(--green)',       bg: 'rgba(16,185,129,0.1)' },
       failed:     { label: 'Failed',     color: '#f87171',            bg: 'rgba(248,113,113,0.1)' },
     };
@@ -85,7 +85,7 @@ export default function PayoutsPage() {
       <div className="grid grid-cols-3 gap-3 mb-8">
         {[
           { label: 'Total Earned', value: summary.totalEarned || 0, icon: TrendingUp, color: 'var(--green)' },
-          { label: 'Paid Out',     value: summary.totalPaid    || 0, icon: CheckCircle, color: 'var(--purple-light)' },
+          { label: 'Paid Out',     value: summary.totalPaid    || 0, icon: CheckCircle, color: 'var(--sky)' },
           { label: 'Pending',      value: summary.totalPending || 0, icon: Clock, color: 'var(--gold)' },
         ].map(card => (
           <div key={card.label} className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -104,7 +104,7 @@ export default function PayoutsPage() {
           <button key={t} onClick={() => setTab(t)}
             className="px-4 py-2 rounded-lg text-sm font-semibold capitalize"
             style={{
-              background: tab === t ? 'var(--purple)' : 'var(--surface)',
+              background: tab === t ? 'var(--sky)' : 'var(--surface)',
               color: tab === t ? 'white' : 'var(--text-muted)',
               border: '1px solid var(--border)',
             }}>
@@ -186,7 +186,7 @@ export default function PayoutsPage() {
 
                   <a href="https://dashboard.stripe.com/payouts" target="_blank" rel="noopener noreferrer"
                     className="mt-3 flex items-center gap-1.5 text-xs font-semibold"
-                    style={{ color: 'var(--purple-light)' }}>
+                    style={{ color: 'var(--sky)' }}>
                     View Stripe Dashboard <ExternalLink size={11} />
                   </a>
                 </>
@@ -261,7 +261,7 @@ export default function PayoutsPage() {
                   <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
                     Get your Merchant ID from your{' '}
                     <a href="https://www.payfast.co.za/dashboard/settings" target="_blank" rel="noopener noreferrer"
-                      className="underline" style={{ color: 'var(--purple-light)' }}>
+                      className="underline" style={{ color: 'var(--sky)' }}>
                       PayFast account settings
                     </a>.
                   </p>

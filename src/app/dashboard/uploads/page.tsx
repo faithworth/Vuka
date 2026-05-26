@@ -120,14 +120,14 @@ export default function UploadPage() {
           You need to connect your PayFast account before you can upload and sell music. This is how buyers pay you directly.
         </p>
         <div className="text-left p-4 rounded-xl mb-6 space-y-2 text-sm" style={{ background: 'var(--surface2)' }}>
-          <p style={{ color: 'var(--text-muted)' }}>1. Sign up at <a href="https://www.payfast.co.za/registration" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--purple-light)' }}>payfast.co.za</a> (free)</p>
+          <p style={{ color: 'var(--text-muted)' }}>1. Sign up at <a href="https://www.payfast.co.za/registration" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--sky)' }}>payfast.co.za</a> (free)</p>
           <p style={{ color: 'var(--text-muted)' }}>2. Verify your ID and bank account</p>
-          <p style={{ color: 'var(--text-muted)' }}>3. Copy your Merchant ID from <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--purple-light)' }}>my.payfast.io</a></p>
+          <p style={{ color: 'var(--text-muted)' }}>3. Copy your Merchant ID from <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--sky)' }}>my.payfast.io</a></p>
           <p style={{ color: 'var(--text-muted)' }}>4. Paste it in Settings and save</p>
         </div>
         <Link href="/dashboard/settings"
           className="inline-block w-full py-3 rounded-xl font-bold text-white text-center"
-          style={{ background: 'var(--purple)' }}>
+          style={{ background: 'var(--sky)' }}>
           Go to Settings →
         </Link>
       </div>
@@ -308,14 +308,14 @@ export default function UploadPage() {
       <p className="mb-2 text-lg" style={{ color: 'var(--text-muted)' }}>
         Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka.
       </p>
-      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 100% of every sale is yours.</p>
+      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 98% of every sale is yours.</p>
       <div className="flex gap-4 flex-wrap justify-center">
         <button onClick={resetAll} className="px-6 py-3 rounded-xl font-semibold"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
           Upload another
         </button>
         <button onClick={() => router.push(uploadType === 'beat' ? '/dashboard/beats' : '/dashboard/releases')}
-          className="px-6 py-3 rounded-xl font-semibold text-white" style={{ background: 'var(--purple)' }}>
+          className="px-6 py-3 rounded-xl font-semibold text-white" style={{ background: 'var(--sky)' }}>
           View my {uploadType === 'beat' ? 'beats' : 'releases'}
         </button>
       </div>
@@ -329,7 +329,7 @@ export default function UploadPage() {
     <div className="p-6 md:p-10 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Upload to Your Store</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 100% of every sale — direct to your bank.</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 98% of every sale — direct to your bank.</p>
       </div>
 
       {/* Step progress */}
@@ -338,13 +338,13 @@ export default function UploadPage() {
           <div key={s} className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
               style={{
-                background: step >= s ? 'var(--purple)' : 'var(--surface)',
+                background: step >= s ? 'var(--sky)' : 'var(--surface)',
                 color: step >= s ? 'white' : 'var(--text-muted)',
-                border: `1px solid ${step >= s ? 'var(--purple)' : 'var(--border)'}`,
+                border: `1px solid ${step >= s ? 'var(--sky)' : 'var(--border)'}`,
               }}>
               {s}
             </div>
-            {s < 5 && <div className="h-px w-6 flex-shrink-0" style={{ background: step > s ? 'var(--purple)' : 'var(--border)' }} />}
+            {s < 5 && <div className="h-px w-6 flex-shrink-0" style={{ background: step > s ? 'var(--sky)' : 'var(--border)' }} />}
           </div>
         ))}
       </div>
@@ -359,11 +359,11 @@ export default function UploadPage() {
                 className="p-6 rounded-2xl text-left transition-all"
                 style={{
                   background: uploadType === t ? 'var(--surface2)' : 'var(--surface)',
-                  border: `2px solid ${uploadType === t ? 'var(--purple)' : 'var(--border)'}`,
+                  border: `2px solid ${uploadType === t ? 'var(--sky)' : 'var(--border)'}`,
                 }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                  style={{ background: uploadType === t ? 'rgba(124,58,237,0.2)' : 'var(--surface2)' }}>
-                  <Music size={20} style={{ color: uploadType === t ? 'var(--purple-light)' : 'var(--text-muted)' }} />
+                  style={{ background: uploadType === t ? 'rgba(56,182,232,0.2)' : 'var(--surface2)' }}>
+                  <Music size={20} style={{ color: uploadType === t ? 'var(--sky)' : 'var(--text-muted)' }} />
                 </div>
                 <div className="font-semibold capitalize mb-1" style={{ color: 'var(--text)' }}>
                   {t === 'beat' ? 'Beat' : 'Release'}
@@ -375,7 +375,7 @@ export default function UploadPage() {
             ))}
           </div>
           <button onClick={() => setStep(2)} className="w-full py-3 rounded-xl font-semibold text-white"
-            style={{ background: 'var(--purple)' }}>
+            style={{ background: 'var(--sky)' }}>
             Continue →
           </button>
         </div>
@@ -425,7 +425,7 @@ export default function UploadPage() {
       {step === 4 && uploadType === 'beat' && (
         <div>
           <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Set Your Prices</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 100% of every sale. Prices in ZAR (South African Rand).</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 98% of every sale. Prices in ZAR (South African Rand).</p>
           <div className="space-y-3 mb-8">
             <PriceField label="Basic License" sublabel="Non-exclusive · up to 5,000 streams · 2 music videos"
               value={beatPrices.basicPrice} onChange={v => setBeatPrices(p => ({ ...p, basicPrice: v }))} />
@@ -460,16 +460,16 @@ export default function UploadPage() {
             <div className="mb-4 p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Uploading to secure storage…</span>
-                <span className="text-sm font-bold" style={{ color: 'var(--purple-light)' }}>{avgProgress}%</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--sky)' }}>{avgProgress}%</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface2)' }}>
-                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${avgProgress}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-light))' }} />
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${avgProgress}%`, background: 'linear-gradient(90deg, var(--sky), var(--sky))' }} />
               </div>
             </div>
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 100% of every sale · Zero platform fee · Direct to your bank
+            You earn 98% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -482,7 +482,7 @@ export default function UploadPage() {
             </button>
             <button onClick={handleBeatSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
-              style={{ background: 'var(--purple)' }}>
+              style={{ background: 'var(--sky)' }}>
               {loading ? <><Loader2 size={16} className="animate-spin" />Uploading…</> : <><Upload size={16} />Publish Beat</>}
             </button>
           </div>
@@ -501,7 +501,7 @@ export default function UploadPage() {
                 {RELEASE_TYPES.map(rt => (
                   <button key={rt.value} onClick={() => setRelMeta(p => ({ ...p, releaseType: rt.value }))}
                     className="p-4 rounded-xl text-left transition-all"
-                    style={{ background: relMeta.releaseType === rt.value ? 'var(--surface2)' : 'var(--surface)', border: `2px solid ${relMeta.releaseType === rt.value ? 'var(--purple)' : 'var(--border)'}` }}>
+                    style={{ background: relMeta.releaseType === rt.value ? 'var(--surface2)' : 'var(--surface)', border: `2px solid ${relMeta.releaseType === rt.value ? 'var(--sky)' : 'var(--border)'}` }}>
                     <div className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{rt.label}</div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{rt.desc}</div>
                   </button>
@@ -580,7 +580,7 @@ export default function UploadPage() {
           <h2 className="text-lg font-semibold mb-6" style={{ color: 'var(--text)' }}>Ready to Publish</h2>
           <div className="p-6 rounded-2xl mb-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <h3 className="font-bold text-xl mb-1" style={{ color: 'var(--text)' }}>{relMeta.title}</h3>
-            <p className="text-sm mb-4 capitalize" style={{ color: 'var(--purple-light)' }}>{relMeta.releaseType}</p>
+            <p className="text-sm mb-4 capitalize" style={{ color: 'var(--sky)' }}>{relMeta.releaseType}</p>
             <div className="space-y-2.5 mb-4">
               <SummaryRow label="Price" value={parseFloat(relMeta.price) === 0 ? 'Free' : `R${relMeta.price}`} />
               {relMeta.payWhatWant && <SummaryRow label="Pay What You Want" value="Enabled" />}
@@ -602,16 +602,16 @@ export default function UploadPage() {
             <div className="mb-4 p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Uploading tracks…</span>
-                <span className="text-sm font-bold" style={{ color: 'var(--purple-light)' }}>{avgProgress}%</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--sky)' }}>{avgProgress}%</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface2)' }}>
-                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${avgProgress}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-light))' }} />
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${avgProgress}%`, background: 'linear-gradient(90deg, var(--sky), var(--sky))' }} />
               </div>
             </div>
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 100% of every sale · Zero platform fee · Direct to your bank
+            You earn 98% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -624,7 +624,7 @@ export default function UploadPage() {
             </button>
             <button onClick={handleReleaseSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
-              style={{ background: 'var(--purple)' }}>
+              style={{ background: 'var(--sky)' }}>
               {loading ? <><Loader2 size={16} className="animate-spin" />Uploading…</> : <><Upload size={16} />Publish Release</>}
             </button>
           </div>
@@ -669,7 +669,7 @@ function TrackRow({ index, track, onChange, onRemove, canRemove }: {
           <p className="text-xs mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>Full Audio *</p>
           <button type="button" onClick={() => fullRef.current?.click()}
             className="w-full py-2 rounded-lg border text-xs text-center transition-colors"
-            style={{ borderColor: track.fullFile ? 'var(--green)' : 'var(--purple)', borderStyle: 'dashed', color: track.fullFile ? 'var(--green)' : 'var(--purple-light)' }}>
+            style={{ borderColor: track.fullFile ? 'var(--green)' : 'var(--sky)', borderStyle: 'dashed', color: track.fullFile ? 'var(--green)' : 'var(--sky)' }}>
             {track.fullFile ? `✓ ${track.fullFile.name.slice(0, 18)}…` : '+ Full MP3/WAV *'}
           </button>
           <input ref={fullRef} type="file" accept="audio/mpeg,audio/mp3,audio/wav" className="hidden"
@@ -725,10 +725,10 @@ function PriceField({ label, sublabel, value, onChange, highlight }: {
   label: string; sublabel?: string; value: string; onChange: (v: string) => void; highlight?: boolean;
 }) {
   return (
-    <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: `1px solid ${highlight ? 'var(--purple)' : 'var(--border)'}` }}>
+    <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: `1px solid ${highlight ? 'var(--sky)' : 'var(--border)'}` }}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="text-sm font-semibold" style={{ color: highlight ? 'var(--purple-light)' : 'var(--text)' }}>{label}</div>
+          <div className="text-sm font-semibold" style={{ color: highlight ? 'var(--sky)' : 'var(--text)' }}>{label}</div>
           {sublabel && <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sublabel}</div>}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -772,7 +772,7 @@ function NavButtons({ onBack, onNext, nextLabel = 'Continue' }: { onBack: () => 
         ← Back
       </button>
       <button onClick={onNext} className="flex-1 py-3 rounded-xl font-semibold text-white text-sm"
-        style={{ background: 'var(--purple)' }}>
+        style={{ background: 'var(--sky)' }}>
         {nextLabel} →
       </button>
     </div>

@@ -61,7 +61,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
       <div className="sticky top-16 z-40 border-b" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center">
           <div className="flex-1 min-w-[180px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--purple-light)' }} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--sky)' }} />
             <input type="text" placeholder="Search beats, artists, genres…"
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-lg text-sm border input" />
@@ -70,7 +70,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
             {['all','beats','releases'].map(t => (
               <button key={t} onClick={() => setType(t)}
                 className="px-3 py-2 text-xs font-semibold transition-colors capitalize"
-                style={{ background: type===t?'var(--purple)':'var(--surface)', color: type===t?'white':'var(--text-muted)' }}>
+                style={{ background: type===t?'var(--sky)':'var(--surface)', color: type===t?'white':'var(--text-muted)' }}>
                 {t}
               </button>
             ))}
@@ -82,11 +82,11 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
             <option value="price_desc">Price ↓</option>
           </select>
           <div className="flex gap-1">
-            <button onClick={() => setView('grid')} className="p-2 rounded" style={{ background: view==='grid'?'var(--purple)':'var(--surface)', color:'white' }}><Grid className="w-4 h-4" /></button>
-            <button onClick={() => setView('list')} className="p-2 rounded" style={{ background: view==='list'?'var(--purple)':'var(--surface)', color:'white' }}><List className="w-4 h-4" /></button>
+            <button onClick={() => setView('grid')} className="p-2 rounded" style={{ background: view==='grid'?'var(--sky)':'var(--surface)', color:'white' }}><Grid className="w-4 h-4" /></button>
+            <button onClick={() => setView('list')} className="p-2 rounded" style={{ background: view==='list'?'var(--sky)':'var(--surface)', color:'white' }}><List className="w-4 h-4" /></button>
           </div>
           <button onClick={() => setFiltersOpen(!filtersOpen)} className="p-2 rounded flex items-center gap-1 text-sm"
-            style={{ background: filtersOpen?'var(--purple)':'var(--surface)', color: filtersOpen?'white':'var(--text-muted)' }}>
+            style={{ background: filtersOpen?'var(--sky)':'var(--surface)', color: filtersOpen?'white':'var(--text-muted)' }}>
             <SlidersHorizontal className="w-4 h-4" />
           </button>
         </div>
@@ -95,7 +95,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
             {['', ...GENRES].map(g => (
               <button key={g||'all'} onClick={() => setGenre(g)}
                 className="px-3 py-1 rounded-full text-xs border transition-colors"
-                style={{ background: genre===g?'var(--purple)':'transparent', borderColor:'var(--border)', color: genre===g?'white':'var(--text-muted)' }}>
+                style={{ background: genre===g?'var(--sky)':'transparent', borderColor:'var(--border)', color: genre===g?'white':'var(--text-muted)' }}>
                 {g || 'All Genres'}
               </button>
             ))}
@@ -105,6 +105,11 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
 
       <div className="max-w-7xl mx-auto px-4 py-6 pb-24">
         {loading && <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>Just now…</p>}
+        {/* Fee transparency banner */}
+        <div style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+          ✦ Vuka charges a 2% platform fee. Artists receive 98% of every sale.
+        </div>
+
         {!loading && beats.length === 0 && releases.length === 0 && (
           <div className="text-center py-20">
             <p className="text-3xl mb-2">🎵</p>
@@ -136,7 +141,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
                     style={{ background: 'var(--surface2)' }}>
                     {release.artworkUrl ? <img src={release.artworkUrl} className="w-full h-full object-cover" alt={release.title} /> : '🎵'}
                   </div>
-                  <div className="badge badge-purple mb-2">{release.releaseType}</div>
+                  <div className="badge badge-sky mb-2">{release.releaseType}</div>
                   <div className="font-semibold text-sm truncate mb-1" style={{ color:'var(--text)' }}>{release.title}</div>
                   <Link href={`/artist/${release.artist.slug}`} onClick={e => e.stopPropagation()}
                     className="text-xs hover:underline" style={{ color:'var(--text-muted)' }}>{release.artist.name}</Link>

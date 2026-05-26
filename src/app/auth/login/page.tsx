@@ -63,7 +63,7 @@ export default function LoginPage() {
 
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--purple)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
               <Music size={17} className="text-white" />
             </div>
             <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka</span>
@@ -116,7 +116,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
             Don't have an account?{' '}
-            <Link href="/auth/register" style={{ color: 'var(--purple-light)' }} className="hover:underline font-medium">Sign up free</Link>
+            <Link href="/auth/register" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">Sign up free</Link>
           </p>
         </div>
       </div>

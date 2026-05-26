@@ -14,7 +14,6 @@ export function Navbar() {
     const loadUser = async (u: any) => {
       if (!u) { setUser(null); setUserRole(null); return; }
       setUser(u);
-      // Fetch role from our DB
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
@@ -39,16 +38,17 @@ export function Navbar() {
     { href: '/store', label: 'Store' },
     { href: '/store/beats', label: 'Beats' },
     { href: '/store/releases', label: 'Releases' },
+    { href: '/industry', label: 'Industry' },
   ];
 
   return (
     <nav className="sticky top-0 z-50"
-      style={{ background: 'rgba(10,10,8,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--border)' }}>
+      style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border)', boxShadow: '0 1px 12px rgba(56,182,232,0.08)' }}>
       <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
 
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--purple)' }}>
+            style={{ background: 'var(--sky)' }}>
             <Music size={15} className="text-white" />
           </div>
           <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
@@ -59,8 +59,10 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map(l => (
             <Link key={l.href} href={l.href}
-              className="text-sm font-medium transition-colors hover:text-white"
-              style={{ color: 'var(--text-muted)' }}>
+              className="text-sm font-medium transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
               {l.label}
             </Link>
           ))}
@@ -82,7 +84,7 @@ export function Navbar() {
               </Link>
               <Link href="/auth/register"
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{ background: 'var(--purple)', color: 'white' }}>
+                style={{ background: 'var(--sky)', color: 'white' }}>
                 Get Started
               </Link>
             </>
@@ -102,7 +104,7 @@ export function Navbar() {
             {navLinks.map(l => (
               <Link key={l.href} href={l.href}
                 onClick={() => setMobileOpen(false)}
-                className="py-2.5 px-3 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--surface2)]"
+                className="py-2.5 px-3 rounded-lg text-sm font-medium transition-colors"
                 style={{ color: 'var(--text-muted)' }}>
                 {l.label}
               </Link>
@@ -124,7 +126,7 @@ export function Navbar() {
                 </Link>
                 <Link href="/auth/register" onClick={() => setMobileOpen(false)}
                   className="py-2.5 px-4 rounded-lg text-sm font-semibold text-white text-center"
-                  style={{ background: 'var(--purple)' }}>
+                  style={{ background: 'var(--sky)' }}>
                   Get Started
                 </Link>
               </>

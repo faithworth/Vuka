@@ -22,7 +22,7 @@ export async function sendPurchaseConfirmation({
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;">VUKA</h1>
+      <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;">VUKA</h1>
     </div>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;">
       ${artworkUrl ? `<img src="${artworkUrl}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;margin:0 auto 24px;" />` : ""}
@@ -34,9 +34,9 @@ export async function sendPurchaseConfirmation({
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="font-weight:600;color:#10b981;">${currency} ${amount.toFixed(2)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Reference</span><span style="font-weight:600;font-family:monospace;font-size:12px;">${licenseId.substring(0, 16).toUpperCase()}</span></div>
       </div>
-      <a href="${downloadUrl}" style="display:block;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px 32px;border-radius:12px;font-weight:700;font-size:16px;margin-bottom:16px;">⬇️ Download Now</a>
+      <a href="${downloadUrl}" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px 32px;border-radius:12px;font-weight:700;font-size:16px;margin-bottom:16px;">⬇️ Download Now</a>
       <p style="color:#8b7daa;font-size:13px;text-align:center;">Download link valid for 30 days · 5 downloads max</p>
-      <p style="color:#8b7daa;font-size:13px;text-align:center;margin-top:8px;">Need to re-download later? Visit <a href="${process.env.NEXT_PUBLIC_APP_URL}/redownload" style="color:#a78bfa;">vuka.app/redownload</a></p>
+      <p style="color:#8b7daa;font-size:13px;text-align:center;margin-top:8px;">Need to re-download later? Visit <a href="${process.env.NEXT_PUBLIC_APP_URL}/redownload" style="color:#38b6e8;">vuka.app/redownload</a></p>
     </div>
     <p style="color:#8b7daa;font-size:12px;text-align:center;margin-top:24px;">Vuka — Rise. No middleman. No cuts. Just music.</p>
   </div>
@@ -54,7 +54,7 @@ export async function sendArtistSaleNotification({
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
       <div style="font-size:48px;text-align:center;margin-bottom:16px;">💰</div>
       <h2 style="text-align:center;margin:0 0 8px;">Sharp, ${artistName}!</h2>
@@ -69,7 +69,7 @@ export async function sendArtistSaleNotification({
         </div>
       </div>
       <p style="color:#8b7daa;font-size:12px;text-align:center;margin:0 0 16px;">Funds will be transferred to your bank account within 24-48 hours</p>
-      <a href="${dashboardUrl}" style="display:block;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">View Your Payouts →</a>
+      <a href="${dashboardUrl}" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">View Your Payouts →</a>
     </div>
   </div>
 </body></html>`;
@@ -85,7 +85,7 @@ export async function sendSupportFanConfirmation({
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
       <div style="font-size:48px;text-align:center;margin-bottom:16px;">♥</div>
       <h2 style="text-align:center;">You made someone's day, ${fanName}</h2>
@@ -93,9 +93,9 @@ export async function sendSupportFanConfirmation({
       <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Artist</span><span>${artistName}</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier earned</span><span style="color:#a78bfa;font-weight:700;">${tier}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier earned</span><span style="color:#38b6e8;font-weight:700;">${tier}</span></div>
       </div>
-      ${message ? `<div style="background:#1e1828;border-left:3px solid #7c3aed;padding:16px;border-radius:0 12px 12px 0;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your message:</p><p style="font-style:italic;">"${message}"</p></div>` : ""}
+      ${message ? `<div style="background:#1e1828;border-left:3px solid #38b6e8;padding:16px;border-radius:0 12px 12px 0;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your message:</p><p style="font-style:italic;">"${message}"</p></div>` : ""}
     </div>
   </div>
 </body></html>`;
@@ -112,16 +112,16 @@ export async function sendSupportArtistNotification({
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
       <h2 style="text-align:center;">Your riders are showing up, ${artistName} ♥</h2>
       <div style="background:#1e1828;border-radius:12px;padding:20px;margin:24px 0;">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Fan</span><span>${fanName}</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#a78bfa;">${tier}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#38b6e8;">${tier}</span></div>
       </div>
-      ${message ? `<div style="background:#1e1828;border-left:3px solid #7c3aed;padding:16px;border-radius:0 12px 12px 0;margin-bottom:24px;"><p style="font-style:italic;">"${message}"</p></div>` : ""}
-      ${goalTitle ? `<div style="background:#1e1828;border-radius:12px;padding:16px;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Goal: ${goalTitle}</p><div style="background:#2d2050;border-radius:100px;height:8px;"><div style="background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:100px;height:8px;width:${goalPercent || 0}%;"></div></div><p style="color:#a78bfa;font-size:13px;margin:8px 0 0;">${goalPercent?.toFixed(0)}% funded</p></div>` : ""}
+      ${message ? `<div style="background:#1e1828;border-left:3px solid #38b6e8;padding:16px;border-radius:0 12px 12px 0;margin-bottom:24px;"><p style="font-style:italic;">"${message}"</p></div>` : ""}
+      ${goalTitle ? `<div style="background:#1e1828;border-radius:12px;padding:16px;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Goal: ${goalTitle}</p><div style="background:#2d2050;border-radius:100px;height:8px;"><div style="background:linear-gradient(90deg,#38b6e8,#38b6e8);border-radius:100px;height:8px;width:${goalPercent || 0}%;"></div></div><p style="color:#38b6e8;font-size:13px;margin:8px 0 0;">${goalPercent?.toFixed(0)}% funded</p></div>` : ""}
     </div>
   </div>
 </body></html>`;
@@ -134,22 +134,22 @@ export async function sendWelcomeArtist({ to, name, slug }: { to: string; name: 
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:48px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;margin:0 0 8px;">VUKA</h1>
+    <h1 style="font-size:48px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;margin:0 0 8px;">VUKA</h1>
     <p style="color:#8b7daa;text-align:center;font-size:16px;margin:0 0 32px;font-style:italic;">Rise.</p>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;">
       <h2 style="margin:0 0 8px;">You're live, ${name} 🚀</h2>
       <p style="color:#8b7daa;margin:0 0 24px;">Your Vuka store is ready for the world. Share your link and start earning.</p>
       <div style="background:#1e1828;border:1px solid #2d2050;border-radius:12px;padding:16px;margin-bottom:24px;text-align:center;">
         <p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your store link</p>
-        <a href="${profileUrl}" style="color:#a78bfa;font-weight:700;font-size:18px;text-decoration:none;">${profileUrl}</a>
+        <a href="${profileUrl}" style="color:#38b6e8;font-weight:700;font-size:18px;text-decoration:none;">${profileUrl}</a>
       </div>
       <div style="margin-bottom:24px;">
         <h3 style="font-size:16px;margin:0 0 12px;">Get started:</h3>
-        <div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:#7c3aed;font-weight:700;">1.</span><span>Upload your first beat or release</span></div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:#7c3aed;font-weight:700;">2.</span><span>Connect Stripe for payouts</span></div>
-        <div style="display:flex;gap:8px;"><span style="color:#7c3aed;font-weight:700;">3.</span><span>Share your link on Instagram, WhatsApp, everywhere</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:#38b6e8;font-weight:700;">1.</span><span>Upload your first beat or release</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:#38b6e8;font-weight:700;">2.</span><span>Connect Stripe for payouts</span></div>
+        <div style="display:flex;gap:8px;"><span style="color:#38b6e8;font-weight:700;">3.</span><span>Share your link on Instagram, WhatsApp, everywhere</span></div>
       </div>
-      <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display:block;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">Go to Your Hustle →</a>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">Go to Your Hustle →</a>
     </div>
     <p style="color:#8b7daa;font-size:12px;text-align:center;margin-top:24px;">No label. No 30% cut. No waiting. Just your music, your money.</p>
   </div>
@@ -168,13 +168,13 @@ export async function sendRedownloadLinks({
     <div style="background:#1e1828;border-radius:12px;padding:16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div><p style="margin:0;font-weight:600;">${p.itemName}</p><p style="margin:4px 0 0;color:#8b7daa;font-size:12px;">${p.date}</p></div>
-        <a href="${p.downloadUrl}" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;">Download</a>
+        <a href="${p.downloadUrl}" style="background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;">Download</a>
       </div>
     </div>`).join("");
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#7c3aed,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
     <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
       <h2>Your downloads</h2>
       <p style="color:#8b7daa;margin:8px 0 24px;">Here are fresh download links for all your purchases.</p>

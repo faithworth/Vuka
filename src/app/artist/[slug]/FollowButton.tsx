@@ -56,9 +56,9 @@ export default function FollowButton({ artistId, artistName }: { artistId: strin
     <button onClick={toggle} disabled={toggling}
       className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 justify-center transition-all"
       style={{
-        background: following ? 'rgba(124,58,237,0.15)' : 'var(--surface)',
-        border: `1px solid ${following ? 'var(--purple)' : 'var(--border)'}`,
-        color: following ? 'var(--purple-light)' : 'var(--text)',
+        background: following ? 'rgba(56,182,232,0.15)' : 'var(--surface)',
+        border: `1px solid ${following ? 'var(--sky)' : 'var(--border)'}`,
+        color: following ? 'var(--sky)' : 'var(--text)',
       }}>
       {toggling
         ? <Loader2 size={16} className="animate-spin" />

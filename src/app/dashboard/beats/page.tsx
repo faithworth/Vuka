@@ -20,7 +20,7 @@ export default function DashboardBeatsPage() {
     <div className="p-6 md:p-10">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>Your Beats</h1>
-        <Link href="/dashboard/uploads" className="px-4 py-2 rounded-xl font-bold text-white text-sm" style={{ background: 'var(--purple)' }}>
+        <Link href="/dashboard/uploads" className="px-4 py-2 rounded-xl font-bold text-white text-sm" style={{ background: 'var(--sky)' }}>
           + Upload Beat
         </Link>
       </div>
@@ -30,7 +30,7 @@ export default function DashboardBeatsPage() {
         <div className="text-center py-24">
           <p className="text-4xl mb-4">🎵</p>
           <p className="mb-4" style={{ color: 'var(--text-muted)' }}>Nothing here yet, go create</p>
-          <Link href="/dashboard/uploads" className="px-6 py-3 rounded-xl font-bold text-white" style={{ background: 'var(--purple)' }}>Upload Your First Beat</Link>
+          <Link href="/dashboard/uploads" className="px-6 py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Upload Your First Beat</Link>
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -53,8 +53,8 @@ export default function DashboardBeatsPage() {
                   </td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.genre || '—'}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.bpm || '—'}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--purple-light)' }}>{formatCurrency(b.basicPrice)}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--purple-light)' }}>{formatCurrency(b.premiumPrice)}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{formatCurrency(b.basicPrice)}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{formatCurrency(b.premiumPrice)}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.plays}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--green)' }}>{b.sales}</td>
                   <td className="px-4 py-3">

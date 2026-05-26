@@ -22,7 +22,7 @@ export default function DashboardReleasesPage() {
         <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>My Releases</h1>
         <Link href="/dashboard/uploads"
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
-          style={{ background: 'var(--purple)' }}>
+          style={{ background: 'var(--sky)' }}>
           <Plus className="w-4 h-4" /> Upload Release
         </Link>
       </div>
@@ -31,11 +31,11 @@ export default function DashboardReleasesPage() {
 
       {!loading && releases.length === 0 && (
         <div className="text-center py-20 rounded-2xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <Music className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--purple-light)' }} />
+          <Music className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--sky)' }} />
           <p className="font-bold mb-2" style={{ color: 'var(--text)' }}>Nothing here yet, go create</p>
           <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Upload your first EP, album or single.</p>
           <Link href="/dashboard/uploads" className="px-4 py-2 rounded-lg font-bold text-white inline-block"
-            style={{ background: 'var(--purple)' }}>Upload Now</Link>
+            style={{ background: 'var(--sky)' }}>Upload Now</Link>
         </div>
       )}
 
@@ -50,7 +50,7 @@ export default function DashboardReleasesPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{release.title}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>
                   {release.releaseType}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${release.isActive ? 'text-green-400' : 'text-red-400'}`}
@@ -63,7 +63,7 @@ export default function DashboardReleasesPage() {
               </div>
             </div>
             <Link href={`/release/${release.slug}`} target="_blank"
-              className="p-2 rounded-lg" style={{ color: 'var(--purple-light)' }}>
+              className="p-2 rounded-lg" style={{ color: 'var(--sky)' }}>
               <ExternalLink className="w-4 h-4" />
             </Link>
           </div>

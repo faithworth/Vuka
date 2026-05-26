@@ -12,9 +12,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
+    const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
+
+    // Validate PayFast credentials in production
+    if (!isSandbox && (!process.env.PAYFAST_MERCHANT_ID || !process.env.PAYFAST_MERCHANT_KEY)) {
+      return NextResponse.json({ error: 'PayFast not configured' }, { status: 500 });
+    }
+
     let itemName = '';
     let amount = 0;
     let artist: any = null;
+    let cancelSlug = '';
 
     if (itemType === 'beat') {
       const beat = await prisma.beat.findUnique({
@@ -28,8 +36,10 @@ export async function POST(req: NextRequest) {
         exclusive: beat.exclPrice,
       };
       amount = prices[licenseType || 'basic'] || beat.basicPrice;
-      itemName = `${beat.title} - ${licenseType || 'Basic'} License`;
+      // Strip special chars for PayFast item_name
+      itemName = `${beat.title} - ${licenseType || 'Basic'} License`.replace(/[^a-zA-Z0-9 \-_]/g, '').substring(0, 100);
       artist = beat.artist;
+      cancelSlug = `/beat/${beat.slug}`;
     } else {
       const release = await prisma.release.findUnique({
         where: { id: itemId },
@@ -37,8 +47,9 @@ export async function POST(req: NextRequest) {
       });
       if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
       amount = customAmount || release.price;
-      itemName = release.title;
+      itemName = release.title.replace(/[^a-zA-Z0-9 \-_]/g, '').substring(0, 100);
       artist = release.artist;
+      cancelSlug = `/release/${release.slug}`;
     }
 
     // ── FREE ITEM: skip PayFast entirely ──
@@ -63,9 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const isSandbox = process.env.PAYFAST_SANDBOX === 'true';
 
-    // Use sandbox test credentials when in sandbox mode
     const merchantId = isSandbox
       ? (process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100')
       : (artist?.payfastMerchant || process.env.PAYFAST_MERCHANT_ID!);
@@ -92,18 +101,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const nameParts = buyerName.trim().split(' ');
+    const nameFirst = nameParts[0] || buyerName;
+    const nameLast = nameParts.slice(1).join(' ') || undefined;
+
     const formData = buildPayFastForm(
       {
         merchant_id: merchantId,
         merchant_key: merchantKey,
         return_url: `${appUrl}/checkout/success?purchaseId=${purchase.id}`,
-        cancel_url: `${appUrl}/${itemType}/${itemId}`,
+        cancel_url: `${appUrl}${cancelSlug}`,
         notify_url: `${appUrl}/api/checkout/payfast/notify`,
-        name_first: buyerName.split(' ')[0] || buyerName,
+        name_first: nameFirst,
+        name_last: nameLast,
         email_address: buyerEmail,
         m_payment_id: purchase.id,
         amount: amount.toFixed(2),
-        item_name: itemName.substring(0, 100),
+        item_name: itemName,
         custom_str1: itemId,
         custom_str2: itemType,
         custom_str3: licenseType || '',

@@ -37,7 +37,7 @@ export default function DashboardGoalsPage() {
         <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>Goals</h1>
         <button onClick={() => setShowForm(!showForm)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
-          style={{ background: 'var(--purple)' }}>
+          style={{ background: 'var(--sky)' }}>
           <Plus className="w-4 h-4" /> New Goal
         </button>
       </div>
@@ -60,7 +60,7 @@ export default function DashboardGoalsPage() {
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             <div className="flex gap-3">
               <button onClick={createGoal} className="px-4 py-2 rounded-lg font-bold text-white text-sm"
-                style={{ background: 'var(--purple)' }}>Create Goal</button>
+                style={{ background: 'var(--sky)' }}>Create Goal</button>
               <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm"
                 style={{ color: 'var(--text-muted)' }}>Cancel</button>
             </div>
@@ -72,7 +72,7 @@ export default function DashboardGoalsPage() {
 
       {!loading && goals.length === 0 && (
         <div className="text-center py-20 rounded-2xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <Target className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--purple-light)' }} />
+          <Target className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--sky)' }} />
           <p className="font-bold" style={{ color: 'var(--text)' }}>Nothing here yet, go create</p>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Set a funding goal for fans to support.</p>
         </div>
@@ -96,10 +96,10 @@ export default function DashboardGoalsPage() {
               </div>
               <div className="h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--surface2)' }}>
                 <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-light))' }} />
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--sky), var(--sky))' }} />
               </div>
               <div className="flex justify-between text-sm">
-                <span style={{ color: 'var(--purple-light)' }}>{formatCurrency(goal.currentAmount)} raised</span>
+                <span style={{ color: 'var(--sky)' }}>{formatCurrency(goal.currentAmount)} raised</span>
                 <span style={{ color: 'var(--text-muted)' }}>{pct.toFixed(0)}% of {formatCurrency(goal.targetAmount)}</span>
               </div>
             </div>

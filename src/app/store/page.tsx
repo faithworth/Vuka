@@ -141,7 +141,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                     {artist.city || artist.country}
                   </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--purple-light)' }}>
+                  <p className="text-xs mt-1" style={{ color: 'var(--sky)' }}>
                     {artist._count.beats} beats · {artist._count.releases} releases
                   </p>
                 </a>
@@ -154,7 +154,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         <div className="flex gap-2 mb-8">
           {(['all', 'beats', 'releases'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} className="px-5 py-2 rounded-lg font-medium capitalize transition-colors"
-              style={{ background: tab === t ? 'var(--purple)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--text-muted)' }}>
+              style={{ background: tab === t ? 'var(--sky)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--text-muted)' }}>
               {t}
             </button>
           ))}
@@ -215,10 +215,10 @@ function ReleaseCard({ release, wishlisted, onWishlist }: {
         </button>
       </div>
       <div className="p-4">
-        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>{release.releaseType}</div>
+        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{release.releaseType}</div>
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist.name}</p>
-        <p className="font-bold mt-2" style={{ color: 'var(--purple-light)' }}>
+        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
           {release.payWhatYouWant ? `From R${release.minPrice}` : `R${release.price}`}
         </p>
       </div>

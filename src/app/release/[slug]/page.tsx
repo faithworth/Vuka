@@ -61,11 +61,11 @@ export default function ReleasePage() {
 
           {/* Info */}
           <div className="flex-1">
-            <div className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: 'var(--purple-light)' }}>
+            <div className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: 'var(--sky)' }}>
               {release.releaseType}
             </div>
             <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>{release.title}</h1>
-            <Link href={`/artist/${release.artist.slug}`} className="text-lg hover:underline mb-4 block" style={{ color: 'var(--purple-light)' }}>
+            <Link href={`/artist/${release.artist.slug}`} className="text-lg hover:underline mb-4 block" style={{ color: 'var(--sky)' }}>
               {release.artist.name}
             </Link>
 
@@ -90,7 +90,7 @@ export default function ReleasePage() {
 
             <button onClick={() => setBuyOpen(true)}
               className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, var(--purple), #5b21b6)' }}>
+              style={{ background: 'var(--red)' }}>
               <ShoppingCart className="w-5 h-5" />
               {release.price === 0 ? 'Download Free' : 'Buy Now — Yebo ✓'}
             </button>
@@ -106,7 +106,7 @@ export default function ReleasePage() {
                 <div key={track.id} className="flex items-center gap-4 p-4 border-b last:border-0 hover:opacity-80 transition-opacity"
                   style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--surface2)', color: 'var(--purple-light)' }}>
+                    style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>
                     {playingTrack === track.id ? '▐▐' : <span className="text-xs font-bold">{track.trackNumber}</span>}
                   </div>
                   <div className="flex-1">
@@ -119,7 +119,7 @@ export default function ReleasePage() {
                   </div>
                   {track.previewUrl && (
                     <button onClick={() => handleTrackPlay(track.id, release.id)}
-                      className="p-2 rounded-full" style={{ background: 'var(--purple)', color: 'white' }}>
+                      className="p-2 rounded-full" style={{ background: 'var(--sky)', color: 'white' }}>
                       <Play className="w-3 h-3" />
                     </button>
                   )}

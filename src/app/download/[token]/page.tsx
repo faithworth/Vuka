@@ -34,7 +34,7 @@ export default function DownloadPage() {
           <div className="text-center p-8 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <p className="text-4xl mb-4">😬</p>
             <p className="font-bold mb-2" style={{ color: 'var(--text)' }}>Eish — {error}</p>
-            <a href="/redownload" className="inline-block mt-4 px-6 py-3 rounded-xl font-bold" style={{ background: 'var(--purple)', color: 'white' }}>
+            <a href="/redownload" className="inline-block mt-4 px-6 py-3 rounded-xl font-bold" style={{ background: 'var(--sky)', color: 'white' }}>
               Re-download Portal →
             </a>
           </div>
@@ -51,7 +51,7 @@ export default function DownloadPage() {
               <a
                 href={`/api/download/${token}/zip`}
                 className="flex items-center justify-center gap-3 w-full py-4 rounded-xl font-bold text-white text-lg mb-6 transition-all hover:scale-[1.02]"
-                style={{ background: 'linear-gradient(135deg, var(--purple), #5b21b6)' }}
+                style={{ background: 'var(--red)' }}
               >
                 📦 Download All as ZIP ({data.downloads.length} files)
               </a>
@@ -68,7 +68,7 @@ export default function DownloadPage() {
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 >
                   <span className="font-medium text-sm">{d.name}</span>
-                  <span className="px-3 py-1.5 rounded-lg font-bold text-xs flex-shrink-0 ml-3" style={{ background: 'var(--surface2)', color: 'var(--purple-light)', border: '1px solid var(--border)' }}>
+                  <span className="px-3 py-1.5 rounded-lg font-bold text-xs flex-shrink-0 ml-3" style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
                     {isMultiple ? 'Individual' : 'Download'}
                   </span>
                 </a>
@@ -76,7 +76,7 @@ export default function DownloadPage() {
             </div>
 
             {data.licenseUrl && (
-              <a href={data.licenseUrl} download className="block mt-4 p-4 rounded-xl text-center" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--purple-light)' }}>
+              <a href={data.licenseUrl} download className="block mt-4 p-4 rounded-xl text-center" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--sky)' }}>
                 📄 Download License PDF
               </a>
             )}

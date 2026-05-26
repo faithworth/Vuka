@@ -189,7 +189,7 @@ export default function SettingsPage() {
                 Find your Merchant ID in your{' '}
                 <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer"
                   className="underline inline-flex items-center gap-0.5"
-                  style={{ color: 'var(--purple-light)' }}>
+                  style={{ color: 'var(--sky)' }}>
                   my.payfast.io <ExternalLink size={10} />
                 </a>
                 . Required for SA buyers to pay you directly via PayShap or EFT.
@@ -231,7 +231,7 @@ export default function SettingsPage() {
           <h2 className="font-bold text-lg" style={{ color: 'var(--text)' }}>Artist Profile</h2>
           <a href={`/artist/${artist.slug}`} target="_blank" rel="noopener noreferrer"
             className="text-xs flex items-center gap-1 underline"
-            style={{ color: 'var(--purple-light)' }}>
+            style={{ color: 'var(--sky)' }}>
             View public page <ExternalLink size={11} />
           </a>
         </div>
@@ -327,7 +327,7 @@ export default function SettingsPage() {
         <div className="pt-2">
           <button type="submit" disabled={saving}
             className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-60 transition-all"
-            style={{ background: saved ? 'var(--green)' : 'var(--purple)' }}>
+            style={{ background: saved ? 'var(--green)' : 'var(--sky)' }}>
             {saving
               ? <><Loader2 size={16} className="animate-spin inline mr-2" />Saving…</>
               : saved
@@ -340,7 +340,7 @@ export default function SettingsPage() {
       {/* QR Code */}
       <div className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-1">
-          <QrCode size={18} style={{ color: 'var(--purple-light)' }} />
+          <QrCode size={18} style={{ color: 'var(--sky)' }} />
           <h2 className="font-bold text-base" style={{ color: 'var(--text)' }}>Your QR Code</h2>
         </div>
         <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
@@ -365,7 +365,7 @@ export default function SettingsPage() {
               href="/api/dashboard/qr"
               download={`vuka-qr-${artist.slug}.png`}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white"
-              style={{ background: 'var(--purple)' }}>
+              style={{ background: 'var(--sky)' }}>
               <Download size={14} />
               Download QR Code
             </a>

@@ -97,7 +97,7 @@ export function NowPlayingBar() {
         <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{currentTrack.artist}</p>
       </div>
       <div className="flex items-center gap-3 flex-1 justify-center">
-        <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ background: 'var(--purple)' }}>
+        <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ background: 'var(--sky)' }}>
           {isPlaying ? '⏸' : '▶'}
         </button>
         <div className="hidden md:flex items-center gap-2 flex-1 max-w-xs">
@@ -110,7 +110,7 @@ export function NowPlayingBar() {
               if (audioRef.current) audioRef.current.currentTime = pct * audioRef.current.duration;
             }}
           >
-            <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: 'var(--purple-light)' }} />
+            <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: 'var(--sky)' }} />
           </div>
         </div>
       </div>

@@ -34,7 +34,7 @@ export default function DashboardSupportPage() {
         </div>
         <div className="p-4 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Supporters</div>
-          <div className="text-2xl font-black" style={{ color: 'var(--purple-light)' }}>{totals.count}</div>
+          <div className="text-2xl font-black" style={{ color: 'var(--sky)' }}>{totals.count}</div>
         </div>
       </div>
 
@@ -42,7 +42,7 @@ export default function DashboardSupportPage() {
 
       {!loading && txns.length === 0 && (
         <div className="text-center py-20 rounded-2xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <Heart className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--purple-light)' }} />
+          <Heart className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--sky)' }} />
           <p className="font-bold" style={{ color: 'var(--text)' }}>Nothing here yet, go create</p>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Share your profile link and your fans will find you.</p>
         </div>
@@ -68,7 +68,7 @@ export default function DashboardSupportPage() {
               </div>
             </div>
             {txn.message && (
-              <div className="border-l-2 pl-3 mt-2" style={{ borderColor: 'var(--purple)', color: 'var(--text-muted)' }}>
+              <div className="border-l-2 pl-3 mt-2" style={{ borderColor: 'var(--sky)', color: 'var(--text-muted)' }}>
                 <p className="text-sm italic">"{txn.message}"</p>
               </div>
             )}
