@@ -89,7 +89,7 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
         )}
         <button
           onClick={togglePlay}
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
           style={{ background: 'rgba(15,31,46,0.55)', backdropFilter: 'blur(4px)' }}
         >
           <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(56,182,232,0.9)' }}>
@@ -99,7 +99,7 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
         {onWishlist && (
           <button
             onClick={onWishlist}
-            className="absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+            className="absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             style={{ background: wishlisted ? 'var(--gold)' : 'rgba(15,31,46,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
             title={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
           >

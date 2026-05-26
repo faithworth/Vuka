@@ -119,11 +119,11 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
   const item = beat || release!;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(15,31,46,0.75)', backdropFilter: 'blur(6px)' }} onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 24px 80px rgba(56,182,232,0.15)' }}
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 max-h-[92svh] overflow-y-auto"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 24px 80px rgba(56,182,232,0.15)', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

@@ -83,14 +83,10 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>Browse & Support</h1>
+            <h1 className="text-2xl md:text-3xl font-black mb-1" style={{ color: 'var(--text)' }}>Browse & Support</h1>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Every purchase supports independent artists directly 💚</p>
-          </div>
-          <div className="hidden lg:block text-right text-sm p-4 rounded-lg" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
-            <p style={{ color: 'var(--green)' }} className="font-bold">100% Artist-Friendly</p>
-            <p style={{ color: 'var(--text-muted)' }} className="text-xs mt-1">Just 1% platform fee</p>
           </div>
         </div>
 
@@ -101,25 +97,27 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         )}
 
         {/* Search + filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="flex flex-col gap-3 mb-8">
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Search beats, releases, artists…"
-            className="flex-1 px-4 py-3 rounded-xl"
+            className="w-full px-4 py-3 rounded-xl"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
           />
-          <select value={genre} onChange={e => setGenre(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            <option value="">All Genres</option>
-            {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-          <select value={mood} onChange={e => setMood(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            <option value="">All Moods</option>
-            {MOODS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <select value={sort} onChange={e => setSort(e.target.value)} className="px-4 py-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none' }}>
+            <select value={genre} onChange={e => setGenre(e.target.value)} className="px-3 py-2.5 rounded-xl flex-shrink-0 text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+              <option value="">All Genres</option>
+              {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <select value={mood} onChange={e => setMood(e.target.value)} className="px-3 py-2.5 rounded-xl flex-shrink-0 text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+              <option value="">All Moods</option>
+              {MOODS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2.5 rounded-xl flex-shrink-0 text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+              {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Artist search results — shown when searching */}

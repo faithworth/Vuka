@@ -30,18 +30,18 @@ export default function LandingPage() {
         />
 
         {/* ── HERO ── */}
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+        <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden pt-16 pb-8">
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(56,182,232,0.10) 0%, transparent 70%)' }} />
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 40% 30% at 80% 70%, rgba(201,162,39,0.07) 0%, transparent 60%)' }} />
 
-          <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-8"
+          <div className="relative z-10 text-center px-4 max-w-5xl mx-auto w-full">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
               style={{ background: 'rgba(56,182,232,0.1)', border: '1px solid rgba(56,182,232,0.25)', color: 'var(--sky)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--sky)' }} />
               Africa's independent music platform
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight" style={{ color: 'var(--text)', lineHeight: 1.05 }}>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 tracking-tight" style={{ color: 'var(--text)', lineHeight: 1.05 }}>
               Your music.<br />
               <span style={{
                 background: 'linear-gradient(135deg, #38b6e8, #1a9dd4, #c9a227)',
@@ -52,7 +52,7 @@ export default function LandingPage() {
               Your money.
             </h1>
 
-            <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Sell beats and releases directly to your fans — in South Africa and worldwide.
               Keep 98% of every sale.
             </p>
@@ -62,22 +62,22 @@ export default function LandingPage() {
             </p>
 
             {/* Fee transparency notice */}
-            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs mb-10"
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-8"
               style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--text-muted)' }}>
               <span style={{ color: 'var(--gold)' }}>✦</span>
               Vuka charges a transparent 2% platform fee on every sale — you keep the other 98%.
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Link href="/auth/register" className="btn btn-primary text-base px-8 py-4">
-                Start Selling — It's Free <ArrowRight size={18} />
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-2">
+              <Link href="/auth/register" className="btn btn-primary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
+                Start Selling — It's Free <ArrowRight size={16} />
               </Link>
-              <Link href="/store" className="btn btn-secondary text-base px-8 py-4">
-                Browse the Store <Music size={18} />
+              <Link href="/store" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
+                Browse the Store <Music size={16} />
               </Link>
             </div>
 
-            <div className="flex items-center justify-center gap-12 flex-wrap">
+            <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
               {[
                 { n: '98%', l: 'Artist Revenue' },
                 { n: '2%', l: 'Platform Fee', sub: 'keeps the platform alive' },
@@ -296,28 +296,20 @@ export default function LandingPage() {
         </section>
 
         {/* ── FOOTER ── */}
-        <footer className="py-12 px-4" style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <footer className="py-10 px-4" style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+          <div className="max-w-6xl mx-auto flex flex-col items-center gap-6 md:flex-row md:justify-between">
             <div className="flex items-center gap-3">
               <span className="text-xl font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>African music. Your money. Your terms.</span>
             </div>
-            <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-              <Link href="/store" className="transition-colors" style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>Store</Link>
-              <Link href="/industry" className="transition-colors" style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>Industry</Link>
-              <Link href="/auth/login" className="transition-colors" style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>Log In</Link>
-              <Link href="/auth/register" className="transition-colors" style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--sky)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>Sign Up</Link>
+            <div className="flex items-center gap-6 text-sm flex-wrap justify-center" style={{ color: 'var(--text-muted)' }}>
+              <Link href="/store" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Store</Link>
+              <Link href="/industry" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Industry</Link>
+              <Link href="/auth/login" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Log In</Link>
+              <Link href="/auth/register" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Sign Up</Link>
             </div>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              © 2025 Vuka · 2% platform fee on all sales · Artists keep 98%
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+              © 2025 Vuka · 2% platform fee · Artists keep 98%
             </p>
           </div>
         </footer>

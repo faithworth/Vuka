@@ -86,41 +86,45 @@ export function NowPlayingBar() {
   if (!currentTrack) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-4 px-4 py-3" style={{ background: 'rgba(13,11,20,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border)', height: 72 }}>
-      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-        {currentTrack.artworkUrl
-          ? <img src={currentTrack.artworkUrl} className="w-full h-full object-cover" alt="" />
-          : <div className="w-full h-full flex items-center justify-center text-lg" style={{ background: 'var(--surface2)' }}>🎵</div>}
+    <div className="fixed bottom-0 left-0 right-0 z-50" style={{ background: 'rgba(13,11,20,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* Slim progress bar at top of player */}
+      <div className="h-0.5 w-full" style={{ background: 'var(--surface2)' }}>
+        <div className="h-full transition-all" style={{ width: `${progress}%`, background: 'var(--sky)' }} />
       </div>
-      <div className="min-w-0 flex-1 md:w-48 md:flex-none">
-        <p className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{currentTrack.title}</p>
-        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{currentTrack.artist}</p>
-      </div>
-      <div className="flex items-center gap-3 flex-1 justify-center">
-        <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ background: 'var(--sky)' }}>
-          {isPlaying ? '⏸' : '▶'}
-        </button>
-        <div className="hidden md:flex items-center gap-2 flex-1 max-w-xs">
-          <div
-            className="flex-1 h-1 rounded-full cursor-pointer"
-            style={{ background: 'var(--surface2)' }}
-            onClick={e => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const pct = (e.clientX - rect.left) / rect.width;
-              if (audioRef.current) audioRef.current.currentTime = pct * audioRef.current.duration;
-            }}
-          >
-            <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: 'var(--sky)' }} />
-          </div>
+      <div className="flex items-center gap-3 px-4 py-2.5" style={{ minHeight: 60 }}>
+        <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0">
+          {currentTrack.artworkUrl
+            ? <img src={currentTrack.artworkUrl} className="w-full h-full object-cover" alt="" />
+            : <div className="w-full h-full flex items-center justify-center text-lg" style={{ background: 'var(--surface2)' }}>🎵</div>}
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <input
-          type="range" min="0" max="1" step="0.1" value={volume}
-          onChange={e => { setVolume(+e.target.value); if (audioRef.current) audioRef.current.volume = +e.target.value; }}
-          className="hidden md:block w-20"
-        />
-        <button onClick={pause} className="text-xl" style={{ color: 'var(--text-muted)' }}>✕</button>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{currentTrack.title}</p>
+          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{currentTrack.artist}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={toggle} className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'var(--sky)' }}>
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+          <div className="hidden md:flex items-center gap-2 w-36">
+            <div
+              className="flex-1 h-1 rounded-full cursor-pointer"
+              style={{ background: 'var(--surface2)' }}
+              onClick={e => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                if (audioRef.current) audioRef.current.currentTime = pct * audioRef.current.duration;
+              }}
+            >
+              <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: 'var(--sky)' }} />
+            </div>
+          </div>
+          <input
+            type="range" min="0" max="1" step="0.1" value={volume}
+            onChange={e => { setVolume(+e.target.value); if (audioRef.current) audioRef.current.volume = +e.target.value; }}
+            className="hidden md:block w-16"
+          />
+          <button onClick={pause} className="text-lg flex-shrink-0" style={{ color: 'var(--text-muted)' }}>✕</button>
+        </div>
       </div>
     </div>
   );

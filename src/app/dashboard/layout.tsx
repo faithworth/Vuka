@@ -135,7 +135,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pb-20 md:pb-0">
+      <main className="flex-1 min-w-0 pb-24 md:pb-0">
 
         {/* PayFast setup banner — shown on all pages except settings */}
         {!payfastMerchant && pathname !== '/dashboard/settings' && (
@@ -155,16 +155,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 flex z-50 px-1 pb-safe"
-        style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 flex z-50 px-1"
+        style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {ARTIST_NAV.slice(0, 5).map(n => {
           const active = isActive(n.href, n.exact);
           return (
             <Link key={n.href} href={n.href}
-              className="flex-1 flex flex-col items-center py-3 gap-1 transition-colors"
+              className="flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors min-h-[56px] justify-center"
               style={{ color: active ? 'var(--sky)' : 'var(--text-muted)' }}>
-              <n.icon size={20} />
-              <span className="text-xs">{n.label.split(' ')[0]}</span>
+              <n.icon size={22} />
+              <span className="text-[10px] font-medium">{n.label.split(' ')[0]}</span>
             </Link>
           );
         })}
