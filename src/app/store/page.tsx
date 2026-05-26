@@ -219,7 +219,7 @@ function ReleaseCard({ release, wishlisted, onWishlist }: {
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist.name}</p>
         <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
-          {release.payWhatYouWant ? `From R${release.minPrice}` : `R${release.price}`}
+          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
         </p>
       </div>
     </a>

@@ -241,7 +241,7 @@ export default function UploadPage() {
           title: relMeta.title,
           releaseType: relMeta.releaseType,
           price: parseFloat(relMeta.price) || 0,
-          payWhatYouWant: relMeta.payWhatWant,
+          payWhatWant: relMeta.payWhatWant,
           description: relMeta.description,
           credits: relMeta.credits,
           tracks: filled.map((t, i) => ({ title: t.title, trackNumber: i + 1 })),
