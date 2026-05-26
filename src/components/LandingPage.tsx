@@ -1,3 +1,4 @@
+'use client';
 import Link from 'next/link';
 import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
 import Navbar from '@/components/Navbar';
