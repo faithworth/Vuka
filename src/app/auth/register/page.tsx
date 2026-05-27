@@ -1,8 +1,15 @@
+// ============================================================
+// PATCH 12 — src/app/auth/register/page.tsx
+// REPLACE entire file.
+// Adds full industry role support: registers as 'industry',
+// creates IndustryUser record, redirects to /industry-dashboard.
+// ============================================================
+
 'use client';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Music, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Music, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
 
@@ -15,19 +22,27 @@ const GoogleIcon = () => (
   </svg>
 );
 
+type Role = 'fan' | 'artist' | 'industry';
+
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultRole = (searchParams.get('role') as 'fan' | 'artist') || 'artist';
+  const rawRole = searchParams.get('role') || 'artist';
+  const validRoles: Role[] = ['fan', 'artist', 'industry'];
+  const defaultRole: Role = validRoles.includes(rawRole as Role) ? (rawRole as Role) : 'artist';
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [role, setRole] = useState<'fan' | 'artist'>(defaultRole);
-  const [loading, setLoading] = useState(false);
+  const [name, setName]           = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [company, setCompany]     = useState('');
+  const [position, setPosition]   = useState('');
+  const [showPw, setShowPw]       = useState(false);
+  const [role, setRole]           = useState<Role>(defaultRole);
+  const [loading, setLoading]     = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]         = useState('');
+
+  const isIndustry = role === 'industry';
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,136 +67,162 @@ function RegisterForm() {
       return;
     }
 
-    // Create user + artist record in our DB
+    // Create user record + role-specific records in our DB
     await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, role, slug: slugify(name) }),
+      body: JSON.stringify({
+        name,
+        email,
+        role,
+        slug: slugify(name),
+        // industry extras
+        ...(isIndustry && { company, position }),
+      }),
     });
 
-    router.push('/auth/verify?email=' + encodeURIComponent(email));
+    // Redirect based on role
+    if (role === 'artist') {
+      router.push('/dashboard');
+    } else if (role === 'industry') {
+      router.push('/industry-dashboard');
+    } else {
+      router.push('/fan');
+    }
   };
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
     const supabase = createClient();
-    // Pass role in state so the verify callback can create the DB record
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/verify?role=${role}`,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
+        redirectTo: `${window.location.origin}/api/auth/callback?role=${role}`,
       },
     });
   };
 
+  const roleOptions: { value: Role; label: string; description: string; icon: React.ReactNode }[] = [
+    { value: 'artist', label: 'Artist / Producer', description: 'Sell beats, releases, videos & more', icon: <Music size={16} /> },
+    { value: 'fan',    label: 'Fan / Listener',    description: 'Discover & support African artists', icon: '🎧' },
+    { value: 'industry', label: 'Industry',        description: 'Labels, managers & A&R professionals', icon: <Briefcase size={16} /> },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
-              <Music size={17} className="text-white" />
+              <Music size={16} className="text-white" />
             </div>
-            <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka</span>
+            <span className="font-black text-xl" style={{ color: 'var(--text)' }}>Vuka</span>
           </Link>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Create your account</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Join artists and fans from across Africa and beyond</p>
-
-          <div style={{
-            background: 'rgba(201,162,39,0.08)',
-            border: '1px solid var(--gold)',
-            borderRadius: 12,
-            padding: '12px 16px',
-            marginTop: 12,
-            marginBottom: 4,
-          }}>
-            <p style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginBottom: 4 }}>
-              Transparent pricing
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Vuka charges a 2% platform fee on all sales. This covers hosting, servers, payment processing overhead, and keeps the platform running. You keep 98% of everything you earn — paid directly to your bank.
-            </p>
-          </div>
+          <h1 className="text-2xl font-black mb-1" style={{ color: 'var(--text)' }}>Create your account</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Africa's music marketplace</p>
         </div>
 
-        <div className="card p-8">
+        <form onSubmit={handleRegister} className="space-y-4">
 
-          {/* Role toggle */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl mb-6" style={{ background: 'var(--surface2)' }}>
-            {(['artist', 'fan'] as const).map(r => (
-              <button key={r} onClick={() => setRole(r)}
-                className="py-2.5 rounded-lg text-sm font-semibold transition-all"
+          {/* Role selector */}
+          <div className="grid grid-cols-3 gap-2">
+            {roleOptions.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setRole(opt.value)}
+                className="p-3 rounded-xl text-left transition-all"
                 style={{
-                  background: role === r ? 'var(--bg)' : 'transparent',
-                  color: role === r ? 'var(--text)' : 'var(--text-muted)',
-                  border: role === r ? '1px solid var(--border)' : '1px solid transparent',
+                  background: role === opt.value ? 'var(--sky)' : 'var(--surface)',
+                  border: `1px solid ${role === opt.value ? 'var(--sky)' : 'var(--border)'}`,
+                  color: role === opt.value ? 'white' : 'var(--text)',
                 }}>
-                {r === 'artist' ? '🎤 Artist / Producer' : '🎧 Fan / Listener'}
+                <div className="text-lg mb-1">{opt.icon}</div>
+                <p className="text-xs font-bold leading-tight">{opt.label}</p>
               </button>
             ))}
           </div>
 
-          {/* Google */}
-          <button onClick={handleGoogle} disabled={googleLoading}
-            className="btn btn-secondary w-full mb-5 gap-2 disabled:opacity-60">
+          {/* Industry notice */}
+          {isIndustry && (
+            <div className="p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--gold)' }}>
+              <p className="font-semibold mb-0.5">Industry Portal</p>
+              <p className="text-xs opacity-80">Access referral tracking, deal flow, and artist discovery tools after signing up.</p>
+            </div>
+          )}
+
+          <input
+            className="input"
+            type="text"
+            placeholder={isIndustry ? "Your full name" : "Your name"}
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+          />
+
+          {isIndustry && (
+            <div className="grid grid-cols-2 gap-3">
+              <input className="input" type="text" placeholder="Company / Label" value={company} onChange={e => setCompany(e.target.value)} />
+              <input className="input" type="text" placeholder="Role / Position" value={position} onChange={e => setPosition(e.target.value)} />
+            </div>
+          )}
+
+          <input className="input" type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
+
+          <div className="relative">
+            <input
+              className="input pr-12"
+              type={showPw ? 'text' : 'password'}
+              placeholder="Password (min 8 characters)"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+            <button type="button" onClick={() => setShowPw(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--text-muted)' }}>
+              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+
+          {error && (
+            <p className="text-sm px-3 py-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.1)', color: 'var(--red)' }}>
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={loading}
+            className="btn btn-primary w-full disabled:opacity-60">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+            {loading ? 'Creating account…' : 'Create Account'}
+          </button>
+
+          <div className="flex items-center gap-3 my-1">
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          </div>
+
+          <button type="button" onClick={handleGoogle} disabled={googleLoading}
+            className="btn btn-secondary w-full disabled:opacity-60">
             {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or with email</span>
-            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-          </div>
-
-          <form onSubmit={handleRegister} className="space-y-3">
-            <input type="text" className="input" placeholder={role === 'artist' ? 'Artist / producer name' : 'Your name'}
-              value={name} onChange={e => setName(e.target.value)} required />
-            <input type="email" className="input" placeholder="Email address"
-              value={email} onChange={e => setEmail(e.target.value)} required />
-
-            <div className="relative">
-              <input type={showPw ? 'text' : 'password'} className="input pr-10"
-                placeholder="Password (min 8 characters)"
-                value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
-              <button type="button" onClick={() => setShowPw(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                style={{ color: 'var(--text-muted)' }}>
-                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {role === 'artist' && name && (
-              <div className="px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Your store: </span>
-                <span style={{ color: 'var(--sky)' }}>vuka.app/artist/{slugify(name) || 'your-name'}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="px-3 py-2.5 rounded-lg text-sm" style={{ background: 'rgba(232,64,64,0.1)', border: '1px solid rgba(232,64,64,0.3)', color: '#f87171' }}>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading}
-              className="btn btn-primary w-full py-3 disabled:opacity-60 mt-1">
-              {loading ? <><Loader2 size={16} className="animate-spin" />Creating account…</> : 'Create Account'}
-            </button>
-          </form>
-
-          <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
             Already have an account?{' '}
-            <Link href="/auth/login" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">Log in</Link>
+            <Link href="/auth/login" className="font-semibold" style={{ color: 'var(--sky)' }}>Sign in</Link>
           </p>
-        </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
-          By signing up you agree to our terms of service and privacy policy.
-        </p>
+          <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+            By signing up you agree to our{' '}
+            <Link href="/legal/terms" className="underline">Terms</Link> and{' '}
+            <Link href="/legal/privacy" className="underline">Privacy Policy</Link>.
+          </p>
+        </form>
       </div>
     </div>
   );

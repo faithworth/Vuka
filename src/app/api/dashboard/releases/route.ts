@@ -1,3 +1,9 @@
+// ============================================================
+// PATCH 08 — src/app/api/dashboard/releases/route.ts
+// REPLACE entire file.
+// Adds DELETE method with guard (cannot delete if confirmed sales exist).
+// ============================================================
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
@@ -39,6 +45,37 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ release: updated });
   } catch (err) {
     console.error('[releases] PATCH error:', err);
+    return NextResponse.json({ error: 'Database error' }, { status: 503 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await requireArtist();
+    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const releaseId = searchParams.get('releaseId');
+    if (!releaseId) return NextResponse.json({ error: 'releaseId required' }, { status: 400 });
+
+    const release = await prisma.release.findFirst({
+      where: { id: releaseId, artistId: user.artist.id },
+      include: { purchases: { where: { status: 'confirmed' } } },
+    });
+    if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
+
+    if (release.purchases.length > 0) {
+      return NextResponse.json({
+        error: `This release has ${release.purchases.length} confirmed sale(s). You can hide it but cannot delete it while buyers still have access.`,
+      }, { status: 409 });
+    }
+
+    // Delete tracks first (FK constraint), then release
+    await prisma.track.deleteMany({ where: { releaseId } });
+    await prisma.release.delete({ where: { id: releaseId } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[releases] DELETE error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
   }
 }

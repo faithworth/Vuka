@@ -12,5 +12,7 @@ export async function GET() {
     role: user.role,
     isArtist: !!user.artist,
     artistSlug: user.artist?.slug ?? null,
+    isIndustry: user.role === 'industry',
+    industryUser: user.industryUser ?? null,
   });
 }

@@ -127,9 +127,9 @@ const HOW_IT_WORKS = [
 ];
 
 const STATS = [
-  { n: '2,400+', l: 'Active Artists' },
-  { n: 'R12M+', l: 'Sales Processed' },
-  { n: '18', l: 'African Countries' },
+  { n: '98%', l: 'Artist Payout Rate' },
+  { n: '2%', l: 'Platform Fee' },
+  { n: 'ZA', l: 'Live Market' },
   { n: '98%', l: 'Artist Payout Rate' },
 ];
 
@@ -307,7 +307,7 @@ export default function IndustryPage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/auth/register?role=label" className="btn inline-flex gap-2 text-sm font-semibold px-6 py-3" style={{ background: 'var(--sky)', color: 'white', borderRadius: 12 }}>
+                <Link href="/auth/register?role=industry" className="btn inline-flex gap-2 text-sm font-semibold px-6 py-3" style={{ background: 'var(--sky)', color: 'white', borderRadius: 12 }}>
                   Enterprise Enquiry <ArrowRight size={16} />
                 </Link>
               </div>

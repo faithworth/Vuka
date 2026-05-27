@@ -29,5 +29,5 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json({ follows: follows.map(f => f.artist) });
+  return NextResponse.json({ follows: follows.map((f: any) => f.artist) });
 }

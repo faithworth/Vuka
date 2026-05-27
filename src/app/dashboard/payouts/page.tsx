@@ -78,7 +78,7 @@ export default function PayoutsPage() {
         </button>
       </div>
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-        You keep 99% of every sale. Connect your payment accounts to receive funds directly.
+        Connect your payment accounts below to receive your earnings directly.
       </p>
 
       {/* Summary cards */}
@@ -275,9 +275,9 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Buyer pays → Vuka takes 1% platform fee',
-                'Stripe sales: 99% goes directly to your Stripe account → auto-transferred to your bank',
-                'PayFast sales: 99% goes to your PayFast account → auto-transferred to your SA bank',
+                'Each sale is processed and paid out directly to your connected payment account.',
+                'Stripe: funds auto-transfer to your linked bank account within 2–7 days.',
+                'PayFast: payments reflected in your PayFast account within 48 hours.',
                 'You see every transaction in the History tab below',
               ].map((item, i) => (
                 <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-muted)' }}>

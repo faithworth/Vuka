@@ -1,6 +1,4 @@
 // src/app/api/auth/callback/route.ts
-// Handles Supabase OAuth callback — creates User + Artist DB record if needed.
-// Called by Supabase after Google OAuth redirect via NEXT_PUBLIC_SITE_URL/auth/callback
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -11,8 +9,14 @@ import { sendWelcomeArtist } from '@/lib/emails';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const role = searchParams.get('role') || 'fan'; // passed via OAuth state
-  const next = searchParams.get('next') || (role === 'fan' ? '/fan' : '/dashboard');
+  const role = searchParams.get('role') || 'fan';
+
+  const redirectMap: Record<string, string> = {
+    artist: '/dashboard',
+    industry: '/industry-dashboard',
+    fan: '/fan',
+  };
+  const next = searchParams.get('next') || redirectMap[role] || '/fan';
 
   if (!code) {
     return NextResponse.redirect(new URL('/auth/login?error=no_code', req.url));
@@ -37,19 +41,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login?error=oauth_failed', req.url));
   }
 
-  const { id: supabaseId, email, user_metadata } = data.user;
+  const { email, user_metadata } = data.user;
   const name = user_metadata?.full_name || user_metadata?.name || email?.split('@')[0] || 'User';
 
   try {
-    // Upsert user record — idempotent, safe to call multiple times
     let user = await prisma.user.findUnique({ where: { email: email! } });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: { name, email: email!, role },
-      });
+      user = await prisma.user.create({ data: { name, email: email!, role } });
 
-      // If artist/producer, create Artist profile too
       if (role === 'artist' || role === 'producer') {
         let slug = slugify(name);
         let suffix = 0;
@@ -58,20 +58,19 @@ export async function GET(req: NextRequest) {
           slug = `${slugify(name)}-${suffix}`;
         }
         await prisma.artist.create({
-          data: {
-            userId: user.id,
-            name,
-            slug,
-            country: 'ZA',
-            currency: 'ZAR',
-          },
+          data: { userId: user.id, name, slug, country: 'ZA', currency: 'ZAR' },
         });
         sendWelcomeArtist({ to: email!, name, slug }).catch(console.error);
       }
+
+      if (role === 'industry') {
+        await prisma.industryUser.create({
+          data: { userId: user.id },
+        });
+      }
     }
   } catch (dbErr) {
-    console.error('[auth/callback] DB upsert error:', dbErr);
-    // Non-fatal — user is authed in Supabase, just redirect
+    console.error('[auth/callback] DB error:', dbErr);
   }
 
   return NextResponse.redirect(new URL(next, req.url));

@@ -24,9 +24,9 @@ export async function GET() {
     });
 
     // Totals
-    const totalEarned = payouts.reduce((sum, p) => sum + p.netAmount, 0);
-    const totalPaid = payouts.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.netAmount, 0);
-    const totalPending = payouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.netAmount, 0);
+    const totalEarned = payouts.reduce((sum: number, p: any) => sum + p.netAmount, 0);
+    const totalPaid = payouts.filter((p: any) => p.status === 'completed').reduce((sum: number, p: any) => sum + p.netAmount, 0);
+    const totalPending = payouts.filter((p: any) => p.status === 'pending').reduce((sum: number, p: any) => sum + p.netAmount, 0);
 
     // Stripe balance if connected
     let stripeBalance = null;

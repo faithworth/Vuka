@@ -122,7 +122,7 @@ export default function SettingsPage() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Connect your payment accounts. Buyers in South Africa pay via PayFast; international buyers via Stripe. You keep 100%.
+            Connect your payment accounts. Buyers in South Africa pay via PayFast; international buyers via Stripe. Connect your payment accounts to receive your earnings directly.
           </p>
         </div>
 

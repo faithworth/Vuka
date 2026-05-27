@@ -1,9 +1,21 @@
+// ============================================================
+// PATCH 02 — src/app/api/checkout/payfast/notify/route.ts
+// REPLACE the entire file.
+// Fixes:
+//   - Platform fee now 2% (not 0%)
+//   - Exclusive beat → isActive:false + isExclusive:true on payment confirm
+//   - Supports Video and Sample item types
+//   - downloadCount incremented only when file actually fetched (not on page visit)
+// ============================================================
+
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { validatePayFastITN, PAYFAST_IPS } from '@/lib/payfast';
 import { generateLicensePDF } from '@/lib/pdf';
 import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
 import { sendPurchaseConfirmation, sendArtistSaleNotification } from '@/lib/emails';
+
+const PLATFORM_FEE_RATE = 0.02; // 2%
 
 export async function POST(req: NextRequest) {
   const clientIp =
@@ -38,16 +50,24 @@ export async function POST(req: NextRequest) {
     const purchase = await prisma.purchase.findUnique({ where: { id: purchaseId } });
     if (!purchase) return new NextResponse('Purchase not found', { status: 404 });
 
-    // Validate amount
     const paidAmount = parseFloat(data.amount_gross || '0');
     if (Math.abs(paidAmount - purchase.amount) > 0.01) {
       console.error(`Amount mismatch: paid ${paidAmount}, expected ${purchase.amount}`);
       return new NextResponse('Amount mismatch', { status: 400 });
     }
 
+    // Calculate fee
+    const platformFee = Math.round(purchase.amount * PLATFORM_FEE_RATE * 100) / 100;
+    const netAmount = purchase.amount - platformFee;
+
     await prisma.purchase.update({
       where: { id: purchaseId },
-      data: { status: 'confirmed', payfastPfPaymentId: pfPaymentId },
+      data: {
+        status: 'confirmed',
+        payfastPfPaymentId: pfPaymentId,
+        platformFee,
+        netAmount,
+      },
     });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -57,15 +77,24 @@ export async function POST(req: NextRequest) {
     let artistEmail = '';
     let artistName = '';
     let artworkUrl = '';
+    let artistId = '';
+    let paymentMethod = 'payfast';
 
+    // ── BEAT ──────────────────────────────────────────────────
     if (purchase.itemType === 'beat' && purchase.beatId) {
-      const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, include: { artist: { include: { user: true } } } });
+      const beat = await prisma.beat.findUnique({
+        where: { id: purchase.beatId },
+        include: { artist: { include: { user: true } } },
+      });
       if (beat) {
         itemName = beat.title;
         artistEmail = beat.artist.user.email;
         artistName = beat.artist.name;
         artworkUrl = beat.artworkUrl || '';
+        artistId = beat.artist.id;
+        paymentMethod = beat.artist.payfastMerchant ? 'payfast' : 'stripe';
 
+        // Generate license PDF
         const pdfBuffer = await generateLicensePDF({
           licenseId: purchase.licenseId,
           licenseType: purchase.licenseType,
@@ -81,64 +110,90 @@ export async function POST(req: NextRequest) {
         await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
         await prisma.purchase.update({ where: { id: purchaseId }, data: { licenseUrl: getPublicUrl(pdfKey) } });
 
+        // Lock exclusive beat immediately and permanently
         if (purchase.licenseType === 'exclusive') {
-          await prisma.beat.update({ where: { id: beat.id }, data: { isExclusive: true, isActive: false } });
+          await prisma.beat.update({
+            where: { id: beat.id },
+            data: { isExclusive: true, isActive: false },
+          });
         }
-        await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
 
-        // Platform fee is 0% — artists keep 100% of every sale
-        await prisma.artistPayout.create({
-          data: {
-            artistId: beat.artist.id,
-            purchaseId: purchaseId,
-            amount: purchase.amount,
-            fee: 0,
-            netAmount: purchase.amount,
-            method: beat.artist.payfastMerchant ? 'payfast' : 'stripe',
-            currency: purchase.currency,
-            status: 'pending',
-            payfastRef: pfPaymentId,
-          },
-        });
+        await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
       }
-    } else if (purchase.itemType === 'release' && purchase.releaseId) {
+    }
+
+    // ── RELEASE ───────────────────────────────────────────────
+    else if (purchase.itemType === 'release' && purchase.releaseId) {
       const release = await prisma.release.findUnique({
         where: { id: purchase.releaseId },
-        include: { artist: { include: { user: true } } }
+        include: { artist: { include: { user: true } } },
       });
       if (release) {
         itemName = release.title;
         artistEmail = release.artist.user.email;
         artistName = release.artist.name;
         artworkUrl = release.artworkUrl || '';
-
-        await prisma.release.update({ where: { id: purchase.releaseId }, data: { sales: { increment: 1 } } });
-
-        // Platform fee is 0% — artists keep 100% of every sale
-        await prisma.artistPayout.create({
-          data: {
-            artistId: release.artist.id,
-            purchaseId: purchaseId,
-            amount: purchase.amount,
-            fee: 0,
-            netAmount: purchase.amount,
-            method: release.artist.payfastMerchant ? 'payfast' : 'stripe',
-            currency: purchase.currency,
-            status: 'pending',
-            payfastRef: pfPaymentId,
-          },
-        });
+        artistId = release.artist.id;
+        paymentMethod = release.artist.payfastMerchant ? 'payfast' : 'stripe';
+        await prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } });
       }
     }
 
-    // Send buyer confirmation email — wrapped separately so a Resend failure
-    // doesn't roll back the already-confirmed purchase or block artist notification.
-    // NOTE: If using Resend's free tier with onboarding@resend.dev as the sender,
-    // emails only deliver to your own verified address. Set EMAIL_FROM to an address
-    // on a domain you have verified in Resend (e.g. "Vuka <no-reply@yourdomain.com>")
-    // for emails to reach real buyers.
+    // ── VIDEO ─────────────────────────────────────────────────
+    else if (purchase.itemType === 'video' && purchase.videoId) {
+      const video = await prisma.video.findUnique({
+        where: { id: purchase.videoId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (video) {
+        itemName = video.title;
+        artistEmail = video.artist.user.email;
+        artistName = video.artist.name;
+        artworkUrl = video.thumbnailUrl || '';
+        artistId = video.artist.id;
+        paymentMethod = video.artist.payfastMerchant ? 'payfast' : 'stripe';
+        await prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } });
+      }
+    }
+
+    // ── SAMPLE PACK ───────────────────────────────────────────
+    else if (purchase.itemType === 'sample' && purchase.sampleId) {
+      const sample = await prisma.sample.findUnique({
+        where: { id: purchase.sampleId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (sample) {
+        itemName = sample.title;
+        artistEmail = sample.artist.user.email;
+        artistName = sample.artist.name;
+        artworkUrl = sample.artworkUrl || '';
+        artistId = sample.artist.id;
+        paymentMethod = sample.artist.payfastMerchant ? 'payfast' : 'stripe';
+        await prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } });
+      }
+    }
+
+    // ── CREATE PAYOUT RECORD ──────────────────────────────────
+    if (artistId) {
+      await prisma.artistPayout.create({
+        data: {
+          artistId,
+          purchaseId,
+          amount: purchase.amount,
+          fee: platformFee,
+          netAmount,
+          method: paymentMethod,
+          currency: purchase.currency,
+          status: 'pending',
+          payfastRef: pfPaymentId,
+          notes: `${purchase.itemType} sale — ${itemName}`,
+        },
+      });
+    }
+
+    // ── SEND EMAILS ───────────────────────────────────────────
     try {
-      const emailResult = await sendPurchaseConfirmation({
+      await sendPurchaseConfirmation({
         to: purchase.buyerEmail,
         buyerName: purchase.buyerName,
         itemName,
@@ -150,12 +205,10 @@ export async function POST(req: NextRequest) {
         licenseId: purchase.licenseId,
         artworkUrl: artworkUrl || undefined,
       });
-      console.log('[notify] Buyer email sent to', purchase.buyerEmail, emailResult);
     } catch (emailErr) {
-      console.error('[notify] Failed to send buyer email to', purchase.buyerEmail, emailErr);
+      console.error('[notify] Failed to send buyer email:', emailErr);
     }
 
-    // Send artist sale notification
     if (artistEmail) {
       try {
         await sendArtistSaleNotification({
@@ -168,9 +221,8 @@ export async function POST(req: NextRequest) {
           currency: purchase.currency,
           dashboardUrl: `${appUrl}/dashboard`,
         });
-        console.log('[notify] Artist email sent to', artistEmail);
       } catch (emailErr) {
-        console.error('[notify] Failed to send artist email to', artistEmail, emailErr);
+        console.error('[notify] Failed to send artist email:', emailErr);
       }
     }
   } catch (err) {

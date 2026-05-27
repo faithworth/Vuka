@@ -305,11 +305,14 @@ export default function LandingPage() {
             <div className="flex items-center gap-6 text-sm flex-wrap justify-center" style={{ color: 'var(--text-muted)' }}>
               <Link href="/store" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Store</Link>
               <Link href="/industry" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Industry</Link>
+              <Link href="/legal/terms" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Terms</Link>
+              <Link href="/legal/privacy" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Privacy</Link>
+              <Link href="/legal/dmca" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>DMCA</Link>
               <Link href="/auth/login" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Log In</Link>
               <Link href="/auth/register" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Sign Up</Link>
             </div>
             <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-              © 2025 Vuka · 2% platform fee · Artists keep 98%
+              © 2025 Vuka · Made in South Africa
             </p>
           </div>
         </footer>
