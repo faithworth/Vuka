@@ -5,19 +5,19 @@
   "crons": [
     {
       "path": "/api/workers/cron?job=search_sync",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/workers/cron?job=trending",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/workers/cron?job=milestones",
-      "schedule": "0 6 * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/workers/cron?job=cleanup",
-      "schedule": "0 3 * * *"
+      "schedule": "0 5 * * *"
     }
   ],
   "headers": [
