@@ -31,6 +31,12 @@ model User {
   supportsSent      SupportTxn[]
   wishlist          WishlistItem[]
   follows           Follow[]
+  // Phase 3 — Social + Messaging
+  sentMessages          Message[]               @relation("SentMessages")
+  notifications         Notification[]
+  notificationPrefs     NotificationPreference?
+  engagementEvents      EngagementEvent[]
+  postComments          PostComment[]
   // Phase 2
   memberships       CreatorMembership[]
   marketplaceOrders MarketplaceOrder[]       @relation("buyer")
@@ -69,6 +75,13 @@ model Artist {
   followers        Follow[]
   dmcaReports      DMCAReport[]
   serviceInquiries ServiceInquiry[]
+  // Phase 3 — Social + Discovery + Analytics
+  posts                 ArtistPost[]
+  pageViews             PageView[]
+  dailyRollups          AnalyticsDailyRollup[]
+  geoEvents             GeographyEvent[]
+  verificationRequest   VerificationRequest?
+  searchIndex           SearchIndex?
   // Phase 2 relations
   distributionReleases  DistributionRelease[]
   subscriptionTiers     CreatorSubscriptionTier[]
@@ -1055,3 +1068,415 @@ model ArtistBankAccount {
   @@index([artistId])
 }
 
+
+
+// ── SOCIAL ENGINE ─────────────────────────────────────────────
+
+// Unified engagement events (likes, saves, reposts)
+model EngagementEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // like, save, repost, view
+  targetType String   // beat, release, video, sample, post, comment
+  targetId   String
+  // Repost-specific
+  repostNote String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, type, targetType, targetId])
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([type, targetType])
+  @@index([createdAt])
+}
+
+// Artist feed posts (status updates, announcements, previews)
+model ArtistPost {
+  id          String    @id @default(cuid())
+  artistId    String
+  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  body        String    // text content (max 2000 chars enforced in API)
+  mediaUrls   String[]  // R2 image/audio preview URLs
+  linkUrl     String    @default("")  // external link or internal item link
+  linkType    String    @default("")  // beat, release, video, sample, external
+  linkItemId  String    @default("")
+  likeCount   Int       @default(0)
+  commentCount Int      @default(0)
+  repostCount Int       @default(0)
+  isPinned    Boolean   @default(false)
+  isPublished Boolean   @default(true)
+  publishedAt DateTime  @default(now())
+  comments    PostComment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([artistId])
+  @@index([publishedAt])
+}
+
+// Comments on posts, beats, releases
+model PostComment {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Polymorphic target
+  postId    String?
+  post      ArtistPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  targetType String     @default("post") // post, beat, release
+  targetId   String     @default("")
+  body      String
+  parentId  String?     // for replies
+  parent    PostComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   PostComment[] @relation("CommentReplies")
+  likeCount Int         @default(0)
+  isHidden  Boolean     @default(false) // moderation
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([parentId])
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String   // recipient
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  // Types:
+  //   follow, unfollow
+  //   like_post, like_beat, like_release, comment, comment_reply
+  //   repost
+  //   new_release, new_beat, new_post       (fan gets when creator posts)
+  //   purchase_confirmed, purchase_received (buyer / seller)
+  //   subscription_new, subscription_cancelled, subscription_renewed
+  //   message_received
+  //   marketplace_order, marketplace_delivered, marketplace_completed
+  //   payout_processed
+  //   milestone_followers, milestone_sales, milestone_streams
+  //   verification_approved, verification_rejected
+  //   moderation_warning, content_removed
+
+  // Actor (who triggered it — null for system notifications)
+  actorId    String?
+  actorName  String   @default("")
+  actorPhoto String   @default("")
+
+  // Target entity
+  targetType String   @default("") // beat, release, post, order, etc.
+  targetId   String   @default("")
+  targetSlug String   @default("") // for links
+  targetTitle String  @default("")
+
+  // Notification body
+  title      String
+  body       String   @default("")
+  actionUrl  String   @default("")
+
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+
+  // Email/push delivery
+  emailSent  Boolean  @default(false)
+  pushSent   Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+// Notification preferences per user
+model NotificationPreference {
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // In-app
+  inAppFollows          Boolean @default(true)
+  inAppLikes            Boolean @default(true)
+  inAppComments         Boolean @default(true)
+  inAppMessages         Boolean @default(true)
+  inAppPurchases        Boolean @default(true)
+  inAppReleases         Boolean @default(true)
+  inAppMilestones       Boolean @default(true)
+  inAppModeration       Boolean @default(true)
+
+  // Email
+  emailPurchases        Boolean @default(true)
+  emailFollows          Boolean @default(false)
+  emailMessages         Boolean @default(true)
+  emailReleases         Boolean @default(true)
+  emailMilestones       Boolean @default(true)
+  emailWeeklyDigest     Boolean @default(true)
+
+  // Push (future)
+  pushEnabled           Boolean @default(false)
+  pushToken             String  @default("")
+
+  updatedAt             DateTime @updatedAt
+}
+
+// ── MESSAGING INFRASTRUCTURE ──────────────────────────────────
+
+model MessageConversation {
+  id           String    @id @default(cuid())
+  // Two-party conversation (sorted participant IDs for dedup)
+  participant1 String    // userId (always lexicographically smaller)
+  participant2 String    // userId
+  lastMessageAt DateTime @default(now())
+  lastMessagePreview String @default("")
+  // Unread counts per participant
+  unread1      Int       @default(0) // unread for participant1
+  unread2      Int       @default(0)
+  isArchived1  Boolean   @default(false)
+  isArchived2  Boolean   @default(false)
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([participant1, participant2])
+  @@index([participant1])
+  @@index([participant2])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String              @id @default(cuid())
+  conversationId String
+  conversation   MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User                @relation("SentMessages", fields: [senderId], references: [id])
+  body           String              // max 2000 chars enforced in API
+  attachments    Json                @default("[]") // [{url, filename, fileType, size}]
+  isRead         Boolean             @default(false)
+  readAt         DateTime?
+  // Moderation
+  isFlagged      Boolean             @default(false)
+  flagReason     String              @default("")
+  isDeleted      Boolean             @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime            @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+// ── DISCOVERY ENGINE ──────────────────────────────────────────
+
+// Trending snapshots (computed by background worker, cached here)
+model TrendingSnapshot {
+  id         String   @id @default(cuid())
+  period     String   // hourly, daily, weekly
+  category   String   // beats, artists, releases, tags
+  // Ordered list of item IDs and scores
+  items      Json     // [{id, score, delta, rank}]
+  computedAt DateTime @default(now())
+
+  @@index([period, category])
+  @@index([computedAt])
+}
+
+// Search index helper — denormalised for fast full-text search
+model SearchIndex {
+  id          String   @id @default(cuid())
+  entityType  String   // beat, release, artist, post
+  entityId    String
+  title       String
+  subtitle    String   @default("") // artist name / genre
+  tags        String[]
+  genre       String   @default("")
+  imageUrl    String   @default("")
+  slug        String   @default("")
+  score       Float    @default(0)   // relevance score (plays + sales combined)
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+  @@index([score])
+}
+
+// ── ANALYTICS ENGINE ──────────────────────────────────────────
+
+// Daily event roll-ups per artist (lightweight, additive)
+model AnalyticsDailyRollup {
+  id          String   @id @default(cuid())
+  artistId    String
+  date        String   // "YYYY-MM-DD"
+
+  // Traffic
+  profileViews  Int    @default(0)
+  storeViews    Int    @default(0)
+
+  // Plays by content type
+  beatPlays     Int    @default(0)
+  releasePlays  Int    @default(0)
+  videoPlays    Int    @default(0)
+
+  // Sales
+  beatSales     Int    @default(0)
+  releaseSales  Int    @default(0)
+  videoSales    Int    @default(0)
+  totalRevenue  Float  @default(0)
+
+  // Social
+  newFollowers  Int    @default(0)
+  lostFollowers Int    @default(0)
+  likes         Int    @default(0)
+  comments      Int    @default(0)
+  reposts       Int    @default(0)
+  shares        Int    @default(0)
+
+  // Messages
+  newMessages   Int    @default(0)
+  newInquiries  Int    @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([artistId, date])
+  @@index([artistId])
+  @@index([date])
+}
+
+// Geography analytics
+model GeographyEvent {
+  id         String   @id @default(cuid())
+  artistId   String
+  countryCode String  // ISO-2
+  countryName String  @default("")
+  city       String   @default("")
+  eventType  String   // play, purchase, follow, visit
+  count      Int      @default(1)
+  period     String   // "YYYY-MM"
+
+  @@unique([artistId, countryCode, eventType, period])
+  @@index([artistId])
+  @@index([period])
+}
+
+// Page-level view tracking (anonymous + authed)
+model PageView {
+  id         String   @id @default(cuid())
+  artistId   String?
+  targetType String   // artist_profile, beat, release, store
+  targetId   String
+  userId     String?  // null for anonymous
+  userAgent  String   @default("")
+  country    String   @default("")
+  referrer   String   @default("")
+  sessionId  String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([artistId, targetType])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// ── MODERATION + TRUST ────────────────────────────────────────
+
+model AbuseReport {
+  id             String   @id @default(cuid())
+  reporterUserId String?
+  reporterEmail  String   @default("")
+  // Target
+  targetType     String   // user, artist, beat, release, post, comment, message
+  targetId       String
+  targetTitle    String   @default("")
+  reason         String
+  // Categories
+  category       String   @default("other")
+  // harassment, hate_speech, spam, explicit_content, impersonation,
+  // copyright, fraud, self_harm, misinformation, other
+  description    String   @default("")
+  evidence       Json     @default("[]") // [{url, description}]
+  // Status
+  status         String   @default("pending")
+  // pending → under_review → resolved_action | resolved_noaction | dismissed
+  assignedTo     String   @default("") // admin email
+  adminNotes     String   @default("")
+  actionTaken    String   @default("") // warning, content_removed, account_suspended, account_banned
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([targetType, targetId])
+}
+
+// Moderation actions log
+model ModerationAction {
+  id          String   @id @default(cuid())
+  adminEmail  String
+  targetType  String   // user, artist, beat, release, post, comment
+  targetId    String
+  action      String   // warn, hide_content, remove_content, suspend, ban, verify, unverify, restore
+  reason      String   @default("")
+  notes       String   @default("")
+  // Reversal
+  reversedAt  DateTime?
+  reversedBy  String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([adminEmail])
+}
+
+// Content flags (lightweight flag per piece of content)
+model ContentFlag {
+  id          String   @id @default(cuid())
+  contentType String   // beat, release, post, comment, message, artist
+  contentId   String
+  flagType    String   // hidden, removed, adult, restricted, pending_review
+  reason      String   @default("")
+  flaggedBy   String   @default("") // admin email or "system"
+  createdAt   DateTime @default(now())
+
+  @@unique([contentType, contentId, flagType])
+  @@index([contentType, flagType])
+}
+
+// Creator verification requests
+model VerificationRequest {
+  id           String   @id @default(cuid())
+  artistId     String   @unique
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  // Evidence submitted
+  idDocumentUrl String  @default("")
+  socialLinks  Json     @default("{}")  // {instagram, twitter, spotify, apple, youtube}
+  monthlyListeners Int  @default(0)     // self-reported
+  totalStreams  Int      @default(0)     // self-reported
+  notes        String   @default("")
+  // Status
+  status       String   @default("pending") // pending, under_review, approved, rejected
+  adminNotes   String   @default("")
+  reviewedBy   String   @default("")
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+}
+
+// Anti-spam: rate limit tracking
+model SpamSignal {
+  id         String   @id @default(cuid())
+  userId     String?
+  ipHash     String   @default("") // hashed IP for anon
+  action     String   // message_send, comment_post, report_submit, follow, play
+  count      Int      @default(1)
+  windowStart DateTime
+  isFlagged  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, action])
+  @@index([ipHash, action])
+  @@index([windowStart])
+}
