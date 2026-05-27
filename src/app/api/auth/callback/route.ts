@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/utils';
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
@@ -68,9 +68,7 @@ export async function GET(req: NextRequest) {
       }
 
       if (role === 'industry') {
-        await prisma.industryUser.create({
-          data: { userId: user.id },
-        });
+        await prisma.industryUser.create({ data: { userId: user.id } });
       }
     }
   } catch (dbErr) {
