@@ -1,5 +1,32 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && next build",
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/workers/cron?job=search_sync",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=trending",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=milestones",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=cleanup",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
 }

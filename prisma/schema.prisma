@@ -1,12 +1,7 @@
 // ============================================================
-// PATCH 01 — prisma/schema.prisma
-// REPLACE the entire file with this content.
-// Adds: Video, IndustryUser, Referral, Deal, DMCAReport,
-//       Sample, Subscription, Merch, AdminLog models.
-// Also fixes: Purchase.fee field, Beat.isExclusiveSold flag.
-// Run after replacing:
-//   npx prisma migrate dev --name add_all_models
-//   (or npx prisma db push for quick deploy)
+// VUKA — Final Production Schema (Phase 5 Hardened)
+// Merges all phases + Phase 4 additions.
+// Run: npx prisma migrate deploy
 // ============================================================
 
 generator client {
@@ -19,50 +14,51 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ── CORE USERS ──────────────────────────────────────────────
+
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String
-  role         String         @default("fan")
-  createdAt    DateTime       @default(now())
-  artist       Artist?
-  industryUser IndustryUser?
-  purchases         Purchase[]
-  supportsSent      SupportTxn[]
-  wishlist          WishlistItem[]
-  follows           Follow[]
-  // Phase 3 — Social + Messaging
-  sentMessages          Message[]               @relation("SentMessages")
-  notifications         Notification[]
-  notificationPrefs     NotificationPreference?
-  engagementEvents      EngagementEvent[]
-  postComments          PostComment[]
-  // Phase 2
-  memberships       CreatorMembership[]
-  marketplaceOrders MarketplaceOrder[]       @relation("buyer")
-  disputesRaised    MarketplaceDispute[]     @relation("disputant")
-  reviewsWritten    ServiceReview[]          @relation("reviewer")
+  id              String               @id @default(cuid())
+  email           String               @unique
+  name            String
+  role            String               @default("fan") // fan, artist, industry, admin
+  createdAt       DateTime             @default(now())
+  artist          Artist?
+  industryUser    IndustryUser?
+  purchases       Purchase[]
+  supportsSent    SupportTxn[]
+  wishlist        WishlistItem[]
+  follows         Follow[]
+  memberships     CreatorMembership[]
+  marketplaceOrders MarketplaceOrder[] @relation("buyer")
+  disputesRaised  MarketplaceDispute[] @relation("disputant")
+  reviewsWritten  ServiceReview[]      @relation("reviewer")
+  // Phase 3
+  sentMessages         Message[]
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference?
+  engagementEvents     EngagementEvent[]
+  postComments         PostComment[]
 }
 
 model Artist {
-  id               String         @id @default(cuid())
-  userId           String         @unique
-  user             User           @relation(fields: [userId], references: [id])
-  slug             String         @unique
+  id               String               @id @default(cuid())
+  userId           String               @unique
+  user             User                 @relation(fields: [userId], references: [id])
+  slug             String               @unique
   name             String
-  bio              String         @default("")
-  city             String         @default("")
-  country          String         @default("ZA")
+  bio              String               @default("")
+  city             String               @default("")
+  country          String               @default("ZA")
   genreTags        String[]
-  photoUrl         String         @default("")
-  coverUrl         String         @default("")
-  socialLinks      Json           @default("{}")
+  photoUrl         String               @default("")
+  coverUrl         String               @default("")
+  socialLinks      Json                 @default("{}")
   stripeAccountId  String?
   payfastMerchant  String?
-  currency         String         @default("ZAR")
-  isPublic         Boolean        @default(true)
-  isVerified       Boolean        @default(false)
-  totalPlays       Int            @default(0)
+  currency         String               @default("ZAR")
+  isPublic         Boolean              @default(true)
+  isVerified       Boolean              @default(false)
+  totalPlays       Int                  @default(0)
   beats            Beat[]
   releases         Release[]
   videos           Video[]
@@ -75,14 +71,7 @@ model Artist {
   followers        Follow[]
   dmcaReports      DMCAReport[]
   serviceInquiries ServiceInquiry[]
-  // Phase 3 — Social + Discovery + Analytics
-  posts                 ArtistPost[]
-  pageViews             PageView[]
-  dailyRollups          AnalyticsDailyRollup[]
-  geoEvents             GeographyEvent[]
-  verificationRequest   VerificationRequest?
-  searchIndex           SearchIndex?
-  // Phase 2 relations
+  // Phase 2
   distributionReleases  DistributionRelease[]
   subscriptionTiers     CreatorSubscriptionTier[]
   memberships           CreatorMembership[]
@@ -90,62 +79,72 @@ model Artist {
   storefront            CreatorStorefront?
   marketplaceServices   MarketplaceService[]
   marketplaceOrdersSold MarketplaceOrder[]        @relation("seller")
-  bankAccounts          ArtistBankAccount[]
   payoutRequests        PayoutRequest[]
+  bankAccounts          ArtistBankAccount[]
   revenueRecords        RevenueRecord[]
   taxRecords            TaxRecord[]
+  beatLicenses          BeatLicense[]
   invoices              Invoice[]
-  createdAt        DateTime       @default(now())
+  // Phase 3
+  posts                 ArtistPost[]
+  pageViews             PageView[]
+  dailyRollups          AnalyticsDailyRollup[]
+  geoEvents             GeographyEvent[]
+  verificationRequest   VerificationRequest?
+  searchIndex           SearchIndex[]
+  createdAt             DateTime             @default(now())
 }
 
+// ── CONTENT MODELS ──────────────────────────────────────────
+
 model Beat {
-  id           String     @id @default(cuid())
+  id           String       @id @default(cuid())
   artistId     String
-  artist       Artist     @relation(fields: [artistId], references: [id])
+  artist       Artist       @relation(fields: [artistId], references: [id])
   title        String
-  slug         String     @unique
-  bpm          Int        @default(0)
-  keySignature String     @default("")
-  mood         String     @default("")
-  genre        String     @default("")
+  slug         String       @unique
+  bpm          Int          @default(0)
+  keySignature String       @default("")
+  mood         String       @default("")
+  genre        String       @default("")
   tags         String[]
-  artworkUrl   String     @default("")
+  artworkUrl   String       @default("")
   previewUrl   String
-  fullWavUrl   String     @default("")
-  fullMp3Url   String     @default("")
+  fullWavUrl   String       @default("")
+  fullMp3Url   String       @default("")
   waveformData Float[]
-  basicPrice   Float      @default(0)
-  premiumPrice Float      @default(0)
-  exclPrice    Float      @default(0)
-  plays        Int        @default(0)
-  sales        Int        @default(0)
-  isActive     Boolean    @default(true)
-  isExclusive  Boolean    @default(false)
+  basicPrice   Float        @default(0)
+  premiumPrice Float        @default(0)
+  exclPrice    Float        @default(0)
+  plays        Int          @default(0)
+  sales        Int          @default(0)
+  isActive     Boolean      @default(true)
+  isExclusive  Boolean      @default(false)
   purchases    Purchase[]
   licenses     BeatLicense[]
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime     @default(now())
 }
 
 model Release {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   artistId    String
-  artist      Artist     @relation(fields: [artistId], references: [id])
+  artist      Artist       @relation(fields: [artistId], references: [id])
   title       String
-  slug        String     @unique
-  releaseType String     @default("single")
-  price       Float      @default(0)
-  minPrice    Float      @default(0)
-  payWhatWant Boolean    @default(false)
-  artworkUrl  String     @default("")
-  description String     @default("")
-  credits     String     @default("")
+  slug        String       @unique
+  releaseType String       @default("single")
+  price       Float        @default(0)
+  minPrice    Float        @default(0)
+  payWhatWant Boolean      @default(false)
+  artworkUrl  String       @default("")
+  description String       @default("")
+  credits     String       @default("")
   releaseDate DateTime?
-  plays       Int        @default(0)
-  sales       Int        @default(0)
-  isActive    Boolean    @default(true)
+  plays       Int          @default(0)
+  sales       Int          @default(0)
+  isActive    Boolean      @default(true)
   tracks      Track[]
   purchases   Purchase[]
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime     @default(now())
 }
 
 model Track {
@@ -170,8 +169,8 @@ model Video {
   genre        String     @default("")
   tags         String[]
   thumbnailUrl String     @default("")
-  videoUrl     String     // R2 private key
-  previewUrl   String     @default("") // 30-sec preview key
+  videoUrl     String
+  previewUrl   String     @default("")
   price        Float      @default(0)
   plays        Int        @default(0)
   sales        Int        @default(0)
@@ -181,39 +180,39 @@ model Video {
 }
 
 model Sample {
+  id           String     @id @default(cuid())
+  artistId     String
+  artist       Artist     @relation(fields: [artistId], references: [id])
+  title        String
+  slug         String     @unique
+  description  String     @default("")
+  genre        String     @default("")
+  tags         String[]
+  artworkUrl   String     @default("")
+  previewUrl   String     @default("")
+  fileUrl      String
+  price        Float      @default(0)
+  bpm          Int        @default(0)
+  keySignature String     @default("")
+  trackCount   Int        @default(1)
+  sales        Int        @default(0)
+  isActive     Boolean    @default(true)
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+}
+
+model Subscription {
   id          String     @id @default(cuid())
   artistId    String
   artist      Artist     @relation(fields: [artistId], references: [id])
   title       String
-  slug        String     @unique
   description String     @default("")
-  genre       String     @default("")
-  tags        String[]
-  artworkUrl  String     @default("")
-  previewUrl  String     @default("")
-  fileUrl     String     // R2 private key
-  price       Float      @default(0)
-  bpm         Int        @default(0)
-  keySignature String    @default("")
-  trackCount  Int        @default(1)
-  sales       Int        @default(0)
+  price       Float
+  interval    String     @default("monthly")
+  perks       String[]
   isActive    Boolean    @default(true)
   purchases   Purchase[]
   createdAt   DateTime   @default(now())
-}
-
-model Subscription {
-  id          String    @id @default(cuid())
-  artistId    String
-  artist      Artist    @relation(fields: [artistId], references: [id])
-  title       String
-  description String    @default("")
-  price       Float
-  interval    String    @default("monthly") // monthly, quarterly, yearly
-  perks       String[]
-  isActive    Boolean   @default(true)
-  purchases   Purchase[]
-  createdAt   DateTime  @default(now())
 }
 
 model Merch {
@@ -232,40 +231,47 @@ model Merch {
   createdAt   DateTime   @default(now())
 }
 
+// ── TRANSACTIONS ─────────────────────────────────────────────
+
 model Purchase {
-  id                 String        @id @default(cuid())
+  id                 String       @id @default(cuid())
   userId             String?
-  user               User?         @relation(fields: [userId], references: [id])
+  user               User?        @relation(fields: [userId], references: [id])
   buyerEmail         String
   buyerName          String
-  itemType           String        // beat, release, video, sample, subscription, merch
+  itemType           String       // beat, release, video, sample, subscription, merch
   beatId             String?
-  beat               Beat?         @relation(fields: [beatId], references: [id])
+  beat               Beat?        @relation(fields: [beatId], references: [id])
   releaseId          String?
-  release            Release?      @relation(fields: [releaseId], references: [id])
+  release            Release?     @relation(fields: [releaseId], references: [id])
   videoId            String?
-  video              Video?        @relation(fields: [videoId], references: [id])
+  video              Video?       @relation(fields: [videoId], references: [id])
   sampleId           String?
-  sample             Sample?       @relation(fields: [sampleId], references: [id])
+  sample             Sample?      @relation(fields: [sampleId], references: [id])
   subscriptionId     String?
   subscription       Subscription? @relation(fields: [subscriptionId], references: [id])
   merchId            String?
-  merch              Merch?        @relation(fields: [merchId], references: [id])
+  merch              Merch?       @relation(fields: [merchId], references: [id])
   amount             Float
-  currency           String        @default("ZAR")
-  licenseType        String        @default("")
-  licenseId          String        @unique @default(cuid())
+  currency           String       @default("ZAR")
+  licenseType        String       @default("")
+  licenseId          String       @unique @default(cuid())
   stripePaymentId    String?
   payfastPfPaymentId String?
-  status             String        @default("pending") // pending, confirmed, refunded
+  status             String       @default("pending") // pending, confirmed, refunded
   licenseUrl         String?
   receiptUrl         String?
-  downloadToken      String        @unique @default(cuid())
-  downloadCount      Int           @default(0)
-  platformFee        Float         @default(0) // 2% of amount
-  netAmount          Float         @default(0) // amount - platformFee
+  downloadToken      String       @unique @default(cuid())
+  downloadCount      Int          @default(0)
+  platformFee        Float        @default(0)
+  netAmount          Float        @default(0)
   beatLicense        BeatLicense?
-  createdAt          DateTime      @default(now())
+  invoices           Invoice[]
+  createdAt          DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([buyerEmail])
+  @@index([downloadToken])
 }
 
 model SupportTxn {
@@ -300,27 +306,6 @@ model Goal {
   createdAt     DateTime  @default(now())
 }
 
-model ArtistPayout {
-  id               String    @id @default(cuid())
-  artistId         String
-  artist           Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  purchaseId       String?
-  amount           Float
-  fee              Float     @default(0)
-  netAmount        Float
-  method           String    @default("payfast")
-  currency         String    @default("ZAR")
-  status           String    @default("pending")
-  payfastRef       String?
-  bankAccountLast4 String?
-  notes            String    @default("")
-  createdAt        DateTime  @default(now())
-  processedAt      DateTime?
-
-  @@index([artistId])
-  @@index([status])
-}
-
 model WishlistItem {
   id        String   @id @default(cuid())
   userId    String
@@ -328,82 +313,105 @@ model WishlistItem {
   itemType  String
   itemId    String
   createdAt DateTime @default(now())
+
+  @@unique([userId, itemType, itemId])
 }
 
 model Follow {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
   artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artist    Artist   @relation(fields: [artistId], references: [id])
   createdAt DateTime @default(now())
 
   @@unique([userId, artistId])
-  @@index([userId])
   @@index([artistId])
 }
 
-// ── INDUSTRY ──────────────────────────────────────────────
+model ArtistPayout {
+  id            String   @id @default(cuid())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  amount        Float
+  currency      String   @default("ZAR")
+  status        String   @default("pending") // pending, processing, paid, failed
+  method        String   @default("bank")    // bank, payfast
+  reference     String   @default("")
+  purchaseId    String?
+  notes         String   @default("")
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
 
-model IndustryUser {
-  id           String             @id @default(cuid())
-  userId       String             @unique
-  user         User               @relation(fields: [userId], references: [id])
-  company      String             @default("")
-  position     String             @default("")
-  bio          String             @default("")
-  website      String             @default("")
-  instagram    String             @default("")
-  twitter      String             @default("")
-  referralCode String             @unique @default(cuid())
-  totalReferrals Int              @default(0)
-  totalEarnings  Float            @default(0)
-  isVerified   Boolean            @default(false)
-  referrals    Referral[]
-  deals        Deal[]
-  services     IndustryService[]
-  createdAt    DateTime           @default(now())
+  @@index([artistId, status])
 }
 
-// ── INDUSTRY SERVICES (what industry pros list for artists to hire) ──────
-
-model IndustryService {
-  id             String            @id @default(cuid())
-  industryUserId String
-  industryUser   IndustryUser      @relation(fields: [industryUserId], references: [id])
-  title          String
-  description    String            @default("")
-  category       String            @default("promotion") // promotion, distribution, sync, management, scouting, sponsorship, legal, photography, videography, mixing, mastering, other
-  priceZAR       Float             // what the artist pays
-  pricingModel   String            @default("fixed") // fixed, per_track, per_month, quote
-  deliveryDays   Int               @default(7)
-  isActive       Boolean           @default(true)
-  inquiries      ServiceInquiry[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+model DMCAReport {
+  id          String   @id @default(cuid())
+  artistId    String
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  contentType String
+  contentId   String
+  claimantName String  @default("")
+  claimantEmail String @default("")
+  description String   @default("")
+  status      String   @default("pending") // pending, resolved, rejected
+  createdAt   DateTime @default(now())
 }
 
 model ServiceInquiry {
-  id                String          @id @default(cuid())
-  serviceId         String
-  service           IndustryService @relation(fields: [serviceId], references: [id])
-  artistId          String
-  artist            Artist          @relation(fields: [artistId], references: [id])
-  message           String          @default("")
-  status            String          @default("pending") // pending, accepted, rejected, completed
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  name      String
+  email     String
+  message   String
+  serviceId String   @default("")
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
 }
 
-model Referral {
+// ── ADMIN ────────────────────────────────────────────────────
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  action     String
+  targetType String   @default("")
+  targetId   String   @default("")
+  actorId    String   @default("")
+  ipAddress  String   @default("")
+  severity   String   @default("info") // info, warn, critical
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+// ── INDUSTRY ─────────────────────────────────────────────────
+
+model IndustryUser {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  companyName String
+  role        String   @default("")
+  website     String   @default("")
+  verified    Boolean  @default(false)
+  services    IndustryService[]
+  deals       Deal[]
+  createdAt   DateTime @default(now())
+}
+
+model IndustryService {
   id             String       @id @default(cuid())
   industryUserId String
   industryUser   IndustryUser @relation(fields: [industryUserId], references: [id])
-  referredUserId String?
-  referralCode   String
-  conversionType String       @default("") // register, purchase
-  commissionEarned Float      @default(0)
-  status         String       @default("pending") // pending, converted, paid
+  title          String
+  description    String       @default("")
+  category       String       @default("")
+  price          Float?
+  currency       String       @default("ZAR")
+  isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
 }
 
@@ -413,1070 +421,500 @@ model Deal {
   industryUser   IndustryUser @relation(fields: [industryUserId], references: [id])
   title          String
   description    String       @default("")
-  artistSlug     String       @default("")
-  dealType       String       @default("licensing") // licensing, distribution, sync, management
-  offerAmount    Float        @default(0)
-  currency       String       @default("ZAR")
-  status         String       @default("pending") // pending, accepted, rejected, negotiating
-  adminNotes     String       @default("")
+  status         String       @default("open") // open, closed
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
 }
 
-// ── ADMIN / MODERATION ─────────────────────────────────────
-
-model DMCAReport {
-  id              String   @id @default(cuid())
-  reporterEmail   String
-  reporterName    String
-  artistId        String?
-  artist          Artist?  @relation(fields: [artistId], references: [id])
-  itemType        String   // beat, release, video, sample
-  itemId          String
-  itemTitle       String
-  claimDescription String
-  originalWorkUrl  String  @default("")
-  status          String   @default("pending") // pending, investigating, resolved, dismissed
-  adminNotes      String   @default("")
-  resolvedAt      DateTime?
-  createdAt       DateTime @default(now())
-}
-
-model AdminLog {
-  id         String   @id @default(cuid())
-  action     String
-  targetType String   @default("")
-  targetId   String   @default("")
-  notes      String   @default("")
-  createdAt  DateTime @default(now())
-}
-
-// ── PHASE 1 MIGRATION NOTE ─────────────────────────────────────
-// After applying Phase 1, run:
-//   npx prisma migrate dev --name phase1_hardening
-// This adds no new tables but the AdminLog.actorEmail field
-// requires a new migration. See migration file below.
-
-// ============================================================
-// PHASE 2 — Schema Extensions
-// Creator Economy, Distribution, Marketplace, Payouts, Business
-// ============================================================
-
-// ── DISTRIBUTION ENGINE ──────────────────────────────────────
-
-model DistributionRelease {
-  id               String                   @id @default(cuid())
-  artistId         String
-  artist           Artist                   @relation(fields: [artistId], references: [id])
-  releaseId        String?                  // links to existing Release if applicable
-  
-  // Core metadata
-  title            String
-  artistName       String
-  featuredArtists  String[]
-  releaseType      String                   @default("single") // single, ep, album, compilation
-  primaryGenre     String                   @default("")
-  secondaryGenre   String                   @default("")
-  language         String                   @default("en")
-  
-  // Identifiers
-  upc              String?                  @unique   // auto-generated if blank
-  isrc             String?                            // per-track; stored on DistributionTrack
-  
-  // Artwork
-  artworkUrl       String                   @default("")
-  artworkStatus    String                   @default("pending") // pending, approved, rejected
-  artworkNotes     String                   @default("")
-  
-  // Dates
-  originalReleaseDate DateTime?
-  scheduledDate    DateTime?
-  releasedAt       DateTime?
-  
-  // Status lifecycle
-  status           String                   @default("draft")
-  // draft → metadata_review → artwork_review → approved → scheduled → delivering → live → failed | takedown
-  statusHistory    Json                     @default("[]") // [{status, timestamp, notes}]
-  adminNotes       String                   @default("")
-  
-  // Copyright
-  copyrightHolder  String                   @default("")
-  copyrightYear    Int?
-  pLine            String                   @default("")
-  cLine            String                   @default("")
-  
-  // Label
-  labelName        String                   @default("")
-  catalogNumber    String                   @default("")
-  
-  // DSP targets
-  targetDSPs       String[]                 @default([])
-  // ["spotify","apple_music","youtube_music","tiktok","deezer","audiomack","amazon_music"]
-  
-  tracks           DistributionTrack[]
-  dspDeliveries    DSPDelivery[]
-  
-  retryCount       Int                      @default(0)
-  lastRetryAt      DateTime?
-  
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-
-  @@index([artistId])
-  @@index([status])
-  @@index([upc])
-}
-
-model DistributionTrack {
-  id                   String               @id @default(cuid())
-  distributionReleaseId String
-  distributionRelease  DistributionRelease  @relation(fields: [distributionReleaseId], references: [id], onDelete: Cascade)
-  
-  trackNumber          Int
-  title                String
-  featuredArtists      String[]
-  isrc                 String?              @unique // auto-generated if blank
-  
-  // Contributors (producers, writers, etc.)
-  composers            String[]
-  lyricists            String[]
-  producers            String[]
-  
-  explicit             Boolean              @default(false)
-  language             String              @default("en")
-  duration             Int                  @default(0)  // seconds
-  
-  // File
-  masterFileUrl        String               @default("")
-  masterFileStatus     String               @default("pending") // pending, approved, rejected
-  
-  createdAt            DateTime             @default(now())
-
-  @@index([distributionReleaseId])
-}
-
-model DSPDelivery {
-  id                   String               @id @default(cuid())
-  distributionReleaseId String
-  distributionRelease  DistributionRelease  @relation(fields: [distributionReleaseId], references: [id], onDelete: Cascade)
-  
-  dsp                  String               // spotify, apple_music, youtube_music, tiktok, deezer, audiomack, amazon_music
-  status               String               @default("pending")
-  // pending → queued → submitting → submitted → live | failed | rolled_back
-  
-  submittedAt          DateTime?
-  liveAt               DateTime?
-  failedAt             DateTime?
-  rolledBackAt         DateTime?
-  
-  dspReferenceId       String               @default("") // DSP's internal ID once accepted
-  errorMessage         String               @default("")
-  retryCount           Int                  @default(0)
-  lastRetryAt          DateTime?
-  
-  deliveryPayload      Json?                // snapshot of what was sent
-  
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-
-  @@index([distributionReleaseId])
-  @@index([dsp, status])
-}
-
-// ── CREATOR SUBSCRIPTIONS & FAN CLUBS ────────────────────────
+// ── PHASE 2: CREATOR ECONOMY ──────────────────────────────────
 
 model CreatorSubscriptionTier {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  
-  name            String                    // "Supporter", "Super Fan", "VIP"
-  description     String                    @default("")
-  priceMonthly    Float
-  priceYearly     Float?                    // optional annual price (saves X%)
-  currency        String                    @default("ZAR")
-  
-  perks           Json                      @default("[]") // [{icon, title, description}]
-  maxSubscribers  Int?                       // null = unlimited
-  isActive        Boolean                   @default(true)
-  sortOrder       Int                       @default(0)
-  
-  memberships     CreatorMembership[]
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@index([artistId])
+  id          String              @id @default(cuid())
+  artistId    String
+  artist      Artist              @relation(fields: [artistId], references: [id])
+  name        String
+  price       Float
+  currency    String              @default("ZAR")
+  interval    String              @default("monthly")
+  description String              @default("")
+  perks       String[]
+  isActive    Boolean             @default(true)
+  memberships CreatorMembership[]
+  createdAt   DateTime            @default(now())
 }
 
 model CreatorMembership {
-  id              String                    @id @default(cuid())
-  userId          String
-  user            User                      @relation(fields: [userId], references: [id])
-  tierId          String
-  tier            CreatorSubscriptionTier   @relation(fields: [tierId], references: [id])
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
-  status          String                    @default("active")
-  // active, cancelled, expired, paused, past_due
-  
-  billingInterval String                    @default("monthly") // monthly, yearly
-  currentPeriodStart DateTime               @default(now())
-  currentPeriodEnd   DateTime
-  cancelledAt     DateTime?
-  
-  // Payment tracking
-  payfastToken    String?                   // PayFast recurring token
-  stripeSubId     String?
-  lastPaymentAt   DateTime?
-  lastPaymentAmount Float?
-  
-  totalPaid       Float                     @default(0)
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id        String                  @id @default(cuid())
+  userId    String
+  user      User                    @relation(fields: [userId], references: [id])
+  artistId  String
+  artist    Artist                  @relation(fields: [artistId], references: [id])
+  tierId    String
+  tier      CreatorSubscriptionTier @relation(fields: [tierId], references: [id])
+  status    String                  @default("active") // active, cancelled, expired
+  expiresAt DateTime?
+  createdAt DateTime                @default(now())
 
-  @@index([userId])
   @@index([artistId])
-  @@index([status])
-  @@unique([userId, tierId])
 }
 
 model ExclusiveContent {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  
-  title           String
-  description     String                    @default("")
-  contentType     String                    // audio, video, document, image, link, post
-  fileUrl         String                    @default("")
-  thumbnailUrl    String                    @default("")
-  externalUrl     String                    @default("")
-  body            String                    @default("")  // for text posts
-  
-  // Access control — which tiers can see this
-  accessTierIds   String[]                  // CreatorSubscriptionTier IDs; [] = all paying members
-  isFreePreview   Boolean                   @default(false)
-  
-  publishedAt     DateTime?
-  isPublished     Boolean                   @default(false)
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@index([artistId])
+  id          String   @id @default(cuid())
+  artistId    String
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  title       String
+  description String   @default("")
+  contentType String   // audio, video, pdf, link
+  contentUrl  String
+  tierId      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
 }
-
-// ── CREATOR STOREFRONT ────────────────────────────────────────
 
 model CreatorStorefront {
-  id              String                    @id @default(cuid())
-  artistId        String                    @unique
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
-  heroHeadline    String                    @default("")
-  heroSubtext     String                    @default("")
-  heroImageUrl    String                    @default("")
-  accentColor     String                    @default("#8B5CF6")
-  
-  // Featured sections (ordered JSON)
-  featuredBeats   String[]                  // Beat IDs
-  featuredReleases String[]                 // Release IDs
-  featuredServices String[]                 // MarketplaceService IDs
-  
-  // SEO
-  metaTitle       String                    @default("")
-  metaDescription String                    @default("")
-  
-  isLive          Boolean                   @default(false)
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id          String   @id @default(cuid())
+  artistId    String   @unique
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  headline    String   @default("")
+  description String   @default("")
+  theme       String   @default("dark")
+  sections    Json     @default("[]")
+  isPublic    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
-// ── MARKETPLACE ENGINE ────────────────────────────────────────
-
 model MarketplaceService {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
-  title           String
-  description     String                    @default("")
-  category        String                    // mixing, mastering, features, ghost_writing, promo, design, video, photography, other
-  
-  packages        Json                      @default("[]")
-  // [{name, price, deliveryDays, description, revisions}]
-  
-  portfolioUrls   String[]
-  requirements    String                    @default("") // what buyer must provide
-  
-  isActive        Boolean                   @default(true)
-  totalOrders     Int                       @default(0)
-  rating          Float                     @default(0)
-  reviewCount     Int                       @default(0)
-  
-  orders          MarketplaceOrder[]
-  reviews         ServiceReview[]
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id          String             @id @default(cuid())
+  artistId    String
+  artist      Artist             @relation(fields: [artistId], references: [id])
+  title       String
+  description String             @default("")
+  category    String
+  price       Float
+  currency    String             @default("ZAR")
+  deliveryDays Int               @default(7)
+  revisions   Int                @default(1)
+  isActive    Boolean            @default(true)
+  orders      MarketplaceOrder[]
+  reviews     ServiceReview[]
+  createdAt   DateTime           @default(now())
 
-  @@index([artistId])
-  @@index([category])
+  @@index([category, isActive])
 }
 
 model MarketplaceOrder {
-  id              String                    @id @default(cuid())
-  serviceId       String
-  service         MarketplaceService        @relation(fields: [serviceId], references: [id])
-  buyerUserId     String
-  buyer           User                      @relation(fields: [buyerUserId], references: [id], name: "buyer")
-  sellerArtistId  String
-  seller          Artist                    @relation(fields: [sellerArtistId], references: [id], name: "seller")
-  
-  packageName     String
-  packagePrice    Float
-  currency        String                    @default("ZAR")
-  requirements    String                    @default("") // buyer's submission
-  
-  status          String                    @default("pending")
-  // pending → accepted → in_progress → delivered → revision_requested → completed | disputed | cancelled | refunded
-  
-  deliveryDays    Int
-  dueAt           DateTime?
-  deliveredAt     DateTime?
-  completedAt     DateTime?
-  
-  // Delivery
-  deliverables    Json                      @default("[]") // [{url, filename, description}]
-  sellerNotes     String                    @default("")
-  revisionCount   Int                       @default(0)
-  maxRevisions    Int                       @default(1)
-  revisionNotes   String                    @default("")
-  
-  // Payment
-  purchaseId      String?
-  payfastRef      String?
-  stripePaymentId String?
-  platformFee     Float                     @default(0)
-  netAmount       Float                     @default(0)
-  
-  // Dispute
-  dispute         MarketplaceDispute?
-  
-  milestones      OrderMilestone[]
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@index([buyerUserId])
-  @@index([sellerArtistId])
-  @@index([status])
-}
-
-model OrderMilestone {
-  id              String                    @id @default(cuid())
-  orderId         String
-  order           MarketplaceOrder          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  title           String
-  description     String                    @default("")
-  amount          Float
-  dueAt           DateTime?
-  completedAt     DateTime?
-  status          String                    @default("pending") // pending, released, disputed
-  
-  createdAt       DateTime                  @default(now())
+  id          String              @id @default(cuid())
+  serviceId   String
+  service     MarketplaceService  @relation(fields: [serviceId], references: [id])
+  buyerId     String
+  buyer       User                @relation("buyer", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      Artist              @relation("seller", fields: [sellerId], references: [id])
+  amount      Float
+  currency    String              @default("ZAR")
+  status      String              @default("pending") // pending, active, delivered, revision, complete, disputed, cancelled
+  requirements String             @default("")
+  deliverables String[]
+  deadline    DateTime?
+  dispute     MarketplaceDispute?
+  review      ServiceReview?
+  createdAt   DateTime            @default(now())
 }
 
 model MarketplaceDispute {
-  id              String                    @id @default(cuid())
-  orderId         String                    @unique
-  order           MarketplaceOrder          @relation(fields: [orderId], references: [id])
-  
-  raisedByUserId  String
-  raisedBy        User                      @relation(fields: [raisedByUserId], references: [id], name: "disputant")
-  
-  reason          String
-  evidence        Json                      @default("[]") // [{url, description}]
-  
-  status          String                    @default("open") // open, under_review, resolved_buyer, resolved_seller, escalated
-  adminNotes      String                    @default("")
-  resolution      String                    @default("")
-  resolvedAt      DateTime?
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id        String           @id @default(cuid())
+  orderId   String           @unique
+  order     MarketplaceOrder @relation(fields: [orderId], references: [id])
+  raisedBy  String
+  disputer  User             @relation("disputant", fields: [raisedBy], references: [id])
+  reason    String
+  status    String           @default("open") // open, resolved, closed
+  createdAt DateTime         @default(now())
 }
 
 model ServiceReview {
-  id              String                    @id @default(cuid())
-  serviceId       String
-  service         MarketplaceService        @relation(fields: [serviceId], references: [id])
-  orderId         String                    @unique
-  reviewerUserId  String
-  reviewer        User                      @relation(fields: [reviewerUserId], references: [id], name: "reviewer")
-  
-  rating          Int                       // 1-5
-  comment         String                    @default("")
-  
-  createdAt       DateTime                  @default(now())
+  id        String           @id @default(cuid())
+  orderId   String           @unique
+  order     MarketplaceOrder @relation(fields: [orderId], references: [id])
+  serviceId String
+  service   MarketplaceService @relation(fields: [serviceId], references: [id])
+  reviewerId String
+  reviewer  User             @relation("reviewer", fields: [reviewerId], references: [id])
+  rating    Int
+  body      String           @default("")
+  createdAt DateTime         @default(now())
 }
 
-// ── BEAT LICENSING (extended) ─────────────────────────────────
+model DistributionRelease {
+  id            String   @id @default(cuid())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  title         String
+  distributor   String   @default("")
+  upc           String?
+  status        String   @default("draft") // draft, pending, submitted, live, rejected, rollback
+  submittedAt   DateTime?
+  liveAt        DateTime?
+  platforms     String[]
+  tracks        DistributionTrack[]
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
 
-model BeatLicense {
-  id              String                    @id @default(cuid())
-  beatId          String
-  beat            Beat                      @relation(fields: [beatId], references: [id])
-  purchaseId      String                    @unique
-  purchase        Purchase                  @relation(fields: [purchaseId], references: [id])
-  
-  licenseType     String                    // basic, premium, exclusive
-  licenseKey      String                    @unique @default(cuid())
-  
-  // Usage rights
-  streams         Int?                      // null = unlimited
-  salesCap        Int?                      // null = unlimited
-  radioStations   Boolean                   @default(false)
-  tvSync          Boolean                   @default(false)
-  musicVideo      Boolean                   @default(false)
-  profitSharing   Float                     @default(0) // % owed to producer on earnings
-  
-  buyerName       String
-  buyerEmail      String
-  artistName      String                    @default("")
-  songTitle       String                    @default("")  // what buyer records over it
-  
-  issuedAt        DateTime                  @default(now())
-  expiresAt       DateTime?                 // null = perpetual
-  
-  pdfUrl          String                    @default("")
-  
-  @@index([beatId])
+  @@index([artistId, status])
 }
 
-// ── PAYOUT INFRASTRUCTURE EXPANSION ──────────────────────────
+model DistributionTrack {
+  id          String              @id @default(cuid())
+  releaseId   String
+  release     DistributionRelease @relation(fields: [releaseId], references: [id])
+  title       String
+  isrc        String?
+  fileUrl     String
+  trackNumber Int
+  createdAt   DateTime            @default(now())
+}
 
 model PayoutRequest {
-  id              String                    @id @default(cuid())
+  id              String   @id @default(cuid())
   artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
+  artist          Artist   @relation(fields: [artistId], references: [id])
   amount          Float
-  currency        String                    @default("ZAR")
-  method          String                    // payfast, bank_transfer, paypal
-  
-  // Bank details (encrypted in practice — store reference only)
-  bankAccountRef  String                    @default("") // last4 or masked ref
-  bankName        String                    @default("")
-  accountHolder   String                    @default("")
-  
-  // PayPal
-  paypalEmail     String                    @default("")
-  
-  // PayFast
-  payfastRef      String                    @default("")
-  
-  status          String                    @default("pending")
-  // pending → approved → processing → completed | failed | cancelled
-  
-  adminNotes      String                    @default("")
-  failureReason   String                    @default("")
-  
-  // Covers which payout records this sweeps
-  payoutIds       String[]                  // ArtistPayout IDs covered
-  
-  // Split payouts — collaborators
-  splits          PayoutSplit[]
-  
-  requestedAt     DateTime                  @default(now())
+  currency        String   @default("ZAR")
+  bankAccountId   String?
+  bankAccount     ArtistBankAccount? @relation(fields: [bankAccountId], references: [id])
+  status          String   @default("pending") // pending, approved, paid, rejected
+  adminNotes      String   @default("")
   processedAt     DateTime?
-  completedAt     DateTime?
-  
-  retryCount      Int                       @default(0)
-  lastRetryAt     DateTime?
+  createdAt       DateTime @default(now())
 
-  @@index([artistId])
-  @@index([status])
+  @@index([artistId, status])
 }
 
-model PayoutSplit {
-  id              String                    @id @default(cuid())
-  payoutRequestId String
-  payoutRequest   PayoutRequest             @relation(fields: [payoutRequestId], references: [id], onDelete: Cascade)
-  
-  collaboratorEmail String
-  collaboratorName  String
-  splitPercent    Float
-  amount          Float
-  currency        String                    @default("ZAR")
-  
-  payoutMethod    String                    @default("payfast")
-  payfastRef      String                    @default("")
-  paypalEmail     String                    @default("")
-  
-  status          String                    @default("pending") // pending, sent, failed
-  sentAt          DateTime?
-  
-  createdAt       DateTime                  @default(now())
-}
-
-// ── BUSINESS INFRASTRUCTURE ───────────────────────────────────
-
-model Invoice {
-  id              String                    @id @default(cuid())
-  invoiceNumber   String                    @unique
-  artistId        String?
-  artist          Artist?                   @relation(fields: [artistId], references: [id])
-  buyerName       String
-  buyerEmail      String
-  buyerAddress    Json                      @default("{}") // {line1, city, country, postal}
-  
-  lineItems       Json                      // [{description, qty, unitPrice, total}]
-  subtotal        Float
-  taxRate         Float                     @default(0)   // 15% VAT when applicable
-  taxAmount       Float                     @default(0)
-  total           Float
-  currency        String                    @default("ZAR")
-  
-  status          String                    @default("draft") // draft, sent, paid, void
-  dueDate         DateTime?
-  paidAt          DateTime?
-  
-  purchaseId      String?
-  orderId         String?
-  
-  pdfUrl          String                    @default("")
-  
-  notes           String                    @default("")
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@index([artistId])
-  @@index([status])
+model ArtistBankAccount {
+  id            String        @id @default(cuid())
+  artistId      String
+  artist        Artist        @relation(fields: [artistId], references: [id])
+  bankName      String
+  accountHolder String
+  accountNumber String        // stored encrypted in prod; masked in responses
+  maskedNumber  String        @default("")
+  branchCode    String
+  accountType   String        @default("cheque")
+  isDefault     Boolean       @default(false)
+  isVerified    Boolean       @default(false)
+  payoutRequests PayoutRequest[]
+  createdAt     DateTime      @default(now())
 }
 
 model RevenueRecord {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
-  period          String                    // "2025-01" (YYYY-MM)
-  
-  // Breakdown
-  beatSales       Float                     @default(0)
-  releaseSales    Float                     @default(0)
-  subscriptions   Float                     @default(0)
-  marketplace     Float                     @default(0)
-  tips            Float                     @default(0)
-  distribution    Float                     @default(0)
-  other           Float                     @default(0)
-  
-  grossRevenue    Float
-  platformFees    Float
-  netRevenue      Float
-  
-  payoutAmount    Float                     @default(0)
-  pendingAmount   Float                     @default(0)
-  
-  currency        String                    @default("ZAR")
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id         String   @id @default(cuid())
+  artistId   String
+  artist     Artist   @relation(fields: [artistId], references: [id])
+  type       String   // beat_sale, release_sale, support, subscription, marketplace
+  amount     Float
+  currency   String   @default("ZAR")
+  platformFee Float   @default(0)
+  netAmount  Float    @default(0)
+  purchaseId String?
+  period     String   @default("") // YYYY-MM
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
 
-  @@unique([artistId, period])
   @@index([artistId])
 }
 
 model TaxRecord {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id])
-  
-  taxYear         Int
-  totalIncome     Float
-  totalFees       Float
-  netIncome       Float
-  currency        String                    @default("ZAR")
-  
-  // Itemized income sources
-  breakdown       Json                      @default("{}")
-  
-  // Document
-  pdfUrl          String                    @default("")
-  generatedAt     DateTime?
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@unique([artistId, taxYear])
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  year      Int
+  quarter   Int
+  totalEarnings Float
+  platformFees  Float
+  netEarnings   Float
+  currency  String   @default("ZAR")
+  createdAt DateTime @default(now())
 }
 
-model PlatformCommission {
-  id              String                    @id @default(cuid())
-  purchaseId      String?
-  orderId         String?
-  
-  source          String                    // beat_sale, release_sale, subscription, marketplace, tip
-  grossAmount     Float
-  commissionRate  Float
-  commissionAmount Float
-  currency        String                    @default("ZAR")
-  
-  artistId        String?
-  period          String                    @default("") // YYYY-MM
-  
-  createdAt       DateTime                  @default(now())
-
-  @@index([period])
-  @@index([artistId])
+model Invoice {
+  id         String    @id @default(cuid())
+  artistId   String
+  artist     Artist    @relation(fields: [artistId], references: [id])
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+  number     String    @unique
+  total      Float
+  currency   String    @default("ZAR")
+  pdfUrl     String?
+  issuedAt   DateTime  @default(now())
+  createdAt  DateTime  @default(now())
 }
 
-// ── ARTIST BANK ACCOUNTS (for payout routing) ─────────────────
+model BeatLicense {
+  id           String    @id @default(cuid())
+  artistId     String
+  artist       Artist    @relation(fields: [artistId], references: [id])
+  beatId       String
+  beat         Beat      @relation(fields: [beatId], references: [id])
+  purchaseId   String    @unique
+  purchase     Purchase  @relation(fields: [purchaseId], references: [id])
+  licenseKey   String    @unique @default(cuid())
+  licenseType  String    // basic, premium, exclusive
+  buyerName    String
+  buyerEmail   String
+  terms        String    @default("")
+  isRevoked    Boolean   @default(false)
+  revokedReason String   @default("")
+  createdAt    DateTime  @default(now())
 
-model ArtistBankAccount {
-  id              String                    @id @default(cuid())
-  artistId        String
-  artist          Artist                    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  
-  accountType     String                    // bank, paypal, payfast
-  
-  // Bank
-  bankName        String                    @default("")
-  branchCode      String                    @default("")
-  accountNumber   String                    @default("") // STORE ENCRYPTED in prod
-  accountHolder   String                    @default("")
-  accountType2    String                    @default("") // cheque, savings
-  
-  // PayPal
-  paypalEmail     String                    @default("")
-  
-  // PayFast
-  payfastMerchantId String                 @default("")
-  
-  isDefault       Boolean                   @default(false)
-  isVerified      Boolean                   @default(false)
-  
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-
-  @@index([artistId])
+  @@index([licenseKey])
 }
 
+// ── PHASE 3: SOCIAL ENGINE ────────────────────────────────────
 
+model ArtistPost {
+  id          String        @id @default(cuid())
+  artistId    String
+  artist      Artist        @relation(fields: [artistId], references: [id])
+  body        String
+  mediaUrls   String[]      @default([])
+  linkUrl     String        @default("")
+  linkType    String        @default("") // beat, release, external
+  linkItemId  String        @default("")
+  likeCount   Int           @default(0)
+  commentCount Int          @default(0)
+  repostCount Int           @default(0)
+  isPinned    Boolean       @default(false)
+  isPublished Boolean       @default(true)
+  publishedAt DateTime      @default(now())
+  comments    PostComment[]
+  createdAt   DateTime      @default(now())
 
-// ── SOCIAL ENGINE ─────────────────────────────────────────────
+  @@index([artistId, isPublished, publishedAt])
+}
 
-// Unified engagement events (likes, saves, reposts)
-model EngagementEvent {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type       String   // like, save, repost, view
-  targetType String   // beat, release, video, sample, post, comment
-  targetId   String
-  // Repost-specific
-  repostNote String   @default("")
-  createdAt  DateTime @default(now())
+model PostComment {
+  id        String     @id @default(cuid())
+  postId    String
+  post      ArtistPost @relation(fields: [postId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  body      String
+  parentId  String?
+  isDeleted Boolean    @default(false)
+  createdAt DateTime   @default(now())
+}
 
-  @@unique([userId, type, targetType, targetId])
-  @@index([userId])
-  @@index([targetType, targetId])
-  @@index([type, targetType])
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // new_follower, new_comment, new_like, new_sale, new_message, milestone_followers, milestone_sales
+  title     String
+  body      String
+  linkType  String   @default("")
+  linkId    String   @default("")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
   @@index([createdAt])
 }
 
-// Artist feed posts (status updates, announcements, previews)
-model ArtistPost {
-  id          String    @id @default(cuid())
-  artistId    String
-  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  body        String    // text content (max 2000 chars enforced in API)
-  mediaUrls   String[]  // R2 image/audio preview URLs
-  linkUrl     String    @default("")  // external link or internal item link
-  linkType    String    @default("")  // beat, release, video, sample, external
-  linkItemId  String    @default("")
-  likeCount   Int       @default(0)
-  commentCount Int      @default(0)
-  repostCount Int       @default(0)
-  isPinned    Boolean   @default(false)
-  isPublished Boolean   @default(true)
-  publishedAt DateTime  @default(now())
-  comments    PostComment[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([artistId])
-  @@index([publishedAt])
-}
-
-// Comments on posts, beats, releases
-model PostComment {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // Polymorphic target
-  postId    String?
-  post      ArtistPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
-  targetType String     @default("post") // post, beat, release
-  targetId   String     @default("")
-  body      String
-  parentId  String?     // for replies
-  parent    PostComment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   PostComment[] @relation("CommentReplies")
-  likeCount Int         @default(0)
-  isHidden  Boolean     @default(false) // moderation
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  @@index([postId])
-  @@index([userId])
-  @@index([targetType, targetId])
-  @@index([parentId])
-}
-
-// ── NOTIFICATIONS ─────────────────────────────────────────────
-
-model Notification {
-  id         String   @id @default(cuid())
-  userId     String   // recipient
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type       String
-  // Types:
-  //   follow, unfollow
-  //   like_post, like_beat, like_release, comment, comment_reply
-  //   repost
-  //   new_release, new_beat, new_post       (fan gets when creator posts)
-  //   purchase_confirmed, purchase_received (buyer / seller)
-  //   subscription_new, subscription_cancelled, subscription_renewed
-  //   message_received
-  //   marketplace_order, marketplace_delivered, marketplace_completed
-  //   payout_processed
-  //   milestone_followers, milestone_sales, milestone_streams
-  //   verification_approved, verification_rejected
-  //   moderation_warning, content_removed
-
-  // Actor (who triggered it — null for system notifications)
-  actorId    String?
-  actorName  String   @default("")
-  actorPhoto String   @default("")
-
-  // Target entity
-  targetType String   @default("") // beat, release, post, order, etc.
-  targetId   String   @default("")
-  targetSlug String   @default("") // for links
-  targetTitle String  @default("")
-
-  // Notification body
-  title      String
-  body       String   @default("")
-  actionUrl  String   @default("")
-
-  isRead     Boolean  @default(false)
-  readAt     DateTime?
-
-  // Email/push delivery
-  emailSent  Boolean  @default(false)
-  pushSent   Boolean  @default(false)
-
-  createdAt  DateTime @default(now())
-
-  @@index([userId, isRead])
-  @@index([userId, createdAt])
-  @@index([type])
-}
-
-// Notification preferences per user
 model NotificationPreference {
-  id                    String  @id @default(cuid())
-  userId                String  @unique
-  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // In-app
-  inAppFollows          Boolean @default(true)
-  inAppLikes            Boolean @default(true)
-  inAppComments         Boolean @default(true)
-  inAppMessages         Boolean @default(true)
-  inAppPurchases        Boolean @default(true)
-  inAppReleases         Boolean @default(true)
-  inAppMilestones       Boolean @default(true)
-  inAppModeration       Boolean @default(true)
-
-  // Email
-  emailPurchases        Boolean @default(true)
-  emailFollows          Boolean @default(false)
-  emailMessages         Boolean @default(true)
-  emailReleases         Boolean @default(true)
-  emailMilestones       Boolean @default(true)
-  emailWeeklyDigest     Boolean @default(true)
-
-  // Push (future)
-  pushEnabled           Boolean @default(false)
-  pushToken             String  @default("")
-
-  updatedAt             DateTime @updatedAt
-}
-
-// ── MESSAGING INFRASTRUCTURE ──────────────────────────────────
-
-model MessageConversation {
-  id           String    @id @default(cuid())
-  // Two-party conversation (sorted participant IDs for dedup)
-  participant1 String    // userId (always lexicographically smaller)
-  participant2 String    // userId
-  lastMessageAt DateTime @default(now())
-  lastMessagePreview String @default("")
-  // Unread counts per participant
-  unread1      Int       @default(0) // unread for participant1
-  unread2      Int       @default(0)
-  isArchived1  Boolean   @default(false)
-  isArchived2  Boolean   @default(false)
-  messages     Message[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@unique([participant1, participant2])
-  @@index([participant1])
-  @@index([participant2])
-  @@index([lastMessageAt])
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id])
+  emailMessages   Boolean @default(true)
+  emailFollowers  Boolean @default(true)
+  emailSales      Boolean @default(true)
+  emailMilestones Boolean @default(true)
+  pushEnabled     Boolean @default(true)
+  createdAt       DateTime @default(now())
 }
 
 model Message {
   id             String              @id @default(cuid())
   conversationId String
-  conversation   MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation   MessageConversation @relation(fields: [conversationId], references: [id])
   senderId       String
-  sender         User                @relation("SentMessages", fields: [senderId], references: [id])
-  body           String              // max 2000 chars enforced in API
-  attachments    Json                @default("[]") // [{url, filename, fileType, size}]
+  sender         User                @relation(fields: [senderId], references: [id])
+  body           String
   isRead         Boolean             @default(false)
-  readAt         DateTime?
-  // Moderation
-  isFlagged      Boolean             @default(false)
-  flagReason     String              @default("")
   isDeleted      Boolean             @default(false)
-  deletedAt      DateTime?
   createdAt      DateTime            @default(now())
 
-  @@index([conversationId, createdAt])
-  @@index([senderId])
+  @@index([conversationId, isDeleted, createdAt])
 }
 
-// ── DISCOVERY ENGINE ──────────────────────────────────────────
+model MessageConversation {
+  id            String    @id @default(cuid())
+  participant1  String
+  participant2  String
+  messages      Message[]
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
 
-// Trending snapshots (computed by background worker, cached here)
-model TrendingSnapshot {
-  id         String   @id @default(cuid())
-  period     String   // hourly, daily, weekly
-  category   String   // beats, artists, releases, tags
-  // Ordered list of item IDs and scores
-  items      Json     // [{id, score, delta, rank}]
-  computedAt DateTime @default(now())
-
-  @@index([period, category])
-  @@index([computedAt])
+  @@unique([participant1, participant2])
+  @@index([participant1, participant2])
+  @@index([lastMessageAt])
 }
 
-// Search index helper — denormalised for fast full-text search
-model SearchIndex {
-  id          String   @id @default(cuid())
-  entityType  String   // beat, release, artist, post
-  entityId    String
-  title       String
-  subtitle    String   @default("") // artist name / genre
-  tags        String[]
-  genre       String   @default("")
-  imageUrl    String   @default("")
-  slug        String   @default("")
-  score       Float    @default(0)   // relevance score (plays + sales combined)
-  isActive    Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
-
-  @@unique([entityType, entityId])
-  @@index([entityType])
-  @@index([score])
-}
-
-// ── ANALYTICS ENGINE ──────────────────────────────────────────
-
-// Daily event roll-ups per artist (lightweight, additive)
-model AnalyticsDailyRollup {
-  id          String   @id @default(cuid())
-  artistId    String
-  date        String   // "YYYY-MM-DD"
-
-  // Traffic
-  profileViews  Int    @default(0)
-  storeViews    Int    @default(0)
-
-  // Plays by content type
-  beatPlays     Int    @default(0)
-  releasePlays  Int    @default(0)
-  videoPlays    Int    @default(0)
-
-  // Sales
-  beatSales     Int    @default(0)
-  releaseSales  Int    @default(0)
-  videoSales    Int    @default(0)
-  totalRevenue  Float  @default(0)
-
-  // Social
-  newFollowers  Int    @default(0)
-  lostFollowers Int    @default(0)
-  likes         Int    @default(0)
-  comments      Int    @default(0)
-  reposts       Int    @default(0)
-  shares        Int    @default(0)
-
-  // Messages
-  newMessages   Int    @default(0)
-  newInquiries  Int    @default(0)
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([artistId, date])
-  @@index([artistId])
-  @@index([date])
-}
-
-// Geography analytics
-model GeographyEvent {
-  id         String   @id @default(cuid())
-  artistId   String
-  countryCode String  // ISO-2
-  countryName String  @default("")
-  city       String   @default("")
-  eventType  String   // play, purchase, follow, visit
-  count      Int      @default(1)
-  period     String   // "YYYY-MM"
-
-  @@unique([artistId, countryCode, eventType, period])
-  @@index([artistId])
-  @@index([period])
-}
-
-// Page-level view tracking (anonymous + authed)
-model PageView {
-  id         String   @id @default(cuid())
-  artistId   String?
-  targetType String   // artist_profile, beat, release, store
-  targetId   String
-  userId     String?  // null for anonymous
-  userAgent  String   @default("")
-  country    String   @default("")
-  referrer   String   @default("")
-  sessionId  String   @default("")
-  createdAt  DateTime @default(now())
-
-  @@index([artistId, targetType])
-  @@index([targetType, targetId])
-  @@index([createdAt])
-}
-
-// ── MODERATION + TRUST ────────────────────────────────────────
-
-model AbuseReport {
-  id             String   @id @default(cuid())
-  reporterUserId String?
-  reporterEmail  String   @default("")
-  // Target
-  targetType     String   // user, artist, beat, release, post, comment, message
-  targetId       String
-  targetTitle    String   @default("")
-  reason         String
-  // Categories
-  category       String   @default("other")
-  // harassment, hate_speech, spam, explicit_content, impersonation,
-  // copyright, fraud, self_harm, misinformation, other
-  description    String   @default("")
-  evidence       Json     @default("[]") // [{url, description}]
-  // Status
-  status         String   @default("pending")
-  // pending → under_review → resolved_action | resolved_noaction | dismissed
-  assignedTo     String   @default("") // admin email
-  adminNotes     String   @default("")
-  actionTaken    String   @default("") // warning, content_removed, account_suspended, account_banned
-  resolvedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([status])
-  @@index([category])
-  @@index([targetType, targetId])
-}
-
-// Moderation actions log
-model ModerationAction {
-  id          String   @id @default(cuid())
-  adminEmail  String
-  targetType  String   // user, artist, beat, release, post, comment
-  targetId    String
-  action      String   // warn, hide_content, remove_content, suspend, ban, verify, unverify, restore
-  reason      String   @default("")
-  notes       String   @default("")
-  // Reversal
-  reversedAt  DateTime?
-  reversedBy  String   @default("")
-  createdAt   DateTime @default(now())
-
-  @@index([targetType, targetId])
-  @@index([adminEmail])
-}
-
-// Content flags (lightweight flag per piece of content)
-model ContentFlag {
-  id          String   @id @default(cuid())
-  contentType String   // beat, release, post, comment, message, artist
-  contentId   String
-  flagType    String   // hidden, removed, adult, restricted, pending_review
-  reason      String   @default("")
-  flaggedBy   String   @default("") // admin email or "system"
-  createdAt   DateTime @default(now())
-
-  @@unique([contentType, contentId, flagType])
-  @@index([contentType, flagType])
-}
-
-// Creator verification requests
-model VerificationRequest {
-  id           String   @id @default(cuid())
-  artistId     String   @unique
-  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  // Evidence submitted
-  idDocumentUrl String  @default("")
-  socialLinks  Json     @default("{}")  // {instagram, twitter, spotify, apple, youtube}
-  monthlyListeners Int  @default(0)     // self-reported
-  totalStreams  Int      @default(0)     // self-reported
-  notes        String   @default("")
-  // Status
-  status       String   @default("pending") // pending, under_review, approved, rejected
-  adminNotes   String   @default("")
-  reviewedBy   String   @default("")
-  reviewedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([status])
-}
-
-// Anti-spam: rate limit tracking
-model SpamSignal {
+model EngagementEvent {
   id         String   @id @default(cuid())
   userId     String?
-  ipHash     String   @default("") // hashed IP for anon
-  action     String   // message_send, comment_post, report_submit, follow, play
-  count      Int      @default(1)
-  windowStart DateTime
-  isFlagged  Boolean  @default(false)
+  user       User?    @relation(fields: [userId], references: [id])
+  eventType  String   // play, like, follow, purchase, share, comment
+  targetType String
+  targetId   String
+  meta       Json     @default("{}")
+  sessionId  String   @default("")
+  ipHash     String   @default("")
+  country    String   @default("")
   createdAt  DateTime @default(now())
 
-  @@index([userId, action])
-  @@index([ipHash, action])
-  @@index([windowStart])
+  @@index([userId, eventType, targetType])
+  @@index([targetType, targetId])
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  path      String
+  country   String   @default("")
+  referrer  String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([artistId, createdAt])
+}
+
+model AnalyticsDailyRollup {
+  id            String   @id @default(cuid())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  date          DateTime
+  plays         Int      @default(0)
+  followers     Int      @default(0)
+  revenue       Float    @default(0)
+  pageViews     Int      @default(0)
+  uniqueVisitors Int     @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([artistId, date])
+  @@index([artistId, date])
+}
+
+model GeographyEvent {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  country   String
+  eventType String
+  count     Int      @default(0)
+  period    String   // YYYY-MM
+  createdAt DateTime @default(now())
+
+  @@index([artistId, eventType, period])
+}
+
+model SearchIndex {
+  id         String   @id @default(cuid())
+  entityType String   // beat, release, artist
+  entityId   String
+  artistId   String?
+  artist     Artist?  @relation(fields: [artistId], references: [id])
+  title      String
+  subtitle   String   @default("")
+  tags       String[]
+  genre      String   @default("")
+  imageUrl   String   @default("")
+  slug       String
+  score      Float    @default(0)
+  isActive   Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([entityType, entityId])
+  @@index([entityType, isActive, score])
+}
+
+model TrendingSnapshot {
+  id        String   @id @default(cuid())
+  period    String   // hourly, daily, weekly
+  category  String   // beats, artists, releases, tags
+  items     Json
+  createdAt DateTime @default(now())
+
+  @@index([period, category, createdAt])
+}
+
+model VerificationRequest {
+  id          String    @id @default(cuid())
+  artistId    String    @unique
+  artist      Artist    @relation(fields: [artistId], references: [id])
+  status      String    @default("pending") // pending, approved, rejected
+  idDocUrl    String    @default("")
+  socialLinks Json      @default("{}")
+  notes       String    @default("")
+  reviewedAt  DateTime?
+  adminNotes  String    @default("")
+  createdAt   DateTime  @default(now())
+}
+
+// ── PHASE 4: MODERATION & TRUST ──────────────────────────────
+
+model AbuseReport {
+  id              String             @id @default(cuid())
+  reporterUserId  String?
+  reporterEmail   String             @default("")
+  targetType      String             // beat, release, post, comment, artist, message
+  targetId        String
+  targetTitle     String             @default("")
+  reason          String
+  category        String             // harassment, hate_speech, spam, explicit_content, etc.
+  description     String             @default("")
+  evidence        Json               @default("[]")
+  status          String             @default("pending") // pending, reviewed, resolved, dismissed
+  resolution      String             @default("")
+  moderatorId     String             @default("")
+  actions         ModerationAction[]
+  createdAt       DateTime           @default(now())
+
+  @@index([status, createdAt])
+}
+
+model ModerationAction {
+  id        String      @id @default(cuid())
+  reportId  String
+  report    AbuseReport @relation(fields: [reportId], references: [id])
+  adminId   String      @default("")
+  action    String      // warn, remove_content, suspend_account, ban_account, no_action
+  notes     String      @default("")
+  createdAt DateTime    @default(now())
+}
+
+model ContentFlag {
+  id         String   @id @default(cuid())
+  targetType String
+  targetId   String
+  flagType   String   // explicit, spam, copyright, misleading
+  isActive   Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([targetType, targetId, flagType])
+}
+
+// ── RATE LIMITING / ANTI-ABUSE ───────────────────────────────
+
+model SpamSignal {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([userId, action, windowStart])
 }
