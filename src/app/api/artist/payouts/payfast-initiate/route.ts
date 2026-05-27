@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createClient } from '@/lib/supabase';
-import crypto from 'crypto';
 
 /**
  * POST /api/artist/payouts/payfast-initiate
- * Artist initiates PayFast payout - sends funds to their bank account via PayFast
+ * Artist initiates a payout request against their confirmed sales balance.
+ * ArtistPayout rows don't carry netAmount — we derive available balance
+ * from confirmed Purchase rows where netAmount > 0.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +18,6 @@ export async function POST(req: NextRequest) {
 
     const artist = await prisma.artist.findUnique({
       where: { userId: user.id },
-      include: { payouts: { where: { status: 'pending' } } },
     });
 
     if (!artist) {
@@ -31,56 +31,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    // Get pending payouts totaling the requested amount
-    const pendingPayouts = await prisma.artistPayout.findMany({
+    // Derive available balance from confirmed purchases net amounts
+    const confirmedPurchases = await prisma.purchase.findMany({
       where: {
-        artistId: artist.id,
-        status: 'pending',
-        method: 'payfast',
+        status: 'confirmed',
+        beat:    { artistId: artist.id },
       },
-      take: 50,
+      select: { netAmount: true },
     });
 
-    let totalNetAmount = pendingPayouts.reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
-    if (totalNetAmount < amount) {
+    // Also check releases, videos, samples
+    const [releasePurchases, videoPurchases, samplePurchases] = await Promise.all([
+      prisma.purchase.findMany({ where: { status: 'confirmed', release: { artistId: artist.id } }, select: { netAmount: true } }),
+      prisma.purchase.findMany({ where: { status: 'confirmed', video:   { artistId: artist.id } }, select: { netAmount: true } }),
+      prisma.purchase.findMany({ where: { status: 'confirmed', sample:  { artistId: artist.id } }, select: { netAmount: true } }),
+    ]);
+
+    const allPurchases = [...confirmedPurchases, ...releasePurchases, ...videoPurchases, ...samplePurchases];
+    const totalAvailable = allPurchases.reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
+
+    // Check already-requested payout amounts
+    const existingRequests = await prisma.payoutRequest.aggregate({
+      where: { artistId: artist.id, status: { in: ['pending', 'approved'] } },
+      _sum: { amount: true },
+    });
+    const alreadyRequested = existingRequests._sum.amount ?? 0;
+    const actuallyAvailable = totalAvailable - alreadyRequested;
+
+    if (actuallyAvailable < amount) {
       return NextResponse.json({
-        error: `Only ${totalNetAmount.toFixed(2)} ZAR available in pending payouts`,
-        available: totalNetAmount,
+        error: `Only ${actuallyAvailable.toFixed(2)} ZAR available`,
+        available: actuallyAvailable,
       }, { status: 400 });
     }
 
-    // Mark selected payouts as processing
-    const selectedPayouts: typeof pendingPayouts = [];
-    let runningTotal = 0;
-    for (const payout of pendingPayouts) {
-      if (runningTotal >= amount) break;
-      selectedPayouts.push(payout);
-      runningTotal += payout.netAmount;
-    }
-
-    const payoutIds = selectedPayouts.map((p: { id: string }) => p.id);
-    const totalToProcess = selectedPayouts.reduce((sum: number, p: { netAmount: number }) => sum + p.netAmount, 0);
-
-    // Update payouts to processing
-    await prisma.artistPayout.updateMany({
-      where: { id: { in: payoutIds } },
-      data: { status: 'processing' },
-    });
-
-    // Create settlement reference
+    // Create a payout request (manual processing — truthful status)
     const settlementRef = `VUKA-${Date.now().toString(36).toUpperCase()}`;
+
+    const payoutRequest = await prisma.payoutRequest.create({
+      data: {
+        artistId: artist.id,
+        amount,
+        currency: 'ZAR',
+        status: 'pending',
+        adminNotes: `PayFast request. Ref: ${settlementRef}. Last4: ${bankAccountEndsWith4Digits ?? 'N/A'}. ${notes ?? ''}`.trim(),
+      },
+    });
 
     return NextResponse.json({
       success: true,
       settlementRef,
-      totalAmount: totalToProcess,
-      payoutCount: selectedPayouts.length,
-      bankAccountLast4: bankAccountEndsWith4Digits,
+      payoutRequestId: payoutRequest.id,
+      requestedAmount: amount,
       currency: 'ZAR',
-      artistId: artist.id,
-      artistName: artist.name,
-      payoutIds,
-      notes: `Settlement: ${settlementRef}. ${notes || ''}`,
+      status: 'pending',
+      message: 'Payout request submitted. Processing within 2–5 business days.',
     });
   } catch (err) {
     console.error('PayFast payout initiate error:', err);
