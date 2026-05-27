@@ -1,23 +1,35 @@
-# Vuka — 05 Apps + Dashboard
+# Vuka — Split Repository Structure
 
-**What lives here:**
-ALL frontend pages and UI components — artist profiles, store pages,
-beat pages, dashboards (beats, releases, payouts, settings, goals),
-checkout flows, download pages, admin panel, fan hub, industry hub,
-legal pages. Also the dashboard API routes that feed directly into the pages.
+This project is split into 5 packages for GitHub manageability.
+Each package is under 100 files. Each contains the full prisma schema,
+package.json, and shared lib files so it can be read and edited independently.
 
-**Key files:**
-- `src/components/` — BeatCard, BuyModal, Navbar, NowPlayingBar, StoreClient, LandingPage
-- `src/app/dashboard/` — artist dashboard pages (beats, releases, payouts, settings…)
-- `src/app/artist/[slug]/` — public artist profile page
-- `src/app/beat/[slug]/` — beat detail + purchase page
-- `src/app/store/` — public beat + release store pages
-- `src/app/admin/` — admin panel page
-- `src/app/auth/` — login, register, verify pages
-- `src/app/checkout/` — success + Stripe Connect return pages
-- `src/app/legal/` — terms, privacy, refunds, DMCA pages
-- `src/app/api/dashboard/` — beats, releases, settings, QR, uploads
+## The 5 Packages
 
-**Note:** This package contains the visual shell. The API calls it makes
-hit routes defined in packages 02–04. In the deployed monorepo all
-packages are merged — this split is for reading/editing clarity only.
+| Package | Purpose | Files |
+|---|---|---|
+| `01-core-platform` | Auth, middleware, security, cron, admin, email/PDF/R2 libs | ~46 |
+| `02-creator-economy` | Payments, payouts, licensing, downloads, subscriptions | ~69 |
+| `03-distribution-engine` | Distribution, analytics, discovery, store browse | ~51 |
+| `04-social-marketplace` | Feed, messaging, marketplace, moderation, industry | ~61 |
+| `05-apps-dashboard` | All frontend pages, components, dashboard UI | ~74 |
+
+## How to deploy
+
+The **deployed app** is the merged `vuka-deploy-ready.zip` — all 5 packages
+combined into one Next.js app. That is what goes on Vercel.
+
+These 5 packages are for **reading, editing, and understanding** the codebase.
+When you make a change in a package, apply the same change to the merged repo
+before pushing to Vercel.
+
+## GitHub repos recommended setup
+
+Create 5 repos (or one monorepo with 5 folders):
+- `vuka/01-core-platform`
+- `vuka/02-creator-economy`
+- `vuka/03-distribution-engine`
+- `vuka/04-social-marketplace`
+- `vuka/05-apps-dashboard`
+
+Or push all 5 as folders inside one `vuka-platform` repo.
