@@ -1,0 +1,50 @@
+// src/app/api/industry/inquire/route.ts
+// POST — artist sends an inquiry to an industry service listing.
+
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerUser } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getServerUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const artist = await prisma.artist.findUnique({ where: { userId: user.id } });
+    if (!artist) return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
+
+    const { serviceId, message } = await req.json();
+    if (!serviceId) return NextResponse.json({ error: 'serviceId required' }, { status: 400 });
+
+    const service = await prisma.industryService.findUnique({
+      where: { id: serviceId },
+      include: { industryUser: { include: { user: true } } },
+    });
+    if (!service || !service.isActive) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+    }
+
+    // Prevent duplicate inquiry
+    const existing = await prisma.serviceInquiry.findFirst({
+      where: { serviceId, artistId: artist.id, status: 'pending' },
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'You already have a pending inquiry for this service' }, { status: 409 });
+    }
+
+    const inquiry = await prisma.serviceInquiry.create({
+      data: {
+        serviceId,
+        artistId: artist.id,
+        message: message?.trim() || '',
+        status: 'pending',
+      },
+    });
+
+    return NextResponse.json({ ok: true, inquiry });
+  } catch (err) {
+    console.error('[industry/inquire POST]', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}

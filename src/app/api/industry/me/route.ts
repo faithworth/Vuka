@@ -19,6 +19,15 @@ export async function GET() {
       include: {
         referrals: { orderBy: { createdAt: 'desc' }, take: 50 },
         deals: { orderBy: { createdAt: 'desc' } },
+        services: {
+          include: {
+            inquiries: {
+              include: { artist: { select: { slug: true, name: true, photoUrl: true } } },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -29,6 +38,7 @@ export async function GET() {
       industryUser,
       referrals: industryUser.referrals,
       deals: industryUser.deals,
+      services: industryUser.services,
     });
   } catch (err) {
     console.error('[industry/me]', err);

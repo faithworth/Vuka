@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'faithworth@vuka-distro.vercel.app';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 
 export async function GET() {
   const user = await getServerUser();
