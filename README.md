@@ -1,17 +1,23 @@
-# Vuka — 04 Social + Marketplace
+# Vuka — 05 Apps + Dashboard
 
 **What lives here:**
-Feed, posts, comments, likes, reposts, follows, notifications,
-direct messaging, marketplace services/orders/disputes, moderation,
-industry hub, wishlists.
+ALL frontend pages and UI components — artist profiles, store pages,
+beat pages, dashboards (beats, releases, payouts, settings, goals),
+checkout flows, download pages, admin panel, fan hub, industry hub,
+legal pages. Also the dashboard API routes that feed directly into the pages.
 
 **Key files:**
-- `src/lib/social.ts` — post creation, fan engagement, milestone detection
-- `src/lib/messaging.ts` — conversation threading, read receipts
-- `src/lib/moderation.ts` — abuse reports, content flags, verification
-- `src/lib/marketplace.ts` — order lifecycle, escrow, dispute resolution
-- `src/app/api/social/` — feed, posts, comments, likes, reposts, notifications
-- `src/app/api/messages/` — conversations + message send/read
-- `src/app/api/marketplace/` — services, orders, deliver/complete/dispute/review
-- `src/app/api/moderation/` — reports, queue, admin actions, verification
-- `src/app/api/industry/` — industry browse, services, deals, inquiries
+- `src/components/` — BeatCard, BuyModal, Navbar, NowPlayingBar, StoreClient, LandingPage
+- `src/app/dashboard/` — artist dashboard pages (beats, releases, payouts, settings…)
+- `src/app/artist/[slug]/` — public artist profile page
+- `src/app/beat/[slug]/` — beat detail + purchase page
+- `src/app/store/` — public beat + release store pages
+- `src/app/admin/` — admin panel page
+- `src/app/auth/` — login, register, verify pages
+- `src/app/checkout/` — success + Stripe Connect return pages
+- `src/app/legal/` — terms, privacy, refunds, DMCA pages
+- `src/app/api/dashboard/` — beats, releases, settings, QR, uploads
+
+**Note:** This package contains the visual shell. The API calls it makes
+hit routes defined in packages 02–04. In the deployed monorepo all
+packages are merged — this split is for reading/editing clarity only.
