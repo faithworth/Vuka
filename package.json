@@ -9,7 +9,8 @@
     "dev": "node --max-old-space-size=2048 node_modules/next/dist/bin/next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "db:push": "prisma db push",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -22,10 +23,12 @@
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.44.0",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.2",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.395.0",
     "music-metadata": "^10.3.2",
     "next": "14.2.4",
+    "node-id3": "^0.2.6",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^18",
@@ -34,9 +37,7 @@
     "stripe": "^16.0.0",
     "tailwind-merge": "^2.3.0",
     "ts-node": "^10.9.2",
-    "wavesurfer.js": "^7.7.14",
-    "fflate": "^0.8.2",
-    "node-id3": "^0.2.6"
+    "wavesurfer.js": "^7.7.14"
   },
   "devDependencies": {
     "@types/node": "^20",

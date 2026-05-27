@@ -63,6 +63,7 @@ model Artist {
   payouts          ArtistPayout[]
   followers        Follow[]
   dmcaReports      DMCAReport[]
+  serviceInquiries ServiceInquiry[]
   createdAt        DateTime       @default(now())
 }
 
@@ -312,18 +313,53 @@ model Follow {
 // ── INDUSTRY ──────────────────────────────────────────────
 
 model IndustryUser {
-  id           String     @id @default(cuid())
-  userId       String     @unique
-  user         User       @relation(fields: [userId], references: [id])
-  company      String     @default("")
-  position     String     @default("")
-  website      String     @default("")
-  referralCode String     @unique @default(cuid())
-  totalReferrals Int      @default(0)
-  totalEarnings  Float    @default(0)
+  id           String             @id @default(cuid())
+  userId       String             @unique
+  user         User               @relation(fields: [userId], references: [id])
+  company      String             @default("")
+  position     String             @default("")
+  bio          String             @default("")
+  website      String             @default("")
+  instagram    String             @default("")
+  twitter      String             @default("")
+  referralCode String             @unique @default(cuid())
+  totalReferrals Int              @default(0)
+  totalEarnings  Float            @default(0)
+  isVerified   Boolean            @default(false)
   referrals    Referral[]
   deals        Deal[]
-  createdAt    DateTime   @default(now())
+  services     IndustryService[]
+  createdAt    DateTime           @default(now())
+}
+
+// ── INDUSTRY SERVICES (what industry pros list for artists to hire) ──────
+
+model IndustryService {
+  id             String            @id @default(cuid())
+  industryUserId String
+  industryUser   IndustryUser      @relation(fields: [industryUserId], references: [id])
+  title          String
+  description    String            @default("")
+  category       String            @default("promotion") // promotion, distribution, sync, management, scouting, sponsorship, legal, photography, videography, mixing, mastering, other
+  priceZAR       Float             // what the artist pays
+  pricingModel   String            @default("fixed") // fixed, per_track, per_month, quote
+  deliveryDays   Int               @default(7)
+  isActive       Boolean           @default(true)
+  inquiries      ServiceInquiry[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model ServiceInquiry {
+  id                String          @id @default(cuid())
+  serviceId         String
+  service           IndustryService @relation(fields: [serviceId], references: [id])
+  artistId          String
+  artist            Artist          @relation(fields: [artistId], references: [id])
+  message           String          @default("")
+  status            String          @default("pending") // pending, accepted, rejected, completed
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 }
 
 model Referral {
