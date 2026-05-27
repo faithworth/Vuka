@@ -1,9 +1,5 @@
-// ============================================================
-// PATCH 12 — src/app/auth/register/page.tsx
-// REPLACE entire file.
-// Adds full industry role support: registers as 'industry',
-// creates IndustryUser record, redirects to /industry-dashboard.
-// ============================================================
+// FILE: src/app/auth/register/page.tsx
+// REPLACE ENTIRE FILE
 
 'use client';
 import { useState, Suspense } from 'react';
@@ -52,12 +48,22 @@ function RegisterForm() {
     setError('');
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+
+    // Determine redirect after email confirmation
+    const redirectMap: Record<Role, string> = {
+      artist: '/dashboard',
+      industry: '/industry-dashboard',
+      fan: '/fan',
+    };
+    const afterVerify = redirectMap[role];
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, role },
-        emailRedirectTo: `${window.location.origin}/auth/verify`,
+        // After they click the email link, land them on the right page
+        emailRedirectTo: `${window.location.origin}/api/auth/callback?role=${role}&next=${afterVerify}`,
       },
     });
 
@@ -67,8 +73,8 @@ function RegisterForm() {
       return;
     }
 
-    // Create user record + role-specific records in our DB
-    await fetch('/api/auth/register', {
+    // Pre-create the DB record immediately (no session needed — we pass the data in body)
+    const dbRes = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,19 +82,29 @@ function RegisterForm() {
         email,
         role,
         slug: slugify(name),
-        // industry extras
         ...(isIndustry && { company, position }),
       }),
     });
 
-    // Redirect based on role
-    if (role === 'artist') {
-      router.push('/dashboard');
-    } else if (role === 'industry') {
-      router.push('/industry-dashboard');
-    } else {
-      router.push('/fan');
+    if (!dbRes.ok) {
+      setError('Account created but profile setup failed. Please contact support.');
+      setLoading(false);
+      return;
     }
+
+    // If Supabase auto-confirmed (e.g. dev mode or email confirmation disabled),
+    // the session is set immediately — redirect straight to dashboard.
+    const session = signUpData?.session;
+    if (session) {
+      if (role === 'artist') router.push('/dashboard');
+      else if (role === 'industry') router.push('/industry-dashboard');
+      else router.push('/fan');
+      return;
+    }
+
+    // Otherwise: email confirmation required — send to verify page
+    const params = new URLSearchParams({ email, role });
+    router.push(`/auth/verify?${params.toString()}`);
   };
 
   const handleGoogle = async () => {
@@ -103,9 +119,9 @@ function RegisterForm() {
   };
 
   const roleOptions: { value: Role; label: string; description: string; icon: React.ReactNode }[] = [
-    { value: 'artist', label: 'Artist / Producer', description: 'Sell beats, releases, videos & more', icon: <Music size={16} /> },
-    { value: 'fan',    label: 'Fan / Listener',    description: 'Discover & support African artists', icon: '🎧' },
-    { value: 'industry', label: 'Industry',        description: 'Labels, managers & A&R professionals', icon: <Briefcase size={16} /> },
+    { value: 'artist',   label: 'Artist / Producer', description: 'Sell beats, releases, videos & more', icon: <Music size={16} /> },
+    { value: 'fan',      label: 'Fan / Listener',     description: 'Discover & support African artists',  icon: '🎧' },
+    { value: 'industry', label: 'Industry',            description: 'Labels, managers & A&R professionals', icon: <Briefcase size={16} /> },
   ];
 
   return (
@@ -150,14 +166,16 @@ function RegisterForm() {
             <div className="p-3 rounded-xl text-sm"
               style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--gold)' }}>
               <p className="font-semibold mb-0.5">Industry Portal</p>
-              <p className="text-xs opacity-80">Access referral tracking, deal flow, and artist discovery tools after signing up.</p>
+              <p className="text-xs opacity-80">
+                Discover artists, send deal proposals, and track referral earnings. Your dashboard will be ready immediately after sign-up.
+              </p>
             </div>
           )}
 
           <input
             className="input"
             type="text"
-            placeholder={isIndustry ? "Your full name" : "Your name"}
+            placeholder={isIndustry ? 'Your full name' : 'Your name'}
             value={name}
             onChange={e => setName(e.target.value)}
             required

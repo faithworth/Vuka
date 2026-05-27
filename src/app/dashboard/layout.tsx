@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const me = await res.json();
-          if (me.isArtist) {
+          if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
             try {
               const settingsRes = await fetch('/api/dashboard/settings');

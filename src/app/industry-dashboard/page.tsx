@@ -1,26 +1,57 @@
-// ============================================================
-// PATCH 11a — NEW FILE: src/app/industry-dashboard/page.tsx
-// Full working Industry portal: referrals, deal flow, earnings.
-// ============================================================
-
+// src/app/industry-dashboard/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  Users, TrendingUp, Copy, Check, Plus, Music2, ExternalLink,
-  Briefcase, Clock, CheckCircle, XCircle, LogOut, Loader2
+  Plus, Pencil, Trash2, Loader2, LogOut, Briefcase,
+  CheckCircle, Clock, XCircle, Eye, EyeOff, MessageSquare,
+  DollarSign, Tag, Calendar
 } from 'lucide-react';
+
+const CATEGORIES = [
+  { value: 'promotion',    label: 'Promotion & Marketing' },
+  { value: 'distribution', label: 'Distribution & Publishing' },
+  { value: 'sync',         label: 'Sync & Licensing' },
+  { value: 'management',   label: 'Artist Management' },
+  { value: 'scouting',     label: 'Talent Scouting' },
+  { value: 'sponsorship',  label: 'Sponsorship & Brand Deals' },
+  { value: 'legal',        label: 'Legal & Contracts' },
+  { value: 'photography',  label: 'Photography' },
+  { value: 'videography',  label: 'Videography' },
+  { value: 'mixing',       label: 'Mixing' },
+  { value: 'mastering',    label: 'Mastering' },
+  { value: 'other',        label: 'Other' },
+];
+
+const PRICING_MODELS = [
+  { value: 'fixed',     label: 'Fixed Price' },
+  { value: 'per_track', label: 'Per Track' },
+  { value: 'per_month', label: 'Per Month' },
+  { value: 'quote',     label: 'Custom Quote' },
+];
+
+const STATUS_ICON: Record<string, any> = {
+  pending:   <Clock size={14} className="text-yellow-500" />,
+  accepted:  <CheckCircle size={14} className="text-green-500" />,
+  rejected:  <XCircle size={14} className="text-red-500" />,
+  completed: <CheckCircle size={14} className="text-sky-500" />,
+};
+
+const emptyForm = { title: '', description: '', category: 'promotion', priceZAR: '', pricingModel: 'fixed', deliveryDays: '7' };
 
 export default function IndustryDashboardPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
-  const [copied, setCopied] = useState(false);
-  const [dealForm, setDealForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [deal, setDeal] = useState({ title: '', description: '', artistSlug: '', dealType: 'licensing', offerAmount: '' });
+  const [loading, setLoading]     = useState(true);
+  const [data, setData]           = useState<any>(null);
+  const [services, setServices]   = useState<any[]>([]);
+  const [tab, setTab]             = useState<'services' | 'inquiries'>('services');
+  const [showForm, setShowForm]   = useState(false);
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [form, setForm]           = useState({ ...emptyForm });
+  const [saving, setSaving]       = useState(false);
+  const [deleting, setDeleting]   = useState<string | null>(null);
+  const [error, setError]         = useState('');
 
   useEffect(() => {
     const supabase = createClient();
@@ -30,32 +61,10 @@ export default function IndustryDashboardPage() {
       if (!res.ok) { router.replace('/'); return; }
       const d = await res.json();
       setData(d);
+      setServices(d.services || []);
       setLoading(false);
     });
   }, [router]);
-
-  async function copyReferral() {
-    const url = `${window.location.origin}?ref=${data?.industryUser?.referralCode}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  async function submitDeal() {
-    setSubmitting(true);
-    const res = await fetch('/api/industry/deals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...deal, offerAmount: parseFloat(deal.offerAmount) || 0 }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setData((prev: any) => ({ ...prev, deals: [d.deal, ...(prev.deals || [])] }));
-      setDeal({ title: '', description: '', artistSlug: '', dealType: 'licensing', offerAmount: '' });
-      setDealForm(false);
-    }
-    setSubmitting(false);
-  }
 
   async function logout() {
     const supabase = createClient();
@@ -63,189 +72,335 @@ export default function IndustryDashboardPage() {
     router.push('/');
   }
 
+  function openCreate() {
+    setEditId(null);
+    setForm({ ...emptyForm });
+    setError('');
+    setShowForm(true);
+  }
+
+  function openEdit(svc: any) {
+    setEditId(svc.id);
+    setForm({
+      title: svc.title,
+      description: svc.description,
+      category: svc.category,
+      priceZAR: String(svc.priceZAR),
+      pricingModel: svc.pricingModel,
+      deliveryDays: String(svc.deliveryDays),
+    });
+    setError('');
+    setShowForm(true);
+  }
+
+  async function saveService() {
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    const price = parseFloat(form.priceZAR);
+    if (!price || price <= 0) { setError('Enter a valid price'); return; }
+    setSaving(true);
+    setError('');
+    const url = editId ? `/api/industry/services/${editId}` : '/api/industry/services';
+    const method = editId ? 'PATCH' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, priceZAR: price, deliveryDays: parseInt(form.deliveryDays) || 7 }),
+    });
+    const d = await res.json();
+    if (!res.ok) { setError(d.error || 'Failed to save'); setSaving(false); return; }
+    if (editId) {
+      setServices(prev => prev.map(s => s.id === editId ? d.service : s));
+    } else {
+      setServices(prev => [d.service, ...prev]);
+    }
+    setShowForm(false);
+    setSaving(false);
+  }
+
+  async function deleteService(id: string) {
+    if (!confirm('Delete this service listing?')) return;
+    setDeleting(id);
+    const res = await fetch(`/api/industry/services/${id}`, { method: 'DELETE' });
+    if (res.ok) setServices(prev => prev.filter(s => s.id !== id));
+    setDeleting(null);
+  }
+
+  async function toggleActive(svc: any) {
+    const res = await fetch(`/api/industry/services/${svc.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !svc.isActive }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setServices(prev => prev.map(s => s.id === svc.id ? d.service : s));
+    }
+  }
+
+  const allInquiries = services.flatMap((s: any) =>
+    (s.inquiries || []).map((inq: any) => ({ ...inq, serviceName: s.title }))
+  ).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const pendingCount = allInquiries.filter((i: any) => i.status === 'pending').length;
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
     </div>
   );
 
-  const iu = data?.industryUser || {};
-  const referrals = data?.referrals || [];
-  const deals = data?.deals || [];
+  const iu = data?.industryUser;
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}>
-            <Music2 size={13} className="text-white" />
+      <header className="sticky top-0 z-40 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--gold)', opacity: 0.9 }}>
+              <Briefcase size={15} className="text-white" />
+            </div>
+            <div>
+              <p className="font-black text-sm" style={{ color: 'var(--text)' }}>{data?.user?.name}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{iu?.company || 'Industry Portal'}</p>
+            </div>
           </div>
-          <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka Industry</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{iu.company || data?.user?.name}</span>
-          <button onClick={logout} className="p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-            <LogOut size={16} />
+          <button onClick={logout} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+            <LogOut size={15} /> Sign out
           </button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <main className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Tabs */}
+        <div className="flex gap-1 mb-8 p-1 rounded-xl w-fit" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           {[
-            { label: 'Referrals', value: iu.totalReferrals || 0, icon: Users, color: 'var(--sky)' },
-            { label: 'Earnings',  value: `R${(iu.totalEarnings || 0).toFixed(2)}`, icon: TrendingUp, color: 'var(--green)' },
-            { label: 'Deals',     value: deals.length, icon: Briefcase, color: 'var(--gold)' },
-            { label: 'Converted', value: referrals.filter((r: any) => r.status === 'converted').length, icon: CheckCircle, color: 'var(--green)' },
-          ].map(s => (
-            <div key={s.label} className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <s.icon size={16} style={{ color: s.color }} className="mb-2" />
-              <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
-            </div>
+            { key: 'services',  label: 'My Services' },
+            { key: 'inquiries', label: `Inquiries${pendingCount ? ` (${pendingCount})` : ''}` },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                background: tab === t.key ? 'var(--sky)' : 'transparent',
+                color: tab === t.key ? 'white' : 'var(--text-muted)',
+              }}>
+              {t.label}
+            </button>
           ))}
         </div>
 
-        {/* Referral Link */}
-        <div className="p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <h2 className="font-black text-lg mb-1" style={{ color: 'var(--text)' }}>Your Referral Link</h2>
-          <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-            Share this link to refer artists and fans to Vuka. Track every conversion below.
-          </p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 p-3 rounded-xl text-sm font-mono overflow-hidden"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {typeof window !== 'undefined' ? `${window.location.origin}?ref=${iu.referralCode}` : `https://vuka-distro.vercel.app?ref=${iu.referralCode}`}
-            </div>
-            <button onClick={copyReferral}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm text-white flex-shrink-0"
-              style={{ background: copied ? 'var(--green)' : 'var(--sky)' }}>
-              {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-            </button>
-          </div>
-        </div>
-
-        {/* Deals */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-black text-lg" style={{ color: 'var(--text)' }}>Deal Flow</h2>
-            <button onClick={() => setDealForm(v => !v)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-white"
-              style={{ background: 'var(--sky)' }}>
-              <Plus size={14} /> Submit Deal
-            </button>
-          </div>
-
-          {dealForm && (
-            <div className="p-5 rounded-2xl mb-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <h3 className="font-bold mb-4" style={{ color: 'var(--text)' }}>New Deal Proposal</h3>
-              <div className="space-y-3">
-                <input className="input" placeholder="Deal title (e.g. Sync License — Film)" value={deal.title} onChange={e => setDeal(p => ({ ...p, title: e.target.value }))} />
-                <input className="input" placeholder="Artist slug (e.g. dj-maphorisa)" value={deal.artistSlug} onChange={e => setDeal(p => ({ ...p, artistSlug: e.target.value }))} />
-                <div className="grid grid-cols-2 gap-3">
-                  <select className="input" value={deal.dealType} onChange={e => setDeal(p => ({ ...p, dealType: e.target.value }))}>
-                    <option value="licensing">Licensing</option>
-                    <option value="distribution">Distribution</option>
-                    <option value="sync">Sync</option>
-                    <option value="management">Management</option>
-                  </select>
-                  <input className="input" placeholder="Offer (ZAR)" type="number" value={deal.offerAmount} onChange={e => setDeal(p => ({ ...p, offerAmount: e.target.value }))} />
-                </div>
-                <textarea className="input" rows={3} placeholder="Deal description & terms…" value={deal.description} onChange={e => setDeal(p => ({ ...p, description: e.target.value }))} />
-                <div className="flex gap-3">
-                  <button onClick={() => setDealForm(false)}
-                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
-                    style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
-                    Cancel
-                  </button>
-                  <button onClick={submitDeal} disabled={submitting || !deal.title}
-                    className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
-                    style={{ background: 'var(--sky)' }}>
-                    {submitting ? 'Submitting…' : 'Submit Deal'}
-                  </button>
-                </div>
+        {/* ── SERVICES TAB ── */}
+        {tab === 'services' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-black" style={{ color: 'var(--text)' }}>Your Service Listings</h2>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Artists browse and hire you based on what you list here.
+                </p>
               </div>
+              <button onClick={openCreate} className="btn btn-primary flex items-center gap-2">
+                <Plus size={16} /> Add Service
+              </button>
             </div>
-          )}
 
-          {deals.length === 0 ? (
-            <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-              <Briefcase size={32} className="mx-auto mb-3 opacity-40" />
-              <p className="font-semibold">No deals yet</p>
-              <p className="text-sm mt-1">Submit a deal proposal to get started.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {deals.map((d: any) => (
-                <div key={d.id} className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>{d.title}</p>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase"
-                          style={{
-                            background: d.status === 'accepted' ? 'rgba(16,185,129,0.12)' : d.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)',
-                            color: d.status === 'accepted' ? 'var(--green)' : d.status === 'rejected' ? '#ef4444' : 'var(--gold)',
-                          }}>
-                          {d.status}
-                        </span>
+            {services.length === 0 ? (
+              <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <Briefcase size={36} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>No services listed yet</p>
+                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+                  Add your first service so artists can find and hire you.
+                </p>
+                <button onClick={openCreate} className="btn btn-primary">
+                  <Plus size={15} /> List a Service
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {services.map((svc: any) => {
+                  const cat = CATEGORIES.find(c => c.value === svc.category);
+                  const pm  = PRICING_MODELS.find(p => p.value === svc.pricingModel);
+                  const pendingInq = (svc.inquiries || []).filter((i: any) => i.status === 'pending').length;
+                  return (
+                    <div key={svc.id} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', opacity: svc.isActive ? 1 : 0.6 }}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-black" style={{ color: 'var(--text)' }}>{svc.title}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}>
+                              {cat?.label || svc.category}
+                            </span>
+                            {!svc.isActive && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                style={{ background: 'rgba(150,150,150,0.1)', color: 'var(--text-muted)' }}>
+                                Hidden
+                              </span>
+                            )}
+                            {pendingInq > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                style={{ background: 'rgba(201,162,39,0.15)', color: 'var(--gold)' }}>
+                                {pendingInq} new {pendingInq === 1 ? 'inquiry' : 'inquiries'}
+                              </span>
+                            )}
+                          </div>
+                          {svc.description && (
+                            <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{svc.description}</p>
+                          )}
+                          <div className="flex items-center gap-4 text-sm flex-wrap">
+                            <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--green)' }}>
+                              <DollarSign size={13} /> R{svc.priceZAR.toLocaleString()} {pm?.label}
+                            </span>
+                            <span className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                              <Calendar size={13} /> {svc.deliveryDays} day{svc.deliveryDays !== 1 ? 's' : ''} delivery
+                            </span>
+                            <span className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                              <MessageSquare size={13} /> {(svc.inquiries || []).length} total inquiries
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => toggleActive(svc)} title={svc.isActive ? 'Hide' : 'Show'}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                            {svc.isActive ? <Eye size={15} /> : <EyeOff size={15} />}
+                          </button>
+                          <button onClick={() => openEdit(svc)}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => deleteService(svc.id)} disabled={deleting === svc.id}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
+                            {deleting === svc.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {d.dealType} · {d.artistSlug ? `@${d.artistSlug}` : 'Platform-wide'} · R{d.offerAmount?.toFixed(2) || '0'}
-                      </p>
-                      {d.description && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{d.description}</p>}
-                      {d.adminNotes && <p className="text-xs mt-1 font-medium" style={{ color: 'var(--sky)' }}>Admin: {d.adminNotes}</p>}
                     </div>
-                    <p className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(d.createdAt).toLocaleDateString('en-ZA')}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── INQUIRIES TAB ── */}
+        {tab === 'inquiries' && (
+          <div>
+            <h2 className="text-xl font-black mb-6" style={{ color: 'var(--text)' }}>Artist Inquiries</h2>
+            {allInquiries.length === 0 ? (
+              <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <MessageSquare size={36} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>No inquiries yet</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  When artists reach out about your services, they'll appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {allInquiries.map((inq: any) => (
+                  <div key={inq.id} className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                          {inq.artist?.name || 'Unknown Artist'}
+                        </p>
+                        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                          Re: {inq.serviceName}
+                        </p>
+                        {inq.message && (
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{inq.message}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-semibold flex-shrink-0">
+                        {STATUS_ICON[inq.status]}
+                        <span style={{ textTransform: 'capitalize' }}>{inq.status}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                      {new Date(inq.createdAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Referral history */}
-        <div>
-          <h2 className="font-black text-lg mb-4" style={{ color: 'var(--text)' }}>Referral History</h2>
-          {referrals.length === 0 ? (
-            <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-              <Users size={32} className="mx-auto mb-3 opacity-40" />
-              <p className="font-semibold">No referrals yet</p>
-              <p className="text-sm mt-1">Share your referral link to start tracking.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {referrals.map((r: any) => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{r.conversionType || 'Referral click'}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-ZA')}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full`}
-                      style={{
-                        background: r.status === 'converted' ? 'rgba(16,185,129,0.12)' : 'rgba(234,179,8,0.1)',
-                        color: r.status === 'converted' ? 'var(--green)' : 'var(--gold)',
-                      }}>
-                      {r.status}
-                    </span>
-                    {r.commissionEarned > 0 && (
-                      <p className="text-xs mt-0.5 font-semibold" style={{ color: 'var(--green)' }}>+R{r.commissionEarned}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* ── SERVICE FORM MODAL ── */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-lg rounded-2xl p-6 space-y-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <h3 className="text-lg font-black" style={{ color: 'var(--text)' }}>
+              {editId ? 'Edit Service' : 'List a New Service'}
+            </h3>
+
+            <input className="input w-full" placeholder="Service title *" value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+
+            <textarea className="input w-full resize-none" rows={3}
+              placeholder="Describe what you offer, what's included, and who it's for..."
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Category</label>
+                <select className="input w-full" value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Pricing Model</label>
+                <select className="input w-full" value={form.pricingModel}
+                  onChange={e => setForm(f => ({ ...f, pricingModel: e.target.value }))}>
+                  {PRICING_MODELS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Price (ZAR) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-muted)' }}>R</span>
+                  <input className="input w-full pl-7" type="number" min="0" step="1" placeholder="0"
+                    value={form.priceZAR}
+                    onChange={e => setForm(f => ({ ...f, priceZAR: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Delivery (days)</label>
+                <input className="input w-full" type="number" min="1" placeholder="7"
+                  value={form.deliveryDays}
+                  onChange={e => setForm(f => ({ ...f, deliveryDays: e.target.value }))} />
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm px-3 py-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.1)', color: 'var(--red)' }}>
+                {error}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn btn-secondary flex-1">Cancel</button>
+              <button onClick={saveService} disabled={saving} className="btn btn-primary flex-1">
+                {saving ? <Loader2 size={15} className="animate-spin" /> : null}
+                {saving ? 'Saving…' : editId ? 'Update Service' : 'List Service'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

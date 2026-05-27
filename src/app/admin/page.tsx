@@ -7,7 +7,7 @@ import {
   CheckCircle, XCircle, Clock, AlertTriangle, Music2, LogOut, Loader2
 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'faithworth@vuka-distro.vercel.app';
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '';
 
 type Tab = 'overview' | 'users' | 'content' | 'dmca';
 
