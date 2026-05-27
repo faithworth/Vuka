@@ -1,18 +1,17 @@
-# Vuka — 03 Distribution Engine
+# Vuka — 04 Social + Marketplace
 
 **What lives here:**
-Distribution releases (draft→submit→live), DSP delivery stubs, analytics,
-play tracking, discovery/search/trending, store browse APIs.
+Feed, posts, comments, likes, reposts, follows, notifications,
+direct messaging, marketplace services/orders/disputes, moderation,
+industry hub, wishlists.
 
 **Key files:**
-- `src/lib/distribution.ts` — release lifecycle, ISRC/UPC helpers, DSP adapter stubs
-- `src/lib/analytics.ts` — daily rollup helpers, geo tracking
-- `src/lib/discovery.ts` — search index, trending snapshots
-- `src/app/api/distribution/` — release CRUD + submit + rollback
-- `src/app/api/analytics/` — audience, revenue, plays, engagement
-- `src/app/api/discovery/` — search, browse, trending, recommendations
-- `src/app/api/store/` — public store browse (beats, releases, artists)
-- `src/app/api/play/` — play count increment + engagement event
-
-**DSP Status:** adapter stubs exist; real Spotify/Apple Music API calls
-are not wired yet. All statuses reflect actual DB state — never fake "Live".
+- `src/lib/social.ts` — post creation, fan engagement, milestone detection
+- `src/lib/messaging.ts` — conversation threading, read receipts
+- `src/lib/moderation.ts` — abuse reports, content flags, verification
+- `src/lib/marketplace.ts` — order lifecycle, escrow, dispute resolution
+- `src/app/api/social/` — feed, posts, comments, likes, reposts, notifications
+- `src/app/api/messages/` — conversations + message send/read
+- `src/app/api/marketplace/` — services, orders, deliver/complete/dispute/review
+- `src/app/api/moderation/` — reports, queue, admin actions, verification
+- `src/app/api/industry/` — industry browse, services, deals, inquiries
