@@ -1,10 +1,6 @@
 import { createServerSupabaseClient } from './superbase_server';
 import prisma from './prisma';
 
-/**
- * Returns the full User (with artist) for the currently logged-in Supabase session.
- * Returns null on ANY failure — auth failure, DB failure, missing session.
- */
 export async function getServerUser() {
   try {
     const supabase = await createServerSupabaseClient();
@@ -13,7 +9,10 @@ export async function getServerUser() {
 
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email },
-      include: { artist: true },
+      include: {
+        artist: true,
+        industryUser: true,
+      },
     }).catch((err: unknown) => {
       console.error('[Auth] DB lookup failed:', err instanceof Error ? err.message.split('\n')[0] : err);
       return null;
@@ -26,12 +25,14 @@ export async function getServerUser() {
   }
 }
 
-/**
- * Like getServerUser but also asserts the user has an Artist profile.
- * Returns null if not authenticated, no artist profile, or DB is down.
- */
 export async function requireArtist() {
   const user = await getServerUser();
   if (!user?.artist) return null;
+  return user;
+}
+
+export async function requireIndustry() {
+  const user = await getServerUser();
+  if (!user || user.role !== 'industry') return null;
   return user;
 }
