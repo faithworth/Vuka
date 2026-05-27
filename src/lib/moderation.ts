@@ -497,3 +497,9 @@ export async function getAdminDashboard(): Promise<object> {
     flaggedContent,
   };
 }
+
+// ── Aliases for route compatibility ──────────────────────────
+
+export const getModerationDashboard = getAdminDashboard;
+export const submitVerificationRequest = submitVerification;
+export const reviewVerificationRequest = reviewVerification;

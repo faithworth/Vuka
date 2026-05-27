@@ -191,3 +191,84 @@ export async function sendTestEmail(to: string) {
     </div>`,
   });
 }
+
+// ── Welcome artist ────────────────────────────────────────────
+
+export async function sendWelcomeArtist({
+  to, artistName, dashboardUrl,
+}: {
+  to: string; artistName: string; dashboardUrl: string;
+}) {
+  const subject = `Welcome to Vuka, ${artistName} 🎵`;
+  const html = `<!DOCTYPE html><html>
+<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">🎵</div>
+      <h2 style="margin:0 0 8px;">Sharp, ${artistName}! You're live.</h2>
+      <p style="color:#8b7daa;margin:0 0 24px;">Your artist profile is ready. Start uploading beats, releases, and connecting with fans.</p>
+      <a href="${dashboardUrl}" style="display:inline-block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:700;">Go to Dashboard →</a>
+    </div>
+  </div>
+</body></html>`;
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
+// ── Re-download links ─────────────────────────────────────────
+
+export async function sendRedownloadLinks({
+  to, buyerName, purchases,
+}: {
+  to: string; buyerName: string;
+  purchases: { itemName: string; downloadUrl: string }[];
+}) {
+  const subject = `Your Vuka download links`;
+  const rows = purchases.map(p =>
+    `<div style="background:#1e1828;border-radius:12px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+      <span>${p.itemName}</span>
+      <a href="${p.downloadUrl}" style="background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:700;font-size:14px;">Download</a>
+    </div>`
+  ).join('');
+  const html = `<!DOCTYPE html><html>
+<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
+      <h2 style="margin:0 0 8px;">Hey ${buyerName}, here are your downloads</h2>
+      <p style="color:#8b7daa;margin:0 0 24px;">Your purchase history download links:</p>
+      ${rows}
+    </div>
+  </div>
+</body></html>`;
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
+// ── Artist support notification ───────────────────────────────
+
+export async function sendSupportArtistNotification({
+  to, artistName, fanName, amount, currency, message, tier,
+}: {
+  to: string; artistName: string; fanName: string;
+  amount: number; currency: string; message?: string; tier: string;
+}) {
+  const subject = `♥ ${fanName} just supported you on Vuka`;
+  const html = `<!DOCTYPE html><html>
+<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">♥</div>
+      <h2 style="margin:0 0 8px;">Sharp, ${artistName}!</h2>
+      <p style="color:#8b7daa;margin:0 0 24px;">${fanName} just sent you support.</p>
+      <div style="background:#1e1828;border-radius:12px;padding:20px;text-align:left;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">From</span><span>${fanName}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#38b6e8;">${tier}</span></div>
+      </div>
+      ${message ? `<div style="background:#1e1828;border-left:3px solid #f59e0b;padding:16px;border-radius:0 12px 12px 0;text-align:left;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Their message:</p><p style="font-style:italic;margin:0;">"${message}"</p></div>` : ''}
+    </div>
+  </div>
+</body></html>`;
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}

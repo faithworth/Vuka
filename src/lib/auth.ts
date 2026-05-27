@@ -36,3 +36,15 @@ export async function requireIndustry() {
   if (!user || user.role !== 'industry') return null;
   return user;
 }
+
+export async function requireAuth() {
+  const user = await getServerUser();
+  if (!user) return null;
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await getServerUser();
+  if (!user || user.role !== 'admin') return null;
+  return user;
+}
