@@ -314,7 +314,7 @@ export async function getEngagementAnalytics(artistId: string, days = 30) {
   const recentComments = await prisma.postComment.findMany({
     where: {
       post: { artistId },
-      isHidden: false,
+      isDeleted: false,
       createdAt: { gte: new Date(Date.now() - days * 86_400_000) },
     },
     include: { user: { select: { id: true, name: true } } },
