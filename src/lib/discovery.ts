@@ -144,7 +144,7 @@ async function computeTrending(
 
   if (category === 'beats') {
     const beats = await prisma.beat.findMany({
-      where: { isActive: true, updatedAt: { gte: windowStart } },
+      where: { isActive: true, createdAt: { gte: windowStart } },
       select: { id: true, plays: true, sales: true },
       orderBy: [{ plays: 'desc' }, { sales: 'desc' }],
       take: limit * 2,
