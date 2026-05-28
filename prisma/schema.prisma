@@ -458,16 +458,26 @@ model CreatorMembership {
 }
 
 model ExclusiveContent {
-  id          String   @id @default(cuid())
-  artistId    String
-  artist      Artist   @relation(fields: [artistId], references: [id])
-  title       String
-  description String   @default("")
-  contentType String   // audio, video, pdf, link
-  contentUrl  String
-  tierId      String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id             String    @id @default(cuid())
+  artistId       String
+  artist         Artist    @relation(fields: [artistId], references: [id])
+  title          String
+  description    String    @default("")
+  contentType    String    // audio, video, pdf, link, text
+  contentUrl     String    @default("")
+  fileUrl        String    @default("")
+  externalUrl    String    @default("")
+  body           String    @default("")
+  thumbnailUrl   String    @default("")
+  tierId         String?
+  accessTierIds  Json      @default("[]")
+  isFreePreview  Boolean   @default(false)
+  isPublished    Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([artistId, isPublished])
 }
 
 model CreatorStorefront {
