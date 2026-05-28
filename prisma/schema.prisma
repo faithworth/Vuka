@@ -574,6 +574,7 @@ model DistributionRelease {
   scheduledFor     DateTime?
   adminNotes       String          @default("")
   rejectionReason  String          @default("")
+  statusHistory    Json            @default("[]")
   status           String          @default("draft") // draft, pending, submitted, live, rejected, rollback, takedown
   submittedAt      DateTime?
   liveAt           DateTime?
