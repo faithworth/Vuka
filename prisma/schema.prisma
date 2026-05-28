@@ -685,19 +685,21 @@ model PayoutRequest {
 }
 
 model ArtistBankAccount {
-  id            String        @id @default(cuid())
-  artistId      String
-  artist        Artist        @relation(fields: [artistId], references: [id])
-  bankName      String
-  accountHolder String
-  accountNumber String        // stored encrypted in prod; masked in responses
-  maskedNumber  String        @default("")
-  branchCode    String
-  accountType   String        @default("cheque")
-  isDefault     Boolean       @default(false)
-  isVerified    Boolean       @default(false)
-  payoutRequests PayoutRequest[]
-  createdAt     DateTime      @default(now())
+  id                  String        @id @default(cuid())
+  artistId            String
+  artist              Artist        @relation(fields: [artistId], references: [id])
+  bankName            String        @default("")
+  accountHolder       String        @default("")
+  accountNumber       String        @default("")  // stored encrypted in prod; masked in responses
+  maskedNumber        String        @default("")
+  branchCode          String        @default("")
+  accountType         String        @default("bank")
+  paypalEmail         String?
+  payfastMerchantId   String?
+  isDefault           Boolean       @default(false)
+  isVerified          Boolean       @default(false)
+  payoutRequests      PayoutRequest[]
+  createdAt           DateTime      @default(now())
 }
 
 model RevenueRecord {
