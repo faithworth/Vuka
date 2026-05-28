@@ -59,9 +59,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: `Request is ${existing.status}` }, { status: 409 });
         }
 
-        // Revert swept payouts to pending
+        // Revert any processing payouts for this artist back to pending
         await prisma.artistPayout.updateMany({
-          where: { id: { in: existing.payoutIds as string[] } },
+          where: { artistId: existing.artistId, status: 'processing' },
           data: { status: 'pending', notes: 'Reverted — payout request rejected by admin' },
         });
 
