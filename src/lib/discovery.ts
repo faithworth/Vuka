@@ -1,12 +1,12 @@
 /**
- * VUKA — Discovery Engine (Phase 3)
+ * VUKA -- Discovery Engine (Phase 3)
  * Trending, Search, Recommendations, Categories, Rankings
  */
 
 import prisma from './prisma';
 import type { Prisma } from '@prisma/client';
 
-// ── SEARCH ────────────────────────────────────────────────────
+// -- SEARCH ----------------------------------------------------
 
 export interface SearchResult {
   entityType: string;
@@ -60,7 +60,7 @@ export async function search(
   return { results, total, hasMore: skip + results.length < total };
 }
 
-/** Autocomplete — fast prefix search, max 8 results per type. */
+/** Autocomplete -- fast prefix search, max 8 results per type. */
 export async function autocomplete(
   query: string
 ): Promise<{ artists: SearchResult[]; beats: SearchResult[]; releases: SearchResult[] }> {
@@ -95,7 +95,7 @@ export async function autocomplete(
   return { artists, beats, releases };
 }
 
-// ── TRENDING ──────────────────────────────────────────────────
+// -- TRENDING --------------------------------------------------
 
 export interface TrendingItem {
   id: string;
@@ -126,7 +126,7 @@ export async function getTrending(
     return { items, computedAt: snapshot.createdAt, isFresh: true };
   }
 
-  // No fresh snapshot — compute on-the-fly and cache
+  // No fresh snapshot -- compute on-the-fly and cache
   const items = await computeTrending(period, category, limit);
   await prisma.trendingSnapshot.create({ data: { period, category, items: items as unknown as Prisma.InputJsonValue } });
   return { items, computedAt: new Date(), isFresh: false };
@@ -209,7 +209,7 @@ async function computeTrending(
   return [];
 }
 
-// ── RECOMMENDATIONS ───────────────────────────────────────────
+// -- RECOMMENDATIONS -------------------------------------------
 
 /** Simple collaborative-style recommendations based on genre + follow graph. */
 export async function getRecommendedBeats(
@@ -287,7 +287,7 @@ export async function getRecommendedArtists(
   return artists;
 }
 
-// ── CATEGORY BROWSING ─────────────────────────────────────────
+// -- CATEGORY BROWSING -----------------------------------------
 
 const VUKA_GENRES = [
   'Amapiano', 'Afrobeats', 'Hip-Hop', 'Trap', 'Gqom', 'Kwaito',
