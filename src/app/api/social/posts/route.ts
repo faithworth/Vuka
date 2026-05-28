@@ -79,13 +79,10 @@ export async function POST(req: NextRequest) {
         data: followers.map((f) => ({
           userId: f.userId,
           type: 'new_post',
-          actorId: user.id,
-          actorName: artistData?.name ?? '',
-          targetType: 'post',
-          targetId: post.id,
           title: `${artistData?.name} posted an update`,
           body: text.slice(0, 80),
-          actionUrl: `/artist/${artistData?.slug}`,
+          linkType: 'post',
+          linkId: post.id,
         })),
         skipDuplicates: true,
       });

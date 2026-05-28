@@ -27,7 +27,8 @@ export async function createTier(
     priceYearly?: number;
     currency?: string;
     perks?: { icon: string; title: string; description: string }[];
-      sortOrder?: number;
+    maxSubscribers?: number;
+    sortOrder?: number;
   }
 ) {
   return prisma.creatorSubscriptionTier.create({

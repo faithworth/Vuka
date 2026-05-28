@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (!targetType || !targetIdsParam) return NextResponse.json({ liked: {} });
 
     const targetIds = targetIdsParam.split(',').filter(Boolean).slice(0, 100);
-    const liked = await getBulkLikeStatus(user.id, targetType, targetIds);
+    const liked = await getBulkLikeStatus(user.id, targetIds.map(id => ({ type: targetType as 'beat' | 'release' | 'post' | 'comment', id })));
     return NextResponse.json({ liked });
   } catch (err) {
     console.error('[Likes] Bulk status error:', err);

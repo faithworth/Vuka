@@ -15,11 +15,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const request = await submitVerificationRequest(artist.id, {
-      idDocumentUrl: body.idDocumentUrl,
-      socialLinks: body.socialLinks,
-      monthlyListeners: body.monthlyListeners,
-      totalStreams: body.totalStreams,
-      notes: body.notes,
+      legalName:      body.legalName || body.artistName || user.name || '',
+      idDocumentUrl:  body.idDocumentUrl || '',
+      socialProofUrl: body.socialLinks || body.socialProofUrl || '',
+      additionalInfo: body.notes || body.additionalInfo || '',
     });
 
     return NextResponse.json({ request }, { status: 201 });

@@ -510,6 +510,12 @@ export async function createNotification(data: {
   body: string;
   linkType?: string;
   linkId?: string;
+  // Extended fields accepted from callers (mapped internally)
+  actorId?: string;
+  actorName?: string;
+  targetType?: string;
+  targetId?: string;
+  actionUrl?: string;
 }): Promise<void> {
   try {
     await prisma.notification.create({
@@ -518,8 +524,8 @@ export async function createNotification(data: {
         type:     data.type,
         title:    data.title,
         body:     data.body,
-        linkType: data.linkType ?? '',
-        linkId:   data.linkId   ?? '',
+        linkType: data.linkType ?? data.targetType ?? '',
+        linkId:   data.linkId   ?? data.targetId   ?? '',
       },
     });
 
@@ -560,14 +566,16 @@ export async function createNotification(data: {
 export async function getNotifications(
   userId: string,
   page = 1,
-  limit = 30
+  limit = 30,
+  unreadOnly = false
 ): Promise<{ notifications: object[]; unread: number; hasMore: boolean }> {
   const skip = (page - 1) * Math.min(limit, 50);
   const take = Math.min(limit, 50);
+  const where = unreadOnly ? { userId, isRead: false } : { userId };
 
   const [notifications, unread] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: 'desc' },
       skip,
       take,

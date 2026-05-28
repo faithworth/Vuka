@@ -20,6 +20,12 @@ export async function requestPayout(params: {
   amount: number;
   currency?: string;
   bankAccountId?: string;
+  method?: string;
+  bankAccountRef?: string;
+  bankName?: string;
+  accountHolder?: string;
+  paypalEmail?: string;
+  splits?: unknown;
 }) {
   const artist = await prisma.artist.findUnique({ where: { id: params.artistId } });
   if (!artist) throw new Error('Artist not found');
@@ -62,14 +68,14 @@ export async function requestPayout(params: {
 
 // ── Admin: Approve Payout Request ────────────────────────────
 
-export async function approvePayoutRequest(requestId: string) {
+export async function approvePayoutRequest(requestId: string, notes?: string) {
   const req = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
   if (!req) throw new Error('Payout request not found');
   if (req.status !== 'pending') throw new Error(`Already ${req.status}`);
 
   return prisma.payoutRequest.update({
     where: { id: requestId },
-    data: { status: 'approved' },
+    data: { status: 'approved', ...(notes ? { adminNotes: notes } : {}) },
   });
 }
 

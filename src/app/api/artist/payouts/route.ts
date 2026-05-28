@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       include: { bankAccount: { select: { bankName: true, maskedNumber: true } } },
     });
 
-    const methods = [];
+    const methods: { type: string; name: string; configured: boolean }[] = [];
     if (artist.payfastMerchant) {
       methods.push({ type: 'payfast', name: 'PayFast (Direct to Bank)', configured: true });
     }

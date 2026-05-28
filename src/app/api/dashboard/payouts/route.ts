@@ -35,7 +35,7 @@ export async function GET() {
     });
 
     // Stripe balance if connected
-    let stripeBalance = null;
+    let stripeBalance: object | null = null;
     let stripePayouts: object[] = [];
     if (artist.stripeAccountId) {
       try {

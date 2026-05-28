@@ -21,8 +21,7 @@ export async function PATCH(
       params.id,
       user.email,
       resolution,
-      actionTaken,
-      adminNotes
+      adminNotes ?? actionTaken
     );
 
     return NextResponse.json({ report: updated });

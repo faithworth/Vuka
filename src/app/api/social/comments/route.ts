@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1');
     const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '20'), 50);
 
-    const result = await getComments(targetType, targetId, page, limit);
+    const result = await getComments(targetType as 'post' | 'beat' | 'release', targetId, page, limit);
     return NextResponse.json(result);
   } catch (err) {
     console.error('[Comments] GET error:', err);
@@ -36,7 +36,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'body, targetType, and targetId required' }, { status: 400 });
     }
 
-    const comment = await createComment(user.id, { body: text, targetType, targetId, postId, parentId });
+    const comment = await createComment(user.id, {
+      body: text,
+      postId:    targetType === 'post'    ? targetId : postId,
+      beatId:    targetType === 'beat'    ? targetId : undefined,
+      releaseId: targetType === 'release' ? targetId : undefined,
+      parentId,
+    });
     return NextResponse.json({ comment }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to create comment';

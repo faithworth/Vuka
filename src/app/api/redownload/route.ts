@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     licenseId: p.licenseId,
   }));
 
-  await sendRedownloadLinks({ to: email, purchases: purchaseList });
+  await sendRedownloadLinks({ to: email, buyerName: purchases[0]?.buyerName ?? 'Customer', purchases: purchaseList });
 
   return NextResponse.json({ ok: true });
 }

@@ -71,16 +71,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'paypalEmail required for PayPal accounts' }, { status: 400 });
     }
 
-    const account = await addBankAccount(user.artist.id, {
+    const account = await addBankAccount({
+      artistId: user.artist.id,
       accountType,
       bankName,
       branchCode,
       accountNumber,
       accountHolder,
-      accountType2,
-      paypalEmail,
-      payfastMerchantId,
-      isDefault,
+      setAsDefault: isDefault,
     });
 
     return NextResponse.json({
