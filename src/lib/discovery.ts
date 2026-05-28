@@ -121,7 +121,7 @@ export async function getTrending(
   });
 
   if (snapshot) {
-    const items = (snapshot.items as TrendingItem[]).slice(0, limit);
+    const items = (snapshot.items as unknown as TrendingItem[]).slice(0, limit);
     return { items, computedAt: snapshot.createdAt, isFresh: true };
   }
 
