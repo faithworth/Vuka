@@ -556,32 +556,72 @@ model ServiceReview {
 }
 
 model DistributionRelease {
-  id            String   @id @default(cuid())
-  artistId      String
-  artist        Artist   @relation(fields: [artistId], references: [id])
-  title         String
-  distributor   String   @default("")
-  upc           String?
-  status        String   @default("draft") // draft, pending, submitted, live, rejected, rollback
-  submittedAt   DateTime?
-  liveAt        DateTime?
-  platforms     String[]
-  tracks        DistributionTrack[]
-  updatedAt     DateTime @updatedAt
-  createdAt     DateTime @default(now())
+  id               String          @id @default(cuid())
+  artistId         String
+  artist           Artist          @relation(fields: [artistId], references: [id])
+  title            String
+  artistName       String          @default("")
+  releaseType      String          @default("single") // single, ep, album
+  primaryGenre     String          @default("")
+  secondaryGenre   String          @default("")
+  distributor      String          @default("")
+  upc              String?
+  artworkUrl       String          @default("")
+  artworkStatus    String          @default("pending") // pending, approved, rejected
+  copyrightHolder  String          @default("")
+  copyrightYear    Int?
+  targetDSPs       String[]
+  scheduledFor     DateTime?
+  adminNotes       String          @default("")
+  rejectionReason  String          @default("")
+  status           String          @default("draft") // draft, pending, submitted, live, rejected, rollback, takedown
+  submittedAt      DateTime?
+  liveAt           DateTime?
+  platforms        String[]
+  tracks           DistributionTrack[]
+  dspDeliveries    DSPDelivery[]
+  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime        @default(now())
 
   @@index([artistId, status])
 }
 
 model DistributionTrack {
-  id          String              @id @default(cuid())
-  releaseId   String
-  release     DistributionRelease @relation(fields: [releaseId], references: [id])
-  title       String
-  isrc        String?
-  fileUrl     String
-  trackNumber Int
-  createdAt   DateTime            @default(now())
+  id               String              @id @default(cuid())
+  releaseId        String
+  release          DistributionRelease @relation(fields: [releaseId], references: [id])
+  title            String
+  isrc             String?
+  fileUrl          String              @default("")
+  masterFileUrl    String              @default("")
+  masterFileStatus String              @default("pending") // pending, approved, rejected
+  trackNumber      Int
+  duration         Int?
+  explicit         Boolean             @default(false)
+  composers        String[]
+  producers        String[]
+  createdAt        DateTime            @default(now())
+}
+
+model DSPDelivery {
+  id                    String              @id @default(cuid())
+  distributionReleaseId String
+  distributionRelease   DistributionRelease @relation(fields: [distributionReleaseId], references: [id])
+  dsp                   String              // spotify, apple_music, youtube_music, tiktok, deezer, audiomack, amazon_music
+  status                String              @default("queued") // queued, submitting, submitted, live, failed, rolled_back
+  deliveryPayload       Json                @default("{}")
+  dspReferenceId        String?
+  errorMessage          String              @default("")
+  retryCount            Int                 @default(0)
+  submittedAt           DateTime?
+  liveAt                DateTime?
+  failedAt              DateTime?
+  lastRetryAt           DateTime?
+  rolledBackAt          DateTime?
+  createdAt             DateTime            @default(now())
+
+  @@index([distributionReleaseId, status])
+  @@index([dsp, status])
 }
 
 model PayoutRequest {
