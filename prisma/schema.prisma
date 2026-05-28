@@ -360,15 +360,16 @@ model DMCAReport {
 }
 
 model ServiceInquiry {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  name      String
-  email     String
-  message   String
-  serviceId String   @default("")
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
+  id               String          @id @default(cuid())
+  artistId         String
+  artist           Artist          @relation(fields: [artistId], references: [id])
+  name             String
+  email            String
+  message          String
+  serviceId        String          @default("")
+  industryService  IndustryService? @relation(fields: [serviceId], references: [id])
+  status           String          @default("pending")
+  createdAt        DateTime        @default(now())
 }
 
 // ── ADMIN ────────────────────────────────────────────────────
@@ -403,16 +404,20 @@ model IndustryUser {
 }
 
 model IndustryService {
-  id             String       @id @default(cuid())
+  id             String            @id @default(cuid())
   industryUserId String
-  industryUser   IndustryUser @relation(fields: [industryUserId], references: [id])
+  industryUser   IndustryUser      @relation(fields: [industryUserId], references: [id])
   title          String
-  description    String       @default("")
-  category       String       @default("")
+  description    String            @default("")
+  category       String            @default("")
   price          Float?
-  currency       String       @default("ZAR")
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
+  priceZAR       Float             @default(0)
+  pricingModel   String            @default("fixed")
+  deliveryDays   Int               @default(7)
+  currency       String            @default("ZAR")
+  isActive       Boolean           @default(true)
+  inquiries      ServiceInquiry[]
+  createdAt      DateTime          @default(now())
 }
 
 model Deal {
@@ -421,6 +426,10 @@ model Deal {
   industryUser   IndustryUser @relation(fields: [industryUserId], references: [id])
   title          String
   description    String       @default("")
+  artistSlug     String       @default("")
+  dealType       String       @default("licensing")
+  offerAmount    Float        @default(0)
+  currency       String       @default("ZAR")
   status         String       @default("open") // open, closed
   createdAt      DateTime     @default(now())
 }
@@ -494,20 +503,23 @@ model CreatorStorefront {
 }
 
 model MarketplaceService {
-  id          String             @id @default(cuid())
-  artistId    String
-  artist      Artist             @relation(fields: [artistId], references: [id])
-  title       String
-  description String             @default("")
-  category    String
-  price       Float
-  currency    String             @default("ZAR")
-  deliveryDays Int               @default(7)
-  revisions   Int                @default(1)
-  isActive    Boolean            @default(true)
-  orders      MarketplaceOrder[]
-  reviews     ServiceReview[]
-  createdAt   DateTime           @default(now())
+  id            String             @id @default(cuid())
+  artistId      String
+  artist        Artist             @relation(fields: [artistId], references: [id])
+  title         String
+  description   String             @default("")
+  category      String
+  price         Float
+  currency      String             @default("ZAR")
+  deliveryDays  Int                @default(7)
+  revisions     Int                @default(1)
+  packages      Json               @default("[]")
+  portfolioUrls String[]           @default([])
+  requirements  String             @default("")
+  isActive      Boolean            @default(true)
+  orders        MarketplaceOrder[]
+  reviews       ServiceReview[]
+  createdAt     DateTime           @default(now())
 
   @@index([category, isActive])
 }
@@ -561,17 +573,25 @@ model DistributionRelease {
   artist           Artist          @relation(fields: [artistId], references: [id])
   title            String
   artistName       String          @default("")
+  featuredArtists  String[]        @default([])
   releaseType      String          @default("single") // single, ep, album
   primaryGenre     String          @default("")
   secondaryGenre   String          @default("")
+  language         String          @default("en")
+  labelName        String          @default("")
   distributor      String          @default("")
   upc              String?
   artworkUrl       String          @default("")
   artworkStatus    String          @default("pending") // pending, approved, rejected
   copyrightHolder  String          @default("")
   copyrightYear    Int?
+  pLine            String          @default("")
+  cLine            String          @default("")
   targetDSPs       String[]
+  scheduledDate    DateTime?
   scheduledFor     DateTime?
+  originalReleaseDate DateTime?
+  catalogNumber    String          @default("")
   adminNotes       String          @default("")
   rejectionReason  String          @default("")
   statusHistory    Json            @default("[]")
@@ -601,6 +621,9 @@ model DistributionTrack {
   explicit         Boolean             @default(false)
   composers        String[]
   producers        String[]
+  featuredArtists  String[]            @default([])
+  lyricists        String[]            @default([])
+  language         String              @default("en")
   createdAt        DateTime            @default(now())
 }
 

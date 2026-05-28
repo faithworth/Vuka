@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const track = await prisma.distributionTrack.create({
       data: {
-        distributionReleaseId: params.id,
+        releaseId: params.id,
         trackNumber: tNum,
         title: title.trim(),
         featuredArtists: featuredArtists || [],
