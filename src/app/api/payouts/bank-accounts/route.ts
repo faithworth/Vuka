@@ -17,30 +17,10 @@ export async function GET() {
 
     const accounts = await prisma.artistBankAccount.findMany({
       where: { artistId: user.artist.id },
-      select: {
-        id: true,
-        accountType: true,
-        bankName: true,
-        accountHolder: true,
-        // Mask account number for security
-        accountNumber: false,
-        // Return last 4 only
-        branchCode: true,
-        paypalEmail: true,
-        payfastMerchantId: true,
-        isDefault: true,
-        isVerified: true,
-        createdAt: true,
-      },
-    });
-
-    // Manually mask account numbers before sending
-    const safe = await prisma.artistBankAccount.findMany({
-      where: { artistId: user.artist.id },
     });
 
     return NextResponse.json({
-      accounts: safe.map(a => ({
+      accounts: accounts.map(a => ({
         ...a,
         accountNumber: a.accountNumber ? `****${a.accountNumber.slice(-4)}` : '',
       })),
