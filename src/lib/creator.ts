@@ -5,6 +5,7 @@
 // ============================================================
 
 import prisma from './prisma';
+import { Prisma } from '@prisma/client';
 
 // ── Subscription Tier Management ──────────────────────────────
 
@@ -267,7 +268,7 @@ export async function updateStorefront(
     headline?: string;
     description?: string;
     theme?: string;
-    sections?: unknown;
+    sections?: Prisma.InputJsonValue;
     isPublic?: boolean;
   } = {};
 
