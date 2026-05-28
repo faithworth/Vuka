@@ -1,5 +1,5 @@
 // ============================================================
-// PHASE 2 — src/app/api/payouts/request/route.ts
+// src/app/api/payouts/request/route.ts
 // Artist requests a payout of their available balance
 // ============================================================
 
@@ -7,10 +7,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { requestPayout, retryPayoutRequest } from '@/lib/payouts';
-
-// GET — list artist's payout requests
 import prisma from '@/lib/prisma';
 
+// GET — list artist's payout requests
 export async function GET() {
   try {
     const user = await requireArtist();
@@ -18,8 +17,18 @@ export async function GET() {
 
     const requests = await prisma.payoutRequest.findMany({
       where: { artistId: user.artist.id },
-      include: { splits: true },
-      orderBy: { requestedAt: 'desc' },
+      include: {
+        bankAccount: {
+          select: {
+            bankName: true,
+            accountHolder: true,
+            maskedNumber: true,
+            branchCode: true,
+            accountType: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
       take: 50,
     });
 
@@ -37,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { amount, currency, method, bankAccountRef, bankName, accountHolder, paypalEmail, splits } = body;
+    const { amount, currency, method, bankAccountId, bankAccountRef, bankName, accountHolder, paypalEmail } = body;
 
     if (!amount || amount <= 0) return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 });
     if (!method) return NextResponse.json({ error: 'Payout method required' }, { status: 400 });
@@ -52,11 +61,11 @@ export async function POST(req: NextRequest) {
       amount: parseFloat(amount),
       currency: currency || 'ZAR',
       method,
+      bankAccountId,
       bankAccountRef,
       bankName,
       accountHolder,
       paypalEmail,
-      splits,
     });
 
     return NextResponse.json({ request }, { status: 201 });
@@ -77,10 +86,10 @@ export async function PATCH(req: NextRequest) {
     if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
 
     // Verify ownership
-    const req_ = await prisma.payoutRequest.findFirst({
+    const existing = await prisma.payoutRequest.findFirst({
       where: { id: requestId, artistId: user.artist.id },
     });
-    if (!req_) return NextResponse.json({ error: 'Payout request not found' }, { status: 404 });
+    if (!existing) return NextResponse.json({ error: 'Payout request not found' }, { status: 404 });
 
     const result = await retryPayoutRequest(requestId);
     return NextResponse.json({ result });
