@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       }
 
       if (role === 'industry') {
-        await prisma.industryUser.create({ data: { userId: user.id } });
+        await prisma.industryUser.create({ data: { userId: user.id, companyName: '' } });
       }
     }
   } catch (dbErr) {
