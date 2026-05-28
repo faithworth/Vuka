@@ -24,6 +24,7 @@ const EXISTING_MIGRATIONS = [
 const NEW_MIGRATIONS = [
   '20250528_fix_schema_field_mismatches',
   '20250528_add_bank_account_payment_fields',
+  '20250528_fix_pageview_analytics_fields',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

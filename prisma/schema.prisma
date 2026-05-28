@@ -38,6 +38,7 @@ model User {
   notificationPrefs    NotificationPreference?
   engagementEvents     EngagementEvent[]
   postComments         PostComment[]
+  pageViews            PageView[]
 }
 
 model Artist {
@@ -874,15 +875,22 @@ model EngagementEvent {
 }
 
 model PageView {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  path      String
-  country   String   @default("")
-  referrer  String   @default("")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  artistId   String?
+  artist     Artist?  @relation(fields: [artistId], references: [id])
+  targetType String   @default("")
+  targetId   String   @default("")
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  path       String   @default("")
+  country    String   @default("")
+  referrer   String   @default("")
+  sessionId  String   @default("")
+  userAgent  String   @default("")
+  createdAt  DateTime @default(now())
 
   @@index([artistId, createdAt])
+  @@index([targetType, targetId])
 }
 
 model AnalyticsDailyRollup {
