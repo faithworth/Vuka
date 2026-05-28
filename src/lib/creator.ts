@@ -14,7 +14,7 @@ export async function getArtistTiers(artistId: string) {
     include: {
       _count: { select: { memberships: true } },
     },
-    orderBy: { sortOrder: 'asc' },
+    orderBy: { createdAt: 'asc' },
   });
 }
 
@@ -31,16 +31,21 @@ export async function createTier(
     sortOrder?: number;
   }
 ) {
+  // Schema has: price (Float), interval (String), perks (String[]), currency (String)
+  // priceMonthly maps to price; perks objects serialized to strings; priceYearly/sortOrder/maxSubscribers not in schema
+  const perksStrings: string[] = (data.perks || []).map((p) =>
+    typeof p === 'string' ? p : `${p.icon} ${p.title}: ${p.description}`
+  );
+
   return prisma.creatorSubscriptionTier.create({
     data: {
       artistId,
       name: data.name,
       description: data.description || '',
-      priceMonthly: data.priceMonthly,
-      priceYearly: data.priceYearly,
+      price: data.priceMonthly,
+      interval: 'monthly',
       currency: data.currency || 'ZAR',
-      perks: data.perks || [],
-      sortOrder: data.sortOrder || 0,
+      perks: perksStrings,
     },
   });
 }
@@ -59,7 +64,6 @@ export async function createMembership(params: {
     where: { id: params.tierId },
   });
   if (!tier) throw new Error('Tier not found');
-
 
   const now = new Date();
   const periodEnd = new Date(now);
@@ -80,18 +84,20 @@ export async function createMembership(params: {
   }
   return prisma.creatorMembership.create({
     data: {
-      userId:   params.userId,
-      tierId:   params.tierId,
-      artistId: params.artistId,
-      status:   'active',
+      userId:    params.userId,
+      tierId:    params.tierId,
+      artistId:  params.artistId,
+      status:    'active',
       expiresAt: periodEnd,
     },
   });
 }
 
 export async function cancelMembership(userId: string, tierId: string) {
+  const membership = await prisma.creatorMembership.findFirst({ where: { userId, tierId } });
+  if (!membership) throw new Error('Membership not found');
   return prisma.creatorMembership.update({
-    where: { id: (await prisma.creatorMembership.findFirst({ where: { userId, tierId } }))?.id ?? '' },
+    where: { id: membership.id },
     data: { status: 'cancelled' },
   });
 }
@@ -104,7 +110,6 @@ export async function renewMembership(membershipId: string, amount: number) {
 
   const now = new Date();
   const periodEnd = new Date(now);
-  // Use 'monthly' as safe default since billingInterval not stored on membership
   periodEnd.setMonth(periodEnd.getMonth() + 1);
 
   return prisma.creatorMembership.update({
@@ -158,7 +163,6 @@ export async function getCreatorAnalytics(artistId: string) {
 
   const [
     activeMembers,
-    totalMemberRevenue,
     beatSalesThisMonth,
     releaseSalesThisMonth,
     pendingPayouts,
@@ -166,10 +170,6 @@ export async function getCreatorAnalytics(artistId: string) {
   ] = await Promise.all([
     prisma.creatorMembership.count({
       where: { artistId, status: 'active', expiresAt: { gte: now } },
-    }),
-    prisma.creatorMembership.aggregate({
-      where: { artistId },
-      _sum: { },
     }),
     prisma.purchase.aggregate({
       where: {
@@ -233,17 +233,15 @@ export async function upsertRevenueRecord(
     purchaseId?: string;
   }
 ) {
-  // RevenueRecord stores individual records (type, amount, platformFee, netAmount)
-  // No unique constraint on artistId_period — just create a new record
   if (!delta.amount || delta.amount <= 0) return null;
   return prisma.revenueRecord.create({
     data: {
       artistId,
       period,
-      type:        delta.type       || 'other',
-      amount:      delta.amount     || 0,
+      type:        delta.type        || 'other',
+      amount:      delta.amount      || 0,
       platformFee: delta.platformFee || 0,
-      netAmount:   delta.netAmount  || 0,
+      netAmount:   delta.netAmount   || 0,
       purchaseId:  delta.purchaseId,
       currency:    'ZAR',
     },
