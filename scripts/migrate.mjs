@@ -2,25 +2,13 @@
 // scripts/migrate.mjs — runs during Vercel build before next build
 // Baselines existing migrations then applies the new field-fix SQL.
 
-import { createClient } from '@supabase/supabase-js';
+import pg from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
+const { Client } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  db: { schema: 'public' },
-  auth: { persistSession: false },
-});
 
 const EXISTING_MIGRATIONS = [
   'phase2_creator_economy',
@@ -36,29 +24,6 @@ const NEW_SQL = readFileSync(
   path.join(__dirname, `../prisma/migrations/${NEW_MIGRATION}/migration.sql`),
   'utf8'
 );
-
-async function sql(query) {
-  const { data, error } = await supabase.rpc('exec_sql', { query });
-  if (error) throw new Error(`SQL error: ${error.message}\nQuery: ${query.slice(0, 120)}`);
-  return data;
-}
-
-// Supabase JS client doesn't expose raw SQL — use the REST /rest/v1/rpc or
-// the pg connection string via DATABASE_URL instead.
-// Fall back to DATABASE_URL with the `postgres` package installed inline.
-
-import { execSync } from 'child_process';
-
-// Install pg at build time if not present (it's tiny, ~3MB)
-try {
-  await import('pg');
-} catch {
-  console.log('Installing pg...');
-  execSync('npm install pg --no-save', { stdio: 'inherit' });
-}
-
-const { default: pg } = await import('pg');
-const { Client } = pg;
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -114,6 +79,9 @@ try {
   }
 
   console.log('Migration complete.');
+} catch (err) {
+  console.error('Migration failed:', err.message);
+  process.exit(1);
 } finally {
   await client.end();
 }
