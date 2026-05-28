@@ -116,13 +116,13 @@ export async function getTrending(
   const staleThreshold = new Date(Date.now() - maxAge * 60 * 1000);
 
   const snapshot = await prisma.trendingSnapshot.findFirst({
-    where: { period, category, computedAt: { gte: staleThreshold } },
-    orderBy: { computedAt: 'desc' },
+    where: { period, category, createdAt: { gte: staleThreshold } },
+    orderBy: { createdAt: 'desc' },
   });
 
   if (snapshot) {
     const items = (snapshot.items as TrendingItem[]).slice(0, limit);
-    return { items, computedAt: snapshot.computedAt, isFresh: true };
+    return { items, computedAt: snapshot.createdAt, isFresh: true };
   }
 
   // No fresh snapshot — compute on-the-fly and cache
