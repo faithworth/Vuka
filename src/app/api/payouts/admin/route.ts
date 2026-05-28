@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
       where: status === 'all' ? {} : { status },
       include: {
         artist: { select: { id: true, name: true, slug: true, user: { select: { email: true } } } },
-        splits: true,
+        bankAccount: { select: { bankName: true, accountHolder: true, maskedNumber: true, branchCode: true } },
       },
-      orderBy: { requestedAt: 'asc' },
+      orderBy: { createdAt: 'asc' },
       take: 100,
     });
 
