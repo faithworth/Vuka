@@ -256,24 +256,34 @@ export async function getOrCreateStorefront(artistId: string) {
   });
 }
 
+// Accepts both legacy field names (heroHeadline, heroSubtext, isLive, etc.)
+// and schema field names (headline, description, theme, sections, isPublic).
+// Maps everything to actual schema columns before writing.
 export async function updateStorefront(
   artistId: string,
-  data: Partial<{
-    heroHeadline: string;
-    heroSubtext: string;
-    heroImageUrl: string;
-    accentColor: string;
-    featuredBeats: string[];
-    featuredReleases: string[];
-    featuredServices: string[];
-    metaTitle: string;
-    metaDescription: string;
-    isLive: boolean;
-  }>
+  data: Record<string, unknown>
 ) {
+  const mapped: {
+    headline?: string;
+    description?: string;
+    theme?: string;
+    sections?: unknown;
+    isPublic?: boolean;
+  } = {};
+
+  if (data.headline     !== undefined) mapped.headline    = String(data.headline);
+  if (data.heroHeadline !== undefined) mapped.headline    = String(data.heroHeadline);
+  if (data.description  !== undefined) mapped.description = String(data.description);
+  if (data.heroSubtext  !== undefined) mapped.description = String(data.heroSubtext);
+  if (data.theme        !== undefined) mapped.theme       = String(data.theme);
+  if (data.accentColor  !== undefined) mapped.theme       = String(data.accentColor);
+  if (data.sections     !== undefined) mapped.sections    = data.sections;
+  if (data.isPublic     !== undefined) mapped.isPublic    = Boolean(data.isPublic);
+  if (data.isLive       !== undefined) mapped.isPublic    = Boolean(data.isLive);
+
   return prisma.creatorStorefront.upsert({
     where: { artistId },
-    create: { artistId, ...data },
-    update: data,
+    create: { artistId, ...mapped },
+    update: mapped,
   });
 }
