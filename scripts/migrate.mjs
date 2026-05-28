@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/migrate.mjs — runs during Vercel build before next build
-// Baselines existing migrations then applies the new field-fix SQL.
+// Baselines existing migrations then applies any new migrations in order.
 
 import pg from 'pg';
 import { readFileSync } from 'fs';
@@ -10,6 +10,7 @@ import path from 'path';
 const { Client } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Migrations that existed before this script was introduced — baseline only, no SQL to run
 const EXISTING_MIGRATIONS = [
   'phase2_creator_economy',
   'phase3_social_engine',
@@ -19,11 +20,11 @@ const EXISTING_MIGRATIONS = [
   'phase5_status_history',
 ];
 
-const NEW_MIGRATION = '20250528_fix_schema_field_mismatches';
-const NEW_SQL = readFileSync(
-  path.join(__dirname, `../prisma/migrations/${NEW_MIGRATION}/migration.sql`),
-  'utf8'
-);
+// New migrations to apply in order — each must have a migration.sql file
+const NEW_MIGRATIONS = [
+  '20250528_fix_schema_field_mismatches',
+  '20250528_add_bank_account_payment_fields',
+];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -60,22 +61,26 @@ try {
     }
   }
 
-  // 3. Apply new migration if not already done
-  const { rows: already } = await client.query(
-    `SELECT id FROM "_prisma_migrations" WHERE migration_name = $1`, [NEW_MIGRATION]
-  );
+  // 3. Apply each new migration if not already done
+  for (const migrationName of NEW_MIGRATIONS) {
+    const { rows: already } = await client.query(
+      `SELECT id FROM "_prisma_migrations" WHERE migration_name = $1`, [migrationName]
+    );
 
-  if (already.length > 0) {
-    console.log(`  already applied: ${NEW_MIGRATION} — skipping.`);
-  } else {
-    console.log(`  applying: ${NEW_MIGRATION} ...`);
-    await client.query(NEW_SQL);
-    await client.query(`
-      INSERT INTO "_prisma_migrations"
-        (id, checksum, finished_at, migration_name, applied_steps_count)
-      VALUES (gen_random_uuid()::text, 'field_fix', now(), $1, 1)
-    `, [NEW_MIGRATION]);
-    console.log(`  done: ${NEW_MIGRATION}`);
+    if (already.length > 0) {
+      console.log(`  already applied: ${migrationName} — skipping.`);
+    } else {
+      const sqlPath = path.join(__dirname, `../prisma/migrations/${migrationName}/migration.sql`);
+      const sql = readFileSync(sqlPath, 'utf8');
+      console.log(`  applying: ${migrationName} ...`);
+      await client.query(sql);
+      await client.query(`
+        INSERT INTO "_prisma_migrations"
+          (id, checksum, finished_at, migration_name, applied_steps_count)
+        VALUES (gen_random_uuid()::text, 'applied', now(), $1, 1)
+      `, [migrationName]);
+      console.log(`  done: ${migrationName}`);
+    }
   }
 
   console.log('Migration complete.');
