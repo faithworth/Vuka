@@ -4,6 +4,7 @@
  */
 
 import prisma from './prisma';
+import type { Prisma } from '@prisma/client';
 
 // ── SEARCH ────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ export async function getTrending(
 
   // No fresh snapshot — compute on-the-fly and cache
   const items = await computeTrending(period, category, limit);
-  await prisma.trendingSnapshot.create({ data: { period, category, items } });
+  await prisma.trendingSnapshot.create({ data: { period, category, items: items as unknown as Prisma.InputJsonValue } });
   return { items, computedAt: new Date(), isFresh: false };
 }
 
