@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
       data: {
         serviceId,
         artistId: artist.id,
+        name: user.name,
+        email: user.email,
         message: message?.trim() || '',
         status: 'pending',
       },
