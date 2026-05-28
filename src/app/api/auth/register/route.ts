@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
       await prisma.industryUser.create({
         data: {
           userId: user.id,
-          company: company || '',
-          position: position || '',
+          companyName: company || '',
+          role: position || '',
         },
       });
     }
