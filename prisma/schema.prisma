@@ -913,15 +913,17 @@ model GeographyEvent {
   id          String   @id @default(cuid())
   artistId    String
   artist      Artist   @relation(fields: [artistId], references: [id])
-  country     String
+  countryCode String
   countryName String   @default("")
+  city        String   @default("")
   eventType   String
-  count       Int      @default(0)
+  count       Int      @default(1)
   period      String   // YYYY-MM
   createdAt   DateTime @default(now())
 
-  @@unique([artistId, country, eventType, period])
-  @@index([artistId, eventType, period])
+  @@unique([artistId, countryCode, eventType, period], map: "GeographyEvent_unique")
+  @@index([artistId], map: "GeographyEvent_artistId_idx")
+  @@index([period], map: "GeographyEvent_period_idx")
 }
 
 model SearchIndex {
