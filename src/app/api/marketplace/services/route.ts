@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Validate packages structure
     for (const pkg of packages) {
-      if (!pkg.name || !pkg.price || !pkg.deliveryDays) {
+      if (!pkg.name || pkg.price == null || !pkg.deliveryDays) {
         return NextResponse.json(
           { error: 'Each package needs name, price, and deliveryDays' },
           { status: 400 }
@@ -49,12 +49,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Derive the base price from the lowest-priced package
+    const basePrice: number = Math.min(...packages.map((p: any) => Number(p.price)));
+    const baseDeliveryDays: number = Math.min(...packages.map((p: any) => Number(p.deliveryDays)));
+
     const service = await prisma.marketplaceService.create({
       data: {
         artistId: user.artist.id,
         title: title.trim(),
         description: description || '',
         category,
+        price: basePrice,
+        deliveryDays: baseDeliveryDays,
         packages,
         portfolioUrls: portfolioUrls || [],
         requirements: requirements || '',
