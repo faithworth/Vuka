@@ -278,7 +278,7 @@ export async function updateStorefront(
   if (data.heroSubtext  !== undefined) mapped.description = String(data.heroSubtext);
   if (data.theme        !== undefined) mapped.theme       = String(data.theme);
   if (data.accentColor  !== undefined) mapped.theme       = String(data.accentColor);
-  if (data.sections     !== undefined) mapped.sections    = data.sections;
+  if (data.sections     !== undefined && data.sections !== null) mapped.sections = data.sections as Prisma.InputJsonValue;
   if (data.isPublic     !== undefined) mapped.isPublic    = Boolean(data.isPublic);
   if (data.isLive       !== undefined) mapped.isPublic    = Boolean(data.isLive);
 
