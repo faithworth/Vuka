@@ -59,11 +59,21 @@ export async function upsertGeographyEvent(
   };
 
   await prisma.geographyEvent.upsert({
-    where: { artistId_countryCode_eventType_period: { artistId, countryCode, eventType, period } },
+    where: {
+      artistId_country_eventType_period: {
+        artistId,
+        country: countryCode,
+        eventType,
+        period,
+      },
+    },
     create: {
-      artistId, countryCode,
+      artistId,
+      country: countryCode,
       countryName: countryNames[countryCode] ?? countryCode,
-      eventType, count: 1, period,
+      eventType,
+      count: 1,
+      period,
     },
     update: { count: { increment: 1 } },
   });

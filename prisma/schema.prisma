@@ -910,15 +910,17 @@ model AnalyticsDailyRollup {
 }
 
 model GeographyEvent {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  country   String
-  eventType String
-  count     Int      @default(0)
-  period    String   // YYYY-MM
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  artistId    String
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  country     String
+  countryName String   @default("")
+  eventType   String
+  count       Int      @default(0)
+  period      String   // YYYY-MM
+  createdAt   DateTime @default(now())
 
+  @@unique([artistId, country, eventType, period])
   @@index([artistId, eventType, period])
 }
 
