@@ -894,18 +894,37 @@ model PageView {
 }
 
 model AnalyticsDailyRollup {
-  id            String   @id @default(cuid())
-  artistId      String
-  artist        Artist   @relation(fields: [artistId], references: [id])
-  date          DateTime
-  plays         Int      @default(0)
-  followers     Int      @default(0)
-  revenue       Float    @default(0)
-  pageViews     Int      @default(0)
-  uniqueVisitors Int     @default(0)
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  artistId       String
+  artist         Artist   @relation(fields: [artistId], references: [id])
+  date           String   // YYYY-MM-DD string for easy querying and upsert
+  // Play metrics
+  plays          Int      @default(0)
+  beatPlays      Int      @default(0)
+  releasePlays   Int      @default(0)
+  videoPlays     Int      @default(0)
+  profileViews   Int      @default(0)
+  storeViews     Int      @default(0)
+  pageViews      Int      @default(0)
+  uniqueVisitors Int      @default(0)
+  // Follower metrics
+  followers      Int      @default(0)
+  unfollows      Int      @default(0)
+  // Sales metrics
+  beatSales      Int      @default(0)
+  releaseSales   Int      @default(0)
+  // Revenue metrics
+  revenue        Float    @default(0)
+  totalRevenue   Float    @default(0)
+  tips           Float    @default(0)
+  // Engagement metrics
+  likes          Int      @default(0)
+  comments       Int      @default(0)
+  reposts        Int      @default(0)
+  shares         Int      @default(0)
+  createdAt      DateTime @default(now())
 
-  @@unique([artistId, date])
+  @@unique([artistId, date], name: "artistId_date")
   @@index([artistId, date])
 }
 

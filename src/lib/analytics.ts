@@ -129,7 +129,7 @@ export async function getCreatorAnalytics(artistId: string, days = 30) {
       beatSales: acc.beatSales + r.beatSales,
       releaseSales: acc.releaseSales + r.releaseSales,
       totalRevenue: acc.totalRevenue + r.totalRevenue,
-      newFollowers: acc.newFollowers + r.newFollowers,
+      newFollowers: acc.newFollowers + r.followers,
       likes: acc.likes + r.likes,
       comments: acc.comments + r.comments,
       reposts: acc.reposts + r.reposts,
@@ -151,7 +151,7 @@ export async function getCreatorAnalytics(artistId: string, days = 30) {
       total: r.beatPlays + r.releasePlays + r.videoPlays,
     })),
     revenue: rollups.map((r) => ({ date: r.date, amount: r.totalRevenue })),
-    followers: rollups.map((r) => ({ date: r.date, gained: r.newFollowers, lost: r.lostFollowers })),
+    followers: rollups.map((r) => ({ date: r.date, gained: r.followers, lost: r.unfollows })),
     engagement: rollups.map((r) => ({ date: r.date, likes: r.likes, comments: r.comments, reposts: r.reposts })),
   };
 
@@ -181,7 +181,7 @@ export async function getAudienceAnalytics(artistId: string) {
     // 30-day follower growth
     prisma.analyticsDailyRollup.findMany({
       where: { artistId },
-      select: { date: true, newFollowers: true, lostFollowers: true },
+      select: { date: true, followers: true, unfollows: true },
       orderBy: { date: 'desc' },
       take: 30,
     }),
@@ -256,17 +256,24 @@ export async function getRevenueAnalytics(artistId: string, months = 12) {
   const totalSales = conversionData._sum.sales ?? 0;
   const conversionRate = totalPlays > 0 ? (totalSales / totalPlays) * 100 : 0;
 
-  // Revenue breakdown by source (latest record)
-  const latestRecord = revenueRecords[revenueRecords.length - 1];
-  const breakdown = latestRecord
-    ? {
-        beatSales: latestRecord.beatSales,
-        releaseSales: latestRecord.releaseSales,
-        subscriptions: latestRecord.subscriptions,
-        marketplace: latestRecord.marketplace,
-        tips: latestRecord.tips,
-        distribution: latestRecord.distribution,
-      }
+  // Revenue breakdown by source — computed from individual RevenueRecord.type values
+  const breakdown = revenueRecords.length > 0
+    ? revenueRecords.reduce(
+        (acc, r) => {
+          const amount = r.netAmount || r.amount;
+          switch (r.type) {
+            case 'beat_sale':       acc.beatSales     += amount; break;
+            case 'release_sale':    acc.releaseSales  += amount; break;
+            case 'subscription':    acc.subscriptions += amount; break;
+            case 'marketplace':     acc.marketplace   += amount; break;
+            case 'support':
+            case 'tip':             acc.tips          += amount; break;
+            case 'distribution':    acc.distribution  += amount; break;
+          }
+          return acc;
+        },
+        { beatSales: 0, releaseSales: 0, subscriptions: 0, marketplace: 0, tips: 0, distribution: 0 }
+      )
     : null;
 
   return {
