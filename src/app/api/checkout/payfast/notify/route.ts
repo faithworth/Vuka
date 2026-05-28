@@ -211,12 +211,12 @@ export async function POST(req: NextRequest) {
           artistId,
           purchaseId,
           amount:    purchase.amount,
-          fee:       platformFee,
+
           netAmount,
           method:    paymentMethod,
           currency:  purchase.currency,
           status:    'pending',
-          payfastRef: pfPaymentId,
+          reference: pfPaymentId,
           notes:     `${purchase.itemType} sale via PayFast — ${itemName}`,
         },
       });

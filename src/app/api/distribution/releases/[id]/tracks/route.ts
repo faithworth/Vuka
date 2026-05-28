@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { generateISRC, getPresignedUploadUrl, r2Keys } from '@/lib/distribution';
+import { generateISRC } from '@/lib/distribution';
+import { getPresignedUploadUrl, r2Keys } from '@/lib/r2';
 import { getPresignedUploadUrl as getR2UploadUrl } from '@/lib/r2';
 
 type Params = { params: { id: string } };

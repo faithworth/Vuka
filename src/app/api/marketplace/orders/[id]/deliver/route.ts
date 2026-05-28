@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'At least one deliverable file required' }, { status: 400 });
     }
 
-    const order = await deliverOrder(params.id, user.artist.id, deliverables, notes);
+    const order = await deliverOrder(params.id, user.artist.id, Array.isArray(deliverables) ? deliverables.map((d: any) => typeof d === "string" ? d : d.url || JSON.stringify(d)) : []);
     return NextResponse.json({ order });
   } catch (err: any) {
     console.error('[marketplace/orders/deliver] POST error:', err?.message);

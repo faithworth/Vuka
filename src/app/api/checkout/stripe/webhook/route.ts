@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
           artistId,
           purchaseId,
           amount:    existing.amount,
-          fee:       platformFee,
+
           netAmount,
           method:    payoutMethod,
           currency:  existing.currency,

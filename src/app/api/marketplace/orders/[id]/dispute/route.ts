@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { reason, evidence } = await req.json();
     if (!reason?.trim()) return NextResponse.json({ error: 'Dispute reason required' }, { status: 400 });
 
-    const dispute = await raiseDispute(params.id, user.id, reason, evidence || []);
+    const dispute = await raiseDispute(params.id, user.id, reason);
     return NextResponse.json({
       dispute,
       message: 'Dispute raised. Our moderation team will review within 2–3 business days.',

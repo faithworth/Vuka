@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         await prisma.artist.create({
           data: { userId: user.id, name, slug, country: 'ZA', currency: 'ZAR' },
         });
-        sendWelcomeArtist({ to: email!, name, slug }).catch(console.error);
+        sendWelcomeArtist({ to: email!, artistName: name, dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` }).catch(console.error);
       }
 
       if (role === 'industry') {

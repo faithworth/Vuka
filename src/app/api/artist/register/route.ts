@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       });
 
       // Send welcome email (non-blocking)
-      sendWelcomeArtist({ to: email, name, slug }).catch(console.error);
+      sendWelcomeArtist({ to: email, artistName: name, dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` }).catch(console.error);
     }
 
     return NextResponse.json({ ok: true, userId: user.id });

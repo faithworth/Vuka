@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { notes } = await req.json();
     if (!notes?.trim()) return NextResponse.json({ error: 'Revision notes are required' }, { status: 400 });
 
-    const order = await requestRevision(params.id, user.id, notes);
+    const order = await requestRevision(params.id, user.id);
     return NextResponse.json({ order });
   } catch (err: any) {
     console.error('[marketplace/orders/revise] POST error:', err?.message);

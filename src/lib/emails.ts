@@ -251,6 +251,7 @@ export async function sendSupportArtistNotification({
 }: {
   to: string; artistName: string; fanName: string;
   amount: number; currency: string; message?: string; tier: string;
+  goalTitle?: string; goalPercent?: number;
 }) {
   const subject = `♥ ${fanName} just supported you on Vuka`;
   const html = `<!DOCTYPE html><html>

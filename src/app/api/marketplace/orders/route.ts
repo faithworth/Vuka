@@ -1,83 +1,58 @@
-// ============================================================
-// PHASE 2 — src/app/api/marketplace/orders/route.ts
-// Marketplace orders: create (buyer) and list (buyer or seller)
-// ============================================================
-
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { createMarketplaceOrder, acceptOrder } from '@/lib/marketplace';
+import { createClient } from '@/lib/supabase';
+import { createMarketplaceOrder } from '@/lib/marketplace';
 
-// GET — list orders for the caller (as buyer or seller)
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth();
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { searchParams } = new URL(req.url);
-    const role   = searchParams.get('role') || 'buyer';   // buyer | seller
-    const status = searchParams.get('status') || undefined;
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, include: { artist: true } });
+    if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    let orders;
-    if (role === 'seller' && user.artist) {
-      orders = await prisma.marketplaceOrder.findMany({
-        where: {
-          sellerArtistId: user.artist.id,
-          ...(status ? { status } : {}),
-        },
-        include: {
-          service: { select: { id: true, title: true, category: true } },
-          buyer: { select: { id: true, name: true, email: true } },
-          milestones: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      });
-    } else {
-      orders = await prisma.marketplaceOrder.findMany({
-        where: {
-          buyerUserId: user.id,
-          ...(status ? { status } : {}),
-        },
-        include: {
-          service: { select: { id: true, title: true, category: true } },
-          seller: { select: { id: true, name: true, slug: true, photoUrl: true } },
-          milestones: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      });
-    }
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get('role') || 'buyer';
+
+    const orders = await prisma.marketplaceOrder.findMany({
+      where: role === 'seller' && dbUser.artist
+        ? { sellerId: dbUser.artist.id }
+        : { buyerId: dbUser.id },
+      include: {
+        service: { select: { title: true, category: true } },
+        seller:  { select: { name: true, slug: true, photoUrl: true } },
+        dispute: true,
+        review:  true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return NextResponse.json({ orders });
   } catch (err) {
-    console.error('[marketplace/orders] GET error:', err);
-    return NextResponse.json({ error: 'Database error' }, { status: 503 });
+    console.error('Marketplace orders GET error:', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
-// POST — place an order (buyer action)
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth();
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { serviceId, packageName, requirements } = await req.json();
-    if (!serviceId)    return NextResponse.json({ error: 'serviceId required' }, { status: 400 });
-    if (!packageName)  return NextResponse.json({ error: 'packageName required' }, { status: 400 });
+    const { serviceId, requirements } = await req.json();
+    if (!serviceId) return NextResponse.json({ error: 'serviceId required' }, { status: 400 });
 
     const order = await createMarketplaceOrder({
       serviceId,
-      buyerUserId: user.id,
-      packageName,
-      requirements,
+      buyerUserId:  user.id,
+      requirements: requirements || '',
     });
 
     return NextResponse.json({ order }, { status: 201 });
-  } catch (err: any) {
-    console.error('[marketplace/orders] POST error:', err?.message);
-    const code = err?.message?.includes('Cannot order') || err?.message?.includes('not found') ? 400 : 503;
-    return NextResponse.json({ error: err?.message || 'Failed to create order' }, { status: code });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Server error';
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
