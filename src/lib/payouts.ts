@@ -172,14 +172,19 @@ export async function retryPayoutRequest(requestId: string) {
 
 export async function addBankAccount(params: {
   artistId: string;
-  bankName: string;
-  accountHolder: string;
-  accountNumber: string;
-  branchCode: string;
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  branchCode?: string;
   accountType?: string;
+  paypalEmail?: string;
+  payfastMerchantId?: string;
   setAsDefault?: boolean;
 }) {
-  const masked = params.accountNumber.slice(-4).padStart(params.accountNumber.length, '*');
+  const accountNumber = params.accountNumber || '';
+  const masked = accountNumber.length > 4
+    ? accountNumber.slice(-4).padStart(accountNumber.length, '*')
+    : accountNumber;
 
   if (params.setAsDefault) {
     await prisma.artistBankAccount.updateMany({
@@ -190,14 +195,16 @@ export async function addBankAccount(params: {
 
   return prisma.artistBankAccount.create({
     data: {
-      artistId:      params.artistId,
-      bankName:      params.bankName,
-      accountHolder: params.accountHolder,
-      accountNumber: params.accountNumber, // encrypt in prod
-      maskedNumber:  masked,
-      branchCode:    params.branchCode,
-      accountType:   params.accountType || 'cheque',
-      isDefault:     params.setAsDefault || false,
+      artistId:          params.artistId,
+      bankName:          params.bankName      || '',
+      accountHolder:     params.accountHolder || '',
+      accountNumber:     accountNumber,
+      maskedNumber:      masked,
+      branchCode:        params.branchCode    || '',
+      accountType:       params.accountType   || 'bank',
+      paypalEmail:       params.paypalEmail,
+      payfastMerchantId: params.payfastMerchantId,
+      isDefault:         params.setAsDefault  || false,
     },
   });
 }
