@@ -391,16 +391,36 @@ model AdminLog {
 // ── INDUSTRY ─────────────────────────────────────────────────
 
 model IndustryUser {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id])
   companyName String
-  role        String   @default("")
-  website     String   @default("")
-  verified    Boolean  @default(false)
+  role        String             @default("")
+  website     String             @default("")
+  verified    Boolean            @default(false)
   services    IndustryService[]
   deals       Deal[]
-  createdAt   DateTime @default(now())
+  referrals   IndustryReferral[]
+  createdAt   DateTime           @default(now())
+}
+
+model IndustryReferral {
+  id               String       @id @default(cuid())
+  industryUserId   String
+  industryUser     IndustryUser @relation(fields: [industryUserId], references: [id])
+  referredUserId   String       @default("")
+  artistSlug       String       @default("")
+  artistName       String       @default("")
+  saleType         String       @default("")
+  saleAmount       Float        @default(0)
+  commissionRate   Float        @default(0.15)
+  commissionEarned Float        @default(0)
+  currency         String       @default("ZAR")
+  status           String       @default("pending")
+  paidAt           DateTime?
+  createdAt        DateTime     @default(now())
+
+  @@index([industryUserId, status])
 }
 
 model IndustryService {

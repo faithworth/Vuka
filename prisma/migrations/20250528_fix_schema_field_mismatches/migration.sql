@@ -36,3 +36,26 @@ ALTER TABLE "ServiceInquiry" ALTER COLUMN "serviceId" SET DEFAULT '';
 ALTER TABLE "MarketplaceService" ADD COLUMN IF NOT EXISTS "packages"      JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE "MarketplaceService" ADD COLUMN IF NOT EXISTS "portfolioUrls" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
 ALTER TABLE "MarketplaceService" ADD COLUMN IF NOT EXISTS "requirements"  TEXT   NOT NULL DEFAULT '';
+
+-- IndustryReferral: new model for referral tracking
+CREATE TABLE IF NOT EXISTS "IndustryReferral" (
+  "id"               TEXT             NOT NULL DEFAULT gen_random_uuid()::text,
+  "industryUserId"   TEXT             NOT NULL,
+  "referredUserId"   TEXT             NOT NULL DEFAULT '',
+  "artistSlug"       TEXT             NOT NULL DEFAULT '',
+  "artistName"       TEXT             NOT NULL DEFAULT '',
+  "saleType"         TEXT             NOT NULL DEFAULT '',
+  "saleAmount"       DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "commissionRate"   DOUBLE PRECISION NOT NULL DEFAULT 0.15,
+  "commissionEarned" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "currency"         TEXT             NOT NULL DEFAULT 'ZAR',
+  "status"           TEXT             NOT NULL DEFAULT 'pending',
+  "paidAt"           TIMESTAMP(3),
+  "createdAt"        TIMESTAMP(3)     NOT NULL DEFAULT now(),
+  CONSTRAINT "IndustryReferral_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "IndustryReferral_industryUserId_fkey"
+    FOREIGN KEY ("industryUserId") REFERENCES "IndustryUser"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "IndustryReferral_industryUserId_status_idx"
+  ON "IndustryReferral"("industryUserId", "status");
