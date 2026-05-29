@@ -159,6 +159,9 @@ export async function resolveAbuseReport(
     data: {
       reportId,
       adminId,
+      adminEmail: adminId, // adminId is the admin's email in this context
+      targetType: report.targetType,
+      targetId:   report.targetId,
       action: decision,
       notes: notes ?? '',
     },
@@ -290,9 +293,9 @@ export async function applyContentFlag(
   }
 
   await prisma.contentFlag.upsert({
-    where: { targetType_targetId_flag: { targetType, targetId, flag } },
-    create: { targetType, targetId, flag, adminId, reason: reason ?? '' },
-    update: { updatedAt: new Date(), reason: reason ?? '' },
+    where: { contentType_contentId_flagType: { contentType: targetType, contentId: targetId, flagType: flag } },
+    create: { contentType: targetType, contentId: targetId, flagType: flag, adminId, reason: reason ?? '' },
+    update: { updatedAt: new Date(), reason: reason ?? '', adminId },
   });
 
   // Deactivate the content live
@@ -312,7 +315,7 @@ export async function removeContentFlag(
   flag: string,
   adminId: string
 ): Promise<void> {
-  await prisma.contentFlag.deleteMany({ where: { targetType, targetId, flag } });
+  await prisma.contentFlag.deleteMany({ where: { contentType: targetType, contentId: targetId, flagType: flag } });
   await auditLog.securityEvent(
     'moderation.content_flag_removed',
     `${targetType}=${targetId} flag=${flag} admin=${adminId}`,
@@ -485,7 +488,7 @@ export async function getAdminDashboard(): Promise<object> {
       take: 10,
     }),
     prisma.contentFlag.findMany({
-      where: { flag: { in: ['removed', 'dmca', 'explicit'] } },
+      where: { flagType: { in: ['removed', 'dmca', 'explicit'] } },
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),

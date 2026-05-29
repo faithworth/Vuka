@@ -1030,57 +1030,69 @@ model VerificationRequest {
   socialProofUrl  String    @default("")
   notes           String    @default("")
   additionalInfo  String    @default("")
+  monthlyListeners Int      @default(0)
+  totalStreams     Int      @default(0)
+  reviewedBy      String    @default("")
   reviewedAt      DateTime?
   adminNotes      String    @default("")
   createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now())
 }
 
 // ── PHASE 4: MODERATION & TRUST ──────────────────────────────
 
 model AbuseReport {
-  id              String             @id @default(cuid())
+  id              String    @id @default(cuid())
   reporterUserId  String?
-  reporterEmail   String             @default("")
-  targetType      String             // beat, release, post, comment, artist, message
+  reporterEmail   String    @default("")
+  targetType      String    // beat, release, post, comment, artist, message
   targetId        String
-  targetTitle     String             @default("")
+  targetTitle     String    @default("")
   reason          String
-  category        String             // harassment, hate_speech, spam, explicit_content, etc.
-  description     String             @default("")
-  evidence        Json               @default("[]")
-  status          String             @default("pending") // pending, reviewed, resolved, dismissed
-  resolution      String             @default("")
-  moderatorId     String             @default("")
-  adminNotes      String             @default("")
+  category        String    // harassment, hate_speech, spam, explicit_content, etc.
+  description     String    @default("")
+  evidence        Json      @default("[]")
+  status          String    @default("pending") // pending, reviewed, resolved, dismissed
+  resolution      String    @default("")
+  moderatorId     String    @default("")
+  adminNotes      String    @default("")
+  actionTaken     String    @default("")
+  assignedTo      String    @default("")
   resolvedAt      DateTime?
-  actions         ModerationAction[]
-  createdAt       DateTime           @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now())
 
   @@index([status, createdAt])
 }
 
 model ModerationAction {
-  id        String      @id @default(cuid())
-  reportId  String
-  report    AbuseReport @relation(fields: [reportId], references: [id])
-  adminId   String      @default("")
-  action    String      // warn, remove_content, suspend_account, ban_account, no_action
-  notes     String      @default("")
-  createdAt DateTime    @default(now())
+  id          String       @id @default(cuid())
+  reportId    String       @default("") // links to AbuseReport (new)
+  adminEmail  String       @default("")
+  adminId     String       @default("")
+  targetType  String       @default("")
+  targetId    String       @default("")
+  action      String       // warn, remove_content, suspend_account, ban_account, no_action
+  reason      String       @default("")
+  notes       String       @default("")
+  reversedAt  DateTime?
+  reversedBy  String       @default("")
+  createdAt   DateTime     @default(now())
 }
 
 model ContentFlag {
-  id         String   @id @default(cuid())
-  targetType String
-  targetId   String
-  flag       String   // removed, dmca, explicit, spam, copyright, misleading
-  adminId    String   @default("")
-  reason     String   @default("")
-  isActive   Boolean  @default(true)
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  contentType String   // beat, release, post, comment, artist
+  contentId   String
+  flagType    String   // removed, dmca, explicit, spam, copyright, misleading
+  adminId     String   @default("")
+  reason      String   @default("")
+  flaggedBy   String   @default("")
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 
-  @@unique([targetType, targetId, flag])
+  @@unique([contentType, contentId, flagType])
 }
 
 // ── RATE LIMITING / ANTI-ABUSE ───────────────────────────────
