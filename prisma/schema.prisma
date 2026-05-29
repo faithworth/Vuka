@@ -620,6 +620,8 @@ model DistributionRelease {
   submittedAt      DateTime?
   liveAt           DateTime?
   platforms        String[]
+  retryCount       Int             @default(0)
+  lastRetryAt      DateTime?
   tracks           DistributionTrack[]
   dspDeliveries    DSPDelivery[]
   updatedAt        DateTime        @updatedAt
@@ -762,6 +764,15 @@ model BeatLicense {
   terms        String    @default("")
   isRevoked    Boolean   @default(false)
   revokedReason String   @default("")
+  streams      Int?
+  salesCap     Int?
+  radioStations Int?
+  tvSync       Boolean   @default(false)
+  musicVideo   Boolean   @default(false)
+  profitSharing String   @default("")
+  artistName   String    @default("")
+  songTitle    String    @default("")
+  expiresAt    DateTime?
   createdAt    DateTime  @default(now())
 
   @@index([licenseKey])
@@ -792,8 +803,10 @@ model ArtistPost {
 
 model PostComment {
   id        String     @id @default(cuid())
-  postId    String
-  post      ArtistPost @relation(fields: [postId], references: [id])
+  postId    String?
+  post      ArtistPost? @relation(fields: [postId], references: [id])
+  beatId    String?
+  releaseId String?
   userId    String
   user      User       @relation(fields: [userId], references: [id])
   body      String
@@ -849,8 +862,11 @@ model MessageConversation {
   participant1  String
   participant2  String
   messages      Message[]
-  lastMessageAt DateTime  @default(now())
-  createdAt     DateTime  @default(now())
+  lastMessageAt      DateTime  @default(now())
+  lastMessagePreview String    @default("")
+  unread1            Int       @default(0)
+  unread2            Int       @default(0)
+  createdAt          DateTime  @default(now())
 
   @@unique([participant1, participant2])
   @@index([participant1, participant2])

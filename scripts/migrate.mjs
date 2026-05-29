@@ -27,6 +27,7 @@ const NEW_MIGRATIONS = [
   '20250528_fix_pageview_analytics_fields',
   '20250528_fix_geography_unique',
   '20250528_fix_analytics_daily_rollup',
+  '20250529_fix_schema_missing_fields',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
