@@ -29,6 +29,7 @@ const NEW_MIGRATIONS = [
   '20250528_fix_analytics_daily_rollup',
   '20250529_fix_schema_missing_fields',
   '20250529_fix_spamsignal_messaging',
+  '20250529_fix_moderation_schema_fields',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

@@ -348,16 +348,21 @@ model ArtistPayout {
 }
 
 model DMCAReport {
-  id          String   @id @default(cuid())
-  artistId    String
-  artist      Artist   @relation(fields: [artistId], references: [id])
-  contentType String
-  contentId   String
-  claimantName String  @default("")
-  claimantEmail String @default("")
-  description String   @default("")
-  status      String   @default("pending") // pending, resolved, rejected
-  createdAt   DateTime @default(now())
+  id            String    @id @default(cuid())
+  artistId      String
+  artist        Artist    @relation(fields: [artistId], references: [id])
+  contentType   String
+  contentId     String
+  itemType      String    @default("") // mirrors contentType for legacy route compatibility
+  itemId        String    @default("") // mirrors contentId for legacy route compatibility
+  itemTitle     String    @default("")
+  claimantName  String    @default("")
+  claimantEmail String    @default("")
+  description   String    @default("")
+  status        String    @default("pending") // pending, resolved, rejected, dismissed
+  adminNotes    String    @default("")
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 model ServiceInquiry {
@@ -1014,16 +1019,20 @@ model TrendingSnapshot {
 }
 
 model VerificationRequest {
-  id          String    @id @default(cuid())
-  artistId    String    @unique
-  artist      Artist    @relation(fields: [artistId], references: [id])
-  status      String    @default("pending") // pending, approved, rejected
-  idDocUrl    String    @default("")
-  socialLinks Json      @default("{}")
-  notes       String    @default("")
-  reviewedAt  DateTime?
-  adminNotes  String    @default("")
-  createdAt   DateTime  @default(now())
+  id              String    @id @default(cuid())
+  artistId        String    @unique
+  artist          Artist    @relation(fields: [artistId], references: [id])
+  status          String    @default("pending") // pending, approved, rejected
+  legalName       String    @default("")
+  idDocUrl        String    @default("")
+  idDocumentUrl   String    @default("") // alias for idDocUrl used in moderation.ts
+  socialLinks     Json      @default("{}")
+  socialProofUrl  String    @default("")
+  notes           String    @default("")
+  additionalInfo  String    @default("")
+  reviewedAt      DateTime?
+  adminNotes      String    @default("")
+  createdAt       DateTime  @default(now())
 }
 
 // ── PHASE 4: MODERATION & TRUST ──────────────────────────────
@@ -1042,6 +1051,8 @@ model AbuseReport {
   status          String             @default("pending") // pending, reviewed, resolved, dismissed
   resolution      String             @default("")
   moderatorId     String             @default("")
+  adminNotes      String             @default("")
+  resolvedAt      DateTime?
   actions         ModerationAction[]
   createdAt       DateTime           @default(now())
 
@@ -1062,12 +1073,14 @@ model ContentFlag {
   id         String   @id @default(cuid())
   targetType String
   targetId   String
-  flagType   String   // explicit, spam, copyright, misleading
+  flag       String   // removed, dmca, explicit, spam, copyright, misleading
+  adminId    String   @default("")
+  reason     String   @default("")
   isActive   Boolean  @default(true)
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 
-  @@unique([targetType, targetId, flagType])
+  @@unique([targetType, targetId, flag])
 }
 
 // ── RATE LIMITING / ANTI-ABUSE ───────────────────────────────
