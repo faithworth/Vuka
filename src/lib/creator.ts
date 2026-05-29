@@ -7,8 +7,10 @@
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
 
-// JSON field type — compatible with Prisma's JSON column regardless of generated-client version
-type JsonField = string | number | boolean | null | JsonField[] | { [k: string]: JsonField };
+// Use Prisma's own InputJsonValue for JSON columns so the type is always
+// compatible with whatever version of @prisma/client is installed.
+// Prisma does NOT allow bare `null` in InputJsonValue; use Prisma.JsonNull instead.
+type JsonInput = Prisma.InputJsonValue | typeof Prisma.JsonNull;
 
 // ── Subscription Tier Management ──────────────────────────────
 
@@ -271,7 +273,7 @@ export async function updateStorefront(
     headline?: string;
     description?: string;
     theme?: string;
-    sections?: JsonField;
+    sections?: JsonInput;
     isPublic?: boolean;
   } = {};
 
@@ -281,7 +283,10 @@ export async function updateStorefront(
   if (data.heroSubtext  !== undefined) mapped.description = String(data.heroSubtext);
   if (data.theme        !== undefined) mapped.theme       = String(data.theme);
   if (data.accentColor  !== undefined) mapped.theme       = String(data.accentColor);
-  if (data.sections     !== undefined && data.sections !== null) mapped.sections = data.sections as JsonField;
+  if (data.sections     !== undefined) {
+    // Prisma requires Prisma.JsonNull (not bare null) for JSON columns
+    mapped.sections = data.sections === null ? Prisma.JsonNull : data.sections as Prisma.InputJsonValue;
+  }
   if (data.isPublic     !== undefined) mapped.isPublic    = Boolean(data.isPublic);
   if (data.isLive       !== undefined) mapped.isPublic    = Boolean(data.isLive);
 
