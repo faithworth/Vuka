@@ -16,19 +16,22 @@ import { createClient } from '@/lib/supabase';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, AlertTriangle,
-  MoreHorizontal, X,
+  MoreHorizontal, X, Send, Users, Store,
 } from 'lucide-react';
 
 const ARTIST_NAV = [
-  { href: '/dashboard',           label: 'Overview',    icon: BarChart2,   exact: true },
-  { href: '/dashboard/beats',     label: 'Beats',       icon: Music },
-  { href: '/dashboard/releases',  label: 'Releases',    icon: Disc },
-  { href: '/dashboard/uploads',   label: 'Upload',      icon: Upload,      highlight: true },
-  { href: '/dashboard/purchases', label: 'Sales',       icon: ShoppingBag },
-  { href: '/dashboard/support',   label: 'Fan Support', icon: Heart },
-  { href: '/dashboard/goals',     label: 'Goals',       icon: Target },
-  { href: '/dashboard/payouts',   label: 'Payouts',     icon: Wallet },
-  { href: '/dashboard/settings',  label: 'Settings',    icon: Settings },
+  { href: '/dashboard',                label: 'Overview',    icon: BarChart2,   exact: true },
+  { href: '/dashboard/beats',          label: 'Beats',       icon: Music },
+  { href: '/dashboard/releases',       label: 'Releases',    icon: Disc },
+  { href: '/dashboard/uploads',        label: 'Upload',      icon: Upload,      highlight: true },
+  { href: '/dashboard/social',         label: 'Posts',       icon: Send },
+  { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
+  { href: '/dashboard/storefront',     label: 'Storefront',  icon: Store },
+  { href: '/dashboard/purchases',      label: 'Sales',       icon: ShoppingBag },
+  { href: '/dashboard/support',        label: 'Fan Support', icon: Heart },
+  { href: '/dashboard/goals',          label: 'Goals',       icon: Target },
+  { href: '/dashboard/payouts',        label: 'Payouts',     icon: Wallet },
+  { href: '/dashboard/settings',       label: 'Settings',    icon: Settings },
 ];
 
 // First 4 always visible in bottom bar; rest go in "More"

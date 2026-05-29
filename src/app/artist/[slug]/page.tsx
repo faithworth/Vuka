@@ -1,7 +1,7 @@
 import { Navbar } from '@/components/Navbar';
-import { BeatCard } from '@/components/BeatCard';
 import { notFound } from 'next/navigation';
 import FollowButton from './FollowButton';
+import ArtistTabs from './ArtistTabs';
 
 async function getArtist(slug: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/artist/${slug}`, { cache: 'no-store' });
@@ -30,23 +30,29 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
+
       {/* Cover */}
-      <div className="relative h-48 md:h-72 overflow-hidden" style={{ background: 'var(--surface2)' }}>
+      <div className="relative h-48 md:h-64 overflow-hidden" style={{ background: 'var(--surface2)' }}>
         {artist.coverUrl && <img src={artist.coverUrl} alt="" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent, var(--bg))' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, var(--bg))' }} />
       </div>
 
       {/* Profile header */}
       <div className="max-w-5xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-start gap-6 -mt-16 mb-8 relative z-10">
+        <div className="flex flex-col md:flex-row items-start gap-6 -mt-14 mb-8 relative z-10">
           <div className="w-28 h-28 rounded-2xl overflow-hidden flex-shrink-0 border-4" style={{ borderColor: 'var(--bg)' }}>
             {artist.photoUrl
               ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎤</div>}
           </div>
-          <div className="flex-1 pt-16 md:pt-12">
-            <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>{artist.name}</h1>
-            <p style={{ color: 'var(--text-muted)' }}>{artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}</p>
+          <div className="flex-1 pt-14 md:pt-10">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>{artist.name}</h1>
+              {artist.isVerified && <span className="badge badge-sky">✓ Verified</span>}
+            </div>
+            <p className="mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}
+            </p>
             {artist.genreTags?.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {artist.genreTags.map((g: string) => (
@@ -54,22 +60,22 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                 ))}
               </div>
             )}
-            {artist.bio && <p className="mt-3 max-w-xl" style={{ color: 'var(--text-muted)' }}>{artist.bio}</p>}
+            {artist.bio && <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{artist.bio}</p>}
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 md:flex-col md:items-stretch flex-shrink-0">
+          <div className="flex flex-row md:flex-col gap-3 md:items-stretch flex-shrink-0">
             <a href={`/support/${artist.slug}`}
-              className="px-6 py-3 rounded-xl font-bold text-white text-center"
+              className="px-5 py-2.5 rounded-xl font-bold text-white text-center text-sm"
               style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
-              ♥ Support Artist
+              ♥ Support
             </a>
             <FollowButton artistId={artist.id} artistName={artist.name} />
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex gap-8 mb-8">
+        {/* Stats row */}
+        <div className="flex gap-6 mb-8 flex-wrap">
           {[
             { label: 'Beats', value: artist.beats?.length || 0 },
             { label: 'Releases', value: artist.releases?.length || 0 },
@@ -83,35 +89,8 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
           ))}
         </div>
 
-        {/* Beats */}
-        {artist.beats?.length > 0 && (
-          <section className="mb-12">
-            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>Beats</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {artist.beats.map((beat: any) => <BeatCard key={beat.id} beat={{ ...beat, artist: { name: artist.name, slug: artist.slug } }} />)}
-            </div>
-          </section>
-        )}
-
-        {/* Releases */}
-        {artist.releases?.length > 0 && (
-          <section className="mb-12">
-            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>Releases</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {artist.releases.map((r: any) => (
-                <a key={r.id} href={`/release/${r.slug}`} className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="aspect-square overflow-hidden">
-                    {r.artworkUrl ? <img src={r.artworkUrl} alt={r.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
-                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{r.releaseType} · R{r.price}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Tabbed: Beats / Releases / Posts */}
+        <ArtistTabs artist={artist} />
 
         {/* Goals */}
         {artist.goals?.filter((g: any) => g.isActive).length > 0 && (
@@ -135,7 +114,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                     </div>
                     <div className="h-3 rounded-full overflow-hidden my-3" style={{ background: 'var(--surface2)' }}>
                       <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, background: 'linear-gradient(90deg, var(--sky), var(--sky))' }} />
+                        style={{ width: `${pct}%`, background: 'var(--sky)' }} />
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold" style={{ color: 'var(--sky)' }}>
@@ -180,8 +159,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         )}
       </div>
 
-      {/* Fee transparency footer note */}
-      <div className="mt-6 mb-8 text-center">
+      <div className="mt-4 mb-10 text-center">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Vuka retains 2% of each sale to cover platform costs. The artist receives 98%.
         </p>
