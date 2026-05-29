@@ -1,6 +1,3 @@
-// FILE: src/app/auth/register/page.tsx
-// REPLACE ENTIRE FILE
-
 'use client';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -49,21 +46,12 @@ function RegisterForm() {
 
     const supabase = createClient();
 
-    // Determine redirect after email confirmation
-    const redirectMap: Record<Role, string> = {
-      artist: '/dashboard',
-      industry: '/industry-dashboard',
-      fan: '/fan',
-    };
-    const afterVerify = redirectMap[role];
-
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, role },
-        // After they click the email link, land them on the right page
-        emailRedirectTo: `${window.location.origin}/api/auth/callback?role=${role}&next=${afterVerify}`,
+        emailRedirectTo: `${window.location.origin}/api/auth/callback?role=${role}`,
       },
     });
 
@@ -73,7 +61,7 @@ function RegisterForm() {
       return;
     }
 
-    // Pre-create the DB record immediately (no session needed — we pass the data in body)
+    // Always write to DB first — role MUST be saved before any redirect
     const dbRes = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,17 +80,26 @@ function RegisterForm() {
       return;
     }
 
-    // If Supabase auto-confirmed (e.g. dev mode or email confirmation disabled),
-    // the session is set immediately — redirect straight to dashboard.
-    const session = signUpData?.session;
-    if (session) {
-      if (role === 'artist') router.push('/dashboard');
-      else if (role === 'industry') router.push('/industry-dashboard');
-      else router.push('/fan');
+    // DB is written — now safe to redirect
+    // If session exists (email confirmation disabled), use /api/auth/me to get healed role
+    if (signUpData?.session) {
+      try {
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const me = await meRes.json();
+          if (['admin','owner','super_admin'].includes(me.role)) { router.push('/admin'); return; }
+          if (me.role === 'industry' || me.isIndustry) { router.push('/industry-dashboard'); return; }
+          if (me.role === 'artist' || me.role === 'producer' || me.isArtist) { router.push('/dashboard'); return; }
+        }
+      } catch {}
+      // Fallback using chosen role
+      if (role === 'artist') { router.push('/dashboard'); return; }
+      if (role === 'industry') { router.push('/industry-dashboard'); return; }
+      router.push('/fan');
       return;
     }
 
-    // Otherwise: email confirmation required — send to verify page
+    // Email confirmation required
     const params = new URLSearchParams({ email, role });
     router.push(`/auth/verify?${params.toString()}`);
   };
@@ -128,7 +125,6 @@ function RegisterForm() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md">
 
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
@@ -142,7 +138,6 @@ function RegisterForm() {
 
         <form onSubmit={handleRegister} className="space-y-4">
 
-          {/* Role selector */}
           <div className="grid grid-cols-3 gap-2">
             {roleOptions.map(opt => (
               <button
@@ -161,25 +156,19 @@ function RegisterForm() {
             ))}
           </div>
 
-          {/* Industry notice */}
           {isIndustry && (
             <div className="p-3 rounded-xl text-sm"
               style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--gold)' }}>
               <p className="font-semibold mb-0.5">Industry Portal</p>
               <p className="text-xs opacity-80">
-                Discover artists, send deal proposals, and track referral earnings. Your dashboard will be ready immediately after sign-up.
+                Discover artists, send deal proposals, and track referral earnings.
               </p>
             </div>
           )}
 
-          <input
-            className="input"
-            type="text"
+          <input className="input" type="text"
             placeholder={isIndustry ? 'Your full name' : 'Your name'}
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-          />
+            value={name} onChange={e => setName(e.target.value)} required />
 
           {isIndustry && (
             <div className="grid grid-cols-2 gap-3">
@@ -188,17 +177,14 @@ function RegisterForm() {
             </div>
           )}
 
-          <input className="input" type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input className="input" type="email" placeholder="Email address"
+            value={email} onChange={e => setEmail(e.target.value)} required />
 
           <div className="relative">
-            <input
-              className="input pr-12"
+            <input className="input pr-12"
               type={showPw ? 'text' : 'password'}
               placeholder="Password (min 8 characters)"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-            />
+              value={password} onChange={e => setPassword(e.target.value)} required />
             <button type="button" onClick={() => setShowPw(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2"
               style={{ color: 'var(--text-muted)' }}>
@@ -207,7 +193,8 @@ function RegisterForm() {
           </div>
 
           {error && (
-            <p className="text-sm px-3 py-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.1)', color: 'var(--red)' }}>
+            <p className="text-sm px-3 py-2 rounded-lg"
+              style={{ background: 'rgba(204,26,26,0.1)', color: 'var(--red)' }}>
               {error}
             </p>
           )}
