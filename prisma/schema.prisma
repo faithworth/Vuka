@@ -1077,6 +1077,7 @@ model SpamSignal {
   userId      String
   action      String
   count       Int      @default(1)
+  isFlagged   Boolean  @default(false)
   windowStart DateTime @default(now())
   createdAt   DateTime @default(now())
 
