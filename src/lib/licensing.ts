@@ -1,5 +1,5 @@
 // ============================================================
-// PHASE 2 — src/lib/licensing.ts
+// PHASE 2  src/lib/licensing.ts
 // Beat Licensing Engine:
 //   - License issuance on purchase confirmation
 //   - License term definitions per tier
@@ -10,7 +10,7 @@
 
 import prisma from './prisma';
 
-// ── License Term Definitions ──────────────────────────────────
+//  License Term Definitions 
 // These define the rights granted per license tier.
 // Update these to match your legal agreements.
 
@@ -66,7 +66,7 @@ export const LICENSE_TERMS: Record<string, LicenseTerms> = {
   },
 };
 
-// ── Issue License ─────────────────────────────────────────────
+//  Issue License 
 // Called from transaction.ts after purchase is confirmed.
 
 export async function issueBeatLicense(params: {
@@ -86,7 +86,7 @@ export async function issueBeatLicense(params: {
   if (!purchase.beat) throw new Error('Beat not found on purchase');
   if (purchase.status !== 'confirmed') throw new Error('Purchase not confirmed');
 
-  // Idempotent — return existing if already issued
+  // Idempotent  return existing if already issued
   const existing = await prisma.beatLicense.findUnique({
     where: { purchaseId: params.purchaseId },
   });
@@ -104,6 +104,7 @@ export async function issueBeatLicense(params: {
   const license = await prisma.beatLicense.create({
     data: {
       beatId: purchase.beatId!,
+      artistId: purchase.beat.artist.id,
       purchaseId: params.purchaseId,
       licenseType,
       streams: terms.streams,
@@ -129,7 +130,7 @@ export async function issueBeatLicense(params: {
   }
 
   // Hook: generate PDF license document
-  // In production: call lib/pdf.ts → generateLicensePDF(license, purchase.beat, terms)
+  // In production: call lib/pdf.ts  generateLicensePDF(license, purchase.beat, terms)
   // then upload to R2 and update license.pdfUrl
   const pdfUrl = '';
 
@@ -147,7 +148,7 @@ export async function issueBeatLicense(params: {
   return { licenseKey: license.licenseKey, pdfUrl };
 }
 
-// ── Verify License (public endpoint) ─────────────────────────
+//  Verify License (public endpoint) 
 
 export async function verifyLicense(licenseKey: string) {
   const license = await prisma.beatLicense.findUnique({
@@ -189,7 +190,7 @@ export async function verifyLicense(licenseKey: string) {
   };
 }
 
-// ── Revoke License (admin / DMCA action) ─────────────────────
+//  Revoke License (admin / DMCA action) 
 
 export async function revokeLicense(
   licenseKey: string,
@@ -213,7 +214,7 @@ export async function revokeLicense(
   }).catch(() => {});
 }
 
-// ── Get Licenses for Beat ─────────────────────────────────────
+//  Get Licenses for Beat 
 
 export async function getBeatLicenses(beatId: string) {
   return prisma.beatLicense.findMany({
@@ -234,7 +235,7 @@ export async function getBeatLicenses(beatId: string) {
   });
 }
 
-// ── Get License for Purchase ──────────────────────────────────
+//  Get License for Purchase 
 
 export async function getLicenseByPurchase(purchaseId: string) {
   return prisma.beatLicense.findUnique({
