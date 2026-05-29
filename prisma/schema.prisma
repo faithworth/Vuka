@@ -751,28 +751,30 @@ model Invoice {
 
 model BeatLicense {
   id            String    @id @default(cuid())
+  artistId      String
+  artist        Artist    @relation(fields: [artistId], references: [id])
   beatId        String
   beat          Beat      @relation(fields: [beatId], references: [id])
   purchaseId    String    @unique
   purchase      Purchase  @relation(fields: [purchaseId], references: [id])
   licenseKey    String    @unique @default(cuid())
-  licenseType   String
+  licenseType   String    // basic, premium, exclusive
   buyerName     String
   buyerEmail    String
-  artistName    String    @default("")
-  songTitle     String    @default("")
+  terms         String    @default("")
+  isRevoked     Boolean   @default(false)
+  revokedReason String    @default("")
   streams       Int?
   salesCap      Int?
   radioStations Boolean   @default(false)
   tvSync        Boolean   @default(false)
   musicVideo    Boolean   @default(false)
   profitSharing Float     @default(0)
+  artistName    String    @default("")
+  songTitle     String    @default("")
   issuedAt      DateTime  @default(now())
   expiresAt     DateTime?
   pdfUrl        String    @default("")
-  isRevoked     Boolean   @default(false)
-  revokedReason String    @default("")
-  terms         String    @default("")
   createdAt     DateTime  @default(now())
 
   @@index([licenseKey])
