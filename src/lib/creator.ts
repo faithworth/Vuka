@@ -7,11 +7,6 @@
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
 
-// Use Prisma's own InputJsonValue for JSON columns so the type is always
-// compatible with whatever version of @prisma/client is installed.
-// Prisma does NOT allow bare `null` in InputJsonValue; use Prisma.JsonNull instead.
-type JsonInput = Prisma.InputJsonValue | typeof Prisma.JsonNull;
-
 // ── Subscription Tier Management ──────────────────────────────
 
 export async function getArtistTiers(artistId: string) {
@@ -37,8 +32,6 @@ export async function createTier(
     sortOrder?: number;
   }
 ) {
-  // Schema has: price (Float), interval (String), perks (String[]), currency (String)
-  // priceMonthly maps to price; perks objects serialized to strings; priceYearly/sortOrder/maxSubscribers not in schema
   const perksStrings: string[] = (data.perks || []).map((p) =>
     typeof p === 'string' ? p : `${p.icon} ${p.title}: ${p.description}`
   );
@@ -128,7 +121,6 @@ export async function renewMembership(membershipId: string, amount: number) {
 }
 
 // ── Entitlement Check ─────────────────────────────────────────
-// Returns whether a user can access a piece of exclusive content
 
 export async function checkContentEntitlement(
   userId: string,
@@ -141,7 +133,6 @@ export async function checkContentEntitlement(
   if (!content.isPublished) return false;
   if (content.isFreePreview) return true;
 
-  // Check if user has an active membership to this artist
   const activeMembership = await prisma.creatorMembership.findFirst({
     where: {
       userId,
@@ -152,9 +143,8 @@ export async function checkContentEntitlement(
   });
   if (!activeMembership) return false;
 
-  // If content has specific tier restrictions, check against them
   const tierIds = content.accessTierIds as string[];
-  if (tierIds.length === 0) return true; // all active members
+  if (tierIds.length === 0) return true;
 
   return tierIds.includes(activeMembership.tierId);
 }
@@ -164,8 +154,6 @@ export async function checkContentEntitlement(
 export async function getCreatorAnalytics(artistId: string) {
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
 
   const [
     activeMembers,
@@ -226,7 +214,6 @@ export async function getCreatorAnalytics(artistId: string) {
 }
 
 // ── Revenue Record Upsert ─────────────────────────────────────
-// Called after each confirmed purchase to roll up revenue
 
 export async function upsertRevenueRecord(
   artistId: string,
@@ -273,7 +260,7 @@ export async function updateStorefront(
     headline?: string;
     description?: string;
     theme?: string;
-    sections?: JsonInput;
+    sections?: Prisma.InputJsonValue;
     isPublic?: boolean;
   } = {};
 
@@ -283,9 +270,8 @@ export async function updateStorefront(
   if (data.heroSubtext  !== undefined) mapped.description = String(data.heroSubtext);
   if (data.theme        !== undefined) mapped.theme       = String(data.theme);
   if (data.accentColor  !== undefined) mapped.theme       = String(data.accentColor);
-  if (data.sections     !== undefined) {
-    // Prisma requires Prisma.JsonNull (not bare null) for JSON columns
-    mapped.sections = data.sections === null ? Prisma.JsonNull : data.sections as Prisma.InputJsonValue;
+  if (data.sections     !== undefined && data.sections !== null) {
+    mapped.sections = data.sections as Prisma.InputJsonValue;
   }
   if (data.isPublic     !== undefined) mapped.isPublic    = Boolean(data.isPublic);
   if (data.isLive       !== undefined) mapped.isPublic    = Boolean(data.isLive);
