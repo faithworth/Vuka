@@ -1,6 +1,7 @@
 // ============================================================
-// PHASE 2 — src/app/api/creator/storefront/route.ts
-// Creator storefront: get/update/publish artist storefront page
+// src/app/api/creator/storefront/route.ts
+// Creator storefront: get/update artist storefront page
+// Supports both PATCH and POST for update (POST is alias)
 // ============================================================
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export async function GET() {
   }
 }
 
-// PATCH — update storefront
+// PATCH — update storefront (canonical)
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireArtist();
@@ -35,4 +36,9 @@ export async function PATCH(req: NextRequest) {
     console.error('[creator/storefront] PATCH error:', err?.message);
     return NextResponse.json({ error: 'Update failed' }, { status: 503 });
   }
+}
+
+// POST — alias for PATCH (backwards compatibility)
+export async function POST(req: NextRequest) {
+  return PATCH(req);
 }

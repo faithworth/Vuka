@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Send, Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
 
+// Normalised shape used by this page
 interface Conversation {
   id: string;
-  otherUser: { id: string; name: string; email: string };
+  otherUser: { id: string; name: string; photoUrl?: string };
   lastMessagePreview: string;
   lastMessageAt: string;
   unreadCount: number;
@@ -19,16 +20,33 @@ interface Message {
   createdAt: string;
 }
 
+// Normalise raw API conversation to the shape used by this page
+function normaliseConversation(raw: any): Conversation {
+  const partner = raw.partner ?? raw.otherUser ?? {};
+  const lastMsg = raw.messages?.[0];
+  return {
+    id:                 raw.id,
+    otherUser: {
+      id:       partner.id    ?? '',
+      name:     partner.name  ?? 'Unknown',
+      photoUrl: partner.artist?.photoUrl ?? undefined,
+    },
+    lastMessagePreview: raw.lastMessagePreview ?? lastMsg?.body ?? '',
+    lastMessageAt:      raw.lastMessageAt ?? raw.updatedAt ?? new Date().toISOString(),
+    unreadCount:        raw.unreadCount ?? raw.unread ?? 0,
+  };
+}
+
 export default function MessagesPage() {
   const router = useRouter();
-  const [myId, setMyId] = useState('');
+  const [myId, setMyId]                   = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [activeConv, setActiveConv]       = useState<Conversation | null>(null);
+  const [messages, setMessages]           = useState<Message[]>([]);
+  const [draft, setDraft]                 = useState('');
+  const [loading, setLoading]             = useState(true);
+  const [sending, setSending]             = useState(false);
+  const [mobileView, setMobileView]       = useState<'list' | 'chat'>('list');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,7 +62,8 @@ export default function MessagesPage() {
         const res = await fetch('/api/messages/conversations');
         if (res.ok) {
           const d = await res.json();
-          setConversations(d.conversations || []);
+          const raw: any[] = d.conversations || [];
+          setConversations(raw.map(normaliseConversation));
         }
       } catch {}
       setLoading(false);
@@ -117,7 +136,8 @@ export default function MessagesPage() {
         <div className="rounded-2xl overflow-hidden flex" style={{ background: 'var(--surface)', border: '1px solid var(--border)', height: '70vh' }}>
 
           {/* Conversation List */}
-          <div className={`flex-shrink-0 w-full md:w-72 flex flex-col ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}
+          <div
+            className={`flex-shrink-0 w-full md:w-72 flex flex-col ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}
             style={{ borderRight: '1px solid var(--border)' }}>
             <div className="px-4 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)' }}>
               Conversations
@@ -138,9 +158,11 @@ export default function MessagesPage() {
                     background: activeConv?.id === conv.id ? 'var(--surface2)' : 'transparent',
                     borderBottom: '1px solid var(--border)',
                   }}>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white text-sm"
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white text-sm overflow-hidden"
                     style={{ background: 'var(--sky)' }}>
-                    {conv.otherUser.name[0]}
+                    {conv.otherUser.photoUrl
+                      ? <img src={conv.otherUser.photoUrl} alt="" className="w-full h-full object-cover" />
+                      : conv.otherUser.name[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -181,9 +203,11 @@ export default function MessagesPage() {
                   <button className="md:hidden mr-1" onClick={() => setMobileView('list')} style={{ color: 'var(--text-muted)' }}>
                     <ArrowLeft size={20} />
                   </button>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm flex-shrink-0"
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm flex-shrink-0 overflow-hidden"
                     style={{ background: 'var(--sky)' }}>
-                    {activeConv.otherUser.name[0]}
+                    {activeConv.otherUser.photoUrl
+                      ? <img src={activeConv.otherUser.photoUrl} alt="" className="w-full h-full object-cover" />
+                      : activeConv.otherUser.name[0]?.toUpperCase()}
                   </div>
                   <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
                     {activeConv.otherUser.name}
@@ -201,7 +225,7 @@ export default function MessagesPage() {
                             background: isMine ? 'var(--sky)' : 'var(--surface2)',
                             color: isMine ? 'white' : 'var(--text)',
                             borderBottomRightRadius: isMine ? 4 : undefined,
-                            borderBottomLeftRadius: !isMine ? 4 : undefined,
+                            borderBottomLeftRadius:  !isMine ? 4 : undefined,
                           }}>
                           {msg.body}
                         </div>

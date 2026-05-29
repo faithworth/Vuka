@@ -2,18 +2,31 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Save, ExternalLink, Store, Palette, Type, Globe, Instagram, Twitter, Youtube } from 'lucide-react';
 
+interface SocialLinks {
+  instagram?: string;
+  twitter?: string;
+  youtube?: string;
+  website?: string;
+}
+
 interface StorefrontData {
   tagline?: string;
   accentColor?: string;
   featuredBeatIds?: string[];
-  socialLinks?: {
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-    website?: string;
-  };
+  socialLinks?: SocialLinks;
   bioLong?: string;
   showSupport?: boolean;
+}
+
+interface StorefrontResponse {
+  storefront?: StorefrontData;
+  error?: string;
+}
+
+interface MeResponse {
+  artist?: { slug?: string };
+  slug?: string;
+  artistSlug?: string;
 }
 
 export default function StorefrontPage() {
@@ -26,11 +39,11 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/creator/storefront').then(r => r.ok ? r.json() : {}),
-      fetch('/api/auth/me').then(r => r.ok ? r.json() : {}),
+      fetch('/api/creator/storefront').then(r => r.ok ? r.json() as Promise<StorefrontResponse> : Promise.resolve<StorefrontResponse>({})),
+      fetch('/api/auth/me').then(r => r.ok ? r.json() as Promise<MeResponse> : Promise.resolve<MeResponse>({})),
     ]).then(([sf, me]) => {
-      setData(sf.storefront || {});
-      setArtistSlug(me.artist?.slug || me.slug || '');
+      setData(sf.storefront ?? {});
+      setArtistSlug(me.artist?.slug ?? me.artistSlug ?? me.slug ?? '');
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -41,7 +54,7 @@ export default function StorefrontPage() {
     setSaved(false);
     try {
       const res = await fetch('/api/creator/storefront', {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -49,8 +62,8 @@ export default function StorefrontPage() {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {
-        const d = await res.json();
-        setError(d.error || 'Failed to save');
+        const d = await res.json() as { error?: string };
+        setError(d.error ?? 'Failed to save');
       }
     } catch {
       setError('Failed to save storefront');
@@ -58,15 +71,15 @@ export default function StorefrontPage() {
     setSaving(false);
   }
 
-  function update(key: keyof StorefrontData, val: any) {
+  function update<K extends keyof StorefrontData>(key: K, val: StorefrontData[K]) {
     setData(prev => ({ ...prev, [key]: val }));
     setSaved(false);
   }
 
-  function updateSocial(key: string, val: string) {
+  function updateSocial(key: keyof SocialLinks, val: string) {
     setData(prev => ({
       ...prev,
-      socialLinks: { ...(prev.socialLinks || {}), [key]: val },
+      socialLinks: { ...(prev.socialLinks ?? {}), [key]: val },
     }));
     setSaved(false);
   }
@@ -126,7 +139,7 @@ export default function StorefrontPage() {
               <input
                 className="input"
                 placeholder="e.g. Beats that hit different. Based in Johannesburg."
-                value={data.tagline || ''}
+                value={data.tagline ?? ''}
                 onChange={e => update('tagline', e.target.value)}
                 maxLength={120}
               />
@@ -142,7 +155,7 @@ export default function StorefrontPage() {
                 className="input resize-none"
                 rows={4}
                 placeholder="Tell your story — your background, your sound, what makes you different..."
-                value={data.bioLong || ''}
+                value={data.bioLong ?? ''}
                 onChange={e => update('bioLong', e.target.value)}
                 maxLength={1000}
               />
@@ -159,14 +172,14 @@ export default function StorefrontPage() {
           <div className="flex items-center gap-4">
             <input
               type="color"
-              value={data.accentColor || '#38b6e8'}
+              value={data.accentColor ?? '#38b6e8'}
               onChange={e => update('accentColor', e.target.value)}
               className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0"
               style={{ background: 'none' }}
             />
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                Accent color: <span style={{ color: data.accentColor || 'var(--sky)' }}>{data.accentColor || '#38b6e8'}</span>
+                Accent color: <span style={{ color: data.accentColor ?? 'var(--sky)' }}>{data.accentColor ?? '#38b6e8'}</span>
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                 Used for buttons and highlights on your artist page
@@ -182,12 +195,14 @@ export default function StorefrontPage() {
             <h2 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Social Links</h2>
           </div>
           <div className="space-y-3">
-            {[
-              { key: 'instagram', icon: Instagram, placeholder: 'https://instagram.com/yourhandle', label: 'INSTAGRAM' },
-              { key: 'twitter', icon: Twitter, placeholder: 'https://twitter.com/yourhandle', label: 'X / TWITTER' },
-              { key: 'youtube', icon: Youtube, placeholder: 'https://youtube.com/@yourchannel', label: 'YOUTUBE' },
-              { key: 'website', icon: Globe, placeholder: 'https://yourwebsite.com', label: 'WEBSITE' },
-            ].map(({ key, icon: Icon, placeholder, label }) => (
+            {(
+              [
+                { key: 'instagram' as const, icon: Instagram, placeholder: 'https://instagram.com/yourhandle', label: 'INSTAGRAM' },
+                { key: 'twitter'   as const, icon: Twitter,   placeholder: 'https://twitter.com/yourhandle',   label: 'X / TWITTER' },
+                { key: 'youtube'   as const, icon: Youtube,   placeholder: 'https://youtube.com/@yourchannel', label: 'YOUTUBE' },
+                { key: 'website'   as const, icon: Globe,     placeholder: 'https://yourwebsite.com',          label: 'WEBSITE' },
+              ] as const
+            ).map(({ key, icon: Icon, placeholder, label }) => (
               <div key={key}>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>
                   {label}
@@ -197,7 +212,7 @@ export default function StorefrontPage() {
                   <input
                     className="input pl-9"
                     placeholder={placeholder}
-                    value={(data.socialLinks as any)?.[key] || ''}
+                    value={data.socialLinks?.[key] ?? ''}
                     onChange={e => updateSocial(key, e.target.value)}
                   />
                 </div>

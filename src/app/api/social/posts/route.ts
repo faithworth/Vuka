@@ -5,16 +5,46 @@ import prisma from '@/lib/prisma';
 
 const MAX_BODY_LEN = 2000;
 
-// GET /api/social/posts?artistId=xxx&page=1&limit=20
+// GET /api/social/posts?artistId=xxx OR ?artistSlug=xxx OR (no filter = own posts if authed)
 export async function GET(req: NextRequest) {
   try {
-    const artistId = req.nextUrl.searchParams.get('artistId');
-    const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1');
+    const artistId   = req.nextUrl.searchParams.get('artistId');
+    const artistSlug = req.nextUrl.searchParams.get('artistSlug');
+    const own        = req.nextUrl.searchParams.get('own') === 'true';
+    const page  = parseInt(req.nextUrl.searchParams.get('page')  ?? '1');
     const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '20'), 50);
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { isPublished: true };
-    if (artistId) where.artistId = artistId;
+    const where: Record<string, unknown> = {};
+
+    if (artistId) {
+      where.artistId   = artistId;
+      where.isPublished = true;
+    } else if (artistSlug) {
+      const artist = await prisma.artist.findUnique({
+        where: { slug: artistSlug },
+        select: { id: true },
+      });
+      if (!artist) return NextResponse.json({ posts: [], total: 0, hasMore: false });
+      where.artistId   = artist.id;
+      where.isPublished = true;
+    } else {
+      // No explicit filter — if caller is an artist return their own posts (all statuses)
+      // Otherwise return all public posts (discovery feed)
+      const user = await getServerUser();
+      if (user?.artist || own) {
+        const artist = user?.artist
+          ?? await prisma.artist.findUnique({ where: { userId: user!.id }, select: { id: true } });
+        if (artist) {
+          where.artistId = artist.id;
+          // own posts: include unpublished drafts too
+        } else {
+          where.isPublished = true;
+        }
+      } else {
+        where.isPublished = true;
+      }
+    }
 
     const [posts, total] = await Promise.all([
       prisma.artistPost.findMany({
@@ -43,7 +73,10 @@ export async function POST(req: NextRequest) {
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const artist = await prisma.artist.findUnique({ where: { userId: user.id }, select: { id: true } });
+    const artist = await prisma.artist.findUnique({
+      where: { userId: user.id },
+      select: { id: true, name: true, slug: true },
+    });
     if (!artist) return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
 
     const body = await req.json();
@@ -61,28 +94,28 @@ export async function POST(req: NextRequest) {
         linkType,
         linkItemId,
       },
+      include: {
+        artist: { select: { name: true, slug: true, photoUrl: true, isVerified: true } },
+        _count: { select: { comments: true } },
+      },
     });
 
-    // Notify followers (fan-out — for large follow counts this should be queued)
+    // Notify followers — capped at 500 in-band; larger audiences handled via worker
     const followers = await prisma.follow.findMany({
-      where: { artistId: artist.id },
+      where:  { artistId: artist.id },
       select: { userId: true },
-      take: 500, // cap notification fan-out at 500 in-band; rest via worker
+      take:   500,
     });
 
     if (followers.length > 0) {
-      const artistData = await prisma.artist.findUnique({
-        where: { id: artist.id },
-        select: { name: true, slug: true },
-      });
       await prisma.notification.createMany({
         data: followers.map((f) => ({
-          userId: f.userId,
-          type: 'new_post',
-          title: `${artistData?.name} posted an update`,
-          body: text.slice(0, 80),
+          userId:   f.userId,
+          type:     'new_post',
+          title:    `${artist.name} posted an update`,
+          body:     text.slice(0, 80),
           linkType: 'post',
-          linkId: post.id,
+          linkId:   post.id,
         })),
         skipDuplicates: true,
       });

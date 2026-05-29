@@ -38,7 +38,7 @@ export default function FeedPage() {
         const res = await fetch('/api/social/feed');
         if (res.ok) {
           const d = await res.json();
-          setPosts(d.posts || []);
+          setPosts(d.items || d.posts || []);
         }
       } catch {}
       setLoading(false);

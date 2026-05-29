@@ -7,6 +7,9 @@
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
 
+// JSON field type — compatible with Prisma's JSON column regardless of generated-client version
+type JsonField = string | number | boolean | null | JsonField[] | { [k: string]: JsonField };
+
 // ── Subscription Tier Management ──────────────────────────────
 
 export async function getArtistTiers(artistId: string) {
@@ -268,7 +271,7 @@ export async function updateStorefront(
     headline?: string;
     description?: string;
     theme?: string;
-    sections?: Prisma.InputJsonValue;
+    sections?: JsonField;
     isPublic?: boolean;
   } = {};
 
@@ -278,7 +281,7 @@ export async function updateStorefront(
   if (data.heroSubtext  !== undefined) mapped.description = String(data.heroSubtext);
   if (data.theme        !== undefined) mapped.theme       = String(data.theme);
   if (data.accentColor  !== undefined) mapped.theme       = String(data.accentColor);
-  if (data.sections     !== undefined && data.sections !== null) mapped.sections = data.sections as Prisma.InputJsonValue;
+  if (data.sections     !== undefined && data.sections !== null) mapped.sections = data.sections as JsonField;
   if (data.isPublic     !== undefined) mapped.isPublic    = Boolean(data.isPublic);
   if (data.isLive       !== undefined) mapped.isPublic    = Boolean(data.isLive);
 

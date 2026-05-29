@@ -56,6 +56,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const me = await res.json();
+          // Admin/owner/super_admin go to admin panel, not artist dashboard
+          if (['admin', 'owner', 'super_admin'].includes(me.role)) {
+            router.replace('/admin');
+            return;
+          }
           if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
             try {

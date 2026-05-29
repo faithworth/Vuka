@@ -128,7 +128,8 @@ export async function getTrending(
 
   // No fresh snapshot  compute on-the-fly and cache
   const items = await computeTrending(period, category, limit);
-  await prisma.trendingSnapshot.create({ data: { period, category, items: items as unknown as Prisma.InputJsonValue } });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await prisma.trendingSnapshot.create({ data: { period, category, items: items as unknown as any } });
   return { items, computedAt: new Date(), isFresh: false };
 }
 
