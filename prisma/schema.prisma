@@ -750,30 +750,30 @@ model Invoice {
 }
 
 model BeatLicense {
-  id           String    @id @default(cuid())
-  artistId     String
-  artist       Artist    @relation(fields: [artistId], references: [id])
-  beatId       String
-  beat         Beat      @relation(fields: [beatId], references: [id])
-  purchaseId   String    @unique
-  purchase     Purchase  @relation(fields: [purchaseId], references: [id])
-  licenseKey   String    @unique @default(cuid())
-  licenseType  String    // basic, premium, exclusive
-  buyerName    String
-  buyerEmail   String
-  terms        String    @default("")
-  isRevoked    Boolean   @default(false)
-  revokedReason String   @default("")
-  streams      Int?
-  salesCap     Int?
-  radioStations Int?
-  tvSync       Boolean   @default(false)
-  musicVideo   Boolean   @default(false)
-  profitSharing String   @default("")
-  artistName   String    @default("")
-  songTitle    String    @default("")
-  expiresAt    DateTime?
-  createdAt    DateTime  @default(now())
+  id            String    @id @default(cuid())
+  beatId        String
+  beat          Beat      @relation(fields: [beatId], references: [id])
+  purchaseId    String    @unique
+  purchase      Purchase  @relation(fields: [purchaseId], references: [id])
+  licenseKey    String    @unique @default(cuid())
+  licenseType   String
+  buyerName     String
+  buyerEmail    String
+  artistName    String    @default("")
+  songTitle     String    @default("")
+  streams       Int?
+  salesCap      Int?
+  radioStations Boolean   @default(false)
+  tvSync        Boolean   @default(false)
+  musicVideo    Boolean   @default(false)
+  profitSharing Float     @default(0)
+  issuedAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  pdfUrl        String    @default("")
+  isRevoked     Boolean   @default(false)
+  revokedReason String    @default("")
+  terms         String    @default("")
+  createdAt     DateTime  @default(now())
 
   @@index([licenseKey])
 }
@@ -802,17 +802,27 @@ model ArtistPost {
 }
 
 model PostComment {
-  id        String     @id @default(cuid())
-  postId    String?
-  post      ArtistPost? @relation(fields: [postId], references: [id])
-  beatId    String?
-  releaseId String?
-  userId    String
-  user      User       @relation(fields: [userId], references: [id])
-  body      String
-  parentId  String?
-  isDeleted Boolean    @default(false)
-  createdAt DateTime   @default(now())
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  postId     String?
+  post       ArtistPost? @relation(fields: [postId], references: [id])
+  beatId     String?
+  releaseId  String?
+  targetType String      @default("post")
+  targetId   String      @default("")
+  body       String
+  parentId   String?
+  likeCount  Int         @default(0)
+  isHidden   Boolean     @default(false)
+  isDeleted  Boolean     @default(false)
+  updatedAt  DateTime    @updatedAt
+  createdAt  DateTime    @default(now())
+
+  @@index([postId])
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([parentId])
 }
 
 model Notification {
@@ -850,22 +860,31 @@ model Message {
   senderId       String
   sender         User                @relation(fields: [senderId], references: [id])
   body           String
+  attachments    Json                @default("[]")
   isRead         Boolean             @default(false)
+  readAt         DateTime?
+  isFlagged      Boolean             @default(false)
+  flagReason     String              @default("")
   isDeleted      Boolean             @default(false)
+  deletedAt      DateTime?
   createdAt      DateTime            @default(now())
 
-  @@index([conversationId, isDeleted, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 }
 
 model MessageConversation {
-  id            String    @id @default(cuid())
-  participant1  String
-  participant2  String
-  messages      Message[]
+  id                 String    @id @default(cuid())
+  participant1       String
+  participant2       String
+  messages           Message[]
   lastMessageAt      DateTime  @default(now())
   lastMessagePreview String    @default("")
   unread1            Int       @default(0)
   unread2            Int       @default(0)
+  isArchived1        Boolean   @default(false)
+  isArchived2        Boolean   @default(false)
+  updatedAt          DateTime  @updatedAt
   createdAt          DateTime  @default(now())
 
   @@unique([participant1, participant2])
