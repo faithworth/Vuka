@@ -10,25 +10,53 @@ export async function GET() {
   let user = await getServerUser();
   if (!user) return NextResponse.json({ authenticated: false }, { status: 401 });
 
-  // ── Auto-heal: ADMIN_EMAIL always becomes admin ──────────────────────────
+  let needsRefetch = false;
+
+  // ── Heal 1: ADMIN_EMAIL always gets admin role ───────────────────────────
   if (
     ADMIN_EMAIL &&
     user.email === ADMIN_EMAIL &&
     !['admin', 'owner', 'super_admin'].includes(user.role)
   ) {
-    user = await prisma.user.update({
+    await prisma.user.update({
       where: { id: user.id },
       data: { role: 'admin' },
-      include: { artist: true, industryUser: true },
     });
     console.log(`[auth/me] Auto-promoted ${user.email} to admin`);
+    needsRefetch = true;
   }
 
-  // ── Auto-heal: artist role but missing Artist record ────────────────────
-  if (
-    (user.role === 'artist' || user.role === 'producer') &&
-    !user.artist
-  ) {
+  // ── Heal 2: Has Artist record but role is wrong (fan/undefined) ──────────
+  // This covers accounts that registered correctly but had role saved as 'fan'
+  if (!needsRefetch && user.role === 'fan' && user.artist) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: 'artist' },
+    });
+    console.log(`[auth/me] Healed artist role for ${user.email} (had Artist record, role was fan)`);
+    needsRefetch = true;
+  }
+
+  // ── Heal 3: Has IndustryUser record but role is wrong ───────────────────
+  if (!needsRefetch && user.role === 'fan' && user.industryUser) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: 'industry' },
+    });
+    console.log(`[auth/me] Healed industry role for ${user.email} (had IndustryUser record, role was fan)`);
+    needsRefetch = true;
+  }
+
+  // Refetch with updated role + relations if any heal ran
+  if (needsRefetch) {
+    user = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { artist: true, industryUser: true },
+    }) ?? user;
+  }
+
+  // ── Heal 4: artist role but no Artist record ─────────────────────────────
+  if ((user.role === 'artist' || user.role === 'producer') && !user.artist) {
     let slug = slugify(user.name);
     let suffix = 0;
     while (await prisma.artist.findUnique({ where: { slug } })) {
@@ -44,7 +72,7 @@ export async function GET() {
     }) ?? user;
   }
 
-  // ── Auto-heal: industry role but missing IndustryUser record ────────────
+  // ── Heal 5: industry role but no IndustryUser record ────────────────────
   if (user.role === 'industry' && !user.industryUser) {
     await prisma.industryUser.create({ data: { userId: user.id, companyName: '' } });
     user = await prisma.user.findUnique({

@@ -14,6 +14,21 @@ const GoogleIcon = () => (
   </svg>
 );
 
+function resolveRedirect(me: {
+  role: string;
+  isArtist: boolean;
+  isIndustry: boolean;
+}): string {
+  // Admin roles
+  if (['admin', 'owner', 'super_admin'].includes(me.role)) return '/admin';
+  // Industry
+  if (me.role === 'industry' || me.isIndustry) return '/industry-dashboard';
+  // Artist — check both role AND isArtist (Artist record exists)
+  if (me.role === 'artist' || me.role === 'producer' || me.role === 'verified_artist' || me.isArtist) return '/dashboard';
+  // Fan / default
+  return '/fan';
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -34,15 +49,12 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    // Determine role and redirect accordingly
+    // /api/auth/me auto-heals the DB role before returning — always trust its response
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const me = await res.json();
-        if (me.role === 'admin' || me.role === 'owner' || me.role === 'super_admin') router.push('/admin');
-        else if (me.isIndustry || me.role === 'industry') router.push('/industry-dashboard');
-        else if (me.isArtist) router.push('/dashboard');
-        else router.push('/fan');
+        router.push(resolveRedirect(me));
         router.refresh();
         return;
       }
