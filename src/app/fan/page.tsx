@@ -50,6 +50,8 @@ export default function FanDashboard() {
         if (meRes.ok) {
           const me = await meRes.json();
           setUserName(me.name || data.user.email || '');
+          if (me.role === 'admin' || me.role === 'owner' || me.role === 'super_admin') { router.replace('/admin'); return; }
+          if (me.isIndustry || me.role === 'industry') { router.replace('/industry-dashboard'); return; }
           if (me.isArtist) { router.replace('/dashboard'); return; }
         }
       } catch {}

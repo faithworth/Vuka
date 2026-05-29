@@ -32,7 +32,9 @@ function VerifyContent() {
             }),
           });
         } catch (_) {}
-        router.replace(role === 'fan' ? '/fan' : '/dashboard');
+        if (role === 'industry') router.replace('/industry-dashboard');
+        else if (role === 'fan') router.replace('/fan');
+        else router.replace('/dashboard');
       }
     });
     return () => subscription.unsubscribe();

@@ -39,7 +39,10 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const me = await res.json();
-        router.push(me.isArtist ? '/dashboard' : '/fan');
+        if (me.role === 'admin' || me.role === 'owner' || me.role === 'super_admin') router.push('/admin');
+        else if (me.isIndustry || me.role === 'industry') router.push('/industry-dashboard');
+        else if (me.isArtist) router.push('/dashboard');
+        else router.push('/fan');
         router.refresh();
         return;
       }
