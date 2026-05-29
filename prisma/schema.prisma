@@ -809,22 +809,24 @@ model ArtistPost {
 }
 
 model PostComment {
-  id         String      @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
-  user       User        @relation(fields: [userId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
   postId     String?
-  post       ArtistPost? @relation(fields: [postId], references: [id])
+  post       ArtistPost?   @relation(fields: [postId], references: [id])
   beatId     String?
   releaseId  String?
-  targetType String      @default("post")
-  targetId   String      @default("")
+  targetType String        @default("post")
+  targetId   String        @default("")
   body       String
   parentId   String?
-  likeCount  Int         @default(0)
-  isHidden   Boolean     @default(false)
-  isDeleted  Boolean     @default(false)
-  updatedAt  DateTime    @updatedAt
-  createdAt  DateTime    @default(now())
+  parent     PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies    PostComment[] @relation("CommentReplies")
+  likeCount  Int           @default(0)
+  isHidden   Boolean       @default(false)
+  isDeleted  Boolean       @default(false)
+  updatedAt  DateTime      @updatedAt
+  createdAt  DateTime      @default(now())
 
   @@index([postId])
   @@index([userId])
