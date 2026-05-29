@@ -349,10 +349,10 @@ export async function processDMCAReport(
   resolution: 'takedown' | 'dismissed',
   adminNotes?: string
 ): Promise<void> {
-  const report = await prisma.dmcaReport.findUnique({ where: { id: reportId } });
+  const report = await prisma.dMCAReport.findUnique({ where: { id: reportId } });
   if (!report) throw new Error('DMCA report not found');
 
-  await prisma.dmcaReport.update({
+  await prisma.dMCAReport.update({
     where: { id: reportId },
     data: {
       status:     resolution === 'takedown' ? 'resolved' : 'dismissed',
@@ -481,7 +481,7 @@ export async function getAdminDashboard(): Promise<object> {
     flaggedContent,
   ] = await Promise.all([
     prisma.abuseReport.count({ where: { status: 'pending' } }),
-    prisma.dmcaReport.count({ where: { status: 'pending' } }),
+    prisma.dMCAReport.count({ where: { status: 'pending' } }),
     prisma.verificationRequest.count({ where: { status: 'pending' } }),
     prisma.moderationAction.findMany({
       orderBy: { createdAt: 'desc' },
