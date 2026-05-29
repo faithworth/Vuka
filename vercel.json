@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/migrate.mjs && npx prisma generate && next build",
+  "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
   "framework": "nextjs",
   "crons": [
@@ -28,5 +28,10 @@
         { "key": "X-Frame-Options", "value": "DENY" }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/migrate/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

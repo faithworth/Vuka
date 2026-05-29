@@ -32,6 +32,7 @@ const ADMIN_PATHS = [
 const PUBLIC_PATHS = [
   '/api/health',
   '/api/workers/cron',
+  '/api/migrate',
   '/api/checkout/payfast/notify',
   '/api/checkout/stripe/webhook',
   '/api/support/payfast-notify',
