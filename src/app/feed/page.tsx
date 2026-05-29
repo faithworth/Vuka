@@ -38,7 +38,9 @@ export default function FeedPage() {
         const res = await fetch('/api/social/feed');
         if (res.ok) {
           const d = await res.json();
-          setPosts(d.items || d.posts || []);
+          const raw: Post[] = d.items || d.posts || [];
+          // Guard: only keep posts where artist is fully defined with a slug
+          setPosts(raw.filter(p => p?.artist?.slug));
         }
       } catch {}
       setLoading(false);
@@ -97,7 +99,7 @@ export default function FeedPage() {
                     ) : (
                       <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white text-sm"
                         style={{ background: 'var(--sky)' }}>
-                        {post.artist.name[0]}
+                        {post.artist.name?.[0] ?? '?'}
                       </div>
                     )}
                   </Link>
@@ -136,7 +138,7 @@ export default function FeedPage() {
                     style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
                     {post.linkType === 'beat' && <Music size={16} style={{ color: 'var(--sky)' }} />}
                     {post.linkType === 'release' && <Disc size={16} style={{ color: 'var(--sky)' }} />}
-                    {!post.linkType || post.linkType === 'external' && <ExternalLink size={16} style={{ color: 'var(--text-muted)' }} />}
+                    {(!post.linkType || post.linkType === 'external') && <ExternalLink size={16} style={{ color: 'var(--text-muted)' }} />}
                     <span className="text-sm font-medium" style={{ color: 'var(--sky)' }}>
                       {post.linkType === 'beat' ? 'Listen to beat' : post.linkType === 'release' ? 'Stream release' : 'Open link'}
                     </span>
