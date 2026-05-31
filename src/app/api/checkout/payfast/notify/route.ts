@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_FEE_RATE = 0.02; // 2% — must match Stripe webhook + transaction.ts
+const PLATFORM_FEE_RATE = 0.08; // 8% — must match Stripe webhook + transaction.ts
 
 export async function POST(req: NextRequest) {
   const clientIp =

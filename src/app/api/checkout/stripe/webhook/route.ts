@@ -25,7 +25,7 @@ import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_FEE_RATE = 0.02; // 2% — must match PayFast notify + transaction.ts
+const PLATFORM_FEE_RATE = 0.08; // 8% — must match PayFast notify + transaction.ts
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';

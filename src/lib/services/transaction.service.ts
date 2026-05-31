@@ -36,7 +36,7 @@ export interface ReleasePurchaseInput {
   downloadToken?: string;
 }
 
-const PLATFORM_FEE_PCT = 0.15; // 15% platform commission
+const PLATFORM_FEE_PCT = 0.08; // 8% platform commission
 
 // ── Beat Purchase ─────────────────────────────────────────────
 // Called from the PayFast ITN webhook after payment is confirmed.

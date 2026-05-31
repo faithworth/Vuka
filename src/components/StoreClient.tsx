@@ -107,7 +107,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
         {loading && <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>Just now…</p>}
         {/* Fee transparency banner */}
         <div style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          ✦ Vuka charges a 2% platform fee. Artists receive 98% of every sale.
+          ✦ Vuka charges an 8% platform fee. Artists receive 92% of every sale.
         </div>
 
         {!loading && beats.length === 0 && releases.length === 0 && (

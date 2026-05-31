@@ -45,7 +45,7 @@ export default function DashboardPage() {
             style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
             <span style={{ color: 'var(--gold)', fontSize: 14 }}>✦</span>
             <span style={{ color: 'var(--text-muted)' }}>
-              Your earnings are 98% of total sales. Vuka retains 2% to cover hosting and operational costs.
+              Your earnings are 92% of total sales. Vuka retains 8% to cover hosting and operational costs.
             </span>
           </div>
 

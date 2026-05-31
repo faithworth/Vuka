@@ -1,7 +1,7 @@
 /**
  * VUKA — Emails (Phase 4 Final)
  * Fixes:
- *   - sendArtistSaleNotification: was showing "R0.00 (0%)" fee — now shows real 2%
+ *   - sendArtistSaleNotification: was showing "R0.00 (0%)" fee — now shows real 8%
  *   - Added sendNewMessageNotification (Phase 3 requirement)
  *   - Added sendMilestoneNotification for follower/sales milestones
  *   - All functions wrapped in try/catch at call sites — never throw blind
@@ -18,7 +18,7 @@ function getResend() {
 const FROM = () => process.env.EMAIL_FROM || 'Vuka <onboarding@resend.dev>';
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.app';
 
-const PLATFORM_FEE_RATE = 0.02; // 2% — must match transaction.ts and webhook routes
+const PLATFORM_FEE_RATE = 0.08; // 8% — must match transaction.ts and webhook routes
 
 // ── Buyer purchase confirmation ──────────────────────────────
 
@@ -55,7 +55,7 @@ export async function sendPurchaseConfirmation({
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
-// ── Artist sale notification (FIXED: shows real 2% fee) ──────
+// ── Artist sale notification (FIXED: shows real 8% fee) ──────
 
 export async function sendArtistSaleNotification({
   to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl,
@@ -80,7 +80,7 @@ export async function sendArtistSaleNotification({
         ${licenseType ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">License</span><span style="text-transform:capitalize;">${licenseType}</span></div>` : ''}
         <div style="border-top:1px solid #2d2050;padding-top:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Sale Price</span><span>${currency} ${amount.toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (2%)</span><span style="color:#ef4444;">−${currency} ${platformFee.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (8%)</span><span style="color:#ef4444;">−${currency} ${platformFee.toFixed(2)}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:#f0eafa;font-weight:700;">You receive</span><span style="color:#10b981;font-weight:700;font-size:20px;">${currency} ${netAmount.toFixed(2)}</span></div>
         </div>
       </div>

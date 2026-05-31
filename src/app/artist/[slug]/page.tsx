@@ -161,7 +161,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
 
       <div className="mt-4 mb-10 text-center">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Vuka retains 2% of each sale to cover platform costs. The artist receives 98%.
+          Vuka retains 8% of each sale to cover platform costs. The artist receives 92%.
         </p>
       </div>
     </div>

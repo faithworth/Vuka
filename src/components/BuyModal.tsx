@@ -1,10 +1,7 @@
 'use client';
 // src/components/BuyModal.tsx
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import { formatCurrency } from '@/lib/utils';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const LICENSES = [
   {
@@ -42,7 +39,6 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [customAmount, setCustomAmount] = useState('');
-  const [payMethod, setPayMethod] = useState<'stripe' | 'payfast'>('payfast');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,59 +52,40 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
     setLoading(true);
     setError('');
     try {
-      if (payMethod === 'stripe') {
-        const res = await fetch('/api/checkout/stripe/create-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemType: beat ? 'beat' : 'release',
-            itemId: beat ? beat.id : release!.id,
-            licenseType: beat ? license : undefined,
-            customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
-            buyerEmail: email,
-            buyerName: name,
-            currency: 'ZAR',
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error || 'Error'); return; }
-        window.location.href = data.url;
-      } else {
-        // PayFast
-        const res = await fetch('/api/checkout/payfast/initiate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemType: beat ? 'beat' : 'release',
-            itemId: beat ? beat.id : release!.id,
-            licenseType: beat ? license : undefined,
-            customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
-            buyerEmail: email,
-            buyerName: name,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error || 'Error'); return; }
+      // PayFast only (Stripe not active in SA)
+      const res = await fetch('/api/checkout/payfast/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: beat ? 'beat' : 'release',
+          itemId: beat ? beat.id : release!.id,
+          licenseType: beat ? license : undefined,
+          customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
+          buyerEmail: email,
+          buyerName: name,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Error'); return; }
 
-        if (data.redirect) {
-          window.location.href = data.redirect;
-          return;
-        }
-
-        // Paid: submit PayFast form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = data.actionUrl;
-        Object.entries(data.formData).forEach(([k, v]) => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = k;
-          input.value = String(v);
-          form.appendChild(input);
-        });
-        document.body.appendChild(form);
-        form.submit();
+      if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
       }
+
+      // Paid: submit PayFast form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.actionUrl;
+      Object.entries(data.formData).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = String(v);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
     } catch (e) {
       setError('Something went wrong. Try again.');
     } finally {
@@ -202,31 +179,11 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           />
         </div>
 
-        {/* Payment method */}
-        {price > 0 && (
-          <div className="flex gap-2 mb-4">
-            {(['payfast', 'stripe'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => setPayMethod(m)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background: payMethod === m ? 'var(--sky)' : 'var(--surface2)',
-                  border: `1px solid ${payMethod === m ? 'var(--sky)' : 'var(--border)'}`,
-                  color: payMethod === m ? 'white' : 'var(--text-muted)',
-                }}
-              >
-                {m === 'payfast' ? '🇿🇦 PayFast (ZAR)' : '💳 Card / Stripe'}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Fee note */}
         {price > 0 && (
           <div className="mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-              ✦ Vuka takes 2% to keep the platform running. The artist receives 98% of this sale.
+              ✦ Vuka takes 8% to keep the platform running. The artist receives 92% of this sale.
             </p>
           </div>
         )}
