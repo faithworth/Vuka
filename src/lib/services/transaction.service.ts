@@ -8,7 +8,8 @@ import { createNotification, notifyArtistOfSale } from './notification.service';
 // ── Types ────────────────────────────────────────────────────
 
 export interface BeatPurchaseInput {
-  buyerUserId: string;
+  buyerUserId: string | null;  // null for guest checkouts (Purchase.userId is String? in schema)
+  buyerEmail: string;
   buyerName: string;
   artistId: string;
   artistUserId: string;
@@ -17,12 +18,13 @@ export interface BeatPurchaseInput {
   amount: number; // gross paid by buyer (ZAR)
   currency?: string;
   licenseType?: string; // basic | exclusive | unlimited
-  paymentRef?: string; // PayFast payment ID or EFT reference
+  payfastPaymentId?: string; // maps to payfastPfPaymentId in schema
   downloadToken?: string;
 }
 
 export interface ReleasePurchaseInput {
-  buyerUserId: string;
+  buyerUserId: string | null;  // null for guest checkouts
+  buyerEmail: string;
   buyerName: string;
   artistId: string;
   artistUserId: string;
@@ -30,60 +32,88 @@ export interface ReleasePurchaseInput {
   releaseTitle: string;
   amount: number;
   currency?: string;
-  paymentRef?: string;
+  payfastPaymentId?: string;
   downloadToken?: string;
 }
 
 const PLATFORM_FEE_PCT = 0.15; // 15% platform commission
 
 // ── Beat Purchase ─────────────────────────────────────────────
+// Called from the PayFast ITN webhook after payment is confirmed.
+// UPDATES an existing pending Purchase rather than creating a duplicate.
 
 export async function processBeatPurchase(input: BeatPurchaseInput) {
   const {
-    buyerUserId, buyerName, artistId, artistUserId,
+    buyerUserId, buyerEmail, buyerName, artistId, artistUserId,
     beatId, beatTitle, amount, currency = 'ZAR',
-    licenseType = 'basic', paymentRef, downloadToken,
+    licenseType = 'basic', payfastPaymentId, downloadToken,
   } = input;
 
   const platformFee = Math.round(amount * PLATFORM_FEE_PCT * 100) / 100;
-  const artistNet = Math.round((amount - platformFee) * 100) / 100;
+  const artistNet  = Math.round((amount - platformFee) * 100) / 100;
 
   return prisma.$transaction(async (tx) => {
-    // 1. Create purchase record
-    const purchase = await tx.purchase.create({
-      data: {
-        userId: buyerUserId,
-        beatId,
-        amount,
-        currency,
-        licenseType,
-        paymentRef: paymentRef ?? null,
-        downloadToken: downloadToken ?? null,
-        status: 'completed',
-      },
+    // 1. Find or create the purchase record.
+    //    The checkout/initiate route already created a pending row; we update it.
+    //    If for any reason it doesn't exist we upsert safely.
+    const existing = await tx.purchase.findFirst({
+      where: { beatId, ...(buyerUserId ? { userId: buyerUserId } : { buyerEmail }), status: 'pending' },
+      select: { id: true },
     });
+
+    const purchase = existing
+      ? await tx.purchase.update({
+          where: { id: existing.id },
+          data: {
+            status:            'confirmed',
+            payfastPfPaymentId: payfastPaymentId ?? null,
+            platformFee,
+            netAmount:         artistNet,
+          },
+        })
+      : await tx.purchase.create({
+          data: {
+            userId:            buyerUserId,
+            buyerEmail,
+            buyerName,
+            itemType:          'beat',
+            beatId,
+            amount,
+            currency,
+            licenseType,
+            payfastPfPaymentId: payfastPaymentId ?? null,
+            downloadToken:     downloadToken ?? undefined, // schema has @default(cuid())
+            platformFee,
+            netAmount:         artistNet,
+            status:            'confirmed',
+          },
+        });
 
     // 2. Increment beat sales counter
     await tx.beat.update({
       where: { id: beatId },
-      data: { sales: { increment: 1 } },
+      data:  { sales: { increment: 1 } },
     });
 
-    // 3. Record artist payout (pending — will be batched to actual payout)
+    // 3. Record artist payout (pending — batched to actual payout run)
     await tx.artistPayout.create({
       data: {
         artistId,
-        amount: artistNet,
-        method: 'platform',
-        status: 'pending',
-        notes: `Beat sale: ${beatTitle} (purchase ${purchase.id})`,
+        amount:  artistNet,
+        method:  'platform',
+        status:  'pending',
+        notes:   `Beat sale: ${beatTitle} (purchase ${purchase.id})`,
       },
     });
 
     return { purchase, artistNet, platformFee };
   }).then(async (result) => {
-    // Fire notifications outside the transaction (non-critical)
-    await notifyArtistOfSale(artistUserId, buyerName, beatTitle, amount, currency);
+    // Fire notifications outside the transaction (non-critical — never block the commit)
+    try {
+      await notifyArtistOfSale(artistUserId, buyerName, beatTitle, amount, currency);
+    } catch (err) {
+      console.error('[transaction] notifyArtistOfSale failed (non-fatal):', err);
+    }
     return result;
   });
 }
@@ -92,45 +122,69 @@ export async function processBeatPurchase(input: BeatPurchaseInput) {
 
 export async function processReleasePurchase(input: ReleasePurchaseInput) {
   const {
-    buyerUserId, buyerName, artistId, artistUserId,
+    buyerUserId, buyerEmail, buyerName, artistId, artistUserId,
     releaseId, releaseTitle, amount, currency = 'ZAR',
-    paymentRef, downloadToken,
+    payfastPaymentId, downloadToken,
   } = input;
 
   const platformFee = Math.round(amount * PLATFORM_FEE_PCT * 100) / 100;
-  const artistNet = Math.round((amount - platformFee) * 100) / 100;
+  const artistNet  = Math.round((amount - platformFee) * 100) / 100;
 
   return prisma.$transaction(async (tx) => {
-    const purchase = await tx.purchase.create({
-      data: {
-        userId: buyerUserId,
-        releaseId,
-        amount,
-        currency,
-        paymentRef: paymentRef ?? null,
-        downloadToken: downloadToken ?? null,
-        status: 'completed',
-      },
+    const existing = await tx.purchase.findFirst({
+      where: { releaseId, ...(buyerUserId ? { userId: buyerUserId } : { buyerEmail }), status: 'pending' },
+      select: { id: true },
     });
+
+    const purchase = existing
+      ? await tx.purchase.update({
+          where: { id: existing.id },
+          data: {
+            status:            'confirmed',
+            payfastPfPaymentId: payfastPaymentId ?? null,
+            platformFee,
+            netAmount:         artistNet,
+          },
+        })
+      : await tx.purchase.create({
+          data: {
+            userId:            buyerUserId,
+            buyerEmail,
+            buyerName,
+            itemType:          'release',
+            releaseId,
+            amount,
+            currency,
+            payfastPfPaymentId: payfastPaymentId ?? null,
+            downloadToken:     downloadToken ?? undefined,
+            platformFee,
+            netAmount:         artistNet,
+            status:            'confirmed',
+          },
+        });
 
     await tx.release.update({
       where: { id: releaseId },
-      data: { sales: { increment: 1 } },
+      data:  { sales: { increment: 1 } },
     });
 
     await tx.artistPayout.create({
       data: {
         artistId,
-        amount: artistNet,
-        method: 'platform',
-        status: 'pending',
-        notes: `Release sale: ${releaseTitle} (purchase ${purchase.id})`,
+        amount:  artistNet,
+        method:  'platform',
+        status:  'pending',
+        notes:   `Release sale: ${releaseTitle} (purchase ${purchase.id})`,
       },
     });
 
     return { purchase, artistNet, platformFee };
   }).then(async (result) => {
-    await notifyArtistOfSale(artistUserId, buyerName, releaseTitle, amount, currency);
+    try {
+      await notifyArtistOfSale(artistUserId, buyerName, releaseTitle, amount, currency);
+    } catch (err) {
+      console.error('[transaction] notifyArtistOfSale failed (non-fatal):', err);
+    }
     return result;
   });
 }
@@ -142,8 +196,8 @@ export async function hasPurchased(
   beatId?: string,
   releaseId?: string
 ): Promise<boolean> {
-  const where: any = { userId };
-  if (beatId) where.beatId = beatId;
+  const where: Record<string, unknown> = { userId, status: 'confirmed' };
+  if (beatId)    where.beatId    = beatId;
   if (releaseId) where.releaseId = releaseId;
 
   const existing = await prisma.purchase.findFirst({ where });
@@ -157,10 +211,14 @@ export async function getDownloadEntitlement(
   token: string
 ): Promise<{ valid: boolean; beatId?: string; releaseId?: string }> {
   const purchase = await prisma.purchase.findFirst({
-    where: { userId, downloadToken: token, status: 'completed' },
+    where:  { userId, downloadToken: token, status: 'confirmed' },
     select: { beatId: true, releaseId: true },
   });
 
   if (!purchase) return { valid: false };
-  return { valid: true, beatId: purchase.beatId ?? undefined, releaseId: purchase.releaseId ?? undefined };
+  return {
+    valid:     true,
+    beatId:    purchase.beatId    ?? undefined,
+    releaseId: purchase.releaseId ?? undefined,
+  };
 }
