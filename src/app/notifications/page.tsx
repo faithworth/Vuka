@@ -2,7 +2,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { Bell, ShoppingBag, Heart, Users, MessageCircle, Star, Loader2, CheckCheck } from 'lucide-react';
+import {
+  Bell, ShoppingBag, Heart, Users, MessageCircle, Star,
+  Music2, Loader2, CheckCheck,
+} from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -16,24 +19,38 @@ interface Notification {
 }
 
 const TYPE_ICON: Record<string, any> = {
-  new_sale: ShoppingBag,
-  new_follower: Users,
-  new_comment: MessageCircle,
-  new_like: Heart,
-  new_message: MessageCircle,
+  new_sale:            ShoppingBag,
+  new_follower:        Users,
+  new_comment:         MessageCircle,
+  new_like:            Heart,
+  new_message:         MessageCircle,
+  new_post:            Music2,
   milestone_followers: Star,
-  milestone_sales: Star,
+  milestone_sales:     Star,
 };
 
 const TYPE_COLOR: Record<string, string> = {
-  new_sale: 'var(--green)',
-  new_follower: 'var(--sky)',
-  new_comment: 'var(--gold)',
-  new_like: '#e74c3c',
-  new_message: 'var(--sky)',
+  new_sale:            'var(--green)',
+  new_follower:        'var(--sky)',
+  new_comment:         'var(--gold)',
+  new_like:            '#e74c3c',
+  new_message:         'var(--sky)',
+  new_post:            'var(--sky)',
   milestone_followers: 'var(--gold)',
-  milestone_sales: 'var(--gold)',
+  milestone_sales:     'var(--gold)',
 };
+
+function notifHref(n: Notification): string {
+  switch (n.linkType) {
+    case 'post':    return '/feed';
+    case 'artist':  return `/artist/${n.linkId}`;
+    case 'beat':    return `/beat/${n.linkId}`;
+    case 'release': return `/release/${n.linkId}`;
+    case 'message': return '/messages';
+    case 'sale':    return '/dashboard/payouts';
+    default:        return '/fan';
+  }
+}
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -46,7 +63,7 @@ export default function NotificationsPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.replace('/auth/login'); return; }
       try {
-        const res = await fetch('/api/social/notifications');
+        const res = await fetch('/api/social/notifications?limit=50');
         if (res.ok) {
           const d = await res.json();
           setNotifications(d.notifications || []);
@@ -63,6 +80,20 @@ export default function NotificationsPage() {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch {}
     setMarkingAll(false);
+  }
+
+  async function handleClick(n: Notification) {
+    if (!n.isRead) {
+      try {
+        await fetch('/api/social/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [n.id] }),
+        });
+        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+      } catch {}
+    }
+    router.push(notifHref(n));
   }
 
   function timeAgo(dateStr: string) {
@@ -121,11 +152,14 @@ export default function NotificationsPage() {
               const Icon = TYPE_ICON[notif.type] || Bell;
               const color = TYPE_COLOR[notif.type] || 'var(--sky)';
               return (
-                <div key={notif.id}
-                  className="card p-4 flex gap-4 items-start"
-                  style={{ opacity: notif.isRead ? 0.7 : 1 }}>
+                <button
+                  key={notif.id}
+                  onClick={() => handleClick(notif)}
+                  className="w-full text-left card p-4 flex gap-4 items-start transition-opacity hover:opacity-90 cursor-pointer"
+                  style={{ opacity: notif.isRead ? 0.7 : 1 }}
+                >
                   <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${color}18` }}>
+                    style={{ background: `${color}1a` }}>
                     <Icon size={18} style={{ color }} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -144,7 +178,7 @@ export default function NotificationsPage() {
                   {!notif.isRead && (
                     <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: 'var(--sky)' }} />
                   )}
-                </div>
+                </button>
               );
             })}
           </div>

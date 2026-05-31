@@ -1,94 +1,93 @@
+// src/app/api/auth/me/route.ts
+// Returns the authenticated user's profile, role, and platform flags.
+// DB is the SINGLE SOURCE OF TRUTH for role — never URL params, never session claims.
+// ADMIN_EMAIL env var automatically elevates that user to OWNER on first hit.
+
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { slugify } from '@/lib/utils';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? '').toLowerCase().trim();
 
 export async function GET() {
-  let user = await getServerUser();
-  if (!user) return NextResponse.json({ authenticated: false }, { status: 401 });
-
-  let needsRefetch = false;
-
-  // ── Heal 1: ADMIN_EMAIL always gets admin role ───────────────────────────
-  if (
-    ADMIN_EMAIL &&
-    user.email === ADMIN_EMAIL &&
-    !['admin', 'owner', 'super_admin'].includes(user.role)
-  ) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { role: 'admin' },
-    });
-    console.log(`[auth/me] Auto-promoted ${user.email} to admin`);
-    needsRefetch = true;
-  }
-
-  // ── Heal 2: Has Artist record but role is wrong (fan/undefined) ──────────
-  // This covers accounts that registered correctly but had role saved as 'fan'
-  if (!needsRefetch && user.role === 'fan' && user.artist) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { role: 'artist' },
-    });
-    console.log(`[auth/me] Healed artist role for ${user.email} (had Artist record, role was fan)`);
-    needsRefetch = true;
-  }
-
-  // ── Heal 3: Has IndustryUser record but role is wrong ───────────────────
-  if (!needsRefetch && user.role === 'fan' && user.industryUser) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { role: 'industry' },
-    });
-    console.log(`[auth/me] Healed industry role for ${user.email} (had IndustryUser record, role was fan)`);
-    needsRefetch = true;
-  }
-
-  // Refetch with updated role + relations if any heal ran
-  if (needsRefetch) {
-    user = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { artist: true, industryUser: true },
-    }) ?? user;
-  }
-
-  // ── Heal 4: artist role but no Artist record ─────────────────────────────
-  if ((user.role === 'artist' || user.role === 'producer') && !user.artist) {
-    let slug = slugify(user.name);
-    let suffix = 0;
-    while (await prisma.artist.findUnique({ where: { slug } })) {
-      suffix++;
-      slug = `${slugify(user.name)}-${suffix}`;
+  try {
+    const authUser = await getServerUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    await prisma.artist.create({
-      data: { userId: user.id, name: user.name, slug, country: 'ZA', currency: 'ZAR' },
+
+    // Fetch from DB — always fresh, never cached
+    let dbUser = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      include: {
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            photoUrl: true,
+            payfastMerchant: true,
+            isVerified: true,
+          },
+        },
+        industryUser: {
+          select: { id: true, profession: true, isVerified: true },
+        },
+      },
     });
-    user = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { artist: true, industryUser: true },
-    }) ?? user;
-  }
 
-  // ── Heal 5: industry role but no IndustryUser record ────────────────────
-  if (user.role === 'industry' && !user.industryUser) {
-    await prisma.industryUser.create({ data: { userId: user.id, companyName: '' } });
-    user = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { artist: true, industryUser: true },
-    }) ?? user;
-  }
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
-  return NextResponse.json({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    isArtist: !!user.artist,
-    artistSlug: user.artist?.slug ?? null,
-    isIndustry: user.role === 'industry',
-    industryUser: user.industryUser ?? null,
-  });
+    // ADMIN_EMAIL elevation — if this user's email matches the env var,
+    // and they're not already owner/super_admin, elevate them now.
+    if (
+      ADMIN_EMAIL &&
+      dbUser.email?.toLowerCase() === ADMIN_EMAIL &&
+      !['owner', 'super_admin'].includes(dbUser.role ?? '')
+    ) {
+      dbUser = await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { role: 'owner' },
+        include: {
+          artist: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              photoUrl: true,
+              payfastMerchant: true,
+              isVerified: true,
+            },
+          },
+          industryUser: {
+            select: { id: true, profession: true, isVerified: true },
+          },
+        },
+      });
+      console.log(`[auth/me] ADMIN_EMAIL elevation: ${dbUser.email} → owner`);
+    }
+
+    const role = dbUser.role ?? 'fan';
+    const isAdmin = ['owner', 'super_admin', 'admin', 'moderator'].includes(role);
+
+    return NextResponse.json({
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      role,
+      isAdmin,
+      isArtist: !!dbUser.artist,
+      isIndustry: !!dbUser.industryUser,
+      isFan: !dbUser.artist && !dbUser.industryUser && !isAdmin,
+      artist: dbUser.artist ?? null,
+      industryUser: dbUser.industryUser ?? null,
+      isSuspended: dbUser.isSuspended ?? false,
+    });
+  } catch (err) {
+    console.error('[auth/me]', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
 }

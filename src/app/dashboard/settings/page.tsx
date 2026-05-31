@@ -1,28 +1,52 @@
 'use client';
 // src/app/dashboard/settings/page.tsx
+// FIXED: Removed Stripe Connect (not available in SA without a US entity).
+// FIXED: Added SA Bank Account section using the existing /api/payouts/bank-accounts endpoint.
+// FIXED: Payfast section retains connected status badge.
+
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, CheckCircle2, CreditCard, Mic2, ExternalLink, Info, QrCode, Download } from 'lucide-react';
+import {
+  Loader2, CheckCircle2, Mic2, ExternalLink, Info,
+  QrCode, Download, Building2, Plus, Trash2, Wallet,
+} from 'lucide-react';
+
+const SA_BANKS = [
+  { name: 'Absa', branch: '632005' },
+  { name: 'Capitec', branch: '470010' },
+  { name: 'FNB / First National Bank', branch: '250655' },
+  { name: 'Nedbank', branch: '198765' },
+  { name: 'Standard Bank', branch: '051001' },
+  { name: 'African Bank', branch: '430000' },
+  { name: 'Discovery Bank', branch: '679000' },
+  { name: 'TymeBank', branch: '678910' },
+  { name: 'Investec', branch: '580105' },
+];
 
 export default function SettingsPage() {
-  const [artist, setArtist] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
-  const [stripeError, setStripeError] = useState('');
+  const [artist, setArtist]             = useState<any>(null);
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
   const [savingPayfast, setSavingPayfast] = useState(false);
   const [savedPayfast, setSavedPayfast] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved]               = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
 
+  // Bank accounts
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [bankSaving, setBankSaving]     = useState(false);
+  const [bankForm, setBankForm]         = useState({
+    accountHolder: '', bankName: '', branchCode: '', accountNumber: '',
+  });
+
   useEffect(() => {
-    fetch('/api/dashboard/settings')
-      .then(r => r.json())
-      .then(d => { setArtist(d.artist || d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/dashboard/settings').then(r => r.json()).then(d => setArtist(d.artist || d)),
+      fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
+    ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
@@ -30,15 +54,12 @@ export default function SettingsPage() {
     setPreview(objectUrl);
     try {
       const type = key === 'coverUrl' ? 'cover' : 'photo';
-      // Pass the actual mime type so the presigned URL is signed with the correct Content-Type
       const mimeType = file.type || 'image/jpeg';
       const res = await fetch(`/api/dashboard/settings/upload-url?type=${type}&mimeType=${encodeURIComponent(mimeType)}`);
       if (!res.ok) throw new Error('Could not get upload URL');
       const { uploadUrl, publicUrl } = await res.json();
-      // Upload directly to R2 — Content-Type must match what was signed
       const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': mimeType } });
       if (!uploadRes.ok) throw new Error(`R2 upload failed: ${uploadRes.status}`);
-      // Update local state with new URL
       const updatedArtist = await new Promise<any>(resolve => {
         setArtist((p: any) => {
           const updated = { ...p, [key]: publicUrl };
@@ -46,7 +67,6 @@ export default function SettingsPage() {
           return updated;
         });
       });
-      // Auto-save to database so it persists on reload
       await fetch('/api/dashboard/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -84,19 +104,38 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 3000);
   }
 
-  async function connectStripe() {
-    setConnectingStripe(true);
-    setStripeError('');
+  async function saveBankAccount() {
+    if (!bankForm.accountHolder || !bankForm.bankName || !bankForm.accountNumber) return;
+    setBankSaving(true);
     try {
-      const res = await fetch('/api/connect/onboard');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Stripe connection failed');
-      if (!data.url) throw new Error('No onboarding URL returned. Check that Stripe Connect is enabled for your account.');
-      window.location.href = data.url;
-    } catch (e: any) {
-      setStripeError(e.message);
-      setConnectingStripe(false);
-    }
+      const res = await fetch('/api/payouts/bank-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountType: 'bank',
+          accountHolder: bankForm.accountHolder,
+          bankName: bankForm.bankName,
+          branchCode: bankForm.branchCode,
+          accountNumber: bankForm.accountNumber,
+          isDefault: bankAccounts.length === 0,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setBankAccounts(prev => [...prev, d.account].filter(Boolean));
+        setShowBankForm(false);
+        setBankForm({ accountHolder: '', bankName: '', branchCode: '', accountNumber: '' });
+      }
+    } catch {}
+    setBankSaving(false);
+  }
+
+  async function deleteBankAccount(id: string) {
+    if (!confirm('Remove this bank account?')) return;
+    try {
+      await fetch(`/api/payouts/bank-accounts?id=${id}`, { method: 'DELETE' });
+      setBankAccounts(prev => prev.filter(a => a.id !== id));
+    } catch {}
   }
 
   if (loading) return (
@@ -117,52 +156,21 @@ export default function SettingsPage() {
         Manage your profile, payments, and public store link.
       </p>
 
-      {/* Payment Setup */}
+      {/* ── Payment Setup ── */}
       <div className="rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Connect your payment accounts. Buyers in South Africa pay via PayFast; international buyers via Stripe. Connect your payment accounts to receive your earnings directly.
+            Connect your SA payment accounts. Buyers in South Africa pay via PayFast.
+            Add your bank account for EFT payouts.
           </p>
         </div>
 
-        {/* Stripe */}
+        {/* PayFast */}
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>Stripe — International Payments</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>USD, EUR, GBP and 130+ currencies via Stripe Connect</p>
-            </div>
-            <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
-              background: artist.stripeAccountId ? 'color-mix(in srgb,var(--green) 15%,transparent)' : 'var(--surface2)',
-              color: artist.stripeAccountId ? 'var(--green)' : 'var(--text-muted)',
-            }}>
-              {artist.stripeAccountId ? '✓ Connected' : 'Not connected'}
-            </span>
-          </div>
-          {artist.stripeAccountId ? (
-            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              Account: {artist.stripeAccountId.slice(0, 20)}…
-            </p>
-          ) : (
-            <>
-              <button onClick={connectStripe} disabled={connectingStripe}
-                className="px-5 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition-opacity"
-                style={{ background: 'linear-gradient(135deg,#635bff,#4338ca)' }}>
-                {connectingStripe
-                  ? <><Loader2 size={14} className="animate-spin inline mr-2" />Connecting…</>
-                  : <><CreditCard size={14} className="inline mr-2" />Connect Stripe</>}
-              </button>
-              {stripeError && <p className="mt-3 text-sm text-red-400">⚠️ {stripeError}</p>}
-            </>
-          )}
-        </div>
-
-        {/* PayFast */}
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>PayFast — South African Payments</p>
+              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>PayFast — SA Payments</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>ZAR payments via PayShap, EFT, credit cards — SA buyers</p>
             </div>
             <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
@@ -205,6 +213,127 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* SA Bank Account */}
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>SA Bank Account — EFT Payouts</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                FNB, Absa, Standard Bank, Capitec, Nedbank and more
+              </p>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
+              background: bankAccounts.length > 0 ? 'color-mix(in srgb,var(--green) 15%,transparent)' : 'var(--surface2)',
+              color: bankAccounts.length > 0 ? 'var(--green)' : 'var(--text-muted)',
+            }}>
+              {bankAccounts.length > 0 ? `✓ ${bankAccounts.length} saved` : 'Not set up'}
+            </span>
+          </div>
+
+          {/* Existing accounts */}
+          {bankAccounts.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {bankAccounts.map(a => (
+                <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+                  <Building2 size={14} style={{ color: 'var(--gold)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{a.bankName}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {a.accountHolder} · {a.maskedNumber || '****'}
+                      {a.isDefault && <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--green)' }}>DEFAULT</span>}
+                    </p>
+                  </div>
+                  <button onClick={() => deleteBankAccount(a.id)}
+                    className="p-1.5 rounded-lg"
+                    style={{ color: 'var(--text-muted)' }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!showBankForm ? (
+            <button onClick={() => setShowBankForm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm"
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+              <Plus size={14} />
+              {bankAccounts.length === 0 ? 'Add Bank Account' : 'Add Another Account'}
+            </button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+              <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>Add SA Bank Account</p>
+
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Account Holder Name</label>
+                <input
+                  value={bankForm.accountHolder}
+                  onChange={e => setBankForm(p => ({ ...p, accountHolder: e.target.value }))}
+                  placeholder="Full name as it appears on your bank account"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Bank</label>
+                <select
+                  value={bankForm.bankName}
+                  onChange={e => {
+                    const bank = SA_BANKS.find(b => b.name === e.target.value);
+                    setBankForm(p => ({ ...p, bankName: e.target.value, branchCode: bank?.branch || '' }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                >
+                  <option value="">Select your bank</option>
+                  {SA_BANKS.map(b => (
+                    <option key={b.name} value={b.name}>{b.name} (Branch: {b.branch})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Branch Code</label>
+                  <input
+                    value={bankForm.branchCode}
+                    onChange={e => setBankForm(p => ({ ...p, branchCode: e.target.value }))}
+                    placeholder="Auto-filled"
+                    className="w-full px-3 py-2.5 rounded-lg text-sm"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Account Number</label>
+                  <input
+                    value={bankForm.accountNumber}
+                    onChange={e => setBankForm(p => ({ ...p, accountNumber: e.target.value }))}
+                    placeholder="Your account number"
+                    className="w-full px-3 py-2.5 rounded-lg text-sm"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveBankAccount} disabled={bankSaving}
+                  className="flex-1 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-60"
+                  style={{ background: 'var(--sky)' }}>
+                  {bankSaving ? <><Loader2 size={14} className="animate-spin inline mr-2" />Saving…</> : 'Save Account'}
+                </button>
+                <button onClick={() => setShowBankForm(false)}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium"
+                  style={{ background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Currency Preference */}
@@ -216,12 +345,12 @@ export default function SettingsPage() {
           className="w-full px-4 py-3 rounded-xl text-sm"
           style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
           <option value="ZAR">ZAR — South African Rand</option>
-          <option value="USD">USD — US Dollar</option>
-          <option value="EUR">EUR — Euro</option>
-          <option value="GBP">GBP — British Pound</option>
           <option value="NGN">NGN — Nigerian Naira</option>
           <option value="KES">KES — Kenyan Shilling</option>
           <option value="GHS">GHS — Ghanaian Cedi</option>
+          <option value="USD">USD — US Dollar</option>
+          <option value="EUR">EUR — Euro</option>
+          <option value="GBP">GBP — British Pound</option>
         </select>
       </div>
 
@@ -347,7 +476,6 @@ export default function SettingsPage() {
           Share or print this to let anyone scan and visit your store instantly.
         </p>
         <div className="flex items-center gap-6">
-          {/* Preview */}
           <div className="w-28 h-28 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
             <img

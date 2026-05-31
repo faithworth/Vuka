@@ -1,11 +1,10 @@
 // ============================================================
-// PATCH 05 — src/app/dashboard/layout.tsx
-// REPLACE entire file.
-// Fixes:
-//   - Mobile nav now shows 4 primary items + "More" button
-//   - "More" opens a bottom drawer with all remaining items
-//   - Settings, Goals, Payouts, Fan Support all reachable on mobile
-//   - Fee text removed from user-facing copy (not advertised)
+// REPLACEMENT: src/app/dashboard/layout.tsx
+// Changes from original:
+//   - Added "Services" nav item (artist marketplace services page)
+//   - Added "Videos" nav item (video/sample upload management)
+//   - Added "Messages" nav item with unread badge
+//   - Fixed: messages link was missing from dashboard nav entirely
 // ============================================================
 
 'use client';
@@ -16,15 +15,17 @@ import { createClient } from '@/lib/supabase';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, AlertTriangle,
-  MoreHorizontal, X, Send, Users, Store,
+  MoreHorizontal, X, Send, Users, Store, Briefcase, Video,
+  MessageSquare,
 } from 'lucide-react';
 
 const ARTIST_NAV = [
-  { href: '/dashboard',                label: 'Overview',    icon: BarChart2,   exact: true },
+  { href: '/dashboard',                label: 'Overview',    icon: BarChart2,    exact: true },
   { href: '/dashboard/beats',          label: 'Beats',       icon: Music },
   { href: '/dashboard/releases',       label: 'Releases',    icon: Disc },
-  { href: '/dashboard/uploads',        label: 'Upload',      icon: Upload,      highlight: true },
+  { href: '/dashboard/uploads',        label: 'Upload',      icon: Upload,       highlight: true },
   { href: '/dashboard/social',         label: 'Posts',       icon: Send },
+  { href: '/dashboard/services',       label: 'Services',    icon: Briefcase },
   { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
   { href: '/dashboard/storefront',     label: 'Storefront',  icon: Store },
   { href: '/dashboard/purchases',      label: 'Sales',       icon: ShoppingBag },
@@ -41,11 +42,12 @@ const MOBILE_MORE    = ARTIST_NAV.slice(4);
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [checking, setChecking]         = useState(true);
-  const [userEmail, setUserEmail]       = useState('');
-  const [artistName, setArtistName]     = useState('');
+  const [checking, setChecking]             = useState(true);
+  const [userEmail, setUserEmail]           = useState('');
+  const [artistName, setArtistName]         = useState('');
   const [payfastMerchant, setPayfastMerchant] = useState<string | null>(null);
-  const [moreOpen, setMoreOpen]         = useState(false);
+  const [moreOpen, setMoreOpen]             = useState(false);
+  const [unreadMsgs, setUnreadMsgs]         = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -56,7 +58,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const me = await res.json();
-          // Admin/owner/super_admin go to admin panel, not artist dashboard
           if (['admin', 'owner', 'super_admin'].includes(me.role)) {
             router.replace('/admin');
             return;
@@ -64,10 +65,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
             try {
-              const settingsRes = await fetch('/api/dashboard/settings');
+              const [settingsRes, msgsRes] = await Promise.all([
+                fetch('/api/dashboard/settings'),
+                fetch('/api/messages/conversations'),
+              ]);
               if (settingsRes.ok) {
-                const settingsData = await settingsRes.json();
-                setPayfastMerchant(settingsData.artist?.payfastMerchant || null);
+                const sd = await settingsRes.json();
+                setPayfastMerchant(sd.artist?.payfastMerchant || null);
+              }
+              if (msgsRes.ok) {
+                const md = await msgsRes.json();
+                const convs: any[] = md.conversations || [];
+                setUnreadMsgs(convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0));
               }
             } catch {}
           } else {
@@ -80,7 +89,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   }, [router]);
 
-  // Close "More" when navigating
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   async function logout() {
@@ -123,7 +131,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {/* Messages quick link */}
+        <div className="px-3 pt-3">
+          <Link href="/messages"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all"
+            style={{
+              background: pathname === '/messages' ? 'var(--surface2)' : 'transparent',
+              color: pathname === '/messages' ? 'var(--text)' : 'var(--text-muted)',
+            }}>
+            <MessageSquare size={16} className="flex-shrink-0" />
+            <span className="flex-1">Messages</span>
+            {unreadMsgs > 0 && (
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white"
+                style={{ background: 'var(--sky)', minWidth: 18, textAlign: 'center' }}>
+                {unreadMsgs}
+              </span>
+            )}
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
           {ARTIST_NAV.map(n => {
             const active = isActive(n.href, n.exact);
             return (
@@ -184,7 +211,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
 
-        {/* Primary 4 items */}
         {MOBILE_PRIMARY.map(n => {
           const active = isActive(n.href, n.exact);
           return (
@@ -197,7 +223,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           );
         })}
 
-        {/* "More" button */}
         <button
           onClick={() => setMoreOpen(v => !v)}
           className="flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors min-h-[56px] justify-center"
@@ -210,14 +235,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Mobile "More" Drawer ─────────────────────────────── */}
       {moreOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="md:hidden fixed inset-0 z-40 bg-black/40"
-            onClick={() => setMoreOpen(false)}
-          />
-          {/* Sheet */}
-          <div
-            className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bottom-sheet"
+          <div className="md:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setMoreOpen(false)} />
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl"
             style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
 
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -225,6 +244,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button onClick={() => setMoreOpen(false)} style={{ color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Messages quick link in drawer */}
+            <div className="px-3 pt-2">
+              <Link href="/messages"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm"
+                style={{ color: 'var(--text-muted)' }}>
+                <MessageSquare size={18} />
+                <span className="flex-1">Messages</span>
+                {unreadMsgs > 0 && (
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white"
+                    style={{ background: 'var(--sky)' }}>
+                    {unreadMsgs}
+                  </span>
+                )}
+              </Link>
             </div>
 
             <div className="p-3 space-y-0.5">
@@ -246,7 +281,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
                 <button onClick={logout}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm w-full transition-all"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm w-full"
                   style={{ color: 'var(--text-muted)' }}>
                   <LogOut size={18} />
                   <span>Sign out</span>

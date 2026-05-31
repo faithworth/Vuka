@@ -1,3 +1,12 @@
+// FIX: src/app/dashboard/memberships/page.tsx
+//
+// ROOT CAUSE: Frontend sends `price` in payload but the API (creator/tiers POST)
+// validates `priceMonthly`. So even R200 triggers "Monthly price must be at least R1"
+// because priceMonthly is undefined (< 1).
+//
+// Fix: send priceMonthly instead of price. Also fix the PUT method for edits — 
+// the tiers PATCH endpoint uses PATCH not PUT, and requires tierId not id.
+
 'use client';
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Users, Edit2, Trash2, Check, X } from 'lucide-react';
@@ -6,9 +15,11 @@ interface Tier {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: number;          // what the DB returns
+  priceMonthly?: number;  // alias
   perks: string[];
   activeMembers?: number;
+  _count?: { memberships: number };
 }
 
 export default function MembershipsPage() {
@@ -20,9 +31,9 @@ export default function MembershipsPage() {
   const [error, setError] = useState('');
 
   // Form state
-  const [name, setName] = useState('');
+  const [name, setName]             = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
+  const [price, setPrice]           = useState('');
   const [perksInput, setPerksInput] = useState('');
 
   useEffect(() => {
@@ -43,7 +54,8 @@ export default function MembershipsPage() {
     setEditing(tier);
     setName(tier.name);
     setDescription(tier.description);
-    setPrice(String(tier.price));
+    // DB stores as price OR priceMonthly depending on version
+    setPrice(String(tier.price ?? tier.priceMonthly ?? ''));
     setPerksInput(tier.perks.join('\n'));
     setError('');
     setShowForm(true);
@@ -57,23 +69,51 @@ export default function MembershipsPage() {
 
   async function saveTier() {
     if (!name.trim()) { setError('Tier name is required'); return; }
-    if (!price || isNaN(Number(price)) || Number(price) <= 0) { setError('Enter a valid price'); return; }
+    const numPrice = Number(price);
+    if (!price || isNaN(numPrice) || numPrice < 1) {
+      setError('Monthly price must be at least R1');
+      return;
+    }
     setSaving(true);
     setError('');
+
     const perks = perksInput.split('\n').map(p => p.trim()).filter(Boolean);
-    const payload = { name: name.trim(), description: description.trim(), price: Number(price), perks };
+
     try {
-      const res = await fetch('/api/creator/tiers', {
-        method: editing ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing ? { ...payload, id: editing.id } : payload),
-      });
+      let res: Response;
+      if (editing) {
+        // PATCH with tierId — API uses PATCH not PUT
+        res = await fetch('/api/creator/tiers', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tierId:       editing.id,
+            name:         name.trim(),
+            description:  description.trim(),
+            priceMonthly: numPrice,   // ← FIXED: was 'price', API expects 'priceMonthly'
+            perks,
+          }),
+        });
+      } else {
+        // POST to create — API requires priceMonthly not price
+        res = await fetch('/api/creator/tiers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:         name.trim(),
+            description:  description.trim(),
+            priceMonthly: numPrice,   // ← FIXED: was 'price'
+            perks,
+          }),
+        });
+      }
+
       if (res.ok) {
         const d = await res.json();
         if (editing) {
           setTiers(prev => prev.map(t => t.id === editing.id ? d.tier : t));
         } else {
-          setTiers(prev => [d.tier, ...prev]);
+          setTiers(prev => [...prev, d.tier]);
         }
         closeForm();
       } else {
@@ -89,13 +129,25 @@ export default function MembershipsPage() {
   async function deleteTier(id: string) {
     if (!confirm('Delete this membership tier? Existing members will lose access.')) return;
     try {
+      // API uses PATCH with isActive: false for soft delete
       const res = await fetch('/api/creator/tiers', {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ tierId: id, isActive: false }),
       });
       if (res.ok) setTiers(prev => prev.filter(t => t.id !== id));
     } catch {}
+  }
+
+  // Helper: get display price from tier (handles both field names)
+  function tierPrice(t: Tier): number {
+    return t.price ?? t.priceMonthly ?? 0;
+  }
+
+  function memberCount(t: Tier): number | undefined {
+    if (t.activeMembers !== undefined) return t.activeMembers;
+    if (t._count?.memberships !== undefined) return t._count.memberships;
+    return undefined;
   }
 
   return (
@@ -138,8 +190,12 @@ export default function MembershipsPage() {
               <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>
                 MONTHLY PRICE (ZAR)
               </label>
-              <input className="input" type="number" min="1" placeholder="e.g. 50"
-                value={price} onChange={e => setPrice(e.target.value)} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold"
+                  style={{ color: 'var(--text-muted)' }}>R</span>
+                <input className="input pl-7" type="number" min="1" placeholder="e.g. 50"
+                  value={price} onChange={e => setPrice(e.target.value)} />
+              </div>
             </div>
           </div>
 
@@ -195,7 +251,7 @@ export default function MembershipsPage() {
                 <div>
                   <h3 className="font-bold" style={{ color: 'var(--text)' }}>{tier.name}</h3>
                   <p className="text-2xl font-black mt-1" style={{ color: 'var(--sky)' }}>
-                    R{tier.price}<span className="text-sm font-normal text-muted">/mo</span>
+                    R{tierPrice(tier)}<span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>/mo</span>
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -227,11 +283,11 @@ export default function MembershipsPage() {
                 </ul>
               )}
 
-              {tier.activeMembers !== undefined && (
+              {memberCount(tier) !== undefined && (
                 <div className="mt-4 pt-3 flex items-center gap-1.5 text-xs"
                   style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                   <Users size={12} />
-                  {tier.activeMembers} active member{tier.activeMembers !== 1 ? 's' : ''}
+                  {memberCount(tier)} active member{memberCount(tier) !== 1 ? 's' : ''}
                 </div>
               )}
             </div>

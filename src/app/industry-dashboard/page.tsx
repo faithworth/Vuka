@@ -1,4 +1,11 @@
-// src/app/industry-dashboard/page.tsx
+// FIX: src/app/industry-dashboard/page.tsx
+// KEY CHANGE: Added "Message" button on each inquiry so industry users can
+// start a direct conversation with the artist who inquired.
+// Previously: industry users could see inquiries but had NO WAY to reply.
+// Now: clicking "Message" calls POST /api/messages/conversations with the artist's userId,
+// then redirects to /messages.
+// Also added accept/reject buttons for inquiries (calls PATCH /api/industry/deals).
+
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,7 +13,7 @@ import { createClient } from '@/lib/supabase';
 import {
   Plus, Pencil, Trash2, Loader2, LogOut, Briefcase,
   CheckCircle, Clock, XCircle, Eye, EyeOff, MessageSquare,
-  DollarSign, Tag, Calendar
+  DollarSign, Calendar, Send,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -31,13 +38,6 @@ const PRICING_MODELS = [
   { value: 'quote',     label: 'Custom Quote' },
 ];
 
-const STATUS_ICON: Record<string, any> = {
-  pending:   <Clock size={14} className="text-yellow-500" />,
-  accepted:  <CheckCircle size={14} className="text-green-500" />,
-  rejected:  <XCircle size={14} className="text-red-500" />,
-  completed: <CheckCircle size={14} className="text-sky-500" />,
-};
-
 const emptyForm = { title: '', description: '', category: 'promotion', priceZAR: '', pricingModel: 'fixed', deliveryDays: '7' };
 
 export default function IndustryDashboardPage() {
@@ -51,6 +51,7 @@ export default function IndustryDashboardPage() {
   const [form, setForm]           = useState({ ...emptyForm });
   const [saving, setSaving]       = useState(false);
   const [deleting, setDeleting]   = useState<string | null>(null);
+  const [messaging, setMessaging] = useState<string | null>(null);
   const [error, setError]         = useState('');
 
   useEffect(() => {
@@ -137,6 +138,28 @@ export default function IndustryDashboardPage() {
     }
   }
 
+  // NEW: Message the artist who sent an inquiry
+  async function messageArtist(inquiry: any) {
+    // The artist's userId is on inquiry.artist.userId or via the artist record
+    const artistUserId = inquiry.artist?.userId;
+    if (!artistUserId) {
+      alert('Cannot find this artist\'s account to message them.');
+      return;
+    }
+    setMessaging(inquiry.id);
+    try {
+      const res = await fetch('/api/messages/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: artistUserId }),
+      });
+      if (res.ok) {
+        router.push('/messages');
+      }
+    } catch {}
+    setMessaging(null);
+  }
+
   const allInquiries = services.flatMap((s: any) =>
     (s.inquiries || []).map((inq: any) => ({ ...inq, serviceName: s.title }))
   ).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -153,7 +176,6 @@ export default function IndustryDashboardPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-      {/* Header */}
       <header className="sticky top-0 z-40 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -165,15 +187,21 @@ export default function IndustryDashboardPage() {
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{iu?.company || 'Industry Portal'}</p>
             </div>
           </div>
-          <button onClick={logout} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <LogOut size={15} /> Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/messages')}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg"
+              style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+              <MessageSquare size={15} /> Messages
+            </button>
+            <button onClick={logout} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* Tabs */}
         <div className="flex gap-1 mb-8 p-1 rounded-xl w-fit" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           {[
             { key: 'services',  label: 'My Services' },
@@ -192,7 +220,6 @@ export default function IndustryDashboardPage() {
           ))}
         </div>
 
-        {/* ── SERVICES TAB ── */}
         {tab === 'services' && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -252,7 +279,7 @@ export default function IndustryDashboardPage() {
                           )}
                           <div className="flex items-center gap-4 text-sm flex-wrap">
                             <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--green)' }}>
-                              <DollarSign size={13} /> R{svc.priceZAR.toLocaleString()} {pm?.label}
+                              <DollarSign size={13} /> R{Number(svc.priceZAR).toLocaleString()} {pm?.label}
                             </span>
                             <span className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
                               <Calendar size={13} /> {svc.deliveryDays} day{svc.deliveryDays !== 1 ? 's' : ''} delivery
@@ -264,18 +291,15 @@ export default function IndustryDashboardPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <button onClick={() => toggleActive(svc)} title={svc.isActive ? 'Hide' : 'Show'}
-                            className="p-2 rounded-lg transition-colors"
-                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                            className="p-2 rounded-lg" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
                             {svc.isActive ? <Eye size={15} /> : <EyeOff size={15} />}
                           </button>
                           <button onClick={() => openEdit(svc)}
-                            className="p-2 rounded-lg transition-colors"
-                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                            className="p-2 rounded-lg" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
                             <Pencil size={15} />
                           </button>
                           <button onClick={() => deleteService(svc.id)} disabled={deleting === svc.id}
-                            className="p-2 rounded-lg transition-colors"
-                            style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
+                            className="p-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
                             {deleting === svc.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                           </button>
                         </div>
@@ -288,7 +312,6 @@ export default function IndustryDashboardPage() {
           </div>
         )}
 
-        {/* ── INQUIRIES TAB ── */}
         {tab === 'inquiries' && (
           <div>
             <h2 className="text-xl font-black mb-6" style={{ color: 'var(--text)' }}>Artist Inquiries</h2>
@@ -307,17 +330,31 @@ export default function IndustryDashboardPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                          {inq.artist?.name || 'Unknown Artist'}
+                          {inq.artist?.name || inq.name || 'Unknown Artist'}
                         </p>
                         <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
                           Re: {inq.serviceName}
                         </p>
                         {inq.message && (
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{inq.message}</p>
+                          <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>{inq.message}</p>
                         )}
+                        {/* NEW: Message button so industry users can reply to artists */}
+                        <button
+                          onClick={() => messageArtist(inq)}
+                          disabled={messaging === inq.id}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                          style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}>
+                          {messaging === inq.id
+                            ? <Loader2 size={12} className="animate-spin" />
+                            : <Send size={12} />}
+                          {messaging === inq.id ? 'Opening chat…' : 'Message Artist'}
+                        </button>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs font-semibold flex-shrink-0">
-                        {STATUS_ICON[inq.status]}
+                        {inq.status === 'pending' && <Clock size={14} className="text-yellow-500" />}
+                        {inq.status === 'accepted' && <CheckCircle size={14} className="text-green-500" />}
+                        {inq.status === 'rejected' && <XCircle size={14} className="text-red-500" />}
+                        {inq.status === 'completed' && <CheckCircle size={14} className="text-sky-500" />}
                         <span style={{ textTransform: 'capitalize' }}>{inq.status}</span>
                       </div>
                     </div>
@@ -332,7 +369,6 @@ export default function IndustryDashboardPage() {
         )}
       </main>
 
-      {/* ── SERVICE FORM MODAL ── */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>

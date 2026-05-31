@@ -1,20 +1,27 @@
-// ============================================================
-// PATCH 09 — src/app/dashboard/releases/page.tsx
-// REPLACE entire file.
-// Adds delete button with confirmation modal + guard messaging.
-// ============================================================
+// FIX: src/app/dashboard/releases/page.tsx
+// Added ISRC display per track and UPC display per release.
+// Previously the releases list showed "X tracks · Y plays" but NEVER showed ISRCs.
+// ISRCs are generated in the distribution system (DistributionTrack.isrc) and also
+// need to be auto-generated and stored on the regular Release tracks for PayFast royalty tracking.
+//
+// This page now:
+// - Shows UPC on the release row
+// - Expands to show per-track ISRC when clicked
+// - Fetches from /api/dashboard/releases which includes tracks
 
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
-import { Plus, ExternalLink, Music, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Plus, ExternalLink, Music, Trash2, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, Hash, Copy, Check } from 'lucide-react';
 
 export default function DashboardReleasesPage() {
   const [releases, setReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/dashboard/releases')
@@ -46,6 +53,12 @@ export default function DashboardReleasesPage() {
     setDeleting(null);
   }
 
+  function copyCode(code: string) {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopied(code);
+    setTimeout(() => setCopied(null), 1500);
+  }
+
   return (
     <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
@@ -72,53 +85,124 @@ export default function DashboardReleasesPage() {
       <div className="space-y-3">
         {releases.map((release: any) => (
           <div key={release.id}
-            className="flex items-center gap-4 p-4 rounded-xl border"
+            className="rounded-xl border overflow-hidden"
             style={{ background: 'var(--surface)', borderColor: 'var(--border)', opacity: deleting === release.id ? 0.5 : 1 }}>
-            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center text-2xl"
-              style={{ background: 'var(--surface2)' }}>
-              {release.artworkUrl
-                ? <img src={release.artworkUrl} className="w-full h-full object-cover" alt={release.title} />
-                : '🎵'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{release.title}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>
-                  {release.releaseType}
-                </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full`}
-                  style={{
-                    background: release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
-                    color: release.isActive ? 'var(--green)' : '#ef4444',
-                  }}>
-                  {release.isActive ? 'Active' : 'Hidden'}
-                </span>
+
+            {/* Main row */}
+            <div className="flex items-center gap-4 p-4">
+              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center text-2xl"
+                style={{ background: 'var(--surface2)' }}>
+                {release.artworkUrl
+                  ? <img src={release.artworkUrl} className="w-full h-full object-cover" alt={release.title} />
+                  : '🎵'}
               </div>
-              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {release.tracks?.length || 0} tracks · {release.plays} plays · {release.sales} sales · {formatCurrency(release.price)}
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{release.title}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>
+                    {release.releaseType}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      background: release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                      color: release.isActive ? 'var(--green)' : '#ef4444',
+                    }}>
+                    {release.isActive ? 'Active' : 'Hidden'}
+                  </span>
+                </div>
+                <div className="text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-muted)' }}>
+                  <span>{release.tracks?.length || 0} tracks</span>
+                  <span>{release.plays ?? 0} plays</span>
+                  <span>{release.sales ?? 0} sales</span>
+                  <span>{formatCurrency(release.price)}</span>
+                  {/* UPC display */}
+                  {release.upc && (
+                    <button
+                      onClick={() => copyCode(release.upc)}
+                      className="flex items-center gap-1 font-mono hover:underline"
+                      title="Copy UPC"
+                      style={{ color: 'var(--sky)' }}>
+                      <Hash size={10} />
+                      UPC: {release.upc}
+                      {copied === release.upc ? <Check size={10} /> : <Copy size={10} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {/* Expand to show tracks + ISRCs */}
+                {release.tracks?.length > 0 && (
+                  <button
+                    onClick={() => setExpanded(e => e === release.id ? null : release.id)}
+                    className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
+                    title="Show track ISRCs"
+                    style={{ color: 'var(--text-muted)' }}>
+                    {expanded === release.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                )}
+                <button onClick={() => toggleActive(release.id, release.isActive)}
+                  className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
+                  title={release.isActive ? 'Hide release' : 'Make live'}
+                  style={{ color: 'var(--text-muted)' }}>
+                  {release.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+                <Link href={`/release/${release.slug}`} target="_blank"
+                  className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
+                  style={{ color: 'var(--sky)' }}>
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={() => setConfirmId(release.id)}
+                  disabled={deleting === release.id}
+                  className="p-2 rounded-lg transition-colors hover:bg-red-50"
+                  style={{ color: '#ef4444' }}>
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => toggleActive(release.id, release.isActive)}
-                className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
-                title={release.isActive ? 'Hide release' : 'Make live'}
-                style={{ color: 'var(--text-muted)' }}>
-                {release.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-              <Link href={`/release/${release.slug}`} target="_blank"
-                className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
-                style={{ color: 'var(--sky)' }}>
-                <ExternalLink className="w-4 h-4" />
-              </Link>
-              <button
-                onClick={() => setConfirmId(release.id)}
-                disabled={deleting === release.id}
-                className="p-2 rounded-lg transition-colors hover:bg-red-50"
-                title="Delete release"
-                style={{ color: '#ef4444' }}>
-                <Trash2 size={16} />
-              </button>
-            </div>
+
+            {/* Expanded track list with ISRCs */}
+            {expanded === release.id && release.tracks?.length > 0 && (
+              <div className="border-t" style={{ borderColor: 'var(--border)' }}>
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide"
+                  style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                  Tracks & ISRC Codes
+                </div>
+                {release.tracks.map((track: any, i: number) => (
+                  <div key={track.id} className="flex items-center justify-between px-4 py-2.5 border-t text-sm"
+                    style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs w-5 text-center flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                        {track.trackNumber ?? i + 1}
+                      </span>
+                      <span className="truncate font-medium" style={{ color: 'var(--text)' }}>
+                        {track.title}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {track.isrc ? (
+                        <button
+                          onClick={() => copyCode(track.isrc)}
+                          className="flex items-center gap-1.5 font-mono text-xs px-2 py-1 rounded-lg transition-colors"
+                          style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}
+                          title="Copy ISRC">
+                          <Hash size={10} />
+                          {track.isrc}
+                          {copied === track.isrc ? <Check size={10} /> : <Copy size={10} />}
+                        </button>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded-lg"
+                          style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+                          No ISRC yet
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -140,7 +224,7 @@ export default function DashboardReleasesPage() {
                 </div>
               </div>
               <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-                All tracks will be permanently removed. This will fail if buyers have confirmed purchases — hide it instead.
+                All tracks will be permanently removed. If buyers have confirmed purchases, hide it instead.
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setConfirmId(null)}

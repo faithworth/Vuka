@@ -1,0 +1,106 @@
+// =============================================================
+// prisma/schema_complete_additions.txt
+// COMPLETE list of all schema additions required for full production.
+// Apply these to prisma/schema.prisma then run:
+//   npx prisma migrate dev --name vuka_production_hardening
+//   npx prisma generate
+// =============================================================
+
+// ── 1. Release model — add UPC ────────────────────────────────
+// In model Release { ... } add:
+//   upc         String?    // Universal Product Code — auto-generated on upload
+
+// ── 2. Track model — add ISRC ────────────────────────────────
+// In model Track { ... } add:
+//   isrc        String?    // International Standard Recording Code — auto-generated
+
+// ── 3. ArtistBankAccount model (if not exists) ────────────────
+// model ArtistBankAccount {
+//   id            String         @id @default(cuid())
+//   artistId      String
+//   artist        Artist         @relation(fields: [artistId], references: [id], onDelete: Cascade)
+//   accountHolder String
+//   bankName      String
+//   branchCode    String         @default("")
+//   maskedNumber  String         // e.g. "****4321"
+//   accountType   String         @default("current") // current | savings
+//   isDefault     Boolean        @default(false)
+//   isVerified    Boolean        @default(false)     // admin-verified before payouts
+//   createdAt     DateTime       @default(now())
+//   payoutRequests PayoutRequest[]
+//   @@index([artistId])
+// }
+
+// ── 4. PayoutRequest model (if not exists) ────────────────────
+// model PayoutRequest {
+//   id            String             @id @default(cuid())
+//   artistId      String
+//   artist        Artist             @relation(fields: [artistId], references: [id])
+//   bankAccountId String
+//   bankAccount   ArtistBankAccount  @relation(fields: [bankAccountId], references: [id])
+//   amount        Float
+//   method        String             @default("eft") // eft | payfast | ozow | yoco
+//   status        String             @default("pending") // pending | approved | processing | completed | rejected
+//   note          String?
+//   adminNote     String?
+//   processedAt   DateTime?
+//   createdAt     DateTime           @default(now())
+//   @@index([artistId])
+//   @@index([status])
+// }
+
+// ── 5. Notification model (if not exists) ────────────────────
+// model Notification {
+//   id        String   @id @default(cuid())
+//   userId    String
+//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   type      String   // new_sale | new_follower | new_comment | new_like | new_message | new_post | milestone_followers | milestone_sales
+//   title     String
+//   body      String
+//   isRead    Boolean  @default(false)
+//   linkType  String   @default("") // post | artist | beat | release | message | sale
+//   linkId    String   @default("") // the id/slug to navigate to
+//   createdAt DateTime @default(now())
+//   @@index([userId, isRead])
+//   @@index([userId, createdAt])
+// }
+
+// ── 6. Artist model additions ────────────────────────────────
+// In model Artist { ... } add if missing:
+//   payfastMerchant String?     // PayFast Merchant ID
+//   currency        String      @default("ZAR")
+//   isVerified      Boolean     @default(false)
+//   genreTags       String[]    @default([])
+//   socialLinks     Json?       // { instagram, twitter, spotify, youtube, soundcloud }
+//   coverUrl        String?
+
+// ── 7. CreatorStorefront model additions ─────────────────────
+// In model CreatorStorefront { ... } confirm these exist:
+//   artistId    String   @unique
+//   headline    String   @default("")
+//   description String   @default("")
+//   theme       String   @default("#38b6e8")
+//   sections    Json?    // { showSupport, socialLinks, featuredBeatIds }
+//   isPublic    Boolean  @default(true)
+
+// ── 8. ArtistPost model additions ────────────────────────────
+// In model ArtistPost { ... } confirm these exist:
+//   isPublished  Boolean  @default(true)
+//   publishedAt  DateTime @default(now())
+//   likeCount    Int      @default(0)
+//   commentCount Int      @default(0)
+//   repostCount  Int      @default(0)
+//   isPinned     Boolean  @default(false)
+//   mediaUrls    String[] @default([])
+//   linkUrl      String?
+//   linkType     String?
+//   linkItemId   String?
+
+// ── 9. Indexes to add for performance ────────────────────────
+// @@index([artistId, publishedAt]) on ArtistPost
+// @@index([userId, createdAt])    on Notification
+// @@index([artistId])             on ArtistPayout
+// @@index([status])               on PayoutRequest
+
+// ── Full SQL migration (alternative to prisma migrate) ───────
+// See prisma/migrations/add_production_hardening.sql

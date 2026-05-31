@@ -1,0 +1,48 @@
+// ADD THESE LINES to your prisma/schema.prisma:
+//
+// In model Release { ... } add:
+//   upc         String?          // Universal Product Code — auto-generated on upload
+//
+// In model Track { ... } add:
+//   isrc        String?          // International Standard Recording Code — auto-generated on upload
+//
+// Full updated models for reference:
+
+// model Release {
+//   id          String       @id @default(cuid())
+//   artistId    String
+//   artist      Artist       @relation(fields: [artistId], references: [id])
+//   title       String
+//   slug        String       @unique
+//   releaseType String       @default("single")
+//   price       Float        @default(0)
+//   minPrice    Float        @default(0)
+//   payWhatWant Boolean      @default(false)
+//   artworkUrl  String       @default("")
+//   description String       @default("")
+//   credits     String       @default("")
+//   releaseDate DateTime?
+//   upc         String?      // ← ADD THIS
+//   plays       Int          @default(0)
+//   sales       Int          @default(0)
+//   isActive    Boolean      @default(true)
+//   tracks      Track[]
+//   purchases   Purchase[]
+//   createdAt   DateTime     @default(now())
+// }
+
+// model Track {
+//   id           String   @id @default(cuid())
+//   releaseId    String
+//   release      Release  @relation(fields: [releaseId], references: [id])
+//   title        String
+//   trackNumber  Int
+//   isrc         String?  // ← ADD THIS
+//   duration     Int      @default(0)
+//   previewUrl   String
+//   fullUrl      String
+//   waveformData Float[]
+// }
+//
+// Then run: npx prisma migrate dev --name add_isrc_upc
+// OR for production: npx prisma migrate deploy

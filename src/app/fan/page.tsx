@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase';
 import {
   ShoppingBag, Heart, Download, Music2, Loader2, ExternalLink,
   LogOut, UserCheck, Rss, Bell, Users, CheckCheck,
+  MessageCircle, Star, Music, Disc,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
@@ -38,6 +39,8 @@ interface Notification {
   body: string;
   isRead: boolean;
   createdAt: string;
+  linkType: string;
+  linkId: string;
 }
 
 interface Membership {
@@ -48,6 +51,41 @@ interface Membership {
 }
 
 type Tab = 'library' | 'following' | 'feed' | 'notifications' | 'memberships' | 'wishlist';
+
+// Map notification type → icon + colour
+const NOTIF_ICON: Record<string, any> = {
+  new_sale:           ShoppingBag,
+  new_follower:       Users,
+  new_comment:        MessageCircle,
+  new_like:           Heart,
+  new_message:        MessageCircle,
+  new_post:           Music2,
+  milestone_followers: Star,
+  milestone_sales:    Star,
+};
+const NOTIF_COLOR: Record<string, string> = {
+  new_sale:            'var(--green)',
+  new_follower:        'var(--sky)',
+  new_comment:         'var(--gold)',
+  new_like:            '#e74c3c',
+  new_message:         'var(--sky)',
+  new_post:            'var(--sky)',
+  milestone_followers: 'var(--gold)',
+  milestone_sales:     'var(--gold)',
+};
+
+// Resolve where a notification should navigate to
+function notifHref(n: Notification): string {
+  switch (n.linkType) {
+    case 'post':    return '/feed';
+    case 'artist':  return `/artist/${n.linkId}`;
+    case 'beat':    return `/beat/${n.linkId}`;
+    case 'release': return `/release/${n.linkId}`;
+    case 'message': return '/messages';
+    case 'sale':    return '/fan';
+    default:        return '/fan';
+  }
+}
 
 export default function FanDashboard() {
   const router = useRouter();
@@ -103,6 +141,21 @@ export default function FanDashboard() {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch {}
     setMarkingAll(false);
+  }
+
+  async function handleNotifClick(n: Notification) {
+    // Mark as read silently
+    if (!n.isRead) {
+      try {
+        await fetch('/api/social/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [n.id] }),
+        });
+        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+      } catch {}
+    }
+    router.push(notifHref(n));
   }
 
   function timeAgo(dateStr: string) {
@@ -337,19 +390,31 @@ export default function FanDashboard() {
               </div>
             ) : (
               <div className="space-y-2">
-                {notifications.slice(0, 20).map(n => (
-                  <div key={n.id} className="card p-4 flex gap-3 items-start"
-                    style={{ opacity: n.isRead ? 0.65 : 1 }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{n.title}</p>
-                        <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{timeAgo(n.createdAt)}</span>
+                {notifications.slice(0, 20).map(n => {
+                  const Icon = NOTIF_ICON[n.type] || Bell;
+                  const color = NOTIF_COLOR[n.type] || 'var(--sky)';
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => handleNotifClick(n)}
+                      className="w-full text-left card p-4 flex gap-3 items-start transition-opacity hover:opacity-90 cursor-pointer"
+                      style={{ opacity: n.isRead ? 0.65 : 1 }}
+                    >
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${color}1a` }}>
+                        <Icon size={16} style={{ color }} />
                       </div>
-                      <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{n.body}</p>
-                    </div>
-                    {!n.isRead && <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: 'var(--sky)' }} />}
-                  </div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{n.title}</p>
+                          <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{timeAgo(n.createdAt)}</span>
+                        </div>
+                        <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{n.body}</p>
+                      </div>
+                      {!n.isRead && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-2" style={{ background: 'var(--sky)' }} />}
+                    </button>
+                  );
+                })}
                 {notifications.length > 20 && (
                   <Link href="/notifications" className="block text-center py-3 text-sm font-medium" style={{ color: 'var(--sky)' }}>
                     View all {notifications.length} notifications →

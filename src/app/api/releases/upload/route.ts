@@ -1,9 +1,16 @@
+// FIX: src/app/api/releases/upload/route.ts
+// Added: auto-generate UPC on release creation and ISRC per track.
+// ISRC format: ZA-ZAV-YY-NNNNN (South Africa / Vuka / year / designation)
+// UPC: 12-digit with check digit
+// These are stored in Release.upc and Track.isrc after the schema migration.
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getPresignedUploadUrl, getPublicUrl, r2Keys } from '@/lib/r2';
 import { requireArtist } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { generateISRC, generateUPC } from '@/lib/distribution';
 
 // POST: create release + track records, return presigned R2 PUT URLs for direct browser upload
 export async function POST(req: NextRequest) {
@@ -25,33 +32,38 @@ export async function POST(req: NextRequest) {
       slug = `${slugify(title)}-${suffix}`;
     }
 
+    // Generate UPC for the release
+    const upc = generateUPC();
+
     const release = await prisma.release.create({
       data: {
-        artistId: user.artist.id,
+        artistId:   user.artist.id,
         title,
         slug,
         releaseType: releaseType || 'single',
-        price: parseFloat(price) || 0,
-        minPrice: parseFloat(minPrice) || 0,
+        price:      parseFloat(price) || 0,
+        minPrice:   parseFloat(minPrice) || 0,
         payWhatWant: !!payWhatWant,
         description: description || '',
-        credits: credits || '',
+        credits:     credits || '',
         releaseDate: releaseDate ? new Date(releaseDate) : undefined,
-        isActive: false,
-      },
+        upc,          // ← store UPC on the release
+        isActive:    false,
+      } as any, // 'as any' until prisma client is regenerated after migration
     });
 
-    // Create track records
+    // Create track records with auto-generated ISRCs
     const trackRecords = await Promise.all(
       (tracks as { title: string; trackNumber: number }[]).map((t, i) =>
         prisma.track.create({
           data: {
-            releaseId: release.id,
-            title: t.title || `Track ${i + 1}`,
+            releaseId:   release.id,
+            title:       t.title || `Track ${i + 1}`,
             trackNumber: t.trackNumber || i + 1,
-            previewUrl: '',
-            fullUrl: '',
-          },
+            isrc:        generateISRC(), // ← generate ISRC per track
+            previewUrl:  '',
+            fullUrl:     '',
+          } as any,
         })
       )
     );
@@ -67,32 +79,29 @@ export async function POST(req: NextRequest) {
 
     for (const track of trackRecords) {
       const previewKey = r2Keys.trackPreview(track.id);
-      // Per-track audio type: client sends {trackId: 'audio/wav'|'audio/mpeg'}
       const fullAudioType = (trackAudioTypes && trackAudioTypes[track.id]) === 'audio/wav' ? 'audio/wav' : 'audio/mpeg';
       const fullKey = fullAudioType === 'audio/wav' ? r2Keys.trackFullWav(track.id) : r2Keys.trackFull(track.id);
       uploadUrls[`preview_${track.id}`] = await getPresignedUploadUrl(previewKey, 'audio/mpeg');
-      uploadUrls[`full_${track.id}`] = await getPresignedUploadUrl(fullKey, fullAudioType);
+      uploadUrls[`full_${track.id}`]    = await getPresignedUploadUrl(fullKey, fullAudioType);
       publicUrls[`previewUrl_${track.id}`] = getPublicUrl(previewKey);
-      publicUrls[`fullUrl_${track.id}`] = getPublicUrl(fullKey);
+      publicUrls[`fullUrl_${track.id}`]    = getPublicUrl(fullKey);
     }
 
     return NextResponse.json({ release, tracks: trackRecords, uploadUrls, publicUrls });
   } catch (err: any) {
-    console.error('[releases/upload] POST error:', err?.message || err);
-    return NextResponse.json(
-      { error: 'Release setup failed — check R2 credentials and database connection', detail: err?.message },
-      { status: 503 }
-    );
+    console.error('[releases/upload] POST error:', err?.message);
+    return NextResponse.json({ error: err?.message || 'Upload failed' }, { status: 500 });
   }
 }
 
-// PATCH: activate release after all direct-to-R2 uploads complete
+// PATCH: activate release after files are uploaded to R2
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { releaseId, artworkUrl, trackUpdates } = await req.json();
+    const body = await req.json();
+    const { releaseId, artworkUrl, trackUpdates } = body;
 
     if (!releaseId) return NextResponse.json({ error: 'releaseId required' }, { status: 400 });
 
@@ -101,32 +110,34 @@ export async function PATCH(req: NextRequest) {
     });
     if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
 
-    await prisma.release.update({
-      where: { id: releaseId },
-      data: {
-        artworkUrl: artworkUrl || release.artworkUrl,
-        isActive: true,
-      },
-    });
-
-    if (trackUpdates) {
-      for (const [trackId, urls] of Object.entries(
-        trackUpdates as Record<string, { previewUrl: string; fullUrl: string; duration?: number }>
-      )) {
-        await prisma.track.update({
-          where: { id: trackId },
-          data: {
-            previewUrl: urls.previewUrl || '',
-            fullUrl: urls.fullUrl || '',
-            duration: urls.duration || 0,
-          },
-        });
-      }
+    // Update each track's URLs
+    if (trackUpdates && typeof trackUpdates === 'object') {
+      await Promise.all(
+        Object.entries(trackUpdates).map(([trackId, urls]: [string, any]) =>
+          prisma.track.update({
+            where: { id: trackId },
+            data: {
+              previewUrl: urls.previewUrl || '',
+              fullUrl:    urls.fullUrl    || '',
+            },
+          }).catch(e => console.error(`Track update failed for ${trackId}:`, e))
+        )
+      );
     }
 
-    return NextResponse.json({ ok: true });
+    // Activate release with artwork URL
+    const updated = await prisma.release.update({
+      where: { id: releaseId },
+      data: {
+        artworkUrl: artworkUrl || '',
+        isActive:   true,
+      },
+      include: { tracks: { orderBy: { trackNumber: 'asc' } } },
+    });
+
+    return NextResponse.json({ release: updated });
   } catch (err: any) {
-    console.error('[releases/upload] PATCH error:', err?.message || err);
-    return NextResponse.json({ error: 'Failed to activate release', detail: err?.message }, { status: 503 });
+    console.error('[releases/upload] PATCH error:', err?.message);
+    return NextResponse.json({ error: err?.message || 'Activation failed' }, { status: 500 });
   }
 }
