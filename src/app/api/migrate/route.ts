@@ -1,12 +1,11 @@
 /**
- * POST /api/migrate
+ * GET /api/migrate
  *
  * Runs all pending database migrations after deployment.
- * Called automatically by Vercel as a post-deploy hook.
+ * Called automatically by Vercel as a post-deploy hook via vercel.json.
  * Protected by CRON_SECRET so only Vercel (or you) can trigger it.
  *
- * Fully idempotent — safe to run multiple times.
- * Already-applied migrations are skipped silently.
+ * Fully idempotent — already-applied migrations are skipped silently.
  */
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -28,7 +27,7 @@ const BASELINE_MIGRATIONS = [
   'phase5_status_history',
 ];
 
-// New migrations to apply in order
+// New migrations to apply in order — append new ones to the BOTTOM only
 const NEW_MIGRATIONS = [
   '20250528_fix_schema_field_mismatches',
   '20250528_add_bank_account_payment_fields',
@@ -38,10 +37,13 @@ const NEW_MIGRATIONS = [
   '20250529_fix_schema_missing_fields',
   '20250529_fix_spamsignal_messaging',
   '20250529_fix_moderation_schema_fields',
+  // 2025-05-31: User suspension fields (isSuspended, suspendedAt, suspendedReason)
+  // Required by src/app/api/auth/me/route.ts and admin suspension system
+  '20250531_user_suspension_and_roles',
 ];
 
 export async function GET(req: NextRequest) {
-  // Auth — must provide CRON_SECRET
+  // Auth — must provide CRON_SECRET either as header or query param
   const secret =
     req.headers.get('x-cron-secret') ??
     req.nextUrl.searchParams.get('secret');
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
   try {
     await client.connect();
 
-    // 1. Ensure migrations table exists
+    // 1. Ensure migrations tracking table exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
         id                   VARCHAR(36)  PRIMARY KEY,
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
       );
     `);
 
-    // 2. Baseline pre-existing migrations
+    // 2. Baseline pre-existing migrations (record them as applied, no SQL)
     for (const name of BASELINE_MIGRATIONS) {
       const { rows } = await client.query(
         `SELECT id FROM "_prisma_migrations" WHERE migration_name = $1`,
@@ -104,7 +106,6 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Migration SQL files are bundled with the app at this path
       const sqlPath = path.join(process.cwd(), 'prisma', 'migrations', name, 'migration.sql');
       let sql: string;
       try {

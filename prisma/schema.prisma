@@ -20,7 +20,10 @@ model User {
   id              String               @id @default(cuid())
   email           String               @unique
   name            String
-  role            String               @default("fan") // fan, artist, industry, admin
+  role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
+  isSuspended     Boolean              @default(false)
+  suspendedAt     DateTime?
+  suspendedReason String               @default("")
   createdAt       DateTime             @default(now())
   artist          Artist?
   industryUser    IndustryUser?

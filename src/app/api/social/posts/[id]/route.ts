@@ -51,7 +51,7 @@ export async function DELETE(
     });
     if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const isAdmin = user.role === 'admin';
+    const isAdmin = ['owner', 'super_admin', 'admin', 'moderator'].includes(user.role);
     if (post.artist.userId !== user.id && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

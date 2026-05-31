@@ -2,6 +2,13 @@
 // Returns the authenticated user's profile, role, and platform flags.
 // DB is the SINGLE SOURCE OF TRUTH for role — never URL params, never session claims.
 // ADMIN_EMAIL env var automatically elevates that user to OWNER on first hit.
+//
+// Fixes applied:
+//   - IndustryUser.profession → .role (actual field name in schema)
+//   - IndustryUser.isVerified → .verified (actual field name in schema)
+//   - User.isSuspended now in schema (added via migration)
+//   - requireAdmin() in auth.ts now includes owner/super_admin — this route
+//     already handled elevation correctly
 
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
@@ -32,7 +39,10 @@ export async function GET() {
           },
         },
         industryUser: {
-          select: { id: true, profession: true, isVerified: true },
+          // IndustryUser schema fields: id, companyName, role, website, verified
+          // 'profession' does not exist — the field is 'role'
+          // 'isVerified' does not exist — the field is 'verified'
+          select: { id: true, role: true, verified: true },
         },
       },
     });
@@ -63,7 +73,7 @@ export async function GET() {
             },
           },
           industryUser: {
-            select: { id: true, profession: true, isVerified: true },
+            select: { id: true, role: true, verified: true },
           },
         },
       });

@@ -2,6 +2,13 @@
   "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "postDeploy": {
+    "url": "/api/migrate",
+    "method": "GET",
+    "headers": {
+      "x-cron-secret": "${CRON_SECRET}"
+    }
+  },
   "crons": [
     {
       "path": "/api/workers/cron?job=search_sync",

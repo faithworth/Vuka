@@ -45,6 +45,8 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   const user = await getServerUser();
-  if (!user || user.role !== 'admin') return null;
+  if (!user) return null;
+  const adminRoles = ['owner', 'super_admin', 'admin', 'moderator'];
+  if (!adminRoles.includes(user.role)) return null;
   return user;
 }

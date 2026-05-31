@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   try {
     const user = await getServerUser();
-    if (!user || user.role !== 'admin') {
+    if (!user || !['owner','super_admin','admin','moderator'].includes(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
