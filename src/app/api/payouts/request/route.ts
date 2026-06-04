@@ -1,6 +1,6 @@
 // ============================================================
-// src/app/api/payouts/request/route.ts
-// Artist requests a payout of their available balance
+// src/app/api/payouts/request/route.ts (Phase 9)
+// Artist requests a payout — now sends sendPayoutRequested email
 // ============================================================
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { requestPayout, retryPayoutRequest } from '@/lib/payouts';
 import prisma from '@/lib/prisma';
+import { schemas, validationError } from '@/lib/validation';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
+import { sendPayoutRequested } from '@/lib/emails';
+
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
 
 // GET — list artist's payout requests
 export async function GET() {
@@ -45,28 +50,37 @@ export async function POST(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
-    const { amount, currency, method, bankAccountId, bankAccountRef, bankName, accountHolder, paypalEmail } = body;
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.payout_request, ip);
+    if (limited) return NextResponse.json({ error: 'Too many payout requests. Please wait before trying again.' }, { status: 429 });
 
-    if (!amount || amount <= 0) return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 });
-    if (!method) return NextResponse.json({ error: 'Payout method required' }, { status: 400 });
+    const raw = await req.json();
+    const parsed = schemas.payout.request.safeParse(raw);
+    if (!parsed.success) return validationError(parsed.error);
 
-    const validMethods = ['payfast', 'bank_transfer', 'paypal'];
-    if (!validMethods.includes(method)) {
-      return NextResponse.json({ error: `Invalid method. Supported: ${validMethods.join(', ')}` }, { status: 400 });
-    }
+    const { amount, currency, method, bankAccountId, paypalEmail } = parsed.data;
 
     const request = await requestPayout({
       artistId: user.artist.id,
-      amount: parseFloat(amount),
-      currency: currency || 'ZAR',
+      amount,
+      currency,
       method,
       bankAccountId,
-      bankAccountRef,
-      bankName,
-      accountHolder,
       paypalEmail,
     });
+
+    // Phase 9: notify artist payout request received
+    try {
+      await sendPayoutRequested({
+        to: user.email,
+        artistName: user.artist.name || user.displayName || 'Artist',
+        amount: Number(amount),
+        currency: currency || 'ZAR',
+        payoutMethod: method === 'bank' ? 'Bank Transfer' : method === 'paypal' ? 'PayPal' : 'PayFast',
+        referenceNumber: request.id,
+        payoutsUrl: `${APP_URL()}/dashboard/payouts`,
+      });
+    } catch (e) { console.error('[payouts/request] email failed:', e); }
 
     return NextResponse.json({ request }, { status: 201 });
   } catch (err: any) {

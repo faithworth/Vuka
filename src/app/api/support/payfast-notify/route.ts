@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   try {
     const txn = await prisma.supportTxn.update({
       where: { id: txnId },
-      data: { status: 'confirmed', stripePaymentId: pfPaymentId },
+      data: { status: 'confirmed', payfastPaymentId: pfPaymentId },
       include: {
         artist: {
           include: {

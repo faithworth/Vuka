@@ -1,6 +1,7 @@
 // ============================================================
-// PHASE 2 — src/app/api/distribution/releases/[id]/submit/route.ts
+// PHASE 9 — src/app/api/distribution/releases/[id]/submit/route.ts
 // Submit release for metadata review → delivery pipeline
+// Now sends sendReleaseSubmitted email on success
 // ============================================================
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +14,10 @@ import {
   initiateDeliveryPipeline,
   appendStatusHistory,
 } from '@/lib/distribution';
+import { sendReleaseSubmitted } from '@/lib/emails';
 
 type Params = { params: { id: string } };
 
-// POST /api/distribution/releases/[id]/submit
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const user = await requireArtist();
@@ -35,7 +36,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
       );
     }
 
-    // Validate metadata
     const validation = validateReleaseMetadata({
       title: release.title,
       artistName: release.artistName,
@@ -57,16 +57,11 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
     if (!validation.valid) {
       return NextResponse.json(
-        {
-          error: 'Release has validation errors',
-          errors: validation.errors,
-          warnings: validation.warnings,
-        },
+        { error: 'Release has validation errors', errors: validation.errors, warnings: validation.warnings },
         { status: 422 }
       );
     }
 
-    // Advance to metadata_review
     const history = appendStatusHistory(
       release.statusHistory as any[],
       'metadata_review',
@@ -77,6 +72,21 @@ export async function POST(_req: NextRequest, { params }: Params) {
       where: { id: params.id },
       data: { status: 'metadata_review', statusHistory: history },
     });
+
+    // Phase 9: send submission email
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+      await sendReleaseSubmitted({
+        to: user.email,
+        artistName: user.displayName || release.artistName,
+        releaseTitle: release.title,
+        releaseType: release.releaseType.toUpperCase(),
+        trackCount: release.tracks.length,
+        releaseUrl: `${appUrl}/dashboard/releases/${params.id}`,
+      });
+    } catch (emailErr) {
+      console.error('[distribution/submit] Email send failed (non-fatal):', emailErr);
+    }
 
     return NextResponse.json({
       ok: true,
