@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_FEE_RATE = 0.08; // 8% — must match Stripe webhook + transaction.ts
+const PLATFORM_FEE_RATE = 0.02; // 2% — must match Stripe webhook + transaction.ts
 
 export async function POST(req: NextRequest) {
   const clientIp =
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
         artistName    = beat.artist.name;
         artworkUrl    = beat.artworkUrl || '';
         artistId      = beat.artist.id;
-        paymentMethod = beat.artist.payfastMerchant ? 'payfast' : 'stripe';
+        paymentMethod = 'payfast';
 
         // Generate license PDF
         try {
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
         artistName    = release.artist.name;
         artworkUrl    = release.artworkUrl || '';
         artistId      = release.artist.id;
-        paymentMethod = release.artist.payfastMerchant ? 'payfast' : 'stripe';
+        paymentMethod = 'payfast';
         await prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } });
       }
     }
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
         artistName    = video.artist.name;
         artworkUrl    = video.thumbnailUrl || '';
         artistId      = video.artist.id;
-        paymentMethod = video.artist.payfastMerchant ? 'payfast' : 'stripe';
+        paymentMethod = 'payfast';
         await prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } });
       }
     }
@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
         artistName    = sample.artist.name;
         artworkUrl    = sample.artworkUrl || '';
         artistId      = sample.artist.id;
-        paymentMethod = sample.artist.payfastMerchant ? 'payfast' : 'stripe';
+        paymentMethod = 'payfast';
         await prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } });
       }
     }

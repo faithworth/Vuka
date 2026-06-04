@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     select: {
       id: true, slug: true, name: true, bio: true, city: true, country: true,
       photoUrl: true, coverUrl: true, genreTags: true, socialLinks: true,
-      currency: true, totalPlays: true, payfastMerchant: true, stripeAccountId: true,
+      currency: true, totalPlays: true, payfastMerchant: true,
       goals: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
       beats: {
         where: { isActive: true },

@@ -1,0 +1,143 @@
+/**
+ * GET  /api/admin/users-manage?q=search&role=all|artist|fan|admin&page=1
+ * POST /api/admin/users-manage { userId, action, value?, reason? }
+ * Actions: suspend | unsuspend | set_role | verify | unverify | delete
+ */
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { auditLog } from '@/lib/audit';
+import { sendAccountSuspended } from '@/lib/emails';
+
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+
+export async function GET(req: NextRequest) {
+  const user = await requireAdmin();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const q     = searchParams.get('q')    || '';
+  const role  = searchParams.get('role') || 'all';
+  const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
+  const limit = 50;
+
+  try {
+    const where: any = {};
+    if (q) {
+      where.OR = [
+        { name:  { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    if (role !== 'all') where.role = role;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        include: {
+          artist: {
+            select: {
+              id: true, slug: true, isVerified: true,
+              payfastMerchant: true, totalPlays: true,
+            },
+          },
+          _count: { select: { purchases: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip:  (page - 1) * limit,
+        take:  limit,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error('[admin/users-manage] GET error:', err);
+    return NextResponse.json({ error: 'Database error' }, { status: 503 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { userId, action, value, reason } = await req.json();
+    if (!userId || !action)
+      return NextResponse.json({ error: 'userId and action required' }, { status: 400 });
+
+    const target = await prisma.user.findUnique({ where: { id: userId } });
+    if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    // Prevent modifying a higher-privilege admin
+    const elevated = ['admin', 'owner', 'super_admin'];
+    if (elevated.includes(target.role) && !['owner', 'super_admin'].includes(admin.role))
+      return NextResponse.json({ error: 'Cannot modify another admin' }, { status: 403 });
+
+    switch (action) {
+      case 'suspend': {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            isSuspended:     true,
+            suspendedAt:     new Date(),
+            suspendedReason: reason || 'Suspended by admin',
+          },
+        });
+        await auditLog.adminAction('auth.ban', 'User', userId, admin.id, reason || '');
+        // Phase 9: notify user of suspension
+        try {
+          await sendAccountSuspended({
+            to: target.email,
+            displayName: target.name || target.email,
+            reason: reason || 'Your account has been suspended for violating Vuka\'s Terms of Service.',
+            appealUrl: `${APP_URL()}/appeal?userId=${userId}`,
+          });
+        } catch (e) { console.error('[admin/users] suspend email failed:', e); }
+        return NextResponse.json({ ok: true });
+      }
+      case 'unsuspend': {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { isSuspended: false, suspendedReason: '' },
+        });
+        await auditLog.adminAction('auth.unban', 'User', userId, admin.id, '');
+        return NextResponse.json({ ok: true });
+      }
+      case 'set_role': {
+        const allowed = ['fan', 'artist', 'producer', 'industry', 'moderator', 'admin'];
+        if (!allowed.includes(value))
+          return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+        const prev = target.role;
+        await prisma.user.update({ where: { id: userId }, data: { role: value } });
+        await auditLog.adminAction('auth.role_change', 'User', userId, admin.id, `${prev}→${value}`);
+        return NextResponse.json({ ok: true });
+      }
+      case 'verify': {
+        if (target.artist) {
+          await prisma.artist.update({ where: { userId }, data: { isVerified: true } });
+          await auditLog.adminAction('moderation.artist_verified', 'Artist', target.artist.id, admin.id, '');
+        }
+        return NextResponse.json({ ok: true });
+      }
+      case 'unverify': {
+        if (target.artist) {
+          await prisma.artist.update({ where: { userId }, data: { isVerified: false } });
+          await auditLog.adminAction('moderation.artist_verified', 'Artist', target.artist.id, admin.id, 'unverified');
+        }
+        return NextResponse.json({ ok: true });
+      }
+      case 'delete': {
+        await prisma.user.delete({ where: { id: userId } });
+        await auditLog.adminAction('admin.user_deleted', 'User', userId, admin.id, reason || '');
+        return NextResponse.json({ ok: true });
+      }
+      default:
+        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+    }
+  } catch (err: any) {
+    console.error('[admin/users-manage] POST error:', err?.message);
+    return NextResponse.json({ error: 'Action failed' }, { status: 503 });
+  }
+}

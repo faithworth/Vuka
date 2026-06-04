@@ -21,7 +21,7 @@ export async function GET() {
   try {
     const artist = await prisma.artist.findUnique({
       where: { id: user.artist.id },
-      select: { id: true, stripeAccountId: true, payfastMerchant: true, currency: true },
+      select: { id: true, payfastMerchant: true, currency: true },
     });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
@@ -58,7 +58,7 @@ export async function GET() {
       bankAccounts,
       summary: { totalEarned, totalPaid, totalPending },
       connected: {
-        stripe:  !!artist.stripeAccountId,
+        stripe:  false, // Stripe removed in Phase 12
         payfast: !!artist.payfastMerchant,
       },
     });

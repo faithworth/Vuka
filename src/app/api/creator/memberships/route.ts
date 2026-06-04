@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { tierId, artistId, billingInterval, payfastToken, stripeSubId } = await req.json();
+    const { tierId, artistId, billingInterval, payfastToken } = await req.json();
     if (!tierId) return NextResponse.json({ error: 'tierId required' }, { status: 400 });
     if (!artistId) return NextResponse.json({ error: 'artistId required' }, { status: 400 });
 
@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
       artistId,
       billingInterval: billingInterval || 'monthly',
       payfastToken,
-      stripeSubId,
     });
 
     return NextResponse.json({ membership }, { status: 201 });

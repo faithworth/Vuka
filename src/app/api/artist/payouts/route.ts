@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
     if (artist.payfastMerchant) {
       methods.push({ type: 'payfast', name: 'PayFast (Direct to Bank)', configured: true });
     }
-    if (artist.stripeAccountId) {
-      methods.push({ type: 'stripe', name: 'Stripe Connect', configured: true });
+    // Stripe Connect removed (Phase 12) — PayFast only
+    if (false) {
     }
     if (methods.length === 0) {
       methods.push({ type: 'payfast', name: 'PayFast (Direct to Bank)', configured: false });
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       balances: { pending, processed, failed, total: pending + processed },
       methods,
       artistHasPayfastMerchant: !!artist.payfastMerchant,
-      artistHasStripeConnect: !!artist.stripeAccountId,
+      artistHasStripeConnect: false, // Stripe removed
     });
   } catch (err) {
     console.error('Payouts fetch error:', err);
