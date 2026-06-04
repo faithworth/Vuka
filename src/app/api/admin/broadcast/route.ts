@@ -10,10 +10,8 @@
  *   ctaLabel?: string
  *   ctaUrl?: string
  *   filter?: {
- *     roles?: string[]          // e.g. ['ARTIST', 'PRODUCER']
- *     planSlug?: string         // e.g. 'pro'
- *     country?: string          // e.g. 'ZA'
- *     isVerified?: boolean
+ *     roles?: string[]   // e.g. ['artist', 'producer', 'fan']
+ *     country?: string   // e.g. 'ZA'
  *   }
  * }
  */
@@ -35,25 +33,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'subject, title, and body are required' }, { status: 400 });
   }
 
-  // Build user query based on filter
+  // Build user query — only valid User model fields
   const where: any = { isSuspended: false };
   if (filter?.roles?.length) where.role = { in: filter.roles };
   if (filter?.country) where.country = filter.country;
-  if (filter?.isVerified !== undefined) where.isVerified = filter.isVerified;
-
-  // If plan filter, join through subscriptions
-  if (filter?.planSlug) {
-    where.subscriptions = {
-      some: {
-        status: 'ACTIVE',
-        plan: { slug: filter.planSlug },
-      },
-    };
-  }
 
   const users = await prisma.user.findMany({
     where,
-    select: { id: true, email: true, displayName: true },
+    select: { id: true, email: true, name: true },
   });
 
   if (users.length === 0) {
@@ -87,7 +74,7 @@ export async function POST(req: NextRequest) {
         try {
           await sendBroadcast({
             to: user.email,
-            displayName: user.displayName,
+            displayName: user.name,
             subject,
             title,
             body: msgBody,
@@ -112,7 +99,7 @@ export async function POST(req: NextRequest) {
     totalUsers: users.length,
     sent,
     failed,
-    errors: errors.slice(0, 20), // cap error list
+    errors: errors.slice(0, 20),
   });
 }
 

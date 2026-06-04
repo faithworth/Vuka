@@ -25,10 +25,21 @@ const BASELINE_MIGRATIONS = [
   'phase5_distribution_engine',
   'phase5_exclusive_content',
   'phase5_status_history',
+  // These were run manually outside the migrate route — mark as baseline so they're not re-run
+  'phase5_platform_settings',
+  'phase8_security_hardening',
+  'phase9_email_system',
 ];
 
 // New migrations to apply in order — append new ones to the BOTTOM only
 const NEW_MIGRATIONS = [
+  // 2025-05-26: Production hardening — Artist fields (payfastMerchant, currency, isVerified,
+  // coverUrl, totalPlays, isPublic), ArtistPost feed fields, CreatorStorefront fields,
+  // Track.isrc, Release.upc. All IF NOT EXISTS — safe to run on any existing DB.
+  '20250526_production_hardening',
+  // 2025-05-27: Platform settings table (admin-configurable) + email_logs + broadcast_logs.
+  // Required by /api/admin/settings and /api/admin/broadcast routes.
+  '20250527_platform_settings_and_email',
   '20250528_fix_schema_field_mismatches',
   '20250528_add_bank_account_payment_fields',
   '20250528_fix_pageview_analytics_fields',
@@ -40,10 +51,10 @@ const NEW_MIGRATIONS = [
   // 2025-05-31: User suspension fields (isSuspended, suspendedAt, suspendedReason)
   // Required by src/app/api/auth/me/route.ts and admin suspension system
   '20250531_user_suspension_and_roles',
-  // 2026-06-04: Phase 12 cleanup — remove Stripe columns, add indexes
+  // 2026-06-04: Phase 12 cleanup — remove Stripe columns (IF EXISTS = no-op if never existed),
+  // add payout/purchase indexes, add ArtistBankAccount.maskedNumber column
   '20260604_phase12_cleanup',
   // 2026-06-04: Role repair — fix users with Artist/IndustryUser records but wrong role in DB
-  // This is a DATA fix for existing production databases where registration saved wrong roles
   '20260604_role_repair',
 ];
 

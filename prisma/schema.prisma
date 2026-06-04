@@ -57,7 +57,6 @@ model Artist {
   photoUrl         String               @default("")
   coverUrl         String               @default("")
   socialLinks      Json                 @default("{}")
-  stripeAccountId  String?
   payfastMerchant  String?
   currency         String               @default("ZAR")
   isPublic         Boolean              @default(true)
