@@ -1,8 +1,11 @@
 'use client';
 // ============================================================
-// VUKA — Admin Login (Phase 2)
+// VUKA — Admin Login
 // /admin/login — passwordless magic link for SUPERADMIN only.
-// Checks device trust first; if trusted, auto-redirects.
+//
+// Fix: If a non-admin session is active (fan/artist logged in),
+// sign them out silently so the magic-link flow can proceed.
+// This was causing the 1-second flash then redirect to /auth/login.
 // ============================================================
 
 import { useState, useEffect } from 'react';
@@ -19,18 +22,29 @@ export default function AdminLoginPage() {
   const [sending, setSending]   = useState(false);
   const [error, setError]       = useState('');
 
-  // If already logged in as admin, redirect immediately
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(me => {
-        if (me?.isAdmin) {
-          router.replace('/admin');
-        } else {
-          setChecking(false);
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const me = await res.json();
+          if (me?.isAdmin) {
+            // Already logged in as admin — go straight to dashboard
+            router.replace('/admin');
+            return;
+          }
+          // Logged in as someone else (fan/artist).
+          // Sign them out silently so this page stays and they can
+          // enter the admin email for the magic link.
+          const supabase = createClient();
+          await supabase.auth.signOut();
         }
-      })
-      .catch(() => setChecking(false));
+      } catch (_) {
+        // No session or network error — just show the form
+      }
+      setChecking(false);
+    }
+    checkSession();
   }, [router]);
 
   async function sendMagicLink(e: React.FormEvent) {
@@ -68,7 +82,6 @@ export default function AdminLoginPage() {
       </Link>
 
       <div className="w-full max-w-sm">
-        {/* Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(160,232,124,0.1)', border: '1px solid rgba(160,232,124,0.3)' }}>
@@ -104,7 +117,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@vuka.app"
+                  placeholder="your-admin@email.com"
                   required
                   className="w-full pl-9 pr-4 py-3 rounded-xl text-sm outline-none"
                   style={{
