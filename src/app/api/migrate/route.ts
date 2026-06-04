@@ -40,6 +40,11 @@ const NEW_MIGRATIONS = [
   // 2025-05-31: User suspension fields (isSuspended, suspendedAt, suspendedReason)
   // Required by src/app/api/auth/me/route.ts and admin suspension system
   '20250531_user_suspension_and_roles',
+  // 2026-06-04: Phase 12 cleanup — remove Stripe columns, add indexes
+  '20260604_phase12_cleanup',
+  // 2026-06-04: Role repair — fix users with Artist/IndustryUser records but wrong role in DB
+  // This is a DATA fix for existing production databases where registration saved wrong roles
+  '20260604_role_repair',
 ];
 
 export async function GET(req: NextRequest) {

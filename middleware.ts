@@ -63,6 +63,8 @@ const PUBLIC_PATHS = [
   '/api/play',
   // Next.js / static assets
   '/admin/login',
+  '/admin/db-repair',        // Protected by CRON_SECRET internally — accessible before admin auth is fixed
+  '/api/admin/db-repair',    // Same — CRON_SECRET gated, not Supabase session gated
   '/favicon',
   '/_next',
   '/static',
@@ -212,7 +214,8 @@ export async function middleware(req: NextRequest) {
           { status: 401, headers: { 'x-trace-id': traceId } }
         );
       }
-      const loginUrl = new URL('/auth/login', req.url);
+      // Send to admin login (magic-link), not the artist login page
+      const loginUrl = new URL('/admin/login', req.url);
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -225,6 +228,7 @@ export async function middleware(req: NextRequest) {
           { status: 403, headers: { 'x-trace-id': traceId } }
         );
       }
+      // Redirect non-admins to home, not to a broken auth loop
       return NextResponse.redirect(new URL('/', req.url));
     }
   }

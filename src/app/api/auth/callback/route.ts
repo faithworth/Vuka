@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     if (!dbUser) {
       // Brand-new user — assign role from registration param
-      const assignedRole = isAdminEmail ? 'admin' : roleParam;
+      const assignedRole = isAdminEmail ? 'owner' : roleParam;
       dbUser = await prisma.user.create({
         data: { name, email: email!, role: assignedRole },
         include: { artist: true, industryUser: true },
@@ -85,13 +85,13 @@ export async function GET(req: NextRequest) {
       }
     } else {
       // Existing user — self-heal admin role if ADMIN_EMAIL matches and DB role is wrong
-      if (isAdminEmail && dbUser.role !== 'admin' && dbUser.role !== 'owner' && dbUser.role !== 'super_admin') {
+      if (isAdminEmail && !['admin', 'owner', 'super_admin'].includes(dbUser.role)) {
         dbUser = await prisma.user.update({
           where: { email: email! },
-          data: { role: 'admin' },
+          data: { role: 'owner' },
           include: { artist: true, industryUser: true },
         });
-        console.log(`[auth/callback] Auto-promoted ${email} to admin (matched ADMIN_EMAIL)`);
+        console.log(`[auth/callback] Auto-promoted ${email} to owner (matched ADMIN_EMAIL)`);
       }
     }
 

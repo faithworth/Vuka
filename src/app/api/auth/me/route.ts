@@ -21,6 +21,8 @@ export async function GET() {
   try {
     const authUser = await getServerUser();
     if (!authUser) {
+      // getServerUser returns null either when no session or when user not in DB.
+      // Check if there's a Supabase session even though no DB user — can happen for admin.
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -22,6 +22,7 @@ const ADMIN_NAV = [
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },
   { href: '/admin/settings',     label: 'Settings',     icon: Settings },
   { href: '/admin/security',     label: 'Security',     icon: Shield },
+  { href: '/admin/db-repair',    label: 'DB Repair',    icon: Flag },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
