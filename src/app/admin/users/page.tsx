@@ -1,0 +1,238 @@
+'use client';
+// ============================================================
+// VUKA — Admin Users Management (Phase 5)
+// /admin/users — full user management: view, edit role,
+// verify, suspend, adjust balance, impersonate, delete.
+// ============================================================
+
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Search, Filter, Loader2, RefreshCw, Shield, ShieldOff,
+  UserCheck, UserX, ChevronDown, ExternalLink, Edit2,
+  Trash2, AlertTriangle, CheckCircle, XCircle, Eye,
+  Mail, DollarSign,
+} from 'lucide-react';
+
+const ROLES = ['ALL', 'ARTIST', 'PRODUCER', 'LABEL', 'ADMIN'];
+const STATUS = ['ALL', 'ACTIVE', 'SUSPENDED', 'UNVERIFIED'];
+
+function Badge({ label, color }: { label: string; color: string }) {
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background: `${color}22`, color }}>
+      {label}
+    </span>
+  );
+}
+
+export default function AdminUsersPage() {
+  const [users, setUsers]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [roleFilter, setRole]     = useState('ALL');
+  const [statusFilter, setStatus] = useState('ALL');
+  const [selected, setSelected]   = useState<any | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [balanceAmt, setBalanceAmt] = useState('');
+  const [suspendReason, setSuspendReason] = useState('');
+  const [page, setPage] = useState(1);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        search, role: roleFilter, status: statusFilter, page: String(page),
+      });
+      const res = await fetch(`/api/admin/users?${params}`);
+      if (res.ok) setUsers((await res.json()).users || []);
+    } finally { setLoading(false); }
+  }, [search, roleFilter, statusFilter, page]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function doAction(action: string, userId: string, extra?: Record<string, any>) {
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/users-manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userId, ...extra }),
+      });
+      if (res.ok) { await load(); setSelected(null); }
+      else { const d = await res.json(); alert(d.error || 'Action failed'); }
+    } finally { setActionLoading(false); }
+  }
+
+  const filtered = users.filter(u => {
+    if (search && !u.name?.toLowerCase().includes(search.toLowerCase()) &&
+      !u.email?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (roleFilter !== 'ALL' && u.role !== roleFilter) return false;
+    if (statusFilter === 'SUSPENDED' && !u.isSuspended) return false;
+    if (statusFilter === 'ACTIVE' && u.suspended) return false;
+    if (statusFilter === 'UNVERIFIED' && u.isVerified) return false;
+    return true;
+  });
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black font-display">Users</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{users.length} total artists & producers</p>
+        </div>
+        <button onClick={load} disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="relative flex-1 min-w-48">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+        </div>
+        <select value={roleFilter} onChange={e => setRole(e.target.value)}
+          className="px-3 py-2.5 rounded-xl text-sm outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+          {ROLES.map(r => <option key={r}>{r}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e => setStatus(e.target.value)}
+          className="px-3 py-2.5 rounded-xl text-sm outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+          {STATUS.map(s => <option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                {['Artist', 'Email', 'Role', 'Status', 'Verified', 'Releases', 'Joined', 'Actions'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center">
+                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                </td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>
+              ) : filtered.map(u => (
+                <tr key={u.id} className="border-t hover:bg-white/[0.02] transition-colors"
+                  style={{ borderColor: 'var(--border)' }}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {u.avatarUrl
+                        ? <img src={u.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        : <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ background: 'var(--surface)', color: 'var(--green)' }}>
+                            {u.name?.[0]?.toUpperCase() || '?'}
+                          </div>
+                      }
+                      <span className="font-medium">{u.name || 'Unnamed'}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{u.email}</td>
+                  <td className="px-4 py-3">
+                    <Badge label={u.role || 'ARTIST'}
+                      color={u.role === 'ADMIN' ? '#e8c87c' : u.role === 'LABEL' ? '#38b6e8' : 'var(--green)'} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge label={u.isSuspended ? 'SUSPENDED' : 'ACTIVE'}
+                      color={u.suspended ? '#ff4d4d' : 'var(--green)'} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.isVerified
+                      ? <CheckCircle size={14} style={{ color: 'var(--green)' }} />
+                      : <XCircle size={14} style={{ color: 'var(--text-muted)' }} />}
+                  </td>
+                  <td className="px-4 py-3">{u._count?.releases ?? u.totalReleases ?? 0}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
+                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setSelected(u)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={{ background: 'rgba(160,232,124,0.1)', color: 'var(--green)' }}>
+                      Manage
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* User detail modal */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="w-full max-w-md rounded-2xl p-6 space-y-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold text-lg">{selected.name}</div>
+                <div className="text-sm" style={{ color: 'var(--text-muted)' }}>{selected.email}</div>
+              </div>
+              <button onClick={() => setSelected(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => doAction(selected.isVerified ? 'unverify' : 'verify', selected.id)}
+                disabled={actionLoading}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
+                style={{ background: 'rgba(160,232,124,0.1)', color: 'var(--green)' }}>
+                <UserCheck size={14} /> {selected.isVerified ? 'Unverify' : 'Verify'}
+              </button>
+              <button onClick={() => {
+                const reason = prompt('Suspension reason:') || '';
+                doAction(selected.isSuspended ? 'unsuspend' : 'suspend', selected.id, { reason });
+              }}
+                disabled={actionLoading}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
+                style={{ background: selected.isSuspended ? 'rgba(160,232,124,0.1)' : 'rgba(255,77,77,0.1)',
+                  color: selected.isSuspended ? 'var(--green)' : '#ff4d4d' }}>
+                {selected.isSuspended ? <ShieldOff size={14} /> : <Shield size={14} />}
+                {selected.isSuspended ? 'Unsuspend' : 'Suspend'}
+              </button>
+              <button onClick={() => {
+                const amt = prompt('Balance adjustment (e.g. +500 or -100):') || '';
+                if (amt) doAction('adjust_balance', selected.id, { amount: parseFloat(amt) });
+              }}
+                disabled={actionLoading}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
+                style={{ background: 'rgba(232,200,124,0.1)', color: 'var(--gold)' }}>
+                <DollarSign size={14} /> Adjust Balance
+              </button>
+              <a href={`/artist/${selected.artist?.slug || selected.id || selected.id}`} target="_blank" rel="noopener"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <Eye size={14} /> View Profile
+              </a>
+            </div>
+
+            <button onClick={() => {
+              if (confirm(`Delete ${selected.name}? This is irreversible.`))
+                doAction('delete', selected.id);
+            }}
+              disabled={actionLoading}
+              className="w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+              style={{ background: 'rgba(255,77,77,0.08)', color: '#ff4d4d', border: '1px solid rgba(255,77,77,0.2)' }}>
+              <Trash2 size={14} /> Delete Account
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -45,7 +45,7 @@ export default function SupportPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error'); return; }
-      if (data.method === 'stripe' && data.url) {
+      if (false && data.url) { // Stripe removed — PayFast only
         window.location.href = data.url;
       } else if (data.method === 'payfast' && data.formData) {
         setPayfastForm({ formData: data.formData, actionUrl: data.actionUrl });

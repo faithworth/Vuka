@@ -2,28 +2,37 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Vuka — Buy Beats & Music from African Artists',
-  description: "Vuka is Africa's independent music platform. Buy beats and music directly from South African artists and producers. Instant downloads. PayFast & Stripe payments.",
-  keywords: ['vuka', 'vuka distro', 'buy beats', 'south african beats', 'african music platform', 'buy music south africa', 'beat store south africa', 'independent music africa', 'payfast beats', 'trap beats south africa'],
-  metadataBase: new URL('https://vuka-distro.vercel.app'),
-  alternates: { canonical: 'https://vuka-distro.vercel.app' },
+  title: 'Vuka — Release. Distribute. Earn. Own.',
+  description:
+    "Vuka is Africa's independent music distribution platform. Upload your music, distribute to Spotify, Apple Music, Boomplay, Audiomack and 30+ platforms. Keep up to 100% of your royalties. Built for South African and African independent artists.",
+  keywords: [
+    'vuka', 'vuka distro', 'music distribution south africa',
+    'south african music platform', 'african music distribution',
+    'distribute music africa', 'independent music artist sa',
+    'amapiano distribution', 'gqom beats', 'afrobeats distribution',
+    'payfast music', 'boomplay distribution', 'audiomack distribution',
+  ],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app'),
+  alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app' },
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka — Buy Beats & Music from African Artists',
-    description: "Africa's independent music platform. Buy beats & releases directly from artists. PayFast & Stripe. Instant downloads.",
-    url: 'https://vuka-distro.vercel.app',
+    title: 'Vuka — Release. Distribute. Earn. Own.',
+    description:
+      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. PayFast payments.",
+    url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app',
     siteName: 'Vuka',
     type: 'website',
     locale: 'en_ZA',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vuka — Buy Beats & Music from African Artists',
-    description: "Africa's independent music platform. Buy beats & releases directly from artists.",
+    title: 'Vuka — Release. Distribute. Earn. Own.',
+    description:
+      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties.",
   },
   icons: { icon: '/favicon.svg' },
 };
@@ -33,9 +42,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+        {/* Vuka Design System fonts — Syne (headings), DM Sans (body), JetBrains Mono (numbers/code) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body suppressHydrationWarning>
         {children}

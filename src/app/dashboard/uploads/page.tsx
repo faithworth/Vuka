@@ -308,7 +308,7 @@ export default function UploadPage() {
       <p className="mb-2 text-lg" style={{ color: 'var(--text-muted)' }}>
         Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka.
       </p>
-      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 92% of every sale is yours.</p>
+      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 98% of every sale is yours.</p>
       <div className="flex gap-4 flex-wrap justify-center">
         <button onClick={resetAll} className="px-6 py-3 rounded-xl font-semibold"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
@@ -329,7 +329,7 @@ export default function UploadPage() {
     <div className="p-6 md:p-10 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Upload to Your Store</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 92% of every sale — direct to your bank.</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 98% of every sale — direct to your bank.</p>
       </div>
 
       {/* Step progress */}
@@ -425,7 +425,7 @@ export default function UploadPage() {
       {step === 4 && uploadType === 'beat' && (
         <div>
           <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Set Your Prices</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 92% of every sale. Prices in ZAR (South African Rand).</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 98% of every sale. Prices in ZAR (South African Rand).</p>
           <div className="space-y-3 mb-8">
             <PriceField label="Basic License" sublabel="Non-exclusive · up to 5,000 streams · 2 music videos"
               value={beatPrices.basicPrice} onChange={v => setBeatPrices(p => ({ ...p, basicPrice: v }))} />
@@ -469,7 +469,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 92% of every sale · 8% platform fee · Direct to your bank
+            You earn 98% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -611,7 +611,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 92% of every sale · 8% platform fee · Direct to your bank
+            You earn 98% of every sale · Zero platform fee · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}

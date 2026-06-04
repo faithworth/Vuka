@@ -1,43 +1,214 @@
 'use client';
-import { useEffect, useState } from 'react';
+// ============================================================
+// VUKA — Full Admin Dashboard (Phase 5)
+// Tabs: Overview · Users · Releases · Finance · Payouts · Settings · Audit
+// ============================================================
+
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Users, Music, Disc, ShoppingBag, TrendingUp, Shield, Flag,
-  CheckCircle, XCircle, Clock, AlertTriangle, Music2, LogOut, Loader2
+  Users, Music, TrendingUp, Shield, Flag, LogOut, Loader2,
+  Music2, CheckCircle, XCircle, Clock, AlertTriangle,
+  DollarSign, Settings, FileText, RefreshCw, ChevronDown,
+  Filter, Search,
 } from 'lucide-react';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '';
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '';
 
-type Tab = 'overview' | 'users' | 'content' | 'dmca';
+type Tab = 'overview' | 'users' | 'releases' | 'finance' | 'payouts' | 'settings' | 'audit' | 'analytics';
 
+/* ─── small helpers ─────────────────────────────────────────── */
+function Badge({ label, color }: { label: string; color: string }) {
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background: `${color}22`, color }}>
+      {label}
+    </span>
+  );
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  live: '#a0e87c', approved: '#a0e87c', paid: '#a0e87c',
+  pending: '#e8c87c', metadata_review: '#e8a87c', artwork_review: '#e8c87c',
+  processing: '#38b6e8',
+  failed: '#ff4d4d', rejected: '#ff4d4d',
+  draft: '#a0a0a0',
+};
+
+/* ─── main component ────────────────────────────────────────── */
 export default function AdminPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('overview');
-  const [stats, setStats] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
-  const [dmca, setDmca] = useState<any[]>([]);
+  const [loading, setLoading]  = useState(true);
+  const [tab, setTab]          = useState<Tab>('overview');
 
+  // overview
+  const [stats, setStats]      = useState<any>(null);
+  const [dmca, setDmca]        = useState<any[]>([]);
+
+  // users
+  const [users, setUsers]      = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userPage, setUserPage] = useState(1);
+  const [userTotal, setUserTotal] = useState(0);
+
+  // releases
+  const [releases, setReleases]  = useState<any[]>([]);
+  const [relStatus, setRelStatus] = useState('metadata_review');
+  const [relPage, setRelPage]     = useState(1);
+  const [relTotal, setRelTotal]   = useState(0);
+  const [relCounts, setRelCounts] = useState<any[]>([]);
+
+  // finance
+  const [finance, setFinance]  = useState<any>(null);
+
+  // payouts
+  const [payouts, setPayouts]       = useState<any[]>([]);
+  const [payStatus, setPayStatus]   = useState('pending');
+  const [payPage, setPayPage]       = useState(1);
+  const [payTotal, setPayTotal]     = useState(0);
+  const [paySummary, setPaySummary] = useState<any>(null);
+
+  // settings
+  const [settings, setSettings]     = useState<Record<string, any>>({});
+  const [settingKey, setSettingKey]  = useState('');
+  const [settingVal, setSettingVal]  = useState('');
+
+  // audit
+  const [logs, setLogs]       = useState<any[]>([]);
+  const [logCat, setLogCat]   = useState('all');
+  const [logQ, setLogQ]       = useState('');
+  const [logPage, setLogPage] = useState(1);
+  const [logTotal, setLogTotal] = useState(0);
+
+  const [actionNote, setActionNote]  = useState('');
+  const [actionRef, setActionRef]    = useState('');
+  const [working, setWorking]        = useState(false);
+
+  /* ── auth gate ─────────────────────────────────────────────── */
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(me => {
-      if (!me.email || me.email !== ADMIN_EMAIL) {
-        router.replace('/');
-        return;
-      }
-      Promise.all([
-        fetch('/api/admin/stats').then(r => r.ok ? r.json() : {}),
-        fetch('/api/admin/users').then(r => r.ok ? r.json() : { users: [] }),
-        fetch('/api/admin/dmca').then(r => r.ok ? r.json() : { reports: [] }),
-      ]).then(([s, u, d]) => {
-        setStats(s);
-        setUsers(u.users || []);
-        setDmca(d.reports || []);
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((me) => {
+        if (!me.email || me.email !== ADMIN_EMAIL) { router.replace('/'); return; }
+        loadOverview();
         setLoading(false);
-      });
-    }).catch(() => router.replace('/'));
+      })
+      .catch(() => router.replace('/'));
   }, [router]);
 
+  /* ── data loaders ──────────────────────────────────────────── */
+  function loadOverview() {
+    Promise.all([
+      fetch('/api/admin/stats').then((r) => r.ok ? r.json() : {}),
+      fetch('/api/admin/dmca').then((r) => r.ok ? r.json() : { reports: [] }),
+    ]).then(([s, d]) => { setStats(s); setDmca(d.reports || []); });
+  }
+
+  const loadUsers = useCallback(() => {
+    fetch(`/api/admin/users-manage?q=${encodeURIComponent(userSearch)}&page=${userPage}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) { setUsers(d.users || []); setUserTotal(d.total || 0); } });
+  }, [userSearch, userPage]);
+
+  const loadReleases = useCallback(() => {
+    fetch(`/api/admin/releases?status=${relStatus}&page=${relPage}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d) {
+          setReleases(d.releases || []);
+          setRelTotal(d.total || 0);
+          setRelCounts(d.counts || []);
+        }
+      });
+  }, [relStatus, relPage]);
+
+  function loadFinance() {
+    fetch('/api/admin/finance').then((r) => r.ok ? r.json() : null).then((d) => { if (d) setFinance(d); });
+  }
+
+  const loadPayouts = useCallback(() => {
+    fetch(`/api/admin/payouts?status=${payStatus}&page=${payPage}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d) {
+          setPayouts(d.requests || []);
+          setPayTotal(d.total || 0);
+          setPaySummary(d.summary);
+        }
+      });
+  }, [payStatus, payPage]);
+
+  function loadSettings() {
+    fetch('/api/admin/settings').then((r) => r.ok ? r.json() : null).then((d) => { if (d) setSettings(d.settings || {}); });
+  }
+
+  const loadAudit = useCallback(() => {
+    fetch(`/api/admin/audit?category=${logCat}&q=${encodeURIComponent(logQ)}&page=${logPage}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) { setLogs(d.logs || []); setLogTotal(d.total || 0); } });
+  }, [logCat, logQ, logPage]);
+
+  useEffect(() => { if (tab === 'users')    loadUsers();    }, [tab, loadUsers]);
+  useEffect(() => { if (tab === 'releases') loadReleases(); }, [tab, loadReleases]);
+  useEffect(() => { if (tab === 'finance')  loadFinance();  }, [tab]);
+  useEffect(() => { if (tab === 'payouts')  loadPayouts();  }, [tab, loadPayouts]);
+  useEffect(() => { if (tab === 'settings') loadSettings(); }, [tab]);
+  useEffect(() => { if (tab === 'audit')    loadAudit();    }, [tab, loadAudit]);
+
+  /* ── admin actions ─────────────────────────────────────────── */
+  async function releaseAction(releaseId: string, action: string) {
+    setWorking(true);
+    const r = await fetch('/api/admin/releases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseId, action, notes: actionNote }),
+    });
+    setWorking(false);
+    if (r.ok) { setActionNote(''); loadReleases(); }
+    else alert('Action failed');
+  }
+
+  async function payoutAction(requestId: string, action: string) {
+    setWorking(true);
+    const r = await fetch('/api/admin/payouts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId, action, notes: actionNote, reference: actionRef }),
+    });
+    setWorking(false);
+    if (r.ok) { setActionNote(''); setActionRef(''); loadPayouts(); }
+    else alert('Action failed');
+  }
+
+  async function userAction(userId: string, action: string, value?: string) {
+    setWorking(true);
+    const r = await fetch('/api/admin/users-manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, action, value, reason: actionNote }),
+    });
+    setWorking(false);
+    if (r.ok) { setActionNote(''); loadUsers(); }
+    else alert('Action failed');
+  }
+
+  async function saveSetting() {
+    if (!settingKey) return;
+    let parsed: any = settingVal;
+    if (settingVal === 'true')  parsed = true;
+    else if (settingVal === 'false') parsed = false;
+    else if (!isNaN(Number(settingVal))) parsed = Number(settingVal);
+
+    const r = await fetch('/api/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: settingKey, value: parsed }),
+    });
+    if (r.ok) { loadSettings(); setSettingKey(''); setSettingVal(''); }
+  }
+
+  /* ── early exits ───────────────────────────────────────────── */
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
@@ -45,29 +216,36 @@ export default function AdminPage() {
   );
 
   const TABS: { id: Tab; label: string; icon: any }[] = [
-    { id: 'overview', label: 'Overview', icon: TrendingUp },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'content', label: 'Content', icon: Music },
-    { id: 'dmca', label: 'DMCA', icon: Flag },
+    { id: 'overview',  label: 'Overview',  icon: TrendingUp  },
+    { id: 'users',     label: 'Users',     icon: Users       },
+    { id: 'releases',  label: 'Releases',  icon: Music       },
+    { id: 'finance',   label: 'Finance',   icon: DollarSign  },
+    { id: 'payouts',   label: 'Payouts',   icon: DollarSign  },
+    { id: 'settings',  label: 'Settings',  icon: Settings    },
+    { id: 'audit',     label: 'Audit',     icon: Shield      },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp  },
   ];
+
+  const surface = { background: 'var(--surface)', border: '1px solid var(--border)' };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}>
             <Music2 size={13} className="text-white" />
           </div>
           <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
-          <span className="badge badge-gold">Admin</span>
+          <Badge label="Admin" color="#e8c87c" />
         </div>
         <Link href="/" className="btn btn-ghost text-sm">← Back to site</Link>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Tab nav */}
-        <div className="flex gap-1 mb-8 p-1 rounded-xl w-fit" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          {TABS.map(t => (
+        <div className="flex gap-1 mb-8 p-1 rounded-xl w-fit flex-wrap" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
@@ -80,89 +258,618 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Overview */}
+        {/* ── OVERVIEW ── */}
         {tab === 'overview' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Total Users', value: stats?.totalUsers ?? '—', icon: Users, color: 'var(--sky)' },
-                { label: 'Total Sales', value: stats?.totalSales ?? '—', icon: ShoppingBag, color: 'var(--green)' },
-                { label: 'Revenue', value: stats?.revenue ? `R${stats.revenue.toFixed(2)}` : '—', icon: TrendingUp, color: 'var(--gold)' },
-                { label: 'DMCA Reports', value: dmca.filter(d => d.status === 'pending').length, icon: Flag, color: '#ef4444' },
-              ].map(s => (
-                <div key={s.label} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                { label: 'Total Users',   value: stats?.totalUsers ?? '—',   icon: Users,       color: 'var(--sky)'  },
+                { label: 'Total Sales',   value: stats?.totalSales ?? '—',   icon: Music,       color: 'var(--green)'},
+                { label: 'Revenue',       value: stats?.revenue ? `R${stats.revenue.toFixed(2)}` : '—', icon: TrendingUp, color: '#e8c87c' },
+                { label: 'Open DMCA',     value: dmca.filter((d: any) => d.status === 'pending').length, icon: Flag, color: '#ff4d4d' },
+              ].map((s) => (
+                <div key={s.label} className="p-5 rounded-2xl" style={surface}>
                   <s.icon size={18} style={{ color: s.color }} className="mb-3" />
                   <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
                   <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
                 </div>
               ))}
             </div>
-            <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <h2 className="font-bold mb-4" style={{ color: 'var(--text)' }}>Quick Actions</h2>
-              <div className="flex gap-3 flex-wrap">
-                <button onClick={() => setTab('dmca')} className="btn btn-secondary text-sm">
-                  <Flag size={14} /> Review DMCA ({dmca.filter(d => d.status === 'pending').length} pending)
-                </button>
-                <button onClick={() => setTab('users')} className="btn btn-secondary text-sm">
-                  <Users size={14} /> Manage Users
-                </button>
+
+            {/* DMCA table */}
+            {dmca.length > 0 && (
+              <div className="rounded-2xl overflow-hidden" style={surface}>
+                <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>
+                    <Flag size={14} className="inline mr-2" style={{ color: '#ff4d4d' }} />
+                    DMCA Reports
+                  </h3>
+                </div>
+                <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                  {dmca.slice(0, 10).map((d: any) => (
+                    <div key={d.id} className="px-5 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{d.itemTitle || d.id}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{d.claimantEmail}</p>
+                      </div>
+                      <Badge label={d.status} color={STATUS_COLORS[d.status] || '#a0a0a0'} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Users */}
+        {/* ── USERS ── */}
         {tab === 'users' && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h2 className="font-bold" style={{ color: 'var(--text)' }}>All Users ({users.length})</h2>
+          <div className="space-y-4">
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-48">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <input className="input pl-9 w-full text-sm" placeholder="Search users…"
+                  value={userSearch} onChange={(e) => setUserSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadUsers()} />
+              </div>
+              <button className="btn btn-primary text-sm" onClick={loadUsers}>Search</button>
             </div>
-            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-              {users.length === 0 ? (
-                <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No users loaded — admin stats API not yet connected.</div>
-              ) : users.map((u: any) => (
-                <div key={u.id} className="flex items-center gap-4 px-5 py-3">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm" style={{ color: 'var(--text)' }}>{u.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
-                  </div>
-                  <span className="badge badge-sky">{u.role}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString('en-ZA')}</span>
+
+            <div className="rounded-2xl overflow-hidden" style={surface}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {['Name', 'Email', 'Role', 'Joined', 'Purchases', 'Actions'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u: any) => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3">
+                        <span className="font-medium" style={{ color: 'var(--text)' }}>{u.name}</span>
+                        {u.isSuspended && <Badge label="suspended" color="#ff4d4d" />}
+                      </td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{u.email}</td>
+                      <td className="px-4 py-3"><Badge label={u.role} color="var(--sky)" /></td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{u._count?.purchases ?? 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 flex-wrap">
+                          {u.isSuspended
+                            ? <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#a0e87c' }}
+                                onClick={() => userAction(u.id, 'unsuspend')}>Unsuspend</button>
+                            : <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#ff4d4d' }}
+                                onClick={() => userAction(u.id, 'suspend')}>Suspend</button>
+                          }
+                          {u.artist && !u.artist.isVerified && (
+                            <button className="btn btn-ghost text-xs py-1 px-2" style={{ color: '#e8c87c' }}
+                              onClick={() => userAction(u.id, 'verify')}>Verify</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {userTotal} users total · Page {userPage}
+              <button className="ml-3 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setUserPage((p) => Math.max(1, p - 1))}>‹ Prev</button>
+              <button className="ml-1 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setUserPage((p) => p + 1)}>Next ›</button>
+            </p>
+          </div>
+        )}
+
+        {/* ── RELEASES ── */}
+        {tab === 'releases' && (
+          <div className="space-y-4">
+            {/* Status filter tabs */}
+            <div className="flex gap-1 flex-wrap">
+              {['metadata_review', 'artwork_review', 'approved', 'live', 'failed', 'all'].map((s) => {
+                const cnt = relCounts.find((c: any) => c.status === s)?._count ?? (s === 'all' ? relTotal : 0);
+                return (
+                  <button key={s}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      background: relStatus === s ? 'var(--sky)' : 'var(--surface)',
+                      color: relStatus === s ? 'white' : 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                    }}
+                    onClick={() => { setRelStatus(s); setRelPage(1); }}>
+                    {s} {cnt > 0 && `(${cnt})`}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rounded-2xl overflow-hidden" style={surface}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {['Title', 'Artist', 'Type', 'Tracks', 'Status', 'Submitted', 'Actions'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {releases.map((rel: any) => (
+                    <tr key={rel.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{rel.title}</td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
+                        {rel.artist?.name}
+                        {rel.artist?.isVerified && <CheckCircle size={12} className="inline ml-1" style={{ color: '#a0e87c' }} />}
+                      </td>
+                      <td className="px-4 py-3"><Badge label={rel.releaseType} color="var(--sky)" /></td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{rel._count?.tracks}</td>
+                      <td className="px-4 py-3"><Badge label={rel.status} color={STATUS_COLORS[rel.status] || '#a0a0a0'} /></td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {rel.submittedAt ? new Date(rel.submittedAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {rel.status === 'metadata_review' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
+                              onClick={() => releaseAction(rel.id, 'approve_metadata')}>✓ Meta</button>
+                          )}
+                          {rel.status === 'artwork_review' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
+                              onClick={() => releaseAction(rel.id, 'approve_artwork')}>✓ Art</button>
+                          )}
+                          {['metadata_review', 'artwork_review'].includes(rel.status) && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
+                              onClick={() => releaseAction(rel.id, 'approve')}>Approve</button>
+                          )}
+                          {rel.status === 'approved' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: 'var(--sky)' }}
+                              onClick={() => releaseAction(rel.id, 'deliver')}>Deliver</button>
+                          )}
+                          {rel.status === 'failed' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#e8c87c' }}
+                              onClick={() => releaseAction(rel.id, 'retry')}>Retry</button>
+                          )}
+                          {!['failed', 'live'].includes(rel.status) && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#ff4d4d' }}
+                              onClick={() => releaseAction(rel.id, 'reject')}>Reject</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Optional admin notes input */}
+            <div className="flex gap-3">
+              <input className="input flex-1 text-sm" placeholder="Optional note for action…"
+                value={actionNote} onChange={(e) => setActionNote(e.target.value)} />
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {relTotal} total · Page {relPage}
+              <button className="ml-3 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setRelPage((p) => Math.max(1, p - 1))}>‹ Prev</button>
+              <button className="ml-1 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setRelPage((p) => p + 1)}>Next ›</button>
+            </p>
+          </div>
+        )}
+
+        {/* ── FINANCE ── */}
+        {tab === 'finance' && (
+          <div className="space-y-6">
+            {!finance ? (
+              <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin" style={{ color: 'var(--sky)' }} /></div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Lifetime Revenue',  value: `R${(finance.revenue?.lifetime || 0).toFixed(2)}`,    color: '#e8c87c' },
+                    { label: 'Platform Fees',      value: `R${(finance.revenue?.platformFee || 0).toFixed(2)}`, color: '#a0e87c' },
+                    { label: 'This Month',         value: `R${(finance.revenue?.thisMonth || 0).toFixed(2)}`,   color: 'var(--sky)' },
+                    { label: 'Total Paid Out',     value: `R${(finance.payouts?.totalPaid || 0).toFixed(2)}`,   color: '#e8a87c' },
+                  ].map((s) => (
+                    <div key={s.label} className="p-5 rounded-2xl" style={surface}>
+                      <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                    </div>
+                  ))}
                 </div>
+
+                <div className="rounded-2xl overflow-hidden" style={surface}>
+                  <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                    <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Top Earning Artists</h3>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        <th className="px-4 py-3 text-left text-xs">Artist</th>
+                        <th className="px-4 py-3 text-left text-xs">Net Earned</th>
+                        <th className="px-4 py-3 text-left text-xs">Platform Fees</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(finance.topArtists || []).map((a: any, i: number) => (
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>
+                            {a.artist?.name || a.artistId?.slice(0, 8)}
+                          </td>
+                          <td className="px-4 py-3" style={{ color: '#a0e87c' }}>R{(a._sum?.netAmount || 0).toFixed(2)}</td>
+                          <td className="px-4 py-3" style={{ color: '#e8c87c' }}>R{(a._sum?.platformFee || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden" style={surface}>
+                  <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                    <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Sales by Type (last 90 days)</h3>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        <th className="px-4 py-3 text-left text-xs">Type</th>
+                        <th className="px-4 py-3 text-left text-xs">Count</th>
+                        <th className="px-4 py-3 text-left text-xs">Volume</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(finance.salesByType || []).map((s: any) => (
+                        <tr key={s.itemType} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td className="px-4 py-3 font-medium capitalize" style={{ color: 'var(--text)' }}>{s.itemType}</td>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{s._count}</td>
+                          <td className="px-4 py-3" style={{ color: '#a0e87c' }}>R{(s._sum?.amount || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── PAYOUTS ── */}
+        {tab === 'payouts' && (
+          <div className="space-y-4">
+            {paySummary && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl" style={surface}>
+                  <p className="text-xl font-black" style={{ color: '#e8c87c' }}>R{paySummary.pendingAmount?.toFixed(2)}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pending ({paySummary.pendingCount})</p>
+                </div>
+                <div className="p-4 rounded-xl" style={surface}>
+                  <p className="text-xl font-black" style={{ color: '#a0e87c' }}>R{paySummary.paidAmount?.toFixed(2)}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Paid ({paySummary.paidCount})</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-1 flex-wrap">
+              {['pending', 'approved', 'paid', 'rejected', 'all'].map((s) => (
+                <button key={s}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{
+                    background: payStatus === s ? 'var(--sky)' : 'var(--surface)',
+                    color: payStatus === s ? 'white' : 'var(--text-muted)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onClick={() => { setPayStatus(s); setPayPage(1); }}>
+                  {s}
+                </button>
               ))}
             </div>
+
+            <div className="flex gap-3">
+              <input className="input flex-1 text-sm" placeholder="Admin note…"
+                value={actionNote} onChange={(e) => setActionNote(e.target.value)} />
+              <input className="input w-40 text-sm" placeholder="Reference #"
+                value={actionRef} onChange={(e) => setActionRef(e.target.value)} />
+            </div>
+
+            <div className="rounded-2xl overflow-hidden" style={surface}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {['Artist', 'Email', 'Amount', 'Bank', 'Status', 'Requested', 'Actions'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {payouts.map((p: any) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{p.artist?.name}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{p.artist?.user?.email}</td>
+                      <td className="px-4 py-3 font-black" style={{ color: '#a0e87c' }}>R{p.amount?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {p.bankAccount ? `${p.bankAccount.bankName} ${p.bankAccount.maskedNumber}` : '—'}
+                      </td>
+                      <td className="px-4 py-3"><Badge label={p.status} color={STATUS_COLORS[p.status] || '#a0a0a0'} /></td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(p.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {p.status === 'pending' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
+                              onClick={() => payoutAction(p.id, 'approve')}>Approve</button>
+                          )}
+                          {p.status === 'approved' && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: 'var(--sky)' }}
+                              onClick={() => payoutAction(p.id, 'mark_paid')}>Mark Paid</button>
+                          )}
+                          {['pending', 'approved'].includes(p.status) && (
+                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#ff4d4d' }}
+                              onClick={() => payoutAction(p.id, 'reject')}>Reject</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {payTotal} total · Page {payPage}
+              <button className="ml-3 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setPayPage((p) => Math.max(1, p - 1))}>‹ Prev</button>
+              <button className="ml-1 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setPayPage((p) => p + 1)}>Next ›</button>
+            </p>
           </div>
         )}
 
-        {/* DMCA */}
-        {tab === 'dmca' && (
-          <div className="space-y-4">
-            <h2 className="font-bold text-lg" style={{ color: 'var(--text)' }}>DMCA Reports</h2>
-            {dmca.length === 0 ? (
-              <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                <Shield size={32} className="mx-auto mb-3 opacity-40" />
-                <p>No DMCA reports</p>
+        {/* ── SETTINGS ── */}
+        {tab === 'settings' && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="rounded-2xl overflow-hidden" style={surface}>
+              <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Platform Settings</h3>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Click a row to edit inline, or use the form below.
+                </p>
               </div>
-            ) : dmca.map((d: any) => (
-              <div key={d.id} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-bold" style={{ color: 'var(--text)' }}>{d.reporterName} — {d.itemTitle}</p>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{d.claimDescription}</p>
-                    <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                      {d.reporterEmail} · {new Date(d.createdAt).toLocaleDateString('en-ZA')}
-                    </p>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {Object.entries(settings).map(([k, v]) => (
+                  <div key={k} className="px-5 py-3 flex items-center justify-between gap-4">
+                    <code className="text-xs font-mono" style={{ color: 'var(--sky)' }}>{k}</code>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                      {String(v)}
+                    </span>
+                    <button className="btn btn-ghost text-xs py-0.5 px-2 ml-auto"
+                      style={{ color: 'var(--text-muted)' }}
+                      onClick={() => { setSettingKey(k); setSettingVal(String(v)); }}>
+                      Edit
+                    </button>
                   </div>
-                  <span className="badge" style={{
-                    background: d.status === 'resolved' ? 'rgba(16,185,129,0.12)' : d.status === 'dismissed' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)',
-                    color: d.status === 'resolved' ? 'var(--green)' : d.status === 'dismissed' ? '#ef4444' : 'var(--gold)',
-                  }}>{d.status}</span>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div className="p-5 rounded-2xl space-y-3" style={surface}>
+              <h4 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Update / Add Setting</h4>
+              <input className="input w-full text-sm" placeholder="key (e.g. min_payout_zar)"
+                value={settingKey} onChange={(e) => setSettingKey(e.target.value)} />
+              <input className="input w-full text-sm" placeholder="value (e.g. 150 or true)"
+                value={settingVal} onChange={(e) => setSettingVal(e.target.value)} />
+              <button className="btn btn-primary text-sm" onClick={saveSetting}>Save Setting</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── AUDIT ── */}
+        {tab === 'audit' && (
+          <div className="space-y-4">
+            <div className="flex gap-3 flex-wrap">
+              <select className="input text-sm w-44"
+                value={logCat} onChange={(e) => setLogCat(e.target.value)}>
+                {['all', 'auth', 'payment', 'content', 'moderation', 'admin', 'security', 'distribution'].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <input className="input flex-1 min-w-48 text-sm" placeholder="Search logs…"
+                value={logQ} onChange={(e) => setLogQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadAudit()} />
+              <button className="btn btn-primary text-sm" onClick={loadAudit}>Search</button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden" style={surface}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {['Action', 'Target', 'Notes', 'When'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((l: any) => (
+                    <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3">
+                        <code className="text-xs" style={{ color: 'var(--sky)' }}>{l.action}</code>
+                      </td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {l.targetType} {l.targetId?.slice(0, 8)}
+                      </td>
+                      <td className="px-4 py-3 text-xs max-w-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                        {l.notes}
+                      </td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(l.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {logTotal} entries · Page {logPage}
+              <button className="ml-3 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setLogPage((p) => Math.max(1, p - 1))}>‹ Prev</button>
+              <button className="ml-1 btn btn-ghost text-xs py-0.5 px-2" onClick={() => setLogPage((p) => p + 1)}>Next ›</button>
+            </p>
+          </div>
+        )}
+
+        {tab === 'analytics' && <AdminAnalyticsTab />}
+
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 10 — Admin Analytics Tab (appended, no existing code touched)
+// Shows platform-level stats: funnel, top artists, revenue overview.
+// ─────────────────────────────────────────────────────────────
+
+function AdminAnalyticsTab() {
+  const [loading, setLoading] = useState(true);
+  const [platform, setPlatform] = useState<any>(null);
+  const [funnel, setFunnel] = useState<any[]>([]);
+  const [topArtists, setTopArtists] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/analytics/platform').then(r => r.ok ? r.json() : null),
+      fetch('/api/analytics/funnel').then(r => r.ok ? r.json() : null),
+    ]).then(([pl, fn]) => {
+      if (pl) setPlatform(pl);
+      if (fn) { setFunnel(fn.funnel ?? []); setTopArtists(fn.topArtists ?? []); }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 40, color: 'var(--text-muted)' }}>
+      <Loader2 size={18} className="animate-spin" /> Loading analytics…
+    </div>
+  );
+
+  const totals = platform?.totals;
+  const revenue = platform?.revenue;
+  const maxFunnel = funnel[0]?.count || 1;
+
+  return (
+    <div style={{ padding: '20px 0' }}>
+      {/* KPI strip */}
+      {totals && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+          {[
+            { label: 'Total Users',     value: totals.users,          color: 'var(--sky)'  },
+            { label: 'Active Artists',  value: totals.artists,        color: 'var(--gold)' },
+            { label: 'New (30d)',        value: totals.newUsersMonth,  color: 'var(--green)'},
+            { label: 'Beats Live',       value: totals.beats,          color: 'var(--sky)'  },
+            { label: 'Releases Live',    value: totals.releases,       color: 'var(--gold)' },
+            { label: 'Rev (30d)',        value: `R${(revenue?.monthly ?? 0).toLocaleString()}`, color: 'var(--green)' },
+            { label: 'Rev (All-time)',   value: `R${(revenue?.total ?? 0).toLocaleString()}`,   color: 'var(--gold)' },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 16px 12px' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: s.color, fontFamily: 'IBM Plex Mono, monospace' }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        {/* Conversion Funnel */}
+        {funnel.length > 0 && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Conversion Funnel</p>
+            </div>
+            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {funnel.map((step, i) => {
+                const pct = (step.count / maxFunnel) * 100;
+                const conv = i > 0 && funnel[i - 1].count > 0
+                  ? ((step.count / funnel[i - 1].count) * 100).toFixed(0)
+                  : null;
+                return (
+                  <div key={step.stage}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
+                      <span style={{ color: 'var(--text)' }}>{step.stage}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {conv && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>↓ {conv}%</span>}
+                        <span style={{ fontWeight: 700, color: 'var(--sky)', fontFamily: 'monospace' }}>
+                          {step.count.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: 'var(--surface2)' }}>
+                      <div style={{ height: '100%', borderRadius: 4, background: 'var(--sky)', width: `${pct}%`, transition: 'width 0.5s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Top Artists */}
+        {topArtists.length > 0 && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Top Artists by Plays</p>
+            </div>
+            <div style={{ padding: '8px 0' }}>
+              {topArtists.slice(0, 10).map((a: any, i: number) => {
+                const maxPlays = topArtists[0]?.totalPlays || 1;
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
+                    {a.photoUrl && (
+                      <img src={a.photoUrl} alt={a.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</p>
+                      <div style={{ height: 3, borderRadius: 2, background: 'var(--surface2)', marginTop: 3 }}>
+                        <div style={{ height: '100%', borderRadius: 2, background: 'var(--sky)', width: `${(a.totalPlays / maxPlays) * 100}%` }} />
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--sky)', fontFamily: 'monospace', flexShrink: 0 }}>
+                      {a.totalPlays.toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Recent platform purchases */}
+      {platform?.recentPurchases?.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Recent Platform Transactions</p>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Buyer', 'Item', 'Amount', 'Currency', 'Date'].map(h => (
+                  <th key={h} style={{ padding: '8px 16px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {platform.recentPurchases.slice(0, 15).map((p: any) => (
+                <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '9px 16px', color: 'var(--text)' }}>{p.buyerName || p.buyerEmail || '—'}</td>
+                  <td style={{ padding: '9px 16px', color: 'var(--text-muted)' }}>{p.itemType || 'purchase'}</td>
+                  <td style={{ padding: '9px 16px', color: 'var(--gold)', fontFamily: 'monospace', fontWeight: 600 }}>{p.amount}</td>
+                  <td style={{ padding: '9px 16px', color: 'var(--text-muted)' }}>{p.currency || 'ZAR'}</td>
+                  <td style={{ padding: '9px 16px', color: 'var(--text-muted)' }}>
+                    {new Date(p.createdAt).toLocaleDateString('en-ZA')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -45,7 +45,7 @@ export default function DashboardPage() {
             style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
             <span style={{ color: 'var(--gold)', fontSize: 14 }}>✦</span>
             <span style={{ color: 'var(--text-muted)' }}>
-              Your earnings are 92% of total sales. Vuka retains 8% to cover hosting and operational costs.
+              Your earnings are 98% of total sales. Vuka retains 2% to cover hosting and operational costs.
             </span>
           </div>
 
@@ -59,7 +59,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/settings" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <CreditCard size={28} style={{ color: "var(--sky)" }} />
-              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Connect Stripe</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Set up payouts</p></div>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Configure Payouts</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bank account / PayFast</p></div>
             </Link>
             <button
               onClick={() => { if (stats?.artistSlug) navigator.clipboard.writeText(`${window.location.origin}/artist/${stats.artistSlug}`); }}

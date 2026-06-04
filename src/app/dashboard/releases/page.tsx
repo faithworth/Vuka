@@ -63,7 +63,7 @@ export default function DashboardReleasesPage() {
     <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>My Releases</h1>
-        <Link href="/dashboard/uploads"
+        <Link href="/dashboard/releases/new"
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
           style={{ background: 'var(--sky)' }}>
           <Plus className="w-4 h-4" /> Upload Release
@@ -77,7 +77,7 @@ export default function DashboardReleasesPage() {
           <Music className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--sky)' }} />
           <p className="font-bold mb-2" style={{ color: 'var(--text)' }}>Nothing here yet</p>
           <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Upload your first EP, album or single.</p>
-          <Link href="/dashboard/uploads" className="px-4 py-2 rounded-lg font-bold text-white inline-block"
+          <Link href="/dashboard/releases/new" className="px-4 py-2 rounded-lg font-bold text-white inline-block"
             style={{ background: 'var(--sky)' }}>Upload Now</Link>
         </div>
       )}

@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
-import { Heart, MessageCircle, Repeat2, Music, Disc, ExternalLink, Loader2, Users, Send } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Music, Disc, ExternalLink, Loader2, Users } from 'lucide-react';
 
 interface Post {
   id: string;
@@ -21,9 +21,6 @@ interface Post {
     photoUrl: string;
     isVerified: boolean;
   };
-  // optimistic UI state
-  _liked?: boolean;
-  _reposted?: boolean;
 }
 
 export default function FeedPage() {
@@ -31,11 +28,6 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(false);
-
-  // Comment UI state: which post has the comment box open + draft text
-  const [commentOpen, setCommentOpen] = useState<Record<string, boolean>>({});
-  const [commentText, setCommentText] = useState<Record<string, string>>({});
-  const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const supabase = createClient();
@@ -62,88 +54,6 @@ export default function FeedPage() {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
-  }
-
-  // ── Like toggle ────────────────────────────────────────────
-  async function handleLike(postId: string) {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-    const nowLiked = !post._liked;
-
-    // Optimistic update
-    setPosts(prev => prev.map(p =>
-      p.id === postId
-        ? { ...p, _liked: nowLiked, likeCount: p.likeCount + (nowLiked ? 1 : -1) }
-        : p
-    ));
-
-    try {
-      await fetch('/api/social/likes', {
-        method: nowLiked ? 'POST' : 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId }),
-      });
-    } catch {
-      // Roll back on error
-      setPosts(prev => prev.map(p =>
-        p.id === postId
-          ? { ...p, _liked: !nowLiked, likeCount: p.likeCount + (nowLiked ? -1 : 1) }
-          : p
-      ));
-    }
-  }
-
-  // ── Comment submit ─────────────────────────────────────────
-  async function handleComment(postId: string) {
-    const text = (commentText[postId] || '').trim();
-    if (!text) return;
-    setCommentLoading(prev => ({ ...prev, [postId]: true }));
-
-    // Optimistic count increment
-    setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p
-    ));
-    setCommentText(prev => ({ ...prev, [postId]: '' }));
-    setCommentOpen(prev => ({ ...prev, [postId]: false }));
-
-    try {
-      await fetch('/api/social/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, body: text }),
-      });
-    } catch {
-      // Roll back count on error
-      setPosts(prev => prev.map(p =>
-        p.id === postId ? { ...p, commentCount: p.commentCount - 1 } : p
-      ));
-    } finally {
-      setCommentLoading(prev => ({ ...prev, [postId]: false }));
-    }
-  }
-
-  // ── Repost ─────────────────────────────────────────────────
-  async function handleRepost(postId: string) {
-    const post = posts.find(p => p.id === postId);
-    if (!post || post._reposted) return; // one-shot only
-
-    // Optimistic update
-    setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, _reposted: true, repostCount: p.repostCount + 1 } : p
-    ));
-
-    try {
-      await fetch('/api/social/reposts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId }),
-      });
-    } catch {
-      // Roll back on error
-      setPosts(prev => prev.map(p =>
-        p.id === postId ? { ...p, _reposted: false, repostCount: p.repostCount - 1 } : p
-      ));
-    }
   }
 
   if (!authed || loading) return (
@@ -237,71 +147,22 @@ export default function FeedPage() {
 
                 {/* Engagement */}
                 <div className="flex items-center gap-5 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  {/* Like */}
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className="flex items-center gap-1.5 text-sm transition-colors"
-                    style={{ color: post._liked ? 'var(--red, #e53e3e)' : 'var(--text-muted)' }}
-                    aria-label={post._liked ? 'Unlike' : 'Like'}
-                  >
-                    <Heart size={16} fill={post._liked ? 'currentColor' : 'none'} />
+                  <button className="flex items-center gap-1.5 text-sm transition-colors hover:text-red-500"
+                    style={{ color: 'var(--text-muted)' }}>
+                    <Heart size={16} />
                     <span>{post.likeCount}</span>
                   </button>
-
-                  {/* Comment toggle */}
-                  <button
-                    onClick={() => setCommentOpen(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                    className="flex items-center gap-1.5 text-sm transition-colors hover:text-sky-400"
-                    style={{ color: commentOpen[post.id] ? 'var(--sky)' : 'var(--text-muted)' }}
-                    aria-label="Comment"
-                  >
+                  <button className="flex items-center gap-1.5 text-sm transition-colors"
+                    style={{ color: 'var(--text-muted)' }}>
                     <MessageCircle size={16} />
                     <span>{post.commentCount}</span>
                   </button>
-
-                  {/* Repost */}
-                  <button
-                    onClick={() => handleRepost(post.id)}
-                    className="flex items-center gap-1.5 text-sm transition-colors"
-                    style={{
-                      color: post._reposted ? 'var(--green, #38a169)' : 'var(--text-muted)',
-                      opacity: post._reposted ? 0.7 : 1,
-                      cursor: post._reposted ? 'default' : 'pointer',
-                    }}
-                    disabled={post._reposted}
-                    aria-label={post._reposted ? 'Reposted' : 'Repost'}
-                  >
+                  <button className="flex items-center gap-1.5 text-sm transition-colors"
+                    style={{ color: 'var(--text-muted)' }}>
                     <Repeat2 size={16} />
                     <span>{post.repostCount}</span>
                   </button>
                 </div>
-
-                {/* Comment box */}
-                {commentOpen[post.id] && (
-                  <div className="mt-3 flex gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                    <input
-                      value={commentText[post.id] || ''}
-                      onChange={e => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
-                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
-                      placeholder="Write a comment…"
-                      className="flex-1 px-3 py-2 rounded-xl text-sm"
-                      style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none' }}
-                      disabled={commentLoading[post.id]}
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => handleComment(post.id)}
-                      disabled={commentLoading[post.id] || !(commentText[post.id] || '').trim()}
-                      className="px-3 py-2 rounded-xl transition-colors disabled:opacity-40"
-                      style={{ background: 'var(--sky)', color: 'white' }}
-                      aria-label="Send comment"
-                    >
-                      {commentLoading[post.id]
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <Send size={14} />}
-                    </button>
-                  </div>
-                )}
               </article>
             ))}
           </div>

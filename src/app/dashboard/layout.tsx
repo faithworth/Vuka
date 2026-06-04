@@ -16,14 +16,16 @@ import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, AlertTriangle,
   MoreHorizontal, X, Send, Users, Store, Briefcase, Video,
-  MessageSquare,
+  MessageSquare, User,
 } from 'lucide-react';
 
 const ARTIST_NAV = [
   { href: '/dashboard',                label: 'Overview',    icon: BarChart2,    exact: true },
   { href: '/dashboard/beats',          label: 'Beats',       icon: Music },
   { href: '/dashboard/releases',       label: 'Releases',    icon: Disc },
-  { href: '/dashboard/uploads',        label: 'Upload',      icon: Upload,       highlight: true },
+  { href: '/dashboard/releases/new',   label: 'Upload',      icon: Upload,       highlight: true },
+  { href: '/dashboard/analytics',      label: 'Analytics',   icon: BarChart2 },
+  { href: '/dashboard/earnings',       label: 'Earnings',    icon: Wallet },
   { href: '/dashboard/social',         label: 'Posts',       icon: Send },
   { href: '/dashboard/services',       label: 'Services',    icon: Briefcase },
   { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
@@ -32,6 +34,7 @@ const ARTIST_NAV = [
   { href: '/dashboard/support',        label: 'Fan Support', icon: Heart },
   { href: '/dashboard/goals',          label: 'Goals',       icon: Target },
   { href: '/dashboard/payouts',        label: 'Payouts',     icon: Wallet },
+  { href: '/dashboard/profile',        label: 'Profile',     icon: User },
   { href: '/dashboard/settings',       label: 'Settings',    icon: Settings },
 ];
 
