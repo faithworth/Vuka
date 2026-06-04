@@ -183,28 +183,67 @@ export default function NewReleasePage() {
     setSaving(true);
     setError('');
     try {
+      // FIX: fetch the artist's name so we can pass artistName (required by the API)
+      const meRes = await fetch('/api/dashboard/settings');
+      const meData = meRes.ok ? await meRes.json() : {};
+      const artistName = meData?.artist?.name?.trim() || '';
+
+      // FIX: map wizard field names → API field names
+      // Wizard used: type, genres, releaseDate, label, platforms
+      // API expects:  releaseType, primaryGenre, secondaryGenre, scheduledDate, labelName, targetDSPs
       const body = {
-        title, type: releaseType, genres: [primaryGenre, secondaryGenre].filter(Boolean),
-        releaseDate: releaseDate || null, isExplicit, language,
-        artworkUrl, platforms: selectedPlatforms,
+        title,
+        artistName,                                          // was missing entirely
+        releaseType,                                         // was sent as `type`
+        primaryGenre,                                        // was sent inside `genres[]`
+        secondaryGenre,                                      // was sent inside `genres[]`
+        language,
+        scheduledDate: releaseDate || null,                  // was sent as `releaseDate`
+        labelName: label || 'Self-Released',                 // was sent as `label`
+        targetDSPs: selectedPlatforms,                       // was sent as `platforms`
+        artworkUrl,
         copyrightYear: parseInt(copyrightYear),
         copyrightHolder: copyrightHolder || title,
-        label: label || 'Self-Released',
+        isExplicit,
         upc: upc || undefined,
-        tracks: tracks.map(t => ({
-          title: t.title, trackNumber: t.trackNumber, isExplicit: t.isExplicit,
-          audioUrl: t.audioUrl,
-          featuredArtists: t.featuredArtists.split(',').map(x => x.trim()).filter(Boolean),
-          composers: t.composers.split(',').map(x => x.trim()).filter(Boolean),
-          producers: t.producers.split(',').map(x => x.trim()).filter(Boolean),
-        })),
       };
+
+      // Step 1: create the release record
       const res = await fetch('/api/distribution/releases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Submission failed'); }
+      const { release } = await res.json();
+
+      // Step 2: attach artwork if it was uploaded (PATCH supports artworkUrl)
+      if (artworkUrl) {
+        await fetch('/api/distribution/releases', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ releaseId: release.id, artworkUrl }),
+        });
+      }
+
+      // Step 3: create each track under the release
+      for (const t of tracks) {
+        if (!t.title.trim()) continue;
+        await fetch(`/api/distribution/releases/${release.id}/tracks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: t.title,
+            trackNumber: t.trackNumber,
+            explicit: t.isExplicit,
+            language,
+            featuredArtists: t.featuredArtists.split(',').map(x => x.trim()).filter(Boolean),
+            composers: t.composers.split(',').map(x => x.trim()).filter(Boolean),
+            producers: t.producers.split(',').map(x => x.trim()).filter(Boolean),
+          }),
+        });
+      }
+
       router.push('/dashboard/releases?submitted=1');
     } catch (e: any) { setError(e.message); setSaving(false); }
   }
