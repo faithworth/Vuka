@@ -1,6 +1,8 @@
 // ============================================================
-// PATCH 11b — NEW FILE: src/app/api/industry/me/route.ts
-// Returns the current industry user's profile + stats.
+// src/app/api/industry/me/route.ts
+// FIX: inquiry artist select now includes userId so that
+//      the industry dashboard's "Message" button can find
+//      the artist's user account to open a conversation.
 // ============================================================
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +24,17 @@ export async function GET() {
         services: {
           include: {
             inquiries: {
-              include: { artist: { select: { slug: true, name: true, photoUrl: true } } },
+              include: {
+                // FIX: added userId to artist select so messageArtist() works
+                artist: {
+                  select: {
+                    slug: true,
+                    name: true,
+                    photoUrl: true,
+                    userId: true,   // <-- was missing; caused "Cannot find artist account" error
+                  },
+                },
+              },
               orderBy: { createdAt: 'desc' },
             },
           },
@@ -45,4 +57,3 @@ export async function GET() {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-

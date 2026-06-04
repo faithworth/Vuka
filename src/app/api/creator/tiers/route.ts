@@ -74,15 +74,19 @@ export async function PATCH(req: NextRequest) {
     });
     if (!tier) return NextResponse.json({ error: 'Tier not found' }, { status: 404 });
 
-    const allowed = ['name','description','priceMonthly','priceYearly','perks','maxSubscribers','sortOrder','isActive'];
+    // FIX: map priceMonthly → price (the actual Prisma schema field)
+    // The schema has `price Float` not `priceMonthly`.
+    // priceYearly and maxSubscribers/sortOrder don't exist on the model — skip them gracefully.
+    const allowed = ['name', 'description', 'priceMonthly', 'perks', 'isActive'] as const;
     const data: any = {};
     for (const key of allowed) {
       if (updates[key] !== undefined) {
-        data[key] = ['priceMonthly','priceYearly'].includes(key)
-          ? parseFloat(updates[key])
-          : ['maxSubscribers','sortOrder'].includes(key)
-          ? parseInt(updates[key])
-          : updates[key];
+        if (key === 'priceMonthly') {
+          // Map to the schema field name
+          data['price'] = parseFloat(updates[key]);
+        } else {
+          data[key] = updates[key];
+        }
       }
     }
 

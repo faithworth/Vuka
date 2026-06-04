@@ -56,6 +56,50 @@ export default function FeedPage() {
     return `${Math.floor(hrs / 24)}d ago`;
   }
 
+  // FIX: toggle like on a post (optimistic update + API call)
+  async function handleLike(post: Post) {
+    // Optimistic update
+    setPosts(prev =>
+      prev.map(p => p.id === post.id ? { ...p, likeCount: p.likeCount + 1 } : p)
+    );
+    try {
+      await fetch('/api/social/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetType: 'post', targetId: post.id }),
+      });
+    } catch {
+      // Revert on failure
+      setPosts(prev =>
+        prev.map(p => p.id === post.id ? { ...p, likeCount: p.likeCount - 1 } : p)
+      );
+    }
+  }
+
+  // FIX: repost a post (optimistic update + API call)
+  async function handleRepost(post: Post) {
+    setPosts(prev =>
+      prev.map(p => p.id === post.id ? { ...p, repostCount: p.repostCount + 1 } : p)
+    );
+    try {
+      await fetch('/api/social/reposts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetType: 'post', targetId: post.id }),
+      });
+    } catch {
+      setPosts(prev =>
+        prev.map(p => p.id === post.id ? { ...p, repostCount: p.repostCount - 1 } : p)
+      );
+    }
+  }
+
+  // FIX: navigate to artist page for comments (no comment modal yet — link to post thread)
+  function handleComment(post: Post) {
+    // Navigate to artist page where the post can be commented on
+    router.push(`/artist/${post.artist.slug}`);
+  }
+
   if (!authed || loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
@@ -145,20 +189,32 @@ export default function FeedPage() {
                   </a>
                 )}
 
-                {/* Engagement */}
+                {/* FIX: Engagement buttons now have onClick handlers */}
                 <div className="flex items-center gap-5 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  <button className="flex items-center gap-1.5 text-sm transition-colors hover:text-red-500"
-                    style={{ color: 'var(--text-muted)' }}>
+                  <button
+                    onClick={() => handleLike(post)}
+                    className="flex items-center gap-1.5 text-sm transition-colors hover:text-red-400 active:scale-110"
+                    style={{ color: 'var(--text-muted)' }}
+                    aria-label="Like post"
+                  >
                     <Heart size={16} />
                     <span>{post.likeCount}</span>
                   </button>
-                  <button className="flex items-center gap-1.5 text-sm transition-colors"
-                    style={{ color: 'var(--text-muted)' }}>
+                  <button
+                    onClick={() => handleComment(post)}
+                    className="flex items-center gap-1.5 text-sm transition-colors hover:text-sky-400"
+                    style={{ color: 'var(--text-muted)' }}
+                    aria-label="Comment on post"
+                  >
                     <MessageCircle size={16} />
                     <span>{post.commentCount}</span>
                   </button>
-                  <button className="flex items-center gap-1.5 text-sm transition-colors"
-                    style={{ color: 'var(--text-muted)' }}>
+                  <button
+                    onClick={() => handleRepost(post)}
+                    className="flex items-center gap-1.5 text-sm transition-colors hover:text-green-400 active:scale-110"
+                    style={{ color: 'var(--text-muted)' }}
+                    aria-label="Repost"
+                  >
                     <Repeat2 size={16} />
                     <span>{post.repostCount}</span>
                   </button>

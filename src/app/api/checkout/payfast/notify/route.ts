@@ -1,18 +1,11 @@
 /**
  * POST /api/checkout/payfast/notify
  *
- * Phase 4 Hardened. Fixes from all prior phases:
- *   - Idempotency guard: skip if status !== 'pending'
- *   - Platform fee 2% (was 0% in Phase 1)
- *   - Audit log on every confirmed purchase
- *   - Structured logger replaces console.error
- *   - Email errors wrapped — never cause 500
- *   - auditLog.securityEvent on IP block + signature failure
- *   - Amount mismatch guard
- *   - Exclusive beat locking + sales counter
- *   - Video + Sample item types handled
- *   - Payout record created with correct netAmount
- *   - Returns 200 always (PayFast retries on non-200)
+ * FIX (on top of all prior phases):
+ *   - After confirming a purchase, call incrementDailyRollup for
+ *     beatSales / releaseSales AND totalRevenue so that
+ *     /dashboard/analytics Revenue tab shows real numbers.
+ *   - All prior logic untouched.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,6 +16,7 @@ import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
 import { sendPurchaseConfirmation, sendArtistSaleNotification } from '@/lib/emails';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
+import { incrementDailyRollup } from '@/lib/social';
 
 export const dynamic = 'force-dynamic';
 
@@ -166,6 +160,10 @@ export async function POST(req: NextRequest) {
         }
 
         await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
+
+        // FIX: roll into daily analytics so Revenue tab shows real data
+        await incrementDailyRollup(artistId, 'beatSales').catch(() => {});
+        await incrementDailyRollup(artistId, 'revenue').catch(() => {});
       }
     }
 
@@ -183,6 +181,10 @@ export async function POST(req: NextRequest) {
         artistId      = release.artist.id;
         paymentMethod = 'payfast';
         await prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } });
+
+        // FIX: roll into daily analytics
+        await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
+        await incrementDailyRollup(artistId, 'revenue').catch(() => {});
       }
     }
 
@@ -200,6 +202,9 @@ export async function POST(req: NextRequest) {
         artistId      = video.artist.id;
         paymentMethod = 'payfast';
         await prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } });
+
+        // FIX: roll into daily analytics
+        await incrementDailyRollup(artistId, 'revenue').catch(() => {});
       }
     }
 
@@ -217,6 +222,9 @@ export async function POST(req: NextRequest) {
         artistId      = sample.artist.id;
         paymentMethod = 'payfast';
         await prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } });
+
+        // FIX: roll into daily analytics
+        await incrementDailyRollup(artistId, 'revenue').catch(() => {});
       }
     }
 
