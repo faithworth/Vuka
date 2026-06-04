@@ -405,3 +405,98 @@ export async function getPlatformAnalytics() {
     recentPurchases,
   };
 }
+
+// ── STREAMING ANALYTICS (Phase 10 additions) ─────────────────
+
+/**
+ * Get DSP/platform-level streaming breakdown for an artist.
+ * Reads from AnalyticsEvent where platform is stored.
+ */
+export async function getStreamingBreakdown(artistId: string, days = 30) {
+  const since = new Date(Date.now() - days * 86_400_000);
+
+  // Get plays grouped by platform from AnalyticsEvent
+  const events = await prisma.analyticsEvent.groupBy({
+    by: ['platform'],
+    where: {
+      userId: artistId,
+      eventType: 'play',
+      occurredAt: { gte: since },
+      platform: { not: null },
+    },
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+  }).catch(() => []);
+
+  const total = events.reduce((s, e) => s + e._count.id, 0) || 1;
+
+  return events.map((e) => ({
+    platform: e.platform ?? 'Unknown',
+    streams: e._count.id,
+    pct: parseFloat(((e._count.id / total) * 100).toFixed(1)),
+  }));
+}
+
+/**
+ * Get artist-level time series for streams per day (from AnalyticsEvent).
+ */
+export async function getStreamTimeSeries(artistId: string, days = 30) {
+  const since = new Date(Date.now() - days * 86_400_000);
+
+  const events = await prisma.analyticsEvent.findMany({
+    where: { userId: artistId, eventType: 'play', occurredAt: { gte: since } },
+    select: { occurredAt: true, platform: true },
+    orderBy: { occurredAt: 'asc' },
+  }).catch(() => []);
+
+  // Bucket by day
+  const byDay: Record<string, number> = {};
+  events.forEach((e) => {
+    const day = e.occurredAt.toISOString().slice(0, 10);
+    byDay[day] = (byDay[day] ?? 0) + 1;
+  });
+
+  // Fill gaps
+  const result: { date: string; streams: number }[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since.getTime() + i * 86_400_000).toISOString().slice(0, 10);
+    result.push({ date: d, streams: byDay[d] ?? 0 });
+  }
+  return result;
+}
+
+/**
+ * Admin conversion funnel: registered → first upload → distributed → earning.
+ */
+export async function getConversionFunnel() {
+  const [total, hasUpload, hasDistribution, hasEarnings] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { tracks: { some: {} } } }).catch(() => 0),
+    // Use Artist model as proxy for distribution
+    prisma.artist.count().catch(() => 0),
+    // Users with at least one RevenueRecord
+    prisma.revenueRecord?.count ? prisma.revenueRecord.count({ where: { netAmount: { gt: 0 } } }).catch(() => 0) : Promise.resolve(0),
+  ]);
+
+  return [
+    { stage: 'Registered',    count: total },
+    { stage: 'First Upload',  count: hasUpload },
+    { stage: 'Distributed',   count: hasDistribution },
+    { stage: 'Has Earnings',  count: hasEarnings },
+  ];
+}
+
+/**
+ * Admin: top artists by total plays (for admin analytics dashboard).
+ */
+export async function getTopArtistsByPlays(limit = 20) {
+  return prisma.artist.findMany({
+    where: { isPublic: true },
+    select: {
+      id: true, name: true, slug: true, photoUrl: true, totalPlays: true,
+      _count: { select: { followers: true } },
+    },
+    orderBy: { totalPlays: 'desc' },
+    take: limit,
+  }).catch(() => []);
+}

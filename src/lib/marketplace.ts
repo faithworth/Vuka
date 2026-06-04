@@ -9,7 +9,7 @@
 
 import prisma from './prisma';
 
-const PLATFORM_FEE_RATE = 0.08;
+const PLATFORM_FEE_RATE = 0.15;
 
 function getPeriod(): string {
   const now = new Date();

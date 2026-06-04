@@ -36,23 +36,17 @@ export async function createTier(
     typeof p === 'string' ? p : `${p.icon} ${p.title}: ${p.description}`
   );
 
-  // Normalise price: write both `price` and `priceMonthly` so this works
-  // regardless of which column the current DB deployment has.
-  // interval is omitted from the write entirely — some deployments don't
-  // have that column yet and Prisma will throw if we pass an unknown field.
-  const tierData: Record<string, unknown> = {
-    artistId,
-    name: data.name,
-    description: data.description || '',
-    currency: data.currency || 'ZAR',
-    perks: perksStrings,
-  };
-
-  // Write price to whichever column(s) exist — safe even if one is absent
-  tierData.price = data.priceMonthly;
-  tierData.priceMonthly = data.priceMonthly;
-
-  return prisma.creatorSubscriptionTier.create({ data: tierData as Parameters<typeof prisma.creatorSubscriptionTier.create>[0]['data'] });
+  return prisma.creatorSubscriptionTier.create({
+    data: {
+      artistId,
+      name: data.name,
+      description: data.description || '',
+      price: data.priceMonthly,
+      interval: 'monthly',
+      currency: data.currency || 'ZAR',
+      perks: perksStrings,
+    },
+  });
 }
 
 // ── Membership Lifecycle ──────────────────────────────────────
@@ -63,7 +57,7 @@ export async function createMembership(params: {
   artistId: string;
   billingInterval: 'monthly' | 'yearly';
   payfastToken?: string;
-  stripeSubId?: string;
+  // stripeSubId removed — Stripe not used
 }) {
   const tier = await prisma.creatorSubscriptionTier.findUnique({
     where: { id: params.tierId },

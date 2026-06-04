@@ -54,18 +54,18 @@ export default function LandingPage() {
 
             <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Sell beats and releases directly to your fans — in South Africa and worldwide.
-              Keep 92% of every sale.
+              Keep 98% of every sale.
             </p>
 
             <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              PayFast for South African buyers. Money goes directly to your bank. Vuka takes just 8% to cover hosting and keep the platform running.
+              PayFast for South African buyers. Money goes directly to your bank. Vuka takes just 2% to cover hosting and keep the platform running.
             </p>
 
             {/* Fee transparency notice */}
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-8"
               style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--text-muted)' }}>
               <span style={{ color: 'var(--gold)' }}>✦</span>
-              Vuka charges a transparent 8% platform fee on every sale — you keep the other 92%.
+              Vuka charges a transparent 2% platform fee on every sale — you keep the other 98%.
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-2">
@@ -79,8 +79,8 @@ export default function LandingPage() {
 
             <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
               {[
-                { n: '92%', l: 'Artist Revenue' },
-                { n: '8%', l: 'Platform Fee', sub: 'keeps the platform alive' },
+                { n: '98%', l: 'Artist Revenue' },
+                { n: '2%', l: 'Platform Fee', sub: 'keeps the platform alive' },
                 { n: 'Global', l: 'Payments' },
               ].map(s => (
                 <div key={s.n} className="text-center">
@@ -102,7 +102,7 @@ export default function LandingPage() {
                 Everything you need to get paid
               </h2>
               <p className="max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-                Upload your music in minutes. Set your price. Fans buy directly. 92% of every sale lands in your bank.
+                Upload your music in minutes. Set your price. Fans buy directly. 98% of every sale lands in your bank.
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 {
                   icon: DollarSign,
                   title: 'Dual Payments',
-                  desc: 'PayFast for South African buyers with PayShap support. Stripe for international fans. Both fully automated. You keep 92% of every sale.',
+                  desc: 'PayFast for South African buyers with instant EFT, card, and SCode support. Flutterwave for Pan-African payments. Both fully automated. You keep 98% of every sale.',
                 },
                 {
                   icon: Zap,
@@ -162,7 +162,7 @@ export default function LandingPage() {
               {[
                 { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
                 { n: '02', t: 'Share your link', d: 'Get your personal store link — vuka.app/artist/you. Share it everywhere you already are.' },
-                { n: '03', t: 'Get paid 92%', d: 'PayFast and Stripe move money directly to your bank. Vuka retains just 8% to keep the platform running.' },
+                { n: '03', t: 'Get paid 98%', d: 'PayFast and Flutterwave move money directly to your bank account. Vuka retains just 2% to keep the platform running.' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
@@ -211,7 +211,7 @@ export default function LandingPage() {
                   Support the artists you love
                 </h2>
                 <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
-                  Discover independent artists from across Africa and the diaspora. Buy their music directly — 92% goes straight to the artist.
+                  Discover independent artists from across Africa and the diaspora. Buy their music directly — 98% goes straight to the artist.
                 </p>
                 <div className="space-y-3 mb-8">
                   {[
@@ -258,28 +258,28 @@ export default function LandingPage() {
               Honest pricing. Always.
             </h2>
             <p className="mb-12" style={{ color: 'var(--text-muted)' }}>
-              No monthly fees. No hidden charges. Just 8% to keep the lights on.
+              No monthly fees. No hidden charges. Just 2% to keep the lights on.
             </p>
             <div className="p-8 rounded-2xl mb-8" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <div className="text-6xl font-bold mb-2" style={{ color: 'var(--text)' }}>8%</div>
+              <div className="text-6xl font-bold mb-2" style={{ color: 'var(--text)' }}>2%</div>
               <div className="text-lg mb-2" style={{ color: 'var(--text-muted)' }}>platform fee per sale</div>
-              <div className="text-sm mb-6" style={{ color: 'var(--gold)' }}>Artist keeps 92%</div>
+              <div className="text-sm mb-6" style={{ color: 'var(--gold)' }}>Artist keeps 98%</div>
 
               {/* Gold fee notice */}
               <div className="flex items-start gap-3 p-4 rounded-xl mb-6 text-left" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
                 <span style={{ color: 'var(--gold)', fontSize: 16, flexShrink: 0 }}>✦</span>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Vuka charges an 8% platform fee on every sale. This covers hosting, servers, payment processing, and keeps the app running. No monthly subscription, no hidden charges.
+                  Vuka charges a 2% platform fee on every sale. This covers hosting, servers, payment processing, and keeps the app running. No monthly subscription, no hidden charges.
                 </p>
               </div>
 
               <div className="space-y-3">
                 {[
-                  '8% platform fee per sale — keeps the platform running',
+                  '2% platform fee per sale — keeps the platform running',
                   'No monthly subscription',
                   'No upfront costs',
                   'No limit on uploads',
-                  'PayFast + Stripe both included',
+                  'PayFast + Flutterwave included',
                   'PDF license generation included',
                   'Secure download delivery included',
                 ].map(item => (

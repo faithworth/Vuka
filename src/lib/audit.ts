@@ -147,4 +147,18 @@ export const auditLog = {
       notes: details,
     });
   },
+
+  /**
+   * Generic admin action — used by Phase 5 admin routes.
+   */
+  adminAction(action: string, targetType: string, targetId: string, actorId: string, notes: string) {
+    return prisma.adminLog.create({
+      data: { action, targetType, targetId, actorId, notes, severity: 'info' },
+    }).catch((err: unknown) => {
+      logger.error('[audit.adminAction] Failed to write log', {
+        action,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  },
 };
