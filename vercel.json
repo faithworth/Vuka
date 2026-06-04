@@ -1,7 +1,8 @@
 {
+  "regions": ["jnb1"],
+  "framework": "nextjs",
   "buildCommand": "node scripts/migrate.js && npx prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/workers/cron?job=search_sync",
@@ -18,6 +19,18 @@
     {
       "path": "/api/workers/cron?job=cleanup",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=notify_live",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=distribution_retry",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=payout_process",
+      "schedule": "0 9 * * 1-5"
     }
   ],
   "headers": [
@@ -32,6 +45,21 @@
   "functions": {
     "src/app/api/migrate/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/workers/cron/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/distribution/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/dashboard/settings/upload-url/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/download/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/**": {
+      "maxDuration": 30
     }
   }
 }

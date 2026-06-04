@@ -1113,3 +1113,55 @@ model SpamSignal {
 
   @@index([userId, action, windowStart])
 }
+
+// ── PLATFORM SETTINGS ────────────────────────────────────────
+// Key-value store for admin-configurable platform settings.
+// Keys are unique; values are stored as JSON (booleans, numbers, strings).
+
+model PlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String   @default("")
+  updatedAt   DateTime @updatedAt
+  updatedBy   String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@map("platform_settings")
+}
+
+// ── EMAIL SYSTEM (Phase 9) ────────────────────────────────────
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  to          String
+  template    String
+  subject     String
+  userId      String?
+  entityType  String?
+  entityId    String?
+  resendId    String?
+  status      String   @default("sent")
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([template])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+model BroadcastLog {
+  id             String   @id @default(cuid())
+  sentBy         String
+  subject        String
+  title          String
+  body           String
+  ctaLabel       String?
+  ctaUrl         String?
+  recipientCount Int      @default(0)
+  filter         Json?
+  createdAt      DateTime @default(now())
+
+  @@map("broadcast_logs")
+}

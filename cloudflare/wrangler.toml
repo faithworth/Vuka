@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════
+# VUKA — Cloudflare Wrangler Configuration
+# Phase 11 — Infrastructure & Deployment
+#
+# Deploy:
+#   cd cloudflare
+#   npx wrangler deploy audio-worker.js --env production
+#
+# Set secrets via Wrangler CLI (not in this file):
+#   npx wrangler secret put SIGNING_SECRET --env production
+# ═══════════════════════════════════════════════════════════════
+
+name = "vuka-audio"
+main = "audio-worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ── R2 Bucket bindings ───────────────────────────────────────
+[[r2_buckets]]
+binding     = "AUDIO_BUCKET"
+bucket_name = "vuka-audio"
+
+[[r2_buckets]]
+binding     = "ARTWORK_BUCKET"
+bucket_name = "vuka-artwork"
+
+# ── Routes ───────────────────────────────────────────────────
+# Production: all /audio/, /artwork/, /preview/ paths via CDN subdomain
+[[routes]]
+pattern = "audio.vuka.app/*"
+zone_name = "vuka.app"
+
+# ── Environment: Production ──────────────────────────────────
+[env.production]
+name = "vuka-audio-prod"
+vars = { ENVIRONMENT = "production" }
+
+# ── Environment: Staging ─────────────────────────────────────
+[env.staging]
+name = "vuka-audio-staging"
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.r2_buckets]]
+binding     = "AUDIO_BUCKET"
+bucket_name = "vuka-audio-staging"
+
+[[env.staging.r2_buckets]]
+binding     = "ARTWORK_BUCKET"
+bucket_name = "vuka-artwork-staging"

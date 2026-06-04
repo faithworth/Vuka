@@ -30,6 +30,10 @@ const NEW_MIGRATIONS = [
   '20250529_fix_schema_missing_fields',
   '20250529_fix_spamsignal_messaging',
   '20250529_fix_moderation_schema_fields',
+  '20250531_user_suspension_and_roles',
+  'phase8_security_hardening',
+  'phase9_email_system',
+  '20260604_phase12_cleanup',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

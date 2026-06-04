@@ -1,35 +1,88 @@
-# Vuka — Split Repository Structure
+# VUKA — Independent Music Distribution Platform
 
-This project is split into 5 packages for GitHub manageability.
-Each package is under 100 files. Each contains the full prisma schema,
-package.json, and shared lib files so it can be read and edited independently.
+> Release. Distribute. Earn. Own.
 
-## The 5 Packages
+African-first independent music distribution and artist ecosystem. Alternative to DistroKid, TuneCore, and Beatstars — built for scale.
 
-| Package | Purpose | Files |
-|---|---|---|
-| `01-core-platform` | Auth, middleware, security, cron, admin, email/PDF/R2 libs | ~46 |
-| `02-creator-economy` | Payments, payouts, licensing, downloads, subscriptions | ~69 |
-| `03-distribution-engine` | Distribution, analytics, discovery, store browse | ~51 |
-| `04-social-marketplace` | Feed, messaging, marketplace, moderation, industry | ~61 |
-| `05-apps-dashboard` | All frontend pages, components, dashboard UI | ~74 |
+## Tech Stack
 
-## How to deploy
+- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS
+- **Backend:** Next.js API Routes (serverless), Prisma ORM
+- **Database:** PostgreSQL via Supabase (with PgBouncer pooling)
+- **Storage:** Cloudflare R2 + Workers (CDN audio delivery)
+- **Payments:** PayFast (ZA) · Flutterwave (Africa) · PayPal (International)
+- **Email:** Resend + React Email
+- **Auth:** Supabase Auth (JWT)
+- **Cache:** Upstash Redis (serverless)
+- **Monitoring:** Sentry · PostHog · Better Uptime
+- **Deployment:** Vercel (jnb1 region) + Cloudflare CDN
 
-The **deployed app** is the merged `vuka-deploy-ready.zip` — all 5 packages
-combined into one Next.js app. That is what goes on Vercel.
+## Phases Complete
 
-These 5 packages are for **reading, editing, and understanding** the codebase.
-When you make a change in a package, apply the same change to the merged repo
-before pushing to Vercel.
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1 | ✅ | Project scaffolding + database schema |
+| 2 | ✅ | Authentication system (artist + admin passwordless) |
+| 3 | ✅ | Artist dashboard |
+| 4 | ✅ | Public-facing pages |
+| 5 | ✅ | Admin dashboard |
+| 6 | ✅ | Distribution engine |
+| 7 | ✅ | Royalty & earnings processing |
+| 8 | ✅ | Security implementation |
+| 9 | ✅ | Email system (16 templates) |
+| 10 | ✅ | Analytics system |
+| **11** | ✅ | **Infrastructure & deployment** |
 
-## GitHub repos recommended setup
+## Quick Start (Local Dev)
 
-Create 5 repos (or one monorepo with 5 folders):
-- `vuka/01-core-platform`
-- `vuka/02-creator-economy`
-- `vuka/03-distribution-engine`
-- `vuka/04-social-marketplace`
-- `vuka/05-apps-dashboard`
+```bash
+# 1. Start local services
+docker compose up -d
 
-Or push all 5 as folders inside one `vuka-platform` repo.
+# 2. Install dependencies
+npm install
+
+# 3. Copy env template
+cp .env.example .env.local
+# Edit .env.local with your credentials
+
+# 4. Run migrations
+npm run db:migrate
+
+# 5. Seed database
+npm run db:seed
+
+# 6. Start dev server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Deployment
+
+See:
+- `VERCEL_SETUP.md` — Vercel deployment guide
+- `CLOUDFLARE_SETUP.md` — CDN, R2, Workers setup
+- `DOPPLER_SETUP.md` — Secrets management
+- `.env.example` — All environment variables documented
+
+## Architecture
+
+```
+User → Cloudflare CDN
+         ├── Audio/Artwork → R2 via Workers (signed URLs, edge cached)
+         └── App requests → Vercel (jnb1, Johannesburg)
+                              ├── Next.js SSR + API Routes
+                              ├── Supabase (PostgreSQL + Auth + Realtime)
+                              ├── Upstash Redis (rate limiting)
+                              └── Resend (transactional email)
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in all values.
+See `DOPPLER_SETUP.md` for production secrets management.
+
+## License
+
+Private. All rights reserved.

@@ -1,6 +1,6 @@
 {
   "name": "vuka-app",
-  "version": "0.1.0",
+  "version": "0.12.0",
   "private": true,
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -12,16 +12,25 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "type-check": "tsc --noEmit",
+    "lint": "next lint",
+    "health": "curl -s http://localhost:3000/api/health | npx json",
+    "cron:test": "curl -s -H \"x-cron-secret: $CRON_SECRET\" \"http://localhost:3000/api/workers/cron?job=all\" | npx json",
+    "cf:deploy": "cd cloudflare && npx wrangler deploy audio-worker.js --name vuka-audio",
+    "cf:dev": "cd cloudflare && npx wrangler dev audio-worker.js",
+    "env:validate": "ts-node --compiler-options {\"module\":\"CommonJS\"} -e \"const {validateEnv} = require('./src/lib/env'); const r = validateEnv(); console.log(r);\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@prisma/client": "^5.15.0",
-    "@stripe/stripe-js": "^4.0.0",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.44.0",
+    "@upstash/ratelimit": "^2.0.0",
+    "@upstash/redis": "^1.31.0",
     "clsx": "^2.1.1",
     "fflate": "^0.8.2",
     "framer-motion": "^11.0.0",
@@ -34,7 +43,6 @@
     "react": "^18",
     "react-dom": "^18",
     "resend": "^3.3.0",
-    "stripe": "^16.0.0",
     "tailwind-merge": "^2.3.0",
     "ts-node": "^10.9.2",
     "wavesurfer.js": "^7.7.14",
@@ -49,6 +57,7 @@
     "postcss": "^8.4.38",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^3.60.0"
   }
 }
