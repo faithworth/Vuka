@@ -1,5 +1,4 @@
 {
-  "regions": ["jnb1"],
   "framework": "nextjs",
   "buildCommand": "node scripts/migrate.js && npx prisma generate && next build",
   "installCommand": "npm install",
