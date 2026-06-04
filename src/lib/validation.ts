@@ -14,12 +14,11 @@ import { z } from 'zod';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Sanitise a plain text field — trim whitespace, strip null bytes */
+/** Sanitise a plain text field — trim whitespace, max length */
 const safeText = (max: number) =>
   z.string()
     .max(max)
-    .trim()
-    .transform((s) => s.replace(/\0/g, ''));
+    .trim();
 
 /** CUID-shaped ID (26 chars, starts with c) */
 const cuid = () =>

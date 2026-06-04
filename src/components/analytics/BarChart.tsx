@@ -56,7 +56,7 @@ export function BarChart({
 
     const bars = data.map((d, i) => {
       const groupX = PAD.left + i * groupGap + groupGap * 0.075;
-      const series = [];
+      const series: { x: number; y: number; w: number; h: number; color: string; v: number; si: number }[] = [];
 
       if (stacked) {
         let stackY = 0;

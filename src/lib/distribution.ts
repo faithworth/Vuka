@@ -119,6 +119,21 @@ const ADAPTERS: DspAdapter[] = [
   new AudiomackDsp(),
 ];
 
+export async function deliverToDsp(
+  dspName: string,
+  input: DspDeliveryInput
+): Promise<DspDeliveryResult> {
+  const adapter = ADAPTERS.find((a) => a.name === dspName);
+  if (!adapter) {
+    return { dsp: dspName, status: 'failed' as DspStatus, error: `Unknown DSP: ${dspName}` };
+  }
+  try {
+    return await adapter.deliver(input);
+  } catch (err: any) {
+    return { dsp: dspName, status: 'failed' as DspStatus, error: err?.message ?? 'Unknown error' };
+  }
+}
+
 export async function deliverToAllDsps(
   input: DspDeliveryInput
 ): Promise<DspDeliveryResult[]> {
@@ -314,7 +329,7 @@ export async function initiateDeliveryPipeline(releaseId: string): Promise<{
       };
 
       const result = await deliverToAllDsps(adapterInput).then(
-        (all) => all.find((r) => r.dsp === dsp) ?? { dsp, status: 'queued' as DspStatus }
+        (all) => all.find((r) => r.dsp === dsp) ?? { dsp, status: 'queued' as DspStatus, error: undefined }
       );
 
       // Mark delivery status
@@ -324,7 +339,7 @@ export async function initiateDeliveryPipeline(releaseId: string): Promise<{
         data: {
           status: dspStatus,
           submittedAt: ['submitted', 'delivered'].includes(dspStatus) ? new Date() : undefined,
-          errorMessage: result.error ?? '',
+          errorMessage: (result as any).error ?? '',
         },
       });
 

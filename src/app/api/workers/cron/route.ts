@@ -5,7 +5,7 @@ import {
   syncSearchIndex,
   computeAllTrending,
   cleanupStaleData,
-  milestonesCheck,
+  checkMilestones,
 } from '@/lib/workers/jobs';
 import prisma from '@/lib/prisma';
 import {
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     // ── milestones ───────────────────────────────────────────────
     if (job === 'milestones' || job === 'all') {
-      results.milestones = await milestonesCheck();
+      results.milestones = await checkMilestones();
     }
 
     // ── cleanup ──────────────────────────────────────────────────
@@ -148,7 +148,10 @@ export async function GET(req: NextRequest) {
           take: 20,
         });
 
-        const releaseIds = [...new Set(failedReleases.map((d) => d.distributionReleaseId))];
+        const releaseIds: string[] = failedReleases
+          .map((d) => d.distributionReleaseId)
+          .filter((id): id is string => typeof id === 'string')
+          .filter((id, i, arr) => arr.indexOf(id) === i);
         let retried = 0;
         let retryErrors = 0;
 

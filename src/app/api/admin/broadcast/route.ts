@@ -23,7 +23,7 @@ import { sendBroadcast } from '@/lib/emails';
 import { requireAdmin } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  const adminCheck = await requireAdmin(req);
+  const adminCheck = await requireAdmin();
   if (!adminCheck.ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
 // GET: list past broadcasts
 export async function GET(req: NextRequest) {
-  const adminCheck = await requireAdmin(req);
+  const adminCheck = await requireAdmin();
   if (!adminCheck.ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

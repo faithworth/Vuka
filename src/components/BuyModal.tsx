@@ -70,7 +70,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           itemType:     beat ? 'beat' : 'release',
           itemId:       beat ? beat.id : release!.id,
           licenseType:  beat ? license : undefined,
-          customAmount: release?.payWhatYouWant ? parseFloat(customAmount) : undefined,
+          customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
           buyerEmail:   email,
           buyerName:    name,
           currency:     'ZAR',

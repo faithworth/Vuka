@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
             });
           }
         }
-        await auditLog.adminAction('admin.flags_updated', 'PlatformSetting', 'flags', user.id);
+        await auditLog.adminAction('admin.flags_updated', 'PlatformSetting', 'flags', user.id, '');
         return NextResponse.json({ ok: true });
       }
 
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
             });
           }
         }
-        await auditLog.adminAction('admin.payout_settings_updated', 'PlatformSetting', 'payouts', user.id);
+        await auditLog.adminAction('admin.payout_settings_updated', 'PlatformSetting', 'payouts', user.id, '');
         return NextResponse.json({ ok: true });
       }
 
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
           update: { value: data as any, updatedBy: user.id },
           create: { key: storageKey, value: data as any, updatedBy: user.id },
         });
-        await auditLog.adminAction(`admin.${section}_updated`, 'PlatformSetting', section, user.id);
+        await auditLog.adminAction(`admin.${section}_updated`, 'PlatformSetting', section, user.id, '');
         return NextResponse.json({ ok: true });
       }
     }

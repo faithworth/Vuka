@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
           reviewedAt: new Date(),
         },
       }).catch(() => null);
-      await auditLog.adminAction(`security.flag_${bodyAction}d`, 'ContentFlag', flagId, user.id);
+      await auditLog.adminAction(`security.flag_${bodyAction}d`, 'ContentFlag', flagId, user.id, '');
       return NextResponse.json({ ok: true });
     } catch (err) {
       return NextResponse.json({ error: 'Failed to update flag' }, { status: 500 });
