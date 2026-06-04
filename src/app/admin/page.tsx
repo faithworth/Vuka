@@ -14,7 +14,7 @@ import {
   Filter, Search,
 } from 'lucide-react';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '';
+const ADMIN_EMAIL = ''; // Unused — role check is done via /api/auth/me isAdmin flag
 
 type Tab = 'overview' | 'users' | 'releases' | 'finance' | 'payouts' | 'settings' | 'audit' | 'analytics';
 
@@ -90,7 +90,8 @@ export default function AdminPage() {
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((me) => {
-        if (!me.email || me.email !== ADMIN_EMAIL) { router.replace('/'); return; }
+        // isAdmin is true for owner/super_admin/admin/moderator — set by /api/auth/me from DB
+        if (!me.isAdmin) { router.replace('/'); return; }
         loadOverview();
         setLoading(false);
       })

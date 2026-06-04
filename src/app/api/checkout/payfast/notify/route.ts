@@ -92,9 +92,25 @@ export async function POST(req: NextRequest) {
     const platformFee = Math.round(purchase.amount * PLATFORM_FEE_RATE * 100) / 100;
     const netAmount   = purchase.amount - platformFee;
 
+    // If the purchase has no userId, look up the user by buyerEmail to link it
+    let resolvedUserId = purchase.userId;
+    if (!resolvedUserId && purchase.buyerEmail) {
+      const buyerUser = await prisma.user.findUnique({
+        where: { email: purchase.buyerEmail },
+        select: { id: true },
+      }).catch(() => null);
+      resolvedUserId = buyerUser?.id ?? null;
+    }
+
     await prisma.purchase.update({
       where: { id: purchaseId },
-      data: { status: 'confirmed', payfastPfPaymentId: pfPaymentId, platformFee, netAmount },
+      data: {
+        status: 'confirmed',
+        payfastPfPaymentId: pfPaymentId,
+        platformFee,
+        netAmount,
+        ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
+      },
     });
 
     const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.app';

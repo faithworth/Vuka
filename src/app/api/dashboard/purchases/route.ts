@@ -25,11 +25,14 @@ export async function GET() {
       });
       return NextResponse.json({ purchases, role: 'artist' });
     } else {
-      // Fan: show their own purchases by email
+      // Fan: show their own purchases — match by userId OR buyerEmail
       const purchases = await prisma.purchase.findMany({
         where: {
-          buyerEmail: user.email,
           status: 'confirmed',
+          OR: [
+            { userId: user.id },
+            { buyerEmail: user.email! },
+          ],
         },
         select: {
           id: true,

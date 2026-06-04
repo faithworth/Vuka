@@ -42,14 +42,23 @@ export async function POST(req: NextRequest) {
     });
 
     if (user) {
-      // Always update the role if it changed — never silently ignore
-      if (user.role !== validRole) {
+      // Only upgrade role — never downgrade an existing artist/industry/admin to a lower role.
+      const ROLE_RANK: Record<string, number> = {
+        owner: 100, super_admin: 90, admin: 80, moderator: 70,
+        verified_artist: 60, artist: 50, producer: 50,
+        industry: 40, fan: 10,
+      };
+      const existingRank = ROLE_RANK[user.role] ?? 0;
+      const requestedRank = ROLE_RANK[validRole] ?? 0;
+
+      if (requestedRank > existingRank) {
         user = await prisma.user.update({
           where: { email },
           data: { role: validRole },
           include: { artist: true, industryUser: true },
         });
       }
+      // else: keep existing role, fall through to Artist/IndustryUser record checks
     } else {
       user = await prisma.user.create({
         data: { name, email, role: validRole },

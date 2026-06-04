@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       itemType, itemId, licenseType,
       buyerEmail, buyerName, currency = 'ZAR',
       customAmount,
+      userId,  // optional — set when buyer is logged in, links purchase to their account
     } = body;
 
     if (!itemType || !itemId || !buyerEmail || !buyerName) {
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
     if (amount === 0) {
       const purchase = await prisma.purchase.create({
         data: {
+          userId:      userId || null,
           buyerEmail,
           buyerName,
           itemType,
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
     // ── PAID item — create pending purchase then build PayFast form ──
     const purchase = await prisma.purchase.create({
       data: {
+        userId:      userId || null,
         buyerEmail,
         buyerName,
         itemType,

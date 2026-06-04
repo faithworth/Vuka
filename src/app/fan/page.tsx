@@ -113,9 +113,12 @@ export default function FanDashboard() {
           setUserName(me.name || data.user.email || '');
           if (me.role === 'admin' || me.role === 'owner' || me.role === 'super_admin') { router.replace('/admin'); return; }
           if (me.isIndustry || me.role === 'industry') { router.replace('/industry-dashboard'); return; }
-          if (me.isArtist) { router.replace('/dashboard'); return; }
+          if (me.isArtist || me.role === 'artist' || me.role === 'producer' || me.role === 'verified_artist') { router.replace('/dashboard'); return; }
         }
       } catch {}
+
+      // Heal first (links past purchases to account by email), then load all data in parallel
+      await fetch('/api/auth/heal-purchases', { method: 'POST' }).catch(() => {});
 
       await Promise.all([
         fetch('/api/dashboard/purchases').then(r => r.json()).then(d => setPurchases(d.purchases || [])).catch(() => {}),

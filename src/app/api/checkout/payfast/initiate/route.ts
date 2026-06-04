@@ -6,7 +6,7 @@ import { buildPayFastForm } from '@/lib/payfast';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { itemType, itemId, licenseType, buyerEmail, buyerName, customAmount } = body;
+    const { itemType, itemId, licenseType, buyerEmail, buyerName, customAmount, userId } = body;
 
     if (!itemType || !itemId || !buyerEmail || !buyerName) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       const licenseId = `VK-${Date.now().toString(36).toUpperCase()}`;
       const purchase = await prisma.purchase.create({
         data: {
+          userId: userId || null,
           buyerEmail,
           buyerName,
           itemType,
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
     const licenseId = `VK-${Date.now().toString(36).toUpperCase()}`;
     const purchase = await prisma.purchase.create({
       data: {
+        userId: userId || null,
         buyerEmail,
         buyerName,
         itemType,

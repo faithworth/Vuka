@@ -21,31 +21,29 @@ export default function AdminLoginPage() {
 
   // If already logged in as admin, redirect immediately
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-      if (user && adminEmail && user.email === adminEmail) {
-        router.replace('/admin');
-      } else {
-        setChecking(false);
-      }
-    });
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(me => {
+        if (me?.isAdmin) {
+          router.replace('/admin');
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => setChecking(false));
   }, [router]);
 
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-    if (!adminEmail) { setError('Admin email not configured.'); return; }
-    if (email.trim().toLowerCase() !== adminEmail.toLowerCase()) {
-      setError('Unauthorised email address.');
-      return;
-    }
     setSending(true);
     const supabase = createClient();
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/admin` },
+      options: {
+        // Redirect through callback so DB role is resolved before landing on /admin
+        emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+      },
     });
     if (err) { setError(err.message); setSending(false); return; }
     setSent(true);

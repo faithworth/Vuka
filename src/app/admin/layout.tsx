@@ -31,13 +31,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [open, setOpen]         = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.replace('/auth/login?next=/admin'); return; }
-      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-      if (adminEmail && user.email !== adminEmail) { router.replace('/'); return; }
-      setChecking(false);
-    });
+    // Use /api/auth/me — DB role is the single source of truth.
+    // Do NOT compare emails client-side; NEXT_PUBLIC_ADMIN_EMAIL may not be set.
+    fetch('/api/auth/me')
+      .then(r => {
+        if (r.status === 401) { router.replace('/auth/login?next=/admin'); return null; }
+        return r.json();
+      })
+      .then(me => {
+        if (!me) return; // already redirected above
+        if (!me.isAdmin) { router.replace('/'); return; }
+        setChecking(false);
+      })
+      .catch(() => router.replace('/auth/login?next=/admin'));
   }, [router]);
 
   // Don't apply layout to login page - it handles its own auth check

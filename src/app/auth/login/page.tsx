@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Music, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 
@@ -29,8 +29,10 @@ function resolveRedirect(me: {
   return '/fan';
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextUrl = searchParams.get('next') || '';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -54,7 +56,10 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const me = await res.json();
-        router.push(resolveRedirect(me));
+        // Honour ?next= param (e.g. middleware redirected /admin → /auth/login?next=/admin)
+        // Only allow internal paths to prevent open redirect
+        const destination = nextUrl && nextUrl.startsWith('/') ? nextUrl : resolveRedirect(me);
+        router.push(destination);
         router.refresh();
         return;
       }
@@ -136,5 +141,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

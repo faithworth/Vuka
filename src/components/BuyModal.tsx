@@ -4,8 +4,9 @@
 // All purchases route to /api/checkout/payfast/create-session
 // PayFast handles ZAR card, instant EFT, SCode, Mobicred, Masterpass
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { createClient } from '@/lib/supabase';
 
 const LICENSES = [
   {
@@ -49,6 +50,23 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
   const [customAmount, setCustomAmount] = useState('');
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
+
+  // Auto-fill from logged-in session if available
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      // Get full name + email from /api/auth/me (has DB name, not just auth metadata)
+      fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(me => {
+        if (!me) return;
+        setLoggedInUserId(me.id ?? null);
+        if (me.name && !name) setName(me.name);
+        if (me.email && !email) setEmail(me.email);
+      }).catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const prices: Record<string, number> = beat
     ? { basic: beat.basicPrice, premium: beat.premiumPrice, exclusive: beat.exclPrice }
@@ -74,6 +92,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
           buyerEmail:   email,
           buyerName:    name,
           currency:     'ZAR',
+          userId:       loggedInUserId ?? undefined,  // links purchase to account
         }),
       });
 
