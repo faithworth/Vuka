@@ -168,7 +168,7 @@ DROP POLICY IF EXISTS "purchase_admin_all"       ON "Purchase";
 
 -- Buyer sees their purchases
 CREATE POLICY "purchase_select_buyer" ON "Purchase"
-  FOR SELECT USING ("buyerId" = vuka_user_id());
+  FOR SELECT USING ("userId" = vuka_user_id());
 
 -- Artist sees purchases of their content (for earnings display)
 CREATE POLICY "purchase_select_seller" ON "Purchase"
@@ -187,7 +187,7 @@ CREATE POLICY "purchase_select_seller" ON "Purchase"
   );
 
 CREATE POLICY "purchase_insert_buyer" ON "Purchase"
-  FOR INSERT WITH CHECK ("buyerId" = vuka_user_id());
+  FOR INSERT WITH CHECK ("userId" = vuka_user_id());
 
 CREATE POLICY "purchase_admin_all" ON "Purchase"
   FOR ALL USING (vuka_is_admin());
@@ -359,7 +359,7 @@ CREATE POLICY "post_admin_all" ON "ArtistPost"
 CREATE INDEX IF NOT EXISTS "artist_userId_idx"       ON "Artist" ("userId");
 CREATE INDEX IF NOT EXISTS "beat_artistId_idx"        ON "Beat" ("artistId");
 CREATE INDEX IF NOT EXISTS "release_artistId_idx"     ON "Release" ("artistId");
-CREATE INDEX IF NOT EXISTS "purchase_buyerId_idx"     ON "Purchase" ("buyerId");
+CREATE INDEX IF NOT EXISTS "purchase_userId_idx"      ON "Purchase" ("userId");
 CREATE INDEX IF NOT EXISTS "payout_req_artistId_idx"  ON "PayoutRequest" ("artistId");
 CREATE INDEX IF NOT EXISTS "bank_acct_artistId_idx"   ON "ArtistBankAccount" ("artistId");
 CREATE INDEX IF NOT EXISTS "notification_userId_idx"  ON "Notification" ("userId");
