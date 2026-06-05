@@ -370,9 +370,9 @@ export default function IndustryDashboardPage() {
       </main>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-          <div className="w-full max-w-lg rounded-2xl p-6 space-y-4"
+          <div className="w-full max-w-lg rounded-2xl p-6 my-4 space-y-4"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <h3 className="text-lg font-black" style={{ color: 'var(--text)' }}>
               {editId ? 'Edit Service' : 'List a New Service'}
