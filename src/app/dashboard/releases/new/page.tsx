@@ -199,22 +199,27 @@ export default function NewReleasePage() {
       const { release } = await res.json();
 
       // Step 2: create each track — auto-generates ISRC per track
-      for (const t of tracks) {
-        if (!t.title.trim()) continue;
-        await fetch(`/api/distribution/releases/${release.id}/tracks`, {
+      const validTracks = tracks.filter(t => t.title.trim());
+      if (validTracks.length === 0) throw new Error('Add at least one track before submitting');
+
+      for (const t of validTracks) {
+        const tRes = await fetch(`/api/distribution/releases/${release.id}/tracks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: t.title,
             trackNumber: t.trackNumber,
             explicit: t.isExplicit,
-            audioUrl: t.audioUrl || undefined,  // include uploaded audio if present
             language,
-            featuredArtists: t.featuredArtists.split(',').map(x => x.trim()).filter(Boolean),
-            composers: t.composers.split(',').map(x => x.trim()).filter(Boolean),
-            producers: t.producers.split(',').map(x => x.trim()).filter(Boolean),
+            featuredArtists: t.featuredArtists.split(',').map((x: string) => x.trim()).filter(Boolean),
+            composers: t.composers.split(',').map((x: string) => x.trim()).filter(Boolean),
+            producers: t.producers.split(',').map((x: string) => x.trim()).filter(Boolean),
           }),
         });
+        if (!tRes.ok) {
+          const d = await tRes.json();
+          throw new Error(`Track "${t.title}" failed: ${d.error || 'Unknown error'}`);
+        }
       }
 
       // Step 3: submit for admin review (status: draft → metadata_review)

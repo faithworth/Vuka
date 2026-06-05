@@ -44,13 +44,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
       artworkUrl: release.artworkUrl,
       artworkStatus: release.artworkStatus,
       targetDSPs: release.targetDSPs,
-      tracks: release.tracks.map(t => ({
+      tracks: release.tracks.length > 0 ? release.tracks.map(t => ({
         title: t.title,
         trackNumber: t.trackNumber,
         masterFileUrl: t.masterFileUrl,
         masterFileStatus: t.masterFileStatus,
         isrc: t.isrc || undefined,
-      })),
+      })) : [{ title: 'placeholder', trackNumber: 1, masterFileUrl: '', masterFileStatus: 'pending' }],
       copyrightHolder: release.copyrightHolder,
       copyrightYear: release.copyrightYear || undefined,
     });
