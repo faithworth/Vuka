@@ -31,28 +31,25 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
 
     if (!artist) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Fetch live distribution releases separately and attach them
+    // Fetch live distribution releases and attach them
     const distributionReleases = await prisma.distributionRelease.findMany({
       where: { artistId: artist.id, status: 'live' },
-      include: {
-        tracks: { orderBy: { trackNumber: 'asc' } },
-      },
+      include: { tracks: { orderBy: { trackNumber: 'asc' } } },
       orderBy: { liveAt: 'desc' },
       take: 50,
-    });
+    }).catch(() => []);
 
-    // Normalise distributionReleases to a shape compatible with the Releases tab
     const normalisedDistribReleases = distributionReleases.map(r => ({
       id: r.id,
-      slug: r.id,             // distribution releases use their cuid as URL param
+      slug: r.id,
       title: r.title,
       releaseType: r.releaseType,
       artworkUrl: r.artworkUrl,
-      price: null,            // no store price
+      price: null,
       isActive: true,
       upc: r.upc,
       distributor: r.distributor,
-      _isDistribution: true,  // flag for ArtistTabs to build correct href
+      _isDistribution: true,
       tracks: r.tracks.map(t => ({
         id: t.id,
         title: t.title,
@@ -63,9 +60,35 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       })),
     }));
 
+    // Fetch storefront so tagline, bioLong, accentColor show on the public profile
+    const storefrontRaw = await prisma.creatorStorefront.findUnique({
+      where: { artistId: artist.id },
+    }).catch(() => null);
+
+    let storefront: Record<string, any> | null = null;
+    if (storefrontRaw) {
+      let sections: Record<string, any> = {};
+      try {
+        const parsed = storefrontRaw.sections;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          sections = parsed as Record<string, any>;
+        }
+      } catch {}
+      storefront = {
+        tagline:         storefrontRaw.headline || '',
+        bioLong:         storefrontRaw.description || '',
+        accentColor:     storefrontRaw.theme && storefrontRaw.theme.startsWith('#')
+                           ? storefrontRaw.theme : '#38b6e8',
+        showSupport:     sections.showSupport !== false,
+        socialLinks:     sections.socialLinks || {},
+        featuredBeatIds: sections.featuredBeatIds || [],
+      };
+    }
+
     return NextResponse.json({
       ...artist,
       distributionReleases: normalisedDistribReleases,
+      storefront,
     });
   } catch (err) {
     console.error('DB error (artist):', err);

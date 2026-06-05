@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!artist) return { title: 'Artist not found' };
   return {
     title: `${artist.name} on Vuka — Buy beats & music`,
-    description: `${artist.bio || ''} ${artist.genreTags?.join(', ')}`.trim(),
+    description: `${artist.storefront?.tagline || artist.bio || ''} ${artist.genreTags?.join(', ')}`.trim(),
     openGraph: {
       title: `${artist.name} on Vuka — Buy beats & music`,
       description: `Shop now on Vuka`,
@@ -26,6 +26,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ArtistProfilePage({ params }: { params: { slug: string } }) {
   const artist = await getArtist(params.slug);
   if (!artist) notFound();
+
+  // Accent colour from storefront (falls back to sky blue)
+  const accent = artist.storefront?.accentColor || 'var(--sky)';
+
+  // Total release count = store releases + distribution releases
+  const totalReleases =
+    (artist.releases?.length || 0) + (artist.distributionReleases?.length || 0);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -50,17 +57,34 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
               <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>{artist.name}</h1>
               {artist.isVerified && <span className="badge badge-sky">✓ Verified</span>}
             </div>
+
+            {/* Location */}
             <p className="mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}
             </p>
+
+            {/* Storefront tagline — shown if set, otherwise falls back silently */}
+            {artist.storefront?.tagline && (
+              <p className="mt-1 text-sm font-semibold" style={{ color: accent }}>
+                {artist.storefront.tagline}
+              </p>
+            )}
+
+            {/* Genre tags */}
             {artist.genreTags?.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {artist.genreTags.map((g: string) => (
-                  <span key={g} className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{g}</span>
+                  <span key={g} className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: accent }}>{g}</span>
                 ))}
               </div>
             )}
-            {artist.bio && <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{artist.bio}</p>}
+
+            {/* Bio — show extended bio from storefront if set, otherwise short bio from profile */}
+            {(artist.storefront?.bioLong || artist.bio) && (
+              <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                {artist.storefront?.bioLong || artist.bio}
+              </p>
+            )}
           </div>
 
           {/* Action buttons */}
@@ -74,13 +98,13 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
           </div>
         </div>
 
-        {/* Stats row */}
+        {/* Stats row — Releases count includes distribution releases */}
         <div className="flex gap-6 mb-8 flex-wrap">
           {[
-            { label: 'Beats', value: artist.beats?.length || 0 },
-            { label: 'Releases', value: artist.releases?.length || 0 },
+            { label: 'Beats',      value: artist.beats?.length || 0 },
+            { label: 'Releases',   value: totalReleases },
             { label: 'Supporters', value: artist.supportReceived?.length || 0 },
-            { label: 'Followers', value: artist.followers?.length || 0 },
+            { label: 'Followers',  value: artist.followers?.length || 0 },
           ].map(s => (
             <div key={s.label}>
               <p className="text-xl font-bold" style={{ color: 'var(--text)' }}>{s.value}</p>
@@ -114,10 +138,10 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                     </div>
                     <div className="h-3 rounded-full overflow-hidden my-3" style={{ background: 'var(--surface2)' }}>
                       <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, background: 'var(--sky)' }} />
+                        style={{ width: `${pct}%`, background: accent }} />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold" style={{ color: 'var(--sky)' }}>
+                      <span className="text-sm font-bold" style={{ color: accent }}>
                         {goal.currency} {Number(goal.currentAmount).toFixed(2)} raised
                       </span>
                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
