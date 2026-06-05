@@ -192,7 +192,10 @@ export default function NewReleasePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create release'); }
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || d.error || 'Failed to create release');
+      }
       const { release } = await res.json();
 
       // Step 2: create each track — auto-generates ISRC per track

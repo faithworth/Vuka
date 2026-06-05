@@ -96,8 +96,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ release }, { status: 201 });
   } catch (err: any) {
-    console.error('[distribution/releases] POST error:', err?.message);
-    return NextResponse.json({ error: 'Failed to create release' }, { status: 503 });
+    console.error('[distribution/releases] POST error:', err?.message, err?.code, err?.meta);
+    // Return the real error so we can debug — remove this detail before go-live
+    return NextResponse.json({
+      error: 'Failed to create release',
+      detail: err?.message || String(err),
+      code: err?.code,
+      meta: err?.meta,
+    }, { status: 503 });
   }
 }
 
