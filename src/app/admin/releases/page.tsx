@@ -8,7 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Loader2, RefreshCw, CheckCircle, XCircle, Clock,
-  Search, Music, ExternalLink, Zap, Hash, RotateCcw, Flag,
+  Search, Music, ExternalLink, Hash, RotateCcw, Flag,
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -256,11 +256,11 @@ export default function AdminReleasesPage() {
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              {(selected.status === 'pending' || selected.status === 'metadata_review' || selected.status === 'artwork_review') && (<>
+              {(['pending', 'metadata_review', 'artwork_review', 'approved', 'delivering'].includes(selected.status)) && (<>
                 <button onClick={() => doAction('approve', selected.id)} disabled={actionLoading}
                   className="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
                   style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-                  <CheckCircle size={14} /> Approve
+                  <CheckCircle size={14} /> Approve & Publish
                 </button>
                 <button onClick={() => doAction('reject', selected.id, { reason: rejectReason })} disabled={actionLoading}
                   className="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
@@ -268,18 +268,11 @@ export default function AdminReleasesPage() {
                   <XCircle size={14} /> Reject
                 </button>
               </>)}
-              {(selected.status === 'approved' || selected.status === 'APPROVED') && (
-                <button onClick={() => doAction('distribute', selected.id)} disabled={actionLoading}
-                  className="col-span-2 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                  style={{ background: 'rgba(56,182,232,0.1)', color: '#38b6e8' }}>
-                  <Zap size={14} /> Trigger Distribution
-                </button>
-              )}
-              {(selected.status === 'live' || selected.status === 'LIVE') && (
+              {(selected.status === 'live') && (
                 <button onClick={() => doAction('takedown', selected.id)} disabled={actionLoading}
                   className="col-span-2 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
                   style={{ background: 'rgba(255,77,77,0.1)', color: '#ff4d4d' }}>
-                  <Flag size={14} /> Request Takedown
+                  <Flag size={14} /> Take Down
                 </button>
               )}
               <a href={`/releases/${selected.id}`} target="_blank" rel="noopener"

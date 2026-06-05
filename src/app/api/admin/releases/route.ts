@@ -9,8 +9,6 @@ import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import {
   advanceReleaseStatus,
-  initiateDeliveryPipeline,
-  retryFailedDeliveries,
   appendStatusHistory,
 } from '@/lib/distribution';
 import {
@@ -105,25 +103,33 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, status: 'approved' });
       }
       case 'approve': {
-        await advanceReleaseStatus(releaseId, 'approved', notes || 'Approved by admin');
+        // Approve goes straight to live — Vuka IS the platform, no DSP delivery needed
+        const history = appendStatusHistory(release.statusHistory as any[], 'live', notes || 'Approved and published by admin');
+        await prisma.distributionRelease.update({
+          where: { id: releaseId },
+          data: { status: 'live', liveAt: new Date(), statusHistory: history },
+        });
         await auditLog.adminAction('distribution.approved', 'DistributionRelease', releaseId, user.id, notes || '');
-        // Phase 9: notify artist
+        // Notify artist it's live
         try {
-          const artistEmail = release.artist?.user?.email;
+          const full = await prisma.distributionRelease.findUnique({
+            where: { id: releaseId },
+            include: { artist: { include: { user: true } } },
+          });
+          const artistEmail = full?.artist?.user?.email;
           if (artistEmail) {
-            const platforms = Array.isArray(release.targetDSPs) ? release.targetDSPs as string[] : ['Spotify', 'Apple Music', 'Audiomack'];
             await sendReleaseApproved({
               to: artistEmail,
-              artistName: release.artist?.name || release.artistName,
+              artistName: full?.artist?.name || release.artistName,
               releaseTitle: release.title,
               releaseType: release.releaseType?.toUpperCase() || 'SINGLE',
-              platforms,
-              expectedLiveDate: '5–7 business days',
+              platforms: ['Vuka'],
+              expectedLiveDate: 'Now',
               releaseUrl: `${APP_URL()}/dashboard/releases/${releaseId}`,
             });
           }
         } catch (e) { console.error('[admin/releases] approve email failed:', e); }
-        return NextResponse.json({ ok: true, status: 'approved' });
+        return NextResponse.json({ ok: true, status: 'live' });
       }
       case 'reject': {
         const history = appendStatusHistory(release.statusHistory as any[], 'failed', notes || 'Rejected by admin');
@@ -153,41 +159,16 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error('[admin/releases] reject email failed:', e); }
         return NextResponse.json({ ok: true, status: 'failed' });
       }
+      // Alias — if a release is stuck in 'delivering'/'approved', push it to live
+      case 'distribute':
       case 'deliver': {
-        if (!['approved', 'scheduled'].includes(release.status))
-          return NextResponse.json({ error: 'Release must be approved before delivery' }, { status: 409 });
-        const result = await initiateDeliveryPipeline(releaseId);
-        await auditLog.adminAction(
-          'distribution.deliver_initiated',
-          'DistributionRelease',
-          releaseId,
-          user.id,
-          JSON.stringify(result.deliveries),
-        );
-        return NextResponse.json({
-          ok: true,
-          status: 'delivering',
-          deliveries: result.deliveries,
-          errors: result.errors,
+        const history = appendStatusHistory(release.statusHistory as any[], 'live', 'Manually set to live by admin');
+        await prisma.distributionRelease.update({
+          where: { id: releaseId },
+          data: { status: 'live', liveAt: new Date(), statusHistory: history },
         });
-      }
-      case 'retry': {
-        await retryFailedDeliveries(releaseId);
-        await auditLog.adminAction('distribution.retry', 'DistributionRelease', releaseId, user.id, '');
-        return NextResponse.json({ ok: true });
-      }
-      case 'assign_isrc': {
-        if (trackId && isrc) {
-          await prisma.distributionTrack.update({ where: { id: trackId }, data: { isrc } });
-          await auditLog.adminAction('distribution.isrc_assigned', 'DistributionTrack', trackId, user.id, isrc);
-        }
-        return NextResponse.json({ ok: true });
-      }
-      // Alias for 'deliver' — our admin releases page uses 'distribute'
-      case 'distribute': {
-        await prisma.distributionRelease.update({ where: { id: releaseId }, data: { status: 'delivering' } }).catch(() => null);
-        await auditLog.adminAction('distribution.deliver_initiated', 'DistributionRelease', releaseId, user.id, 'manual trigger');
-        return NextResponse.json({ ok: true, status: 'delivering' });
+        await auditLog.adminAction('distribution.set_live', 'DistributionRelease', releaseId, user.id, 'manual');
+        return NextResponse.json({ ok: true, status: 'live' });
       }
       case 'takedown': {
         await prisma.distributionRelease.update({ where: { id: releaseId }, data: { status: 'takedown_requested' } }).catch(() => null);
