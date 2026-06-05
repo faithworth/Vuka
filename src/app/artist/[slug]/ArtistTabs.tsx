@@ -1,9 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink, Music as MusicIcon, Loader2 } from 'lucide-react';
+import { Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink, Loader2 } from 'lucide-react';
 import { BeatCard } from '@/components/BeatCard';
-import FollowButton from './FollowButton';
 
 interface Post {
   id: string;
@@ -23,7 +22,14 @@ interface ArtistTabsProps {
 
 export default function ArtistTabs({ artist }: ArtistTabsProps) {
   type Tab = 'beats' | 'releases' | 'posts';
-  const defaultTab: Tab = artist.beats?.length > 0 ? 'beats' : artist.releases?.length > 0 ? 'releases' : 'posts';
+
+  // Combine store releases + distribution releases for tab count
+  const allReleases = [
+    ...(artist.releases ?? []),
+    ...(artist.distributionReleases ?? []),
+  ];
+
+  const defaultTab: Tab = artist.beats?.length > 0 ? 'beats' : allReleases.length > 0 ? 'releases' : 'posts';
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -50,7 +56,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
 
   const tabs: { key: Tab; label: string; icon: typeof Music; count: number }[] = [
     { key: 'beats', label: 'Beats', icon: Music, count: artist.beats?.length || 0 },
-    { key: 'releases', label: 'Releases', icon: Disc, count: artist.releases?.length || 0 },
+    { key: 'releases', label: 'Releases', icon: Disc, count: allReleases.length },
     { key: 'posts', label: 'Posts', icon: Send, count: 0 },
   ];
 
@@ -87,15 +93,17 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* Releases tab */}
+      {/* Releases tab — store releases + distribution releases combined */}
       {activeTab === 'releases' && (
         <section className="mb-12">
-          {artist.releases?.length === 0 ? (
+          {allReleases.length === 0 ? (
             <p className="text-center py-10" style={{ color: 'var(--text-muted)' }}>No releases yet</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {artist.releases.map((r: any) => (
-                <a key={r.id} href={`/release/${r.slug}`} className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block"
+              {/* Store releases (beat store — have a slug and a price) */}
+              {artist.releases?.map((r: any) => (
+                <a key={r.id} href={`/release/${r.slug}`}
+                  className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div className="aspect-square overflow-hidden">
                     {r.artworkUrl
@@ -104,7 +112,33 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                   </div>
                   <div className="p-4">
                     <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
-                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{r.releaseType} · R{r.price}</p>
+                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>
+                      {r.releaseType} · R{r.price}
+                    </p>
+                  </div>
+                </a>
+              ))}
+
+              {/* Distribution releases (submitted via release wizard — use /releases/[id]) */}
+              {artist.distributionReleases?.map((r: any) => (
+                <a key={r.id} href={`/releases/${r.id}`}
+                  className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block relative"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="aspect-square overflow-hidden">
+                    {r.artworkUrl
+                      ? <img src={r.artworkUrl} alt={r.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎵</div>}
+                  </div>
+                  <div className="p-4">
+                    <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
+                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>
+                      {r.releaseType} · {r.tracks?.length ?? 0} {r.tracks?.length === 1 ? 'track' : 'tracks'}
+                    </p>
+                  </div>
+                  {/* "On Vuka" badge to distinguish from paid store releases */}
+                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold"
+                    style={{ background: 'rgba(160,232,124,0.15)', color: 'var(--green)', border: '1px solid rgba(160,232,124,0.25)' }}>
+                    On Vuka
                   </div>
                 </a>
               ))}

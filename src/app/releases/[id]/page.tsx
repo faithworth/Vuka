@@ -1,39 +1,99 @@
 // ============================================================
-// VUKA — Public Release Page (Phase 4)
-// /releases/[id] — canonical public URL for a release.
-// Supports slug OR cuid ID in the [id] param.
-// Also acts as SEO target page for distribution "listen on" links.
+// VUKA — Public Release Page
+// /releases/[id] — supports BOTH Release (beat store) AND
+// DistributionRelease (artist distribution uploads).
+// Tries store Release first (by slug, then id), then falls
+// back to DistributionRelease by id. Admin "Public Page"
+// links and artist profile links both resolve correctly.
 // ============================================================
 
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ReleasePageClient from './ReleasePageClient';
+import prisma from '@/lib/prisma';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.app';
+// ── Data fetchers ─────────────────────────────────────────────
+
+async function getStoreRelease(id: string) {
+  // Try slug
+  const bySlug = await prisma.release.findUnique({
+    where: { slug: id },
+    include: {
+      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
+      tracks: { orderBy: { trackNumber: 'asc' } },
+    },
+  }).catch(() => null);
+  if (bySlug) return { ...bySlug, _source: 'store' as const };
+
+  // Try id
+  const byId = await prisma.release.findUnique({
+    where: { id },
+    include: {
+      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
+      tracks: { orderBy: { trackNumber: 'asc' } },
+    },
+  }).catch(() => null);
+  if (byId) return { ...byId, _source: 'store' as const };
+
+  return null;
+}
+
+async function getDistributionRelease(id: string) {
+  const release = await prisma.distributionRelease.findUnique({
+    where: { id },
+    include: {
+      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
+      tracks: { orderBy: { trackNumber: 'asc' } },
+      dspDeliveries: true,
+    },
+  }).catch(() => null);
+
+  if (!release || release.status !== 'live') return null;
+
+  // Normalise to the shape ReleasePageClient expects
+  return {
+    _source: 'distribution' as const,
+    id: release.id,
+    slug: release.id,          // use id as slug for canonical URL
+    title: release.title,
+    releaseType: release.releaseType,
+    artworkUrl: release.artworkUrl,
+    description: null,
+    price: undefined,          // distribution releases have no store price
+    payWhatWant: false,
+    minPrice: undefined,
+    plays: 0,
+    artist: release.artist,
+    // Map DistributionTrack → track shape the client expects
+    tracks: release.tracks.map(t => ({
+      id: t.id,
+      title: t.title,
+      trackNumber: t.trackNumber,
+      duration: t.duration ?? 0,
+      previewUrl: t.fileUrl || t.masterFileUrl || null,
+      featuredArtists: t.featuredArtists ?? [],
+      isrc: t.isrc,
+    })),
+    dspDeliveries: release.dspDeliveries,
+    releaseDate: release.scheduledDate || release.originalReleaseDate || release.createdAt,
+    credits: release.pLine || release.cLine
+      ? [release.pLine, release.cLine].filter(Boolean).join('\n')
+      : null,
+    copyrightHolder: release.copyrightHolder || null,
+    copyrightYear: release.copyrightYear ?? null,
+    upc: release.upc,
+    distributor: release.distributor,
+    labelName: release.labelName,
+  };
+}
 
 async function getRelease(id: string) {
-  try {
-    // Try by slug first, then by ID
-    const bySlug = await fetch(`${APP_URL}/api/store/releases?slug=${encodeURIComponent(id)}`, {
-      cache: 'no-store',
-    });
-    if (bySlug.ok) {
-      const data = await bySlug.json();
-      if (data.releases?.[0]) return data.releases[0];
-    }
-    // Fall back to ID
-    const byId = await fetch(`${APP_URL}/api/store/releases?id=${encodeURIComponent(id)}`, {
-      cache: 'no-store',
-    });
-    if (byId.ok) {
-      const data = await byId.json();
-      if (data.releases?.[0]) return data.releases[0];
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  const store = await getStoreRelease(id);
+  if (store) return store;
+  return getDistributionRelease(id);
 }
+
+// ── Metadata ──────────────────────────────────────────────────
 
 export async function generateMetadata(
   { params }: { params: { id: string } }
@@ -43,9 +103,9 @@ export async function generateMetadata(
 
   const artistName = release.artist?.name ?? 'Unknown Artist';
   const title      = `${release.title} — ${artistName} | Vuka`;
-  const description = release.description
-    ? `${release.description.slice(0, 150)}…`
-    : `Stream and buy "${release.title}" by ${artistName} on Vuka.`;
+  const description = (release as any).description
+    ? `${(release as any).description.slice(0, 150)}…`
+    : `Stream "${release.title}" by ${artistName} on Vuka.`;
 
   return {
     title,
@@ -64,6 +124,8 @@ export async function generateMetadata(
     },
   };
 }
+
+// ── Page ──────────────────────────────────────────────────────
 
 export default async function ReleasePage({ params }: { params: { id: string } }) {
   const release = await getRelease(params.id);
