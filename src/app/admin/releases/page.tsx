@@ -47,7 +47,8 @@ export default function AdminReleasesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/releases?status=${tab}&search=${encodeURIComponent(search)}`);
+      const statusParam = tab === 'pending' ? 'metadata_review' : tab;
+      const res = await fetch(`/api/admin/releases?status=${statusParam}&search=${encodeURIComponent(search)}`);
       if (res.ok) setReleases((await res.json()).releases || []);
     } finally { setLoading(false); }
   }, [tab, search]);
@@ -67,7 +68,9 @@ export default function AdminReleasesPage() {
     } finally { setActionLoading(false); }
   }
 
-  const pending = releases.filter(r => r.status === 'pending_review' || r.status === 'PENDING_REVIEW').length;
+  const pending = releases.filter(r =>
+    ['pending_review', 'PENDING_REVIEW', 'metadata_review', 'artwork_review'].includes(r.status)
+  ).length;
 
   return (
     <div>
@@ -198,13 +201,32 @@ export default function AdminReleasesPage() {
             {/* Metadata */}
             <div className="grid grid-cols-2 gap-3 text-sm p-4 rounded-xl"
               style={{ background: 'var(--bg)' }}>
-              <div><span style={{ color: 'var(--text-muted)' }}>UPC</span><br />{selected.upc || 'Not assigned'}</div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Genres</span><br />{selected.genres?.join(', ') || '—'}</div>
+              <div><span style={{ color: 'var(--text-muted)' }}>UPC</span><br />{selected.upc || 'Auto-assigned on approval'}</div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Genres</span><br />{[selected.primaryGenre, selected.secondaryGenre].filter(Boolean).join(', ') || selected.genres?.join(', ') || '—'}</div>
               <div><span style={{ color: 'var(--text-muted)' }}>Release Date</span><br />
-                {selected.releaseDate ? new Date(selected.releaseDate).toLocaleDateString() : '—'}
+                {selected.scheduledDate ? new Date(selected.scheduledDate).toLocaleDateString() : selected.releaseDate ? new Date(selected.releaseDate).toLocaleDateString() : '—'}
               </div>
               <div><span style={{ color: 'var(--text-muted)' }}>Explicit</span><br />{selected.isExplicit ? 'Yes' : 'No'}</div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Label</span><br />{selected.labelName || 'Self-Released'}</div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Copyright</span><br />{selected.copyrightYear ? `© ${selected.copyrightYear} ${selected.copyrightHolder || ''}` : '—'}</div>
             </div>
+
+            {/* Tracks + ISRC */}
+            {selected.tracks?.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tracks & ISRCs</div>
+                {selected.tracks.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between px-3 py-2 rounded-lg text-sm"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                    <span style={{ color: 'var(--text)' }}>{t.trackNumber}. {t.title}</span>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded"
+                      style={{ background: t.isrc ? 'rgba(160,232,124,0.1)' : 'rgba(160,160,160,0.1)', color: t.isrc ? 'var(--green)' : 'var(--text-muted)' }}>
+                      {t.isrc || 'ISRC pending'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Reject reason */}
             {(selected.status === 'pending' || selected.status === 'metadata_review' || selected.status === 'artwork_review') && (

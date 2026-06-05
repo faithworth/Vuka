@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronRight, ChevronLeft, Upload, Music, Image as ImageIcon,
-  Plus, Trash2, Loader2, CheckCircle, Globe, AlertCircle,
+  Plus, Trash2, Loader2, CheckCircle, AlertCircle,
   ArrowLeft, Hash, Users,
 } from 'lucide-react';
 
@@ -29,23 +29,7 @@ const RELEASE_TYPES = [
   { value: 'MIXTAPE', label: 'Mixtape', desc: 'Any length' },
 ];
 
-const ALL_PLATFORMS = [
-  { name: 'Spotify',       slug: 'spotify',       days: 3 },
-  { name: 'Apple Music',   slug: 'apple-music',   days: 5 },
-  { name: 'YouTube Music', slug: 'youtube-music', days: 7 },
-  { name: 'Boomplay',      slug: 'boomplay',      days: 7 },
-  { name: 'Audiomack',     slug: 'audiomack',     days: 3 },
-  { name: 'Deezer',        slug: 'deezer',        days: 7 },
-  { name: 'Tidal',         slug: 'tidal',         days: 10 },
-  { name: 'Amazon Music',  slug: 'amazon-music',  days: 7 },
-  { name: 'Shazam',        slug: 'shazam',        days: 5 },
-  { name: 'SoundCloud',    slug: 'soundcloud',    days: 3 },
-  { name: 'TikTok Music',  slug: 'tiktok-music',  days: 7 },
-  { name: 'Mdundo',        slug: 'mdundo',        days: 7 },
-  { name: 'iHeart Radio',  slug: 'iheart-radio',  days: 14 },
-  { name: 'Napster',       slug: 'napster',       days: 10 },
-  { name: 'Pandora',       slug: 'pandora',       days: 14 },
-];
+
 
 interface TrackEntry {
   id: string;
@@ -88,7 +72,7 @@ async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: n
 
 const STEPS = [
   'Release Info', 'Artwork', 'Tracks',
-  'Distribution', 'Rights & Credits', 'Review',
+  'Rights & Credits', 'Review',
 ];
 
 export default function NewReleasePage() {
@@ -119,9 +103,6 @@ export default function NewReleasePage() {
   ]);
 
   // Step 4
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(ALL_PLATFORMS.map(p => p.slug));
-
-  // Step 5
   const [copyrightYear, setCopyrightYear] = useState(new Date().getFullYear().toString());
   const [copyrightHolder, setCopyrightHolder] = useState('');
   const [label, setLabel]           = useState('');
@@ -183,24 +164,21 @@ export default function NewReleasePage() {
     setSaving(true);
     setError('');
     try {
-      // FIX: fetch the artist's name so we can pass artistName (required by the API)
+      // Fetch artist name from settings (required by the distribution API)
       const meRes = await fetch('/api/dashboard/settings');
       const meData = meRes.ok ? await meRes.json() : {};
       const artistName = meData?.artist?.name?.trim() || '';
 
-      // FIX: map wizard field names → API field names
-      // Wizard used: type, genres, releaseDate, label, platforms
-      // API expects:  releaseType, primaryGenre, secondaryGenre, scheduledDate, labelName, targetDSPs
       const body = {
         title,
-        artistName,                                          // was missing entirely
-        releaseType,                                         // was sent as `type`
-        primaryGenre,                                        // was sent inside `genres[]`
-        secondaryGenre,                                      // was sent inside `genres[]`
+        artistName,
+        releaseType,
+        primaryGenre,
+        secondaryGenre,
         language,
-        scheduledDate: releaseDate || null,                  // was sent as `releaseDate`
-        labelName: label || 'Self-Released',                 // was sent as `label`
-        targetDSPs: selectedPlatforms,                       // was sent as `platforms`
+        scheduledDate: releaseDate || null,
+        labelName: label || 'Self-Released',
+        targetDSPs: ['vuka'],  // Vuka is the platform — always set to vuka
         artworkUrl,
         copyrightYear: parseInt(copyrightYear),
         copyrightHolder: copyrightHolder || title,
@@ -208,25 +186,16 @@ export default function NewReleasePage() {
         upc: upc || undefined,
       };
 
-      // Step 1: create the release record
+      // Step 1: create the release record (status: draft)
       const res = await fetch('/api/distribution/releases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Submission failed'); }
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create release'); }
       const { release } = await res.json();
 
-      // Step 2: attach artwork if it was uploaded (PATCH supports artworkUrl)
-      if (artworkUrl) {
-        await fetch('/api/distribution/releases', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ releaseId: release.id, artworkUrl }),
-        });
-      }
-
-      // Step 3: create each track under the release
+      // Step 2: create each track — auto-generates ISRC per track
       for (const t of tracks) {
         if (!t.title.trim()) continue;
         await fetch(`/api/distribution/releases/${release.id}/tracks`, {
@@ -236,12 +205,25 @@ export default function NewReleasePage() {
             title: t.title,
             trackNumber: t.trackNumber,
             explicit: t.isExplicit,
+            audioUrl: t.audioUrl || undefined,  // include uploaded audio if present
             language,
             featuredArtists: t.featuredArtists.split(',').map(x => x.trim()).filter(Boolean),
             composers: t.composers.split(',').map(x => x.trim()).filter(Boolean),
             producers: t.producers.split(',').map(x => x.trim()).filter(Boolean),
           }),
         });
+      }
+
+      // Step 3: submit for admin review (status: draft → metadata_review)
+      // This also sends the artist a confirmation email
+      const submitRes = await fetch(`/api/distribution/releases/${release.id}/submit`, {
+        method: 'POST',
+      });
+      if (!submitRes.ok) {
+        const d = await submitRes.json();
+        // Warn but don't hard-fail — release is created, just not yet submitted
+        console.warn('[release wizard] submit step failed:', d);
+        throw new Error(d.errors?.[0] || d.error || 'Submission failed');
       }
 
       router.push('/dashboard/releases?submitted=1');
@@ -507,48 +489,8 @@ export default function NewReleasePage() {
           </div>
         )}
 
-        {/* Step 4: Distribution */}
+        {/* Step 4: Rights & Credits */}
         {step === 4 && (
-          <div className="space-y-5">
-            <h2 className="font-bold text-lg">Distribution Targets</h2>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {selectedPlatforms.length} of {ALL_PLATFORMS.length} platforms selected
-              </span>
-              <button onClick={() => setSelectedPlatforms(
-                selectedPlatforms.length === ALL_PLATFORMS.length ? [] : ALL_PLATFORMS.map(p => p.slug)
-              )} className="text-sm font-medium" style={{ color: 'var(--green)' }}>
-                {selectedPlatforms.length === ALL_PLATFORMS.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {ALL_PLATFORMS.map(p => {
-                const checked = selectedPlatforms.includes(p.slug);
-                return (
-                  <label key={p.slug}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all"
-                    style={{
-                      background: checked ? 'rgba(160,232,124,0.06)' : 'var(--bg)',
-                      border: `1px solid ${checked ? 'rgba(160,232,124,0.3)' : 'var(--border)'}`,
-                    }}>
-                    <input type="checkbox" checked={checked}
-                      onChange={() => setSelectedPlatforms(s =>
-                        checked ? s.filter(x => x !== p.slug) : [...s, p.slug]
-                      )} className="rounded" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{p.name}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Est. {p.days} days to go live</div>
-                    </div>
-                    {checked && <Globe size={12} style={{ color: 'var(--green)' }} />}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Rights & Credits */}
-        {step === 5 && (
           <div className="space-y-5">
             <h2 className="font-bold text-lg">Rights & Credits</h2>
             <div className="grid grid-cols-2 gap-4">
@@ -585,8 +527,8 @@ export default function NewReleasePage() {
           </div>
         )}
 
-        {/* Step 6: Review */}
-        {step === 6 && (
+        {/* Step 5: Review */}
+        {step === 5 && (
           <div className="space-y-5">
             <h2 className="font-bold text-lg">Review & Submit</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -602,7 +544,7 @@ export default function NewReleasePage() {
                   { label: 'Genre', value: [primaryGenre, secondaryGenre].filter(Boolean).join(', ') },
                   { label: 'Release Date', value: releaseDate || 'Immediate' },
                   { label: 'Tracks', value: `${tracks.length} track${tracks.length !== 1 ? 's' : ''}` },
-                  { label: 'Platforms', value: `${selectedPlatforms.length} platforms` },
+
                   { label: 'Label', value: label || 'Self-Released' },
                   { label: 'Copyright', value: `© ${copyrightYear} ${copyrightHolder || title}` },
                 ].map(({ label, value }) => (
@@ -640,7 +582,7 @@ export default function NewReleasePage() {
           <ChevronLeft size={14} /> Back
         </button>
 
-        {step < 6 ? (
+        {step < 5 ? (
           <button onClick={() => setStep(s => (s + 1) as any)}
             disabled={!canProceed()}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"

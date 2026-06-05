@@ -94,7 +94,14 @@ export default function AdminSettingsPage() {
           {/* Subscription Plans */}
           {tab === 'plans' && (
             <div className="space-y-4">
-              <h2 className="font-bold text-lg mb-4">Subscription Plans</h2>
+              <div>
+                <h2 className="font-bold text-lg mb-1">Subscription Plans</h2>
+                <div className="text-sm px-3 py-2 rounded-xl mb-4"
+                  style={{ background: 'rgba(232,168,124,0.08)', border: '1px solid rgba(232,168,124,0.25)', color: '#e8a87c' }}>
+                  ⚠ These plans are saved to the database but are not yet connected to artist signups or payments.
+                  They are here for future use — no artist is currently billed based on these.
+                </div>
+              </div>
               {(settings.plans || []).map((plan: any, i: number) => (
                 <div key={plan.id || i} className="p-4 rounded-xl" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">

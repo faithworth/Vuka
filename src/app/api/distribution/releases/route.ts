@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         pLine: pLine || `${new Date().getFullYear()} ${user.artist.name}`,
         cLine: cLine || `${new Date().getFullYear()} ${user.artist.name}`,
         targetDSPs: targetDSPs || [],
-        platforms: targetDSPs || [],   // FIX: schema has both targetDSPs and platforms (no default); must supply both
+        platforms: platforms || targetDSPs || [],
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         originalReleaseDate: originalReleaseDate ? new Date(originalReleaseDate) : null,
         catalogNumber: catalogNumber || '',

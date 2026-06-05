@@ -209,7 +209,7 @@ export function validateReleaseMetadata(input: {
   if (!input.artistName?.trim()) errors.push('Artist name is required.');
   if (!input.primaryGenre?.trim()) errors.push('Primary genre is required.');
   if (!input.artworkUrl?.trim()) errors.push('Artwork is required.');
-  if (!input.targetDSPs?.length) errors.push('At least one DSP target is required.');
+  // targetDSPs check removed — Vuka is the platform itself, no external DSP selection
   if (!input.copyrightHolder?.trim()) errors.push('Copyright holder is required.');
   if (!input.tracks?.length) errors.push('At least one track is required.');
   if (input.artworkStatus === 'rejected') errors.push('Artwork has been rejected — please upload a new image.');
