@@ -116,6 +116,12 @@ export default function DashboardReleasesPage() {
                   <span>{release.plays ?? 0} plays</span>
                   <span>{release.sales ?? 0} sales</span>
                   <span>{formatCurrency(release.price)}</span>
+                  {release.distributor && (
+                    <span className="px-1.5 py-0.5 rounded text-xs font-medium"
+                      style={{ background: 'rgba(160,232,124,0.1)', color: 'var(--green)' }}>
+                      via {release.distributor}
+                    </span>
+                  )}
                   {/* UPC display */}
                   {release.upc && (
                     <button

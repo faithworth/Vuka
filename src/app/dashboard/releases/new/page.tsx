@@ -194,7 +194,7 @@ export default function NewReleasePage() {
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.detail || d.error || 'Failed to create release');
+        throw new Error(d.error || 'Failed to create release');
       }
       const { release } = await res.json();
 

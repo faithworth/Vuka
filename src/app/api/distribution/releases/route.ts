@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       secondaryGenre,
       language,
       labelName,
+      distributor,
       copyrightHolder,
       copyrightYear,
       pLine,
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         language: language || 'en',
         upc,
         labelName: labelName || '',
+        distributor: distributor || 'Vuka',
         copyrightHolder: copyrightHolder || user.artist.name,
         copyrightYear: copyrightYear ? parseInt(copyrightYear) : new Date().getFullYear(),
         pLine: pLine || `${new Date().getFullYear()} ${user.artist.name}`,
@@ -97,13 +99,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ release }, { status: 201 });
   } catch (err: any) {
     console.error('[distribution/releases] POST error:', err?.message, err?.code, err?.meta);
-    // Return the real error so we can debug — remove this detail before go-live
-    return NextResponse.json({
-      error: 'Failed to create release',
-      detail: err?.message || String(err),
-      code: err?.code,
-      meta: err?.meta,
-    }, { status: 503 });
+    return NextResponse.json({ error: 'Failed to create release' }, { status: 503 });
   }
 }
 
@@ -135,7 +131,7 @@ export async function PATCH(req: NextRequest) {
     const allowed = [
       'title','artistName','featuredArtists','releaseType',
       'primaryGenre','secondaryGenre','language',
-      'labelName','copyrightHolder','copyrightYear',
+      'labelName','distributor','copyrightHolder','copyrightYear',
       'pLine','cLine','targetDSPs','scheduledDate',
       'originalReleaseDate','catalogNumber','artworkUrl',
     ];

@@ -208,6 +208,24 @@ export default function AdminReleasesPage() {
               </div>
               <div><span style={{ color: 'var(--text-muted)' }}>Explicit</span><br />{selected.isExplicit ? 'Yes' : 'No'}</div>
               <div><span style={{ color: 'var(--text-muted)' }}>Label</span><br />{selected.labelName || 'Self-Released'}</div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Distributor</span><br />
+                <input
+                  defaultValue={selected.distributor || 'Vuka'}
+                  className="mt-1 w-full text-sm px-2 py-1 rounded-lg"
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  onBlur={async (e) => {
+                    const val = e.target.value.trim();
+                    if (!val || val === selected.distributor) return;
+                    await fetch('/api/distribution/releases', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ releaseId: selected.id, distributor: val }),
+                    });
+                  }}
+                  placeholder="Vuka"
+                />
+              </div>
               <div><span style={{ color: 'var(--text-muted)' }}>Copyright</span><br />{selected.copyrightYear ? `© ${selected.copyrightYear} ${selected.copyrightHolder || ''}` : '—'}</div>
             </div>
 
