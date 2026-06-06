@@ -31,6 +31,7 @@ export async function GET(
     include: {
       beat: { include: { artist: true } },
       release: { include: { tracks: true, artist: true } },
+      distributionRelease: { include: { tracks: { orderBy: { trackNumber: 'asc' } }, artist: true } },
     },
   });
 
@@ -48,7 +49,8 @@ export async function GET(
   });
 
   const zipEntries: Record<string, Uint8Array> = {};
-  const folderName = purchase.beat?.title || purchase.release?.title || 'Vuka-Purchase';
+  const distRelease = (purchase as any).distributionRelease;
+  const folderName = purchase.beat?.title || purchase.release?.title || distRelease?.title || 'Vuka-Purchase';
 
   if (purchase.beat) {
     const beat = purchase.beat;
@@ -127,6 +129,40 @@ export async function GET(
 
       const tagged = tagMp3(raw, meta);
       const filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.mp3`;
+      zipEntries[`${folderName}/${filename}`] = new Uint8Array(tagged);
+    }
+
+  } else if (distRelease) {
+    // Distribution release — tracks stored at fileUrl / masterFileUrl (full HTTPS URL or R2 key)
+    const artist = distRelease.artist;
+    const totalTracks = distRelease.tracks.length;
+    const year = new Date(distRelease.createdAt).getFullYear().toString();
+    const artworkBuf = distRelease.artworkUrl ? await fetchBuffer(distRelease.artworkUrl) : null;
+
+    for (const track of distRelease.tracks) {
+      const fileUrl: string = track.masterFileUrl || track.fileUrl || '';
+      if (!fileUrl) continue;
+
+      const raw = fileUrl.startsWith('http')
+        ? await fetchBuffer(fileUrl)
+        : await fetchR2Buffer(fileUrl);
+      if (!raw) continue;
+
+      const meta: TrackMeta = {
+        title: track.title,
+        artist: artist.name,
+        albumArtist: artist.name,
+        album: distRelease.title,
+        trackNumber: track.trackNumber,
+        totalTracks,
+        year,
+        artworkBuffer: artworkBuf || undefined,
+      };
+
+      const isWav = fileUrl.endsWith('.wav');
+      const tagged = isWav ? tagWav(raw, meta) : tagMp3(raw, meta);
+      const ext = isWav ? 'wav' : 'mp3';
+      const filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.${ext}`;
       zipEntries[`${folderName}/${filename}`] = new Uint8Array(tagged);
     }
   }

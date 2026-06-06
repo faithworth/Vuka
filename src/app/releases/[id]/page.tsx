@@ -50,6 +50,16 @@ async function getDistributionRelease(id: string) {
 
   if (!release || release.status !== 'live') return null;
 
+  // Build playable URL — fileUrl (new uploads) is already a full URL.
+  // masterFileUrl on older tracks may be a relative R2 key — build full URL.
+  const r2Base = process.env.CLOUDFLARE_R2_PUBLIC_URL || '';
+  function toPlayableUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    if (r2Base) return `${r2Base}/${url}`;
+    return null;
+  }
+
   // Normalise to the shape ReleasePageClient expects
   return {
     _source: 'distribution' as const,
@@ -70,7 +80,7 @@ async function getDistributionRelease(id: string) {
       title: t.title,
       trackNumber: t.trackNumber,
       duration: t.duration ?? 0,
-      previewUrl: t.fileUrl || t.masterFileUrl || null,
+      previewUrl: toPlayableUrl(t.fileUrl || t.masterFileUrl),
       featuredArtists: t.featuredArtists ?? [],
       isrc: t.isrc,
     })),

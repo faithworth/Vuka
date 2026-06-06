@@ -219,6 +219,7 @@ export default function NewReleasePage() {
             trackNumber: t.trackNumber,
             explicit: t.isExplicit,
             language,
+            audioUrl: t.audioUrl || '',   // ← public R2 URL — enables streaming + download
             featuredArtists: t.featuredArtists.split(',').map((x: string) => x.trim()).filter(Boolean),
             composers: t.composers.split(',').map((x: string) => x.trim()).filter(Boolean),
             producers: t.producers.split(',').map((x: string) => x.trim()).filter(Boolean),

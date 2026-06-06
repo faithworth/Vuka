@@ -47,14 +47,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const body = await req.json();
-    const { title, trackNumber, featuredArtists, composers, lyricists, producers, explicit, language } = body;
+    const { title, trackNumber, featuredArtists, composers, lyricists, producers, explicit, language, audioUrl } = body;
 
     if (!title?.trim()) return NextResponse.json({ error: 'Track title required' }, { status: 400 });
 
     const isrc = generateISRC();
     const tNum = trackNumber || (release._count.tracks + 1);
 
-    // Generate presigned upload URL for master file
+    // Generate presigned upload URL for master file (used if artist uploads separately)
     const masterKey = `distribution/${release.id}/tracks/${Date.now()}.wav`;
     const uploadUrl = await getR2UploadUrl(masterKey, 'audio/wav');
 
@@ -70,8 +70,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         producers: producers || [],
         explicit: explicit || false,
         language: language || 'en',
-        masterFileUrl: masterKey,
-        masterFileStatus: 'pending',
+        // audioUrl from wizard = public R2 URL → save to fileUrl for streaming/download
+        fileUrl: audioUrl || '',
+        masterFileUrl: audioUrl || masterKey,
+        masterFileStatus: audioUrl ? 'approved' : 'pending',
       },
     });
 
