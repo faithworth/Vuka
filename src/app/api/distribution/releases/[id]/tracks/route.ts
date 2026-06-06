@@ -84,6 +84,48 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 }
 
+// ── PATCH — update fileUrl/masterFileUrl on an existing track ──────────────
+// Body: { trackId: string, audioUrl: string }
+// Used to repair tracks whose audio URL was never saved (e.g. "All Yorz").
+export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
+    const user = await requireArtist();
+    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Verify the release belongs to this artist
+    const release = await prisma.distributionRelease.findFirst({
+      where: { id: params.id, artistId: user.artist.id },
+    });
+    if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
+
+    const body = await req.json();
+    const { trackId, audioUrl } = body;
+
+    if (!trackId) return NextResponse.json({ error: 'trackId required' }, { status: 400 });
+    if (!audioUrl) return NextResponse.json({ error: 'audioUrl required' }, { status: 400 });
+
+    // Verify the track belongs to this release
+    const existing = await prisma.distributionTrack.findFirst({
+      where: { id: trackId, releaseId: params.id },
+    });
+    if (!existing) return NextResponse.json({ error: 'Track not found' }, { status: 404 });
+
+    const track = await prisma.distributionTrack.update({
+      where: { id: trackId },
+      data: {
+        fileUrl: audioUrl,
+        masterFileUrl: audioUrl,
+        masterFileStatus: 'approved',
+      },
+    });
+
+    return NextResponse.json({ track });
+  } catch (err: any) {
+    console.error('[distribution/tracks] PATCH error:', err?.message);
+    return NextResponse.json({ error: 'Failed to update track' }, { status: 503 });
+  }
+}
+
 export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     const user = await requireArtist();

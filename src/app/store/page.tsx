@@ -195,8 +195,12 @@ function ReleaseCard({ release, wishlisted, onWishlist }: {
   wishlisted: boolean;
   onWishlist: (e: React.MouseEvent) => void;
 }) {
+  // Distribution releases use /releases/[id]; store releases use /release/[slug]
+  const href = release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`;
+
   return (
-    <a href={`/release/${release.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
+    <a href={href}
+      className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="aspect-square overflow-hidden relative">
         {release.artworkUrl
