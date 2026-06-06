@@ -90,6 +90,11 @@ export default function NewReleasePage() {
   const [releaseDate, setReleaseDate] = useState('');
   const [isExplicit, setIsExplicit]   = useState(false);
 
+  // Pricing
+  const [price, setPrice]               = useState('');
+  const [payWhatYouWant, setPayWhatYouWant] = useState(false);
+  const [minPrice, setMinPrice]         = useState('');
+
   // Step 2
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
@@ -178,12 +183,15 @@ export default function NewReleasePage() {
         language,
         scheduledDate: releaseDate || null,
         labelName: label || 'Self-Released',
-        targetDSPs: ['vuka'],  // Vuka is the platform — always set to vuka
+        targetDSPs: ['vuka'],
         artworkUrl,
         copyrightYear: parseInt(copyrightYear),
         copyrightHolder: copyrightHolder || title,
         isExplicit,
         upc: upc || undefined,
+        price: parseFloat(price) || 0,
+        minPrice: payWhatYouWant ? (parseFloat(minPrice) || 0) : 0,
+        payWhatYouWant,
       };
 
       // Step 1: create the release record (status: draft)
@@ -367,6 +375,62 @@ export default function NewReleasePage() {
                 className="rounded" />
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Contains explicit content</span>
             </label>
+
+            {/* ── Pricing ── */}
+            <div className="pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <p className="text-sm font-bold mb-3" style={{ color: 'var(--text)' }}>Pricing</p>
+
+              <label className="flex items-center gap-2 cursor-pointer mb-3">
+                <input type="checkbox" checked={payWhatYouWant}
+                  onChange={e => { setPayWhatYouWant(e.target.checked); if (e.target.checked) setPrice(''); }}
+                  className="rounded" />
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Pay What You Want (fans choose their own price)
+                </span>
+              </label>
+
+              {!payWhatYouWant ? (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                    Price (ZAR) — set to 0 for free download
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg" style={{ color: 'var(--gold)' }}>R</span>
+                    <input
+                      type="number" min="0" step="1"
+                      value={price}
+                      onChange={e => setPrice(e.target.value)}
+                      placeholder="e.g. 50"
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    />
+                  </div>
+                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                    You receive 98% of every sale. Vuka retains 2%.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                    Minimum price (ZAR) — fans can pay more
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg" style={{ color: 'var(--gold)' }}>R</span>
+                    <input
+                      type="number" min="0" step="1"
+                      value={minPrice}
+                      onChange={e => setMinPrice(e.target.value)}
+                      placeholder="e.g. 20"
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    />
+                  </div>
+                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                    Set to 0 to make it free with an option to tip.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -552,7 +616,7 @@ export default function NewReleasePage() {
                   { label: 'Genre', value: [primaryGenre, secondaryGenre].filter(Boolean).join(', ') },
                   { label: 'Release Date', value: releaseDate || 'Immediate' },
                   { label: 'Tracks', value: `${tracks.length} track${tracks.length !== 1 ? 's' : ''}` },
-
+                  { label: 'Price', value: payWhatYouWant ? `Pay What You Want (min R${minPrice || 0})` : parseFloat(price) > 0 ? `R${price}` : 'Free' },
                   { label: 'Label', value: label || 'Self-Released' },
                   { label: 'Copyright', value: `© ${copyrightYear} ${copyrightHolder || title}` },
                 ].map(({ label, value }) => (

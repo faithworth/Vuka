@@ -59,9 +59,9 @@ async function getDistributionRelease(id: string) {
     releaseType: release.releaseType,
     artworkUrl: release.artworkUrl,
     description: null,
-    price: undefined,          // distribution releases have no store price
-    payWhatWant: false,
-    minPrice: undefined,
+    price: (release as any).price ?? 0,
+    payWhatWant: (release as any).payWhatYouWant ?? false,
+    minPrice: (release as any).minPrice ?? 0,
     plays: 0,
     artist: release.artist,
     // Map DistributionTrack → track shape the client expects

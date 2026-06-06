@@ -167,10 +167,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── RELEASE ──────────────────────────────────────────────
-    else if (purchase.itemType === 'release' && purchase.releaseId) {
+    // ── RELEASE (beat store) ──────────────────────────────────
+    else if (purchase.itemType === 'release' && (purchase as any).releaseId) {
       const release = await prisma.release.findUnique({
-        where: { id: purchase.releaseId },
+        where: { id: (purchase as any).releaseId },
         include: { artist: { include: { user: true } } },
       });
       if (release) {
@@ -183,6 +183,25 @@ export async function POST(req: NextRequest) {
         await prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } });
 
         // FIX: roll into daily analytics
+        await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
+        await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      }
+    }
+
+    // ── DISTRIBUTION RELEASE (artist-uploaded EPs, albums, singles) ──
+    else if (purchase.itemType === 'release' && (purchase as any).distributionReleaseId) {
+      const distRelease = await prisma.distributionRelease.findUnique({
+        where: { id: (purchase as any).distributionReleaseId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (distRelease) {
+        itemName      = distRelease.title;
+        artistEmail   = distRelease.artist.user.email;
+        artistName    = distRelease.artist.name;
+        artworkUrl    = distRelease.artworkUrl || '';
+        artistId      = distRelease.artist.id;
+        paymentMethod = 'payfast';
+
         await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
         await incrementDailyRollup(artistId, 'revenue').catch(() => {});
       }

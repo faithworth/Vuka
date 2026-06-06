@@ -60,6 +60,9 @@ export async function POST(req: NextRequest) {
       scheduledDate,
       originalReleaseDate,
       catalogNumber,
+      price,
+      minPrice,
+      payWhatYouWant,
     } = body;
 
     if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -92,6 +95,9 @@ export async function POST(req: NextRequest) {
         originalReleaseDate: originalReleaseDate ? new Date(originalReleaseDate) : null,
         catalogNumber: catalogNumber || '',
         status: 'draft',
+        price: parseFloat(price) || 0,
+        minPrice: parseFloat(minPrice) || 0,
+        payWhatYouWant: payWhatYouWant === true,
         statusHistory: [{ status: 'draft', timestamp: new Date().toISOString(), notes: 'Created' }],
       },
     });
@@ -134,6 +140,7 @@ export async function PATCH(req: NextRequest) {
       'labelName','distributor','copyrightHolder','copyrightYear',
       'pLine','cLine','targetDSPs','scheduledDate',
       'originalReleaseDate','catalogNumber','artworkUrl',
+      'price','minPrice','payWhatYouWant',
     ];
     const data: any = {};
     for (const key of allowed) {

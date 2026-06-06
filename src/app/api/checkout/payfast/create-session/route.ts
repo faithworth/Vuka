@@ -58,23 +58,53 @@ export async function POST(req: NextRequest) {
       artistEmail = beat.artist.user.email;
 
     } else if (itemType === 'release') {
-      const release = await prisma.release.findUnique({
+      // Try store Release first
+      let storeRelease = await prisma.release.findUnique({
         where: { id: itemId },
         include: { artist: { include: { user: true } } },
-      });
-      if (!release || !release.isActive) {
-        return NextResponse.json({ error: 'Release not found or inactive' }, { status: 404 });
-      }
+      }).catch(() => null);
 
-      amount = parseFloat(customAmount) || release.price;
-      if (release.minPrice > 0 && amount < release.minPrice) {
-        return NextResponse.json(
-          { error: `Minimum price is R${release.minPrice}` },
-          { status: 400 }
-        );
+      if (storeRelease && storeRelease.isActive) {
+        amount = parseFloat(customAmount) || storeRelease.price;
+        if (storeRelease.minPrice > 0 && amount < storeRelease.minPrice) {
+          return NextResponse.json(
+            { error: `Minimum price is R${storeRelease.minPrice}` },
+            { status: 400 }
+          );
+        }
+        itemName    = storeRelease.title;
+        artistEmail = storeRelease.artist.user.email;
+      } else {
+        // Fall back to DistributionRelease
+        const distRelease = await prisma.distributionRelease.findUnique({
+          where: { id: itemId },
+          include: { artist: { include: { user: true } } },
+        }).catch(() => null);
+
+        if (!distRelease || distRelease.status !== 'live') {
+          return NextResponse.json({ error: 'Release not found or not available' }, { status: 404 });
+        }
+
+        const releasePrice    = (distRelease as any).price ?? 0;
+        const releaseMinPrice = (distRelease as any).minPrice ?? 0;
+        const payWYW          = (distRelease as any).payWhatYouWant ?? false;
+
+        if (payWYW) {
+          // Fan chose their own amount — enforce minimum
+          amount = parseFloat(customAmount) || releaseMinPrice;
+          if (releaseMinPrice > 0 && amount < releaseMinPrice) {
+            return NextResponse.json(
+              { error: `Minimum price is R${releaseMinPrice}` },
+              { status: 400 }
+            );
+          }
+        } else {
+          amount = releasePrice;
+        }
+
+        itemName    = distRelease.title;
+        artistEmail = distRelease.artist.user.email;
       }
-      itemName    = release.title;
-      artistEmail = release.artist.user.email;
 
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
@@ -85,21 +115,23 @@ export async function POST(req: NextRequest) {
 
     // ── FREE item — skip gateway entirely ───────────────────────
     if (amount === 0) {
+      const isDistrib = itemType === 'release' && !(await prisma.release.findUnique({ where: { id: itemId } }).catch(() => null));
       const purchase = await prisma.purchase.create({
         data: {
-          userId:      userId || null,
+          userId:                  userId || null,
           buyerEmail,
           buyerName,
           itemType,
-          beatId:      itemType === 'beat'    ? itemId : null,
-          releaseId:   itemType === 'release' ? itemId : null,
-          amount:      0,
+          beatId:                  itemType === 'beat' ? itemId : null,
+          releaseId:               itemType === 'release' && !isDistrib ? itemId : null,
+          distributionReleaseId:   itemType === 'release' && isDistrib ? itemId : null,
+          amount:                  0,
           currency,
-          licenseType: licenseType || '',
+          licenseType:             licenseType || '',
           licenseId,
-          status:      'confirmed',
-          platformFee: 0,
-          netAmount:   0,
+          status:                  'confirmed',
+          platformFee:             0,
+          netAmount:               0,
         },
       });
       return NextResponse.json({
@@ -109,19 +141,21 @@ export async function POST(req: NextRequest) {
     }
 
     // ── PAID item — create pending purchase then build PayFast form ──
+    const isDistribPaid = itemType === 'release' && !(await prisma.release.findUnique({ where: { id: itemId } }).catch(() => null));
     const purchase = await prisma.purchase.create({
       data: {
-        userId:      userId || null,
+        userId:                userId || null,
         buyerEmail,
         buyerName,
         itemType,
-        beatId:      itemType === 'beat'    ? itemId : null,
-        releaseId:   itemType === 'release' ? itemId : null,
+        beatId:                itemType === 'beat' ? itemId : null,
+        releaseId:             itemType === 'release' && !isDistribPaid ? itemId : null,
+        distributionReleaseId: itemType === 'release' && isDistribPaid  ? itemId : null,
         amount,
         currency,
-        licenseType: licenseType || '',
+        licenseType:           licenseType || '',
         licenseId,
-        status:      'pending',
+        status:                'pending',
       },
     });
 
