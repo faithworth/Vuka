@@ -105,10 +105,14 @@ export default function DashboardReleasesPage() {
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full"
                     style={{
-                      background: release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
-                      color: release.isActive ? 'var(--green)' : '#ef4444',
+                      background: release._isDistrib
+                        ? 'rgba(56,182,232,0.1)'
+                        : release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                      color: release._isDistrib
+                        ? 'var(--sky)'
+                        : release.isActive ? 'var(--green)' : '#ef4444',
                     }}>
-                    {release.isActive ? 'Active' : 'Hidden'}
+                    {release._isDistrib ? (release.status ?? 'distribution') : (release.isActive ? 'Active' : 'Hidden')}
                   </span>
                 </div>
                 <div className="text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -148,13 +152,14 @@ export default function DashboardReleasesPage() {
                     {expanded === release.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
                 )}
-                <button onClick={() => toggleActive(release.id, release.isActive)}
+                <button onClick={() => !release._isDistrib && toggleActive(release.id, release.isActive)}
                   className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
-                  title={release.isActive ? 'Hide release' : 'Make live'}
-                  style={{ color: 'var(--text-muted)' }}>
+                  title={release._isDistrib ? 'Managed via distribution' : (release.isActive ? 'Hide release' : 'Make live')}
+                  disabled={!!release._isDistrib}
+                  style={{ color: 'var(--text-muted)', opacity: release._isDistrib ? 0.35 : 1 }}>
                   {release.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-                <Link href={`/release/${release.slug}`} target="_blank"
+                <Link href={release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`} target="_blank"
                   className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
                   style={{ color: 'var(--sky)' }}>
                   <ExternalLink className="w-4 h-4" />
