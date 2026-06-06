@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
-import { Plus, ExternalLink, Music, Trash2, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, Hash, Copy, Check } from 'lucide-react';
+import { Plus, ExternalLink, Music, Trash2, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, Hash, Copy, Check, Pencil } from 'lucide-react';
 
 export default function DashboardReleasesPage() {
   const [releases, setReleases] = useState<any[]>([]);
@@ -159,6 +159,14 @@ export default function DashboardReleasesPage() {
                   style={{ color: 'var(--text-muted)', opacity: release._isDistrib ? 0.35 : 1 }}>
                   {release.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+                {release._isDistrib && (
+                  <Link href={`/dashboard/releases/${release.id}/edit`}
+                    className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
+                    title="Edit / re-upload audio"
+                    style={{ color: 'var(--sky)' }}>
+                    <Pencil size={16} />
+                  </Link>
+                )}
                 <Link href={release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`} target="_blank"
                   className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
                   style={{ color: 'var(--sky)' }}>
