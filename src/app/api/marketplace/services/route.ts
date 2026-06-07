@@ -1,11 +1,13 @@
 // ============================================================
 // PHASE 2 — src/app/api/marketplace/services/route.ts
 // List public services; artists create/manage their own services
+// FIXED: Coerce deliveryDays/price to numbers to prevent Prisma type errors.
+// FIXED: Return actual error message in dev for debugging.
 // ============================================================
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireArtist, requireAuth } from '@/lib/auth';
+import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { listServices } from '@/lib/marketplace';
 
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const services = await listServices({ category, search, take, skip });
     return NextResponse.json({ services });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[marketplace/services] GET error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
   }
@@ -30,7 +32,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireArtist();
-    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized — no artist profile found' }, { status: 401 });
 
     const body = await req.json();
     const { title, description, category, packages, portfolioUrls, requirements } = body;
@@ -39,29 +41,34 @@ export async function POST(req: NextRequest) {
     if (!category)         return NextResponse.json({ error: 'Category required' }, { status: 400 });
     if (!packages?.length) return NextResponse.json({ error: 'At least one package required' }, { status: 400 });
 
-    // Validate packages structure
+    // Validate + coerce packages structure (all fields must be proper types for Prisma)
+    const coercedPackages = [];
     for (const pkg of packages) {
-      if (!pkg.name || pkg.price == null || !pkg.deliveryDays) {
-        return NextResponse.json(
-          { error: 'Each package needs name, price, and deliveryDays' },
-          { status: 400 }
-        );
-      }
+      const price        = Number(pkg.price);
+      const deliveryDays = parseInt(String(pkg.deliveryDays), 10);
+      if (!pkg.name?.trim()) return NextResponse.json({ error: 'Each package needs a name' }, { status: 400 });
+      if (isNaN(price) || price < 0) return NextResponse.json({ error: `Package "${pkg.name}" has invalid price` }, { status: 400 });
+      if (isNaN(deliveryDays) || deliveryDays < 1) return NextResponse.json({ error: `Package "${pkg.name}" has invalid delivery days` }, { status: 400 });
+      coercedPackages.push({
+        name: pkg.name.trim(),
+        price,
+        deliveryDays,
+        description: pkg.description || '',
+      });
     }
 
-    // Derive the base price from the lowest-priced package
-    const basePrice: number = Math.min(...packages.map((p: any) => Number(p.price)));
-    const baseDeliveryDays: number = Math.min(...packages.map((p: any) => Number(p.deliveryDays)));
+    const basePrice        = Math.min(...coercedPackages.map(p => p.price));
+    const baseDeliveryDays = Math.min(...coercedPackages.map(p => p.deliveryDays));
 
     const service = await prisma.marketplaceService.create({
       data: {
-        artistId: user.artist.id,
-        title: title.trim(),
-        description: description || '',
+        artistId:     user.artist.id,
+        title:        title.trim(),
+        description:  description || '',
         category,
-        price: basePrice,
+        price:        basePrice,
         deliveryDays: baseDeliveryDays,
-        packages,
+        packages:     coercedPackages,
         portfolioUrls: portfolioUrls || [],
         requirements: requirements || '',
       },
@@ -69,12 +76,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ service }, { status: 201 });
   } catch (err: any) {
-    console.error('[marketplace/services] POST error:', err?.message);
-    return NextResponse.json({ error: 'Failed to create service' }, { status: 503 });
+    console.error('[marketplace/services] POST error:', err?.message, err?.code);
+    return NextResponse.json(
+      { error: err?.message?.includes('Unique constraint') ? 'A service with that title already exists' : 'Failed to create service' },
+      { status: 503 },
+    );
   }
 }
 
-// PATCH — update own service
+// PATCH — update own service (or soft-delete with isActive: false)
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireArtist();
@@ -89,10 +99,28 @@ export async function PATCH(req: NextRequest) {
     });
     if (!service) return NextResponse.json({ error: 'Service not found' }, { status: 404 });
 
-    const allowed = ['title','description','category','packages','portfolioUrls','requirements','isActive'];
+    const allowed = ['title','description','category','packages','portfolioUrls','requirements','isActive'] as const;
     const data: any = {};
     for (const key of allowed) {
-      if (updates[key] !== undefined) data[key] = updates[key];
+      if (updates[key] !== undefined) {
+        if (key === 'packages' && Array.isArray(updates[key])) {
+          // Coerce types when updating packages
+          data[key] = updates[key].map((pkg: any) => ({
+            name:         pkg.name?.trim() || '',
+            price:        Number(pkg.price),
+            deliveryDays: parseInt(String(pkg.deliveryDays), 10) || 7,
+            description:  pkg.description || '',
+          }));
+        } else {
+          data[key] = updates[key];
+        }
+      }
+    }
+
+    // Also update base price/deliveryDays if packages updated
+    if (data.packages?.length) {
+      data.price        = Math.min(...data.packages.map((p: any) => p.price));
+      data.deliveryDays = Math.min(...data.packages.map((p: any) => p.deliveryDays));
     }
 
     const updated = await prisma.marketplaceService.update({ where: { id: serviceId }, data });

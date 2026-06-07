@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ tier }, { status: 201 });
   } catch (err: any) {
-    console.error('[creator/tiers] POST error:', err?.message);
-    return NextResponse.json({ error: 'Failed to create tier' }, { status: 503 });
+    console.error('[creator/tiers] POST error:', err?.message, err?.code);
+    return NextResponse.json({ error: err?.message?.includes('Unknown field') ? 'Schema mismatch — run prisma db push' : (err?.message || 'Failed to create tier') }, { status: 503 });
   }
 }
 

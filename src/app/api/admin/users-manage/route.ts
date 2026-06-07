@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
             select: {
               id: true, slug: true, isVerified: true,
               payfastMerchant: true, totalPlays: true,
+              planSlug: true, planExpiresAt: true,
             },
           },
           _count: { select: { purchases: true } },
@@ -131,6 +132,35 @@ export async function POST(req: NextRequest) {
       case 'delete': {
         await prisma.user.delete({ where: { id: userId } });
         await auditLog.adminAction('admin.user_deleted', 'User', userId, admin.id, reason || '');
+        return NextResponse.json({ ok: true });
+      }
+      case 'set_plan': {
+        // value = 'free' | 'pro' | 'label'
+        const allowedPlans = ['free', 'pro', 'label'];
+        if (!allowedPlans.includes(value))
+          return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+
+        if (!target.artist) {
+          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
+        }
+
+        const { PLANS } = await import('@/lib/plans');
+        const plan = PLANS.find(p => p.slug === value);
+        if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 400 });
+
+        const now = new Date();
+        let expiresAt: Date | null = null;
+        if (plan.priceZAR > 0) {
+          expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        }
+
+        await prisma.artist.update({
+          where: { userId },
+          data: { planSlug: value, planExpiresAt: expiresAt },
+        });
+
+        await auditLog.adminAction('plan.admin_override', 'Artist', target.artist.id, admin.id, `Plan set to ${value}`);
         return NextResponse.json({ ok: true });
       }
       default:

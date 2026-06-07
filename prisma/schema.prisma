@@ -97,6 +97,7 @@ model Artist {
   geoEvents             GeographyEvent[]
   verificationRequest   VerificationRequest?
   searchIndex           SearchIndex[]
+  planSubscriptions     ArtistPlanSubscription[]
   createdAt             DateTime             @default(now())
 }
 
@@ -1165,4 +1166,31 @@ model BroadcastLog {
   createdAt      DateTime @default(now())
 
   @@map("broadcast_logs")
+}
+
+// ── ARTIST PLAN SUBSCRIPTIONS ────────────────────────────────
+// Tracks recurring billing for Pro/Label plans via PayFast.
+
+model ArtistPlanSubscription {
+  id                  String    @id @default(cuid())
+  artistId            String
+  artist              Artist    @relation(fields: [artistId], references: [id])
+  planSlug            String    // pro | label
+  status              String    @default("active") // active | cancelled | expired | failed
+  payfastToken        String?   // PayFast recurring token (future use)
+  payfastPaymentId    String?   // last successful pf_payment_id
+  amount              Float
+  currency            String    @default("ZAR")
+  billingInterval     String    @default("monthly")
+  currentPeriodStart  DateTime  @default(now())
+  currentPeriodEnd    DateTime
+  cancelledAt         DateTime?
+  failedAt            DateTime?
+  failReason          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([artistId])
+  @@index([status])
+  @@map("artist_plan_subscriptions")
 }

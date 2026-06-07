@@ -11,12 +11,13 @@ import { createClient } from '@/lib/supabase';
 import {
   LayoutDashboard, Users, Music, Radio, DollarSign,
   Settings, Shield, Bell, LogOut, Menu, X, ChevronRight,
-  BarChart2, Flag, Loader2,
+  BarChart2, Flag, Loader2, Crown,
 } from 'lucide-react';
 
 const ADMIN_NAV = [
   { href: '/admin',              label: 'Overview',     icon: LayoutDashboard, exact: true },
   { href: '/admin/users',        label: 'Users',        icon: Users },
+  { href: '/admin/plans',        label: 'Plans',        icon: Crown },
   { href: '/admin/releases',     label: 'Releases',     icon: Music },
   { href: '/admin/distribution', label: 'Distribution', icon: Radio },
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },

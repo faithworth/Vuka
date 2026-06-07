@@ -3,12 +3,32 @@
 // FIXED: Removed Stripe Connect (not available in SA without a US entity).
 // FIXED: Added SA Bank Account section using the existing /api/payouts/bank-accounts endpoint.
 // FIXED: Payfast section retains connected status badge.
+// FIXED: Added Plan Management section with PayFast upgrade flow.
 
 import { useEffect, useRef, useState } from 'react';
 import {
   Loader2, CheckCircle2, Mic2, ExternalLink, Info,
   QrCode, Download, Building2, Plus, Trash2, Wallet,
+  Crown, Zap, Star, Check, ArrowRight, AlertTriangle,
 } from 'lucide-react';
+
+const PLAN_DEFS = [
+  {
+    slug: 'free', name: 'Free', priceZAR: 0, artistSharePct: 85, platformFeePct: 15,
+    features: ['Up to 2 releases/year', 'Beat store & licensing', 'Fan memberships', 'Basic analytics'],
+    color: 'var(--text-muted)', Icon: Zap,
+  },
+  {
+    slug: 'pro', name: 'Pro', priceZAR: 249, artistSharePct: 92, platformFeePct: 8,
+    features: ['Unlimited releases', 'Only 8% platform fee', 'Priority support', 'Advanced analytics', 'Industry marketplace'],
+    color: 'var(--sky)', Icon: Crown,
+  },
+  {
+    slug: 'label', name: 'Label', priceZAR: 999, artistSharePct: 95, platformFeePct: 5,
+    features: ['Unlimited releases', 'Lowest 5% platform fee', 'Multi-artist management', 'Bulk payouts', 'White-label storefront'],
+    color: 'var(--gold)', Icon: Star,
+  },
+];
 
 const SA_BANKS = [
   { name: 'Absa', branch: '632005' },
@@ -42,12 +62,67 @@ export default function SettingsPage() {
     accountHolder: '', bankName: '', branchCode: '', accountNumber: '',
   });
 
+  // Plan management
+  const [planInfo, setPlanInfo]         = useState<any>(null);
+  const [planLoading, setPlanLoading]   = useState(false);
+  const [cancellingPlan, setCancellingPlan] = useState(false);
+
   useEffect(() => {
     Promise.all([
       fetch('/api/dashboard/settings').then(r => r.json()).then(d => setArtist(d.artist || d)),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
+      fetch('/api/plans/status').then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  async function upgradePlan(planSlug: string) {
+    setPlanLoading(true);
+    try {
+      const res = await fetch('/api/plans/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planSlug }),
+      });
+      const { payfastUrl, formFields, error } = await res.json();
+      if (error) { alert(error); return; }
+
+      // Submit redirect form to PayFast
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payfastUrl;
+      Object.entries(formFields).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = String(v);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    } catch {
+      alert('Failed to start upgrade payment');
+    }
+    setPlanLoading(false);
+  }
+
+  async function cancelPlan() {
+    if (!confirm('Cancel your plan? You\'ll keep access until the end of your billing period.')) return;
+    setCancellingPlan(true);
+    try {
+      const res = await fetch('/api/plans/cancel', { method: 'POST' });
+      const d = await res.json();
+      if (d.ok) {
+        alert(d.message);
+        const updated = await fetch('/api/plans/status').then(r => r.json());
+        setPlanInfo(updated);
+      } else {
+        alert(d.error || 'Failed to cancel plan');
+      }
+    } catch {
+      alert('Failed to cancel plan');
+    }
+    setCancellingPlan(false);
+  }
 
   async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
     const objectUrl = URL.createObjectURL(file);
@@ -465,6 +540,85 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* ── PLAN MANAGEMENT ─────────────────────────────── */}
+      <div id="plan" className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Crown size={18} style={{ color: 'var(--sky)' }} />
+          <h2 className="font-bold text-base" style={{ color: 'var(--text)' }}>Your Plan</h2>
+        </div>
+        <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+          Upgrade to keep more of every sale and unlock unlimited releases.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {PLAN_DEFS.map(p => {
+            const isActive = planInfo?.planSlug === p.slug;
+            const Icon = p.Icon;
+            return (
+              <div key={p.slug} className="rounded-2xl p-5 flex flex-col"
+                style={{
+                  background: isActive ? `${p.color}0d` : 'var(--surface2)',
+                  border: `1.5px solid ${isActive ? p.color : 'var(--border)'}`,
+                }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon size={16} style={{ color: p.color }} />
+                  <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{p.name}</span>
+                  {isActive && (
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: `${p.color}22`, color: p.color }}>
+                      Active
+                    </span>
+                  )}
+                </div>
+                <div className="mb-3">
+                  {p.priceZAR === 0
+                    ? <span className="text-2xl font-black" style={{ color: p.color }}>Free</span>
+                    : <><span className="text-2xl font-black" style={{ color: p.color }}>R{p.priceZAR}</span>
+                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/mo</span></>
+                  }
+                </div>
+                <p className="text-xs font-semibold mb-2" style={{ color: p.color }}>
+                  You keep {p.artistSharePct}% · Vuka takes {p.platformFeePct}%
+                </p>
+                <ul className="space-y-1 flex-1 mb-4">
+                  {p.features.map(f => (
+                    <li key={f} className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <Check size={11} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--green)' }} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                {!isActive && p.priceZAR > 0 && (
+                  <button
+                    onClick={() => upgradePlan(p.slug)}
+                    disabled={planLoading}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-60"
+                    style={{ background: p.color }}>
+                    {planLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                    Upgrade to {p.name}
+                  </button>
+                )}
+                {isActive && p.priceZAR > 0 && planInfo?.subscription?.status !== 'cancelled' && (
+                  <button
+                    onClick={cancelPlan}
+                    disabled={cancellingPlan}
+                    className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-60"
+                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                    {cancellingPlan ? 'Cancelling…' : 'Cancel plan'}
+                  </button>
+                )}
+                {isActive && planInfo?.subscription?.status === 'cancelled' && (
+                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--gold)' }}>
+                    <AlertTriangle size={12} />
+                    Access until {planInfo?.planExpiresAt ? new Date(planInfo.planExpiresAt).toLocaleDateString('en-ZA') : ''}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* QR Code */}
       <div className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
