@@ -58,6 +58,8 @@ model Artist {
   coverUrl         String               @default("")
   socialLinks      Json                 @default("{}")
   payfastMerchant  String?
+  planSlug         String               @default("free")
+  planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
   currency         String               @default("ZAR")
   isPublic         Boolean              @default(true)
   isVerified       Boolean              @default(false)

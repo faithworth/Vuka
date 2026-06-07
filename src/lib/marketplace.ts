@@ -8,8 +8,10 @@
 // ============================================================
 
 import prisma from './prisma';
+import { platformFee as calcFee, getPlan } from './plans';
 
-const PLATFORM_FEE_RATE = 0.15;
+// Marketplace uses Free plan rate (15%) — sellers don't have subscriptions
+const MARKETPLACE_PLAN = 'free';
 
 function getPeriod(): string {
   const now = new Date();
@@ -32,7 +34,7 @@ export async function createMarketplaceOrder(params: {
   const buyer = await prisma.user.findUnique({ where: { id: params.buyerUserId }, include: { artist: true } });
   if (buyer?.artist?.id === service.artistId) throw new Error('Cannot order your own service');
 
-  const platformFee = Math.round(service.price * PLATFORM_FEE_RATE * 100) / 100;
+  const platformFee = calcFee(service.price, MARKETPLACE_PLAN);
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + service.deliveryDays);
 
@@ -99,7 +101,7 @@ export async function completeOrder(orderId: string, buyerUserId: string) {
       data: { status: 'complete' },
     });
 
-    const platformFee = Math.round(order.amount * PLATFORM_FEE_RATE * 100) / 100;
+    const platformFee = calcFee(order.amount, MARKETPLACE_PLAN);
     const netAmount   = order.amount - platformFee;
 
     // Release payout to seller (truthful: pending until processed)

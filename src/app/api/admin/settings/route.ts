@@ -12,9 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { auditLog } from '@/lib/audit';
+import { PLANS } from '@/lib/plans';
 
 const DEFAULTS: Record<string, unknown> = {
-  min_payout_zar:         100,
+  min_payout_zar:         150,
   payout_processing_days: 3,
   registrations_open:     true,
   distributions_open:     true,
@@ -22,7 +23,7 @@ const DEFAULTS: Record<string, unknown> = {
   feature_beat_store:     true,
   feature_video_dist:     false,
   feature_fan_tips:       true,
-  platform_fee_pct:       8,
+  platform_fee_pct:       15, // Free plan default — see src/lib/plans.ts
 };
 
 const DEFAULT_GENRES = [
@@ -46,12 +47,17 @@ const DEFAULT_PLATFORMS = [
   { id:'pandora',       name:'Pandora',       slug:'pandora',       avgDeliveryDays:14, isActive:false },
 ];
 
-const DEFAULT_PLANS = [
-  { id:'free',    slug:'free',    name:'Free',    priceZAR:0,   priceUSD:0,    royaltyShare:85,  billingPeriod:'YEARLY',  releasesPerYear:2 },
-  { id:'starter', slug:'starter', name:'Starter', priceZAR:99,  priceUSD:5.5,  royaltyShare:95,  billingPeriod:'MONTHLY', releasesPerYear:null },
-  { id:'pro',     slug:'pro',     name:'Pro',     priceZAR:249, priceUSD:13.5, royaltyShare:100, billingPeriod:'MONTHLY', releasesPerYear:null },
-  { id:'label',   slug:'label',   name:'Label',   priceZAR:999, priceUSD:54,   royaltyShare:100, billingPeriod:'MONTHLY', releasesPerYear:null },
-];
+// Plans come from src/lib/plans.ts — single source of truth
+const DEFAULT_PLANS = PLANS.map(p => ({
+  id:              p.slug,
+  slug:            p.slug,
+  name:            p.name,
+  priceZAR:        p.priceZAR,
+  royaltyShare:    p.artistSharePct,
+  platformFeePct:  p.platformFeePct,
+  billingPeriod:   p.billingPeriod,
+  releasesPerYear: p.releasesPerYear,
+}));
 
 async function getSettingJson(key: string): Promise<unknown | null> {
   try {

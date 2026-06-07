@@ -9,7 +9,8 @@
     { "path": "/api/workers/cron?job=cleanup", "schedule": "0 5 * * *" },
     { "path": "/api/workers/cron?job=notify_live", "schedule": "0 6 * * *" },
     { "path": "/api/workers/cron?job=distribution_retry", "schedule": "0 7 * * *" },
-    { "path": "/api/workers/cron?job=payout_process", "schedule": "0 9 * * 1-5" }
+    { "path": "/api/workers/cron?job=payout_process", "schedule": "0 9 * * 1-5" },
+    { "path": "/api/cron/expire-plans", "schedule": "0 0 * * *" }
   ],
   "headers": [
     {

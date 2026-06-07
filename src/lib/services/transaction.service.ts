@@ -4,6 +4,7 @@
 
 import prisma from '@/lib/prisma';
 import { createNotification, notifyArtistOfSale } from './notification.service';
+import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -36,8 +37,6 @@ export interface ReleasePurchaseInput {
   downloadToken?: string;
 }
 
-const PLATFORM_FEE_PCT = 0.15; // 15% platform commission
-
 // ── Beat Purchase ─────────────────────────────────────────────
 // Called from the PayFast ITN webhook after payment is confirmed.
 // UPDATES an existing pending Purchase rather than creating a duplicate.
@@ -49,8 +48,10 @@ export async function processBeatPurchase(input: BeatPurchaseInput) {
     licenseType = 'basic', payfastPaymentId, downloadToken,
   } = input;
 
-  const platformFee = Math.round(amount * PLATFORM_FEE_PCT * 100) / 100;
-  const artistNet  = Math.round((amount - platformFee) * 100) / 100;
+  // Resolve artist plan for correct fee rate (respects expiry)
+  const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true } });
+  const platformFee = calcFee(amount, artist?.planSlug, artist?.planExpiresAt);
+  const artistNet   = calcNet(amount, artist?.planSlug, artist?.planExpiresAt);
 
   return prisma.$transaction(async (tx) => {
     // 1. Find or create the purchase record.
@@ -127,8 +128,9 @@ export async function processReleasePurchase(input: ReleasePurchaseInput) {
     payfastPaymentId, downloadToken,
   } = input;
 
-  const platformFee = Math.round(amount * PLATFORM_FEE_PCT * 100) / 100;
-  const artistNet  = Math.round((amount - platformFee) * 100) / 100;
+  const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true } });
+  const platformFee = calcFee(amount, artist?.planSlug, artist?.planExpiresAt);
+  const artistNet   = calcNet(amount, artist?.planSlug, artist?.planExpiresAt);
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.purchase.findFirst({

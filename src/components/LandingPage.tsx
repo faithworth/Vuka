@@ -54,18 +54,18 @@ export default function LandingPage() {
 
             <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Sell beats and releases directly to your fans — in South Africa and worldwide.
-              Keep 98% of every sale.
+              Keep up to 95% of every sale.
             </p>
 
             <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              PayFast for South African buyers. Money goes directly to your bank. Vuka takes just 2% to cover hosting and keep the platform running.
+              PayFast for South African buyers. Money goes directly to your bank. Start free — upgrade anytime for a lower platform fee.
             </p>
 
             {/* Fee transparency notice */}
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-8"
               style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--text-muted)' }}>
               <span style={{ color: 'var(--gold)' }}>✦</span>
-              Vuka charges a transparent 2% platform fee on every sale — you keep the other 98%.
+              Free plan: 15% platform fee. Pro plan: 8%. Label plan: 5%. No hidden charges.
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-2">
@@ -79,9 +79,9 @@ export default function LandingPage() {
 
             <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
               {[
-                { n: '98%', l: 'Artist Revenue' },
-                { n: '2%', l: 'Platform Fee', sub: 'keeps the platform alive' },
-                { n: 'Global', l: 'Payments' },
+                { n: '85%', l: 'Artist keeps (Free)', sub: 'up to 95% on paid plans' },
+                { n: '15%', l: 'Platform Fee', sub: 'Free plan — covers hosting & payments' },
+                { n: 'ZAR', l: 'Paid in Rands' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>{s.n}</div>
@@ -102,7 +102,7 @@ export default function LandingPage() {
                 Everything you need to get paid
               </h2>
               <p className="max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-                Upload your music in minutes. Set your price. Fans buy directly. 98% of every sale lands in your bank.
+                Upload your music in minutes. Set your price. Fans buy directly. Start on Free — upgrade to keep more.
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 {
                   icon: DollarSign,
                   title: 'Dual Payments',
-                  desc: 'PayFast for South African buyers with instant EFT, card, and SCode support. Flutterwave for Pan-African payments. Both fully automated. You keep 98% of every sale.',
+                  desc: 'PayFast for South African buyers with instant EFT, card, and SCode support. Flutterwave for Pan-African payments. Both fully automated.',
                 },
                 {
                   icon: Zap,
@@ -184,10 +184,10 @@ export default function LandingPage() {
               <div className="flex-1">
                 <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--gold)' }}>Industry Portal</p>
                 <h3 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--text)' }}>
-                  Scouts, Labels & Promoters — earn too.
+                  Scouts, Labels & Promoters — built in.
                 </h3>
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  Discover talent, close deals, and earn commission on every sale you refer. Up to 15% referral on every transaction.
+                  Discover emerging talent, close deals, and manage artists directly on Vuka.
                   Built for recruiters, sync buyers, sponsors, and artist managers.
                 </p>
               </div>
@@ -211,7 +211,7 @@ export default function LandingPage() {
                   Support the artists you love
                 </h2>
                 <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
-                  Discover independent artists from across Africa and the diaspora. Buy their music directly — 98% goes straight to the artist.
+                  Discover independent artists from across Africa and the diaspora. Buy their music directly — money goes straight to the artist.
                 </p>
                 <div className="space-y-3 mb-8">
                   {[
@@ -253,45 +253,77 @@ export default function LandingPage() {
 
         {/* ── PRICING ── */}
         <section className="py-24 px-4" style={{ background: 'var(--surface)' }}>
-          <div className="max-w-2xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto text-center">
             <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
               Honest pricing. Always.
             </h2>
             <p className="mb-12" style={{ color: 'var(--text-muted)' }}>
-              No monthly fees. No hidden charges. Just 2% to keep the lights on.
+              Start free. Upgrade when you're ready to keep more of what you earn.
             </p>
-            <div className="p-8 rounded-2xl mb-8" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <div className="text-6xl font-bold mb-2" style={{ color: 'var(--text)' }}>2%</div>
-              <div className="text-lg mb-2" style={{ color: 'var(--text-muted)' }}>platform fee per sale</div>
-              <div className="text-sm mb-6" style={{ color: 'var(--gold)' }}>Artist keeps 98%</div>
 
-              {/* Gold fee notice */}
-              <div className="flex items-start gap-3 p-4 rounded-xl mb-6 text-left" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
-                <span style={{ color: 'var(--gold)', fontSize: 16, flexShrink: 0 }}>✦</span>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Vuka charges a 2% platform fee on every sale. This covers hosting, servers, payment processing, and keeps the app running. No monthly subscription, no hidden charges.
-                </p>
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
+              {/* FREE */}
+              <div className="p-8 rounded-2xl text-left flex flex-col" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Free</div>
+                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R0</div>
+                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>forever</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>85%</div>
+                <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
+                <div className="space-y-2 flex-1 mb-8">
+                  {['Up to 2 releases/year', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'PayFast + Flutterwave'].map(f => (
+                    <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--green)' }}>✓</span> {f}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/auth/register" className="btn btn-secondary text-sm text-center w-full py-3">
+                  Get Started Free
+                </Link>
               </div>
 
-              <div className="space-y-3">
-                {[
-                  '2% platform fee per sale — keeps the platform running',
-                  'No monthly subscription',
-                  'No upfront costs',
-                  'No limit on uploads',
-                  'PayFast + Flutterwave included',
-                  'PDF license generation included',
-                  'Secure download delivery included',
-                ].map(item => (
-                  <div key={item} className="flex items-center gap-3 text-sm justify-center" style={{ color: 'var(--text-muted)' }}>
-                    <span style={{ color: 'var(--green)' }}>✓</span> {item}
-                  </div>
-                ))}
+              {/* PRO */}
+              <div className="p-8 rounded-2xl text-left flex flex-col relative" style={{ background: 'var(--bg)', border: '2px solid var(--sky)', boxShadow: '0 0 30px rgba(56,182,232,0.1)' }}>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold" style={{ background: 'var(--sky)', color: 'white' }}>Most Popular</div>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Pro</div>
+                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R249</div>
+                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>per month</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>92%</div>
+                <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
+                <div className="space-y-2 flex-1 mb-8">
+                  {['Unlimited releases', '8% platform fee', 'Priority support', 'Advanced analytics', 'Industry marketplace access', 'Everything in Free'].map(f => (
+                    <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--green)' }}>✓</span> {f}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/auth/register" className="btn btn-primary text-sm text-center w-full py-3">
+                  Start Pro
+                </Link>
+              </div>
+
+              {/* LABEL */}
+              <div className="p-8 rounded-2xl text-left flex flex-col" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--gold)' }}>Label</div>
+                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R999</div>
+                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>per month</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--gold)' }}>95%</div>
+                <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
+                <div className="space-y-2 flex-1 mb-8">
+                  {['Unlimited releases', '5% platform fee', 'Multiple artists under one account', 'Bulk payout management', 'White-label storefront', 'Everything in Pro'].map(f => (
+                    <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--green)' }}>✓</span> {f}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/auth/register" className="btn btn-secondary text-sm text-center w-full py-3">
+                  Start Label
+                </Link>
               </div>
             </div>
-            <Link href="/auth/register" className="btn btn-primary text-base px-8 py-4">
-              Get Started Free <ArrowRight size={18} />
-            </Link>
+
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              All plans include PayFast + Flutterwave payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.
+            </p>
           </div>
         </section>
 

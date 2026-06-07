@@ -33,6 +33,7 @@
  */
 
 import { Resend } from 'resend';
+import { platformFee as calcFee, getPlan } from './plans';
 
 // ── Config ────────────────────────────────────────────────────
 
@@ -44,7 +45,6 @@ function getResend() {
 
 const FROM = () => process.env.EMAIL_FROM || 'Vuka <noreply@mail.vuka.co.za>';
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
-const PLATFORM_FEE_RATE = 0.02;
 
 // ── Shared layout wrapper ─────────────────────────────────────
 
@@ -794,13 +794,16 @@ export async function sendPurchaseConfirmation({
 }
 
 export async function sendArtistSaleNotification({
-  to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl,
+  to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl, planSlug,
 }: {
   to: string; artistName: string; buyerName: string; itemName: string;
   licenseType?: string; amount: number; currency: string; dashboardUrl: string;
+  planSlug?: string;
 }) {
-  const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100) / 100;
-  const netAmount = amount - platformFee;
+  const plan       = getPlan(planSlug);
+  const feeAmt     = calcFee(amount, planSlug);
+  const netAmount  = amount - feeAmt;
+  const feePct     = plan.platformFeePct;
   const subject = `💰 New sale — ${buyerName} bought ${itemName}`;
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
@@ -815,7 +818,7 @@ export async function sendArtistSaleNotification({
         ${licenseType ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">License</span><span style="text-transform:capitalize;">${licenseType}</span></div>` : ''}
         <div style="border-top:1px solid #2d2050;padding-top:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Sale Price</span><span>${currency} ${amount.toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (2%)</span><span style="color:#ef4444;">−${currency} ${platformFee.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (${feePct}%)</span><span style="color:#ef4444;">−${currency} ${feeAmt.toFixed(2)}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:#f0eafa;font-weight:700;">You receive</span><span style="color:#10b981;font-weight:700;font-size:20px;">${currency} ${netAmount.toFixed(2)}</span></div>
         </div>
       </div>

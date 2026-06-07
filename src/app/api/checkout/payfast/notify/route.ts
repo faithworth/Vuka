@@ -17,10 +17,9 @@ import { sendPurchaseConfirmation, sendArtistSaleNotification } from '@/lib/emai
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { incrementDailyRollup } from '@/lib/social';
+import { platformFee as calcPlatformFee, platformFeeRate } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
-
-const PLATFORM_FEE_RATE = 0.02; // 2% — must match Stripe webhook + transaction.ts
 
 export async function POST(req: NextRequest) {
   const clientIp =
@@ -83,8 +82,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Amount mismatch', { status: 400 });
     }
 
-    const platformFee = Math.round(purchase.amount * PLATFORM_FEE_RATE * 100) / 100;
-    const netAmount   = purchase.amount - platformFee;
+    // Resolve artist plan slug + expiry for correct fee rate
+    let artistPlanSlug: string | null = null;
+    let artistPlanExpiresAt: Date | null = null;
+    if (purchase.beatId) {
+      const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
+      artistPlanSlug      = beat?.artist?.planSlug ?? null;
+      artistPlanExpiresAt = beat?.artist?.planExpiresAt ?? null;
+    } else if ((purchase as any).releaseId) {
+      const rel = await prisma.release.findUnique({ where: { id: (purchase as any).releaseId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
+      artistPlanSlug      = rel?.artist?.planSlug ?? null;
+      artistPlanExpiresAt = rel?.artist?.planExpiresAt ?? null;
+    }
+
+    const platformFeeAmt = calcPlatformFee(purchase.amount, artistPlanSlug, artistPlanExpiresAt);
+    const netAmount      = Math.round((purchase.amount - platformFeeAmt) * 100) / 100;
 
     // If the purchase has no userId, look up the user by buyerEmail to link it
     let resolvedUserId = purchase.userId;
@@ -101,7 +113,7 @@ export async function POST(req: NextRequest) {
       data: {
         status: 'confirmed',
         payfastPfPaymentId: pfPaymentId,
-        platformFee,
+        platformFee: platformFeeAmt,
         netAmount,
         ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
       },

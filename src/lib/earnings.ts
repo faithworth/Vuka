@@ -10,6 +10,7 @@
 
 import prisma from './prisma';
 import { logger } from './logger';
+import { getPlan } from './plans';
 
 // ── 1. DSP REPORT COLUMN MAPS ─────────────────────────────────
 // Each DSP exports CSV with different column names.
@@ -189,24 +190,16 @@ export async function calculateRevenueShare(params: {
   netAmount: number;
   currency: string;
 }> {
-  // Look up artist's active subscription plan
-  // Default: Free plan = Vuka keeps 15% (artist keeps 85%)
+  // Look up artist's plan slug for correct fee rate
   const artist = await prisma.artist.findUnique({
-    where: { id: params.artistId },
-    select: { id: true },
+    where:  { id: params.artistId },
+    select: { planSlug: true },
   });
 
-  // TODO: join on active subscription to get plan royaltyShare
-  // For now: default to 85% artist share (15% Vuka fee) — Free plan default
-  const artistSharePercent = 85;
-  const vukaFeePercent = 100 - artistSharePercent;
-
-  const vukaFeeAmount = parseFloat(
-    ((params.grossAmount * vukaFeePercent) / 100).toFixed(2)
-  );
-  const netAmount = parseFloat(
-    (params.grossAmount - vukaFeeAmount).toFixed(2)
-  );
+  const plan           = getPlan(artist?.planSlug);
+  const vukaFeePercent = plan.platformFeePct;
+  const vukaFeeAmount  = parseFloat(((params.grossAmount * vukaFeePercent) / 100).toFixed(2));
+  const netAmount      = parseFloat((params.grossAmount - vukaFeeAmount).toFixed(2));
 
   return {
     grossAmount: params.grossAmount,
