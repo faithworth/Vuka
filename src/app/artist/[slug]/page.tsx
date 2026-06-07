@@ -121,7 +121,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
           <section className="mb-12">
             <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>🎯 Support Goals</h2>
             <div className="space-y-4">
-              {artist.goals.filter((g: any) => g.isActive).map((goal: any) => {
+              {Array.from(new Map(artist.goals.filter((g: any) => g.isActive).map((g: any) => [g.id, g])).values()).map((goal: any) => {
                 const pct = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
                 return (
                   <div key={goal.id} className="p-5 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -185,7 +185,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
 
       <div className="mt-4 mb-10 text-center">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Vuka retains 2% of each sale to cover platform costs. The artist receives 98%.
+          Vuka retains {artist.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {artist.artistSharePct ?? 85}%.
         </p>
       </div>
     </div>

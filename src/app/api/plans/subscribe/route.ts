@@ -23,10 +23,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    // Already on this plan and not expired
+    // Check artist exists
     const artist = await prisma.artist.findUnique({
       where: { id: user.artist.id },
-      select: { planSlug: true, planExpiresAt: true, id: true },
+      select: { id: true },
     });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 

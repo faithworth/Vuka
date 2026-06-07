@@ -60,20 +60,28 @@ export async function POST(req: NextRequest) {
     const basePrice        = Math.min(...coercedPackages.map(p => p.price));
     const baseDeliveryDays = Math.min(...coercedPackages.map(p => p.deliveryDays));
 
-    const service = await prisma.marketplaceService.create({
-      data: {
-        artistId:     user.artist.id,
-        title:        title.trim(),
-        description:  description || '',
-        category,
-        price:        basePrice,
-        deliveryDays: baseDeliveryDays,
-        packages:     coercedPackages,
-        portfolioUrls: portfolioUrls || [],
-        requirements: requirements || '',
-      },
-    });
+    // Use raw INSERT to bypass Prisma's String[] vs jsonb mismatch for portfolioUrls
+    const id  = require('crypto').randomUUID().replace(/-/g, '').slice(0, 25);
+    const now = new Date().toISOString();
 
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "MarketplaceService"
+         (id, "artistId", title, description, category, price, "deliveryDays", packages, "portfolioUrls", requirements, "isActive", "totalOrders", "rating", "reviewCount", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, true, 0, 0.0, 0, $11::timestamptz, $11::timestamptz)`,
+      id,
+      user.artist.id,
+      title.trim(),
+      description || '',
+      category,
+      basePrice,
+      baseDeliveryDays,
+      JSON.stringify(coercedPackages),
+      JSON.stringify(portfolioUrls || []),
+      requirements || '',
+      now,
+    );
+
+    const service = await prisma.marketplaceService.findUnique({ where: { id } });
     return NextResponse.json({ service }, { status: 201 });
   } catch (err: any) {
     console.error('[marketplace/services] POST error:', err?.message, err?.code);

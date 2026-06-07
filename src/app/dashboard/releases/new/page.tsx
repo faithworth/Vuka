@@ -407,7 +407,7 @@ export default function NewReleasePage() {
                     />
                   </div>
                   <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                    You receive 98% of every sale. Vuka retains 2%.
+                    You receive the majority of every sale. Vuka retains a small platform fee based on your plan.
                   </p>
                 </div>
               ) : (

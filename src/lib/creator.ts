@@ -27,26 +27,35 @@ export async function createTier(
     priceMonthly: number;
     priceYearly?: number;
     currency?: string;
-    perks?: { icon: string; title: string; description: string }[];
+    perks?: { icon: string; title: string; description: string }[] | string[];
     maxSubscribers?: number;
     sortOrder?: number;
   }
 ) {
+  // Normalise perks to plain strings
   const perksStrings: string[] = (data.perks || []).map((p) =>
-    typeof p === 'string' ? p : `${p.icon} ${p.title}: ${p.description}`
+    typeof p === 'string' ? p : `${(p as any).icon ?? ''} ${(p as any).title ?? ''}: ${(p as any).description ?? ''}`.trim()
+  ).filter(Boolean);
+
+  // Use Prisma.$executeRaw to bypass the String[] vs jsonb mismatch.
+  // The DB column is jsonb (from an older migration) but Prisma schema says String[].
+  // We insert directly so the json array lands correctly.
+  const id       = require('crypto').randomUUID().replace(/-/g, '').slice(0, 25);
+  const now      = new Date().toISOString();
+  const price    = data.priceMonthly;
+  const currency = data.currency || 'ZAR';
+  const interval = 'monthly';
+  const desc     = data.description || '';
+  const perksJson = JSON.stringify(perksStrings);
+
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "CreatorSubscriptionTier"
+       (id, "artistId", name, price, currency, interval, description, perks, "isActive", "createdAt")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, true, $9::timestamptz)`,
+    id, artistId, data.name, price, currency, interval, desc, perksJson, now,
   );
 
-  return prisma.creatorSubscriptionTier.create({
-    data: {
-      artistId,
-      name: data.name,
-      description: data.description || '',
-      price: data.priceMonthly,
-      interval: 'monthly',
-      currency: data.currency || 'ZAR',
-      perks: perksStrings,
-    },
-  });
+  return prisma.creatorSubscriptionTier.findUnique({ where: { id } });
 }
 
 // ── Membership Lifecycle ──────────────────────────────────────

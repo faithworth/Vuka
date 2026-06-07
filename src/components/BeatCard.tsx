@@ -19,6 +19,7 @@ interface Beat {
   sales: number;
   isExclusive: boolean;
   waveformData: number[];
+  artistSharePct?: number;
   artist: { name: string; slug: string };
 }
 
@@ -158,7 +159,7 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
             {beat.isExclusive ? 'Sold Out' : '✓ Buy'}
           </button>
         </div>
-        <p className="text-xs mt-2 text-center font-medium" style={{ color: 'var(--gold)' }}>Artist gets 98% →</p>
+        <p className="text-xs mt-2 text-center font-medium" style={{ color: 'var(--gold)' }}>Artist gets {beat.artistSharePct ?? 85}% →</p>
       </div>
     </div>
   );

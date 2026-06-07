@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ReleasePageClient from './ReleasePageClient';
 import prisma from '@/lib/prisma';
+import { getEffectivePlan } from '@/lib/plans';
 
 // ── Data fetchers ─────────────────────────────────────────────
 
@@ -19,21 +20,27 @@ async function getStoreRelease(id: string) {
   const bySlug = await prisma.release.findUnique({
     where: { slug: id },
     include: {
-      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
+      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true, planSlug: true, planExpiresAt: true } },
       tracks: { orderBy: { trackNumber: 'asc' } },
     },
   }).catch(() => null);
-  if (bySlug) return { ...bySlug, _source: 'store' as const };
+  if (bySlug) {
+    const plan = getEffectivePlan((bySlug.artist as any).planSlug, (bySlug.artist as any).planExpiresAt);
+    return { ...bySlug, artistSharePct: plan.artistSharePct, platformFeePct: plan.platformFeePct, _source: 'store' as const };
+  }
 
   // Try id
   const byId = await prisma.release.findUnique({
     where: { id },
     include: {
-      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
+      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true, planSlug: true, planExpiresAt: true } },
       tracks: { orderBy: { trackNumber: 'asc' } },
     },
   }).catch(() => null);
-  if (byId) return { ...byId, _source: 'store' as const };
+  if (byId) {
+    const plan = getEffectivePlan((byId.artist as any).planSlug, (byId.artist as any).planExpiresAt);
+    return { ...byId, artistSharePct: plan.artistSharePct, platformFeePct: plan.platformFeePct, _source: 'store' as const };
+  }
 
   return null;
 }

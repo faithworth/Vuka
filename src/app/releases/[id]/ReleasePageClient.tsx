@@ -299,7 +299,7 @@ export default function ReleasePageClient({ release }: { release: any }) {
 
         {/* Fee note */}
         <div className="text-center text-xs py-4" style={{ color: 'var(--text-muted)' }}>
-          Vuka retains 2% of each sale to cover platform costs. The artist receives 98%.
+          Vuka retains {release.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {release.artistSharePct ?? 85}%.
         </div>
       </div>
 

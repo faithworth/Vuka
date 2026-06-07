@@ -38,17 +38,25 @@ export default function EarningsPage() {
   const [months, setMonths]   = useState<Period>(12);
   const [data, setData]       = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan]       = useState<{ artistSharePct: number; platformFeePct: number; planName: string } | null>(null);
 
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics/revenue?months=${months}`);
+      const [res, planRes] = await Promise.all([
+        fetch(`/api/analytics/revenue?months=${months}`),
+        fetch('/api/plans/status'),
+      ]);
       if (res.ok) setData(await res.json());
+      if (planRes.ok) setPlan(await planRes.json());
     } catch {}
     setLoading(false);
   }
 
   useEffect(() => { load(); }, [months]);
+
+  const artistPct  = plan?.artistSharePct  ?? 85;
+  const platformPct = plan?.platformFeePct ?? 15;
 
   function exportCSV() {
     if (!data?.monthlyRevenue?.length) return;
@@ -78,7 +86,7 @@ export default function EarningsPage() {
         <div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>Earnings</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Your royalties and sales revenue — 98% goes to you.
+            Your royalties and sales revenue — {artistPct}% goes to you.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -116,10 +124,10 @@ export default function EarningsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             {[
-              { label: 'Gross',          value: formatCurrency(totalGross),    color: 'var(--gold)',  icon: TrendingUp },
-              { label: 'Net (Your 98%)', value: formatCurrency(totalNet),      color: 'var(--green)', icon: BarChart2 },
-              { label: 'Vuka 2% Fee',    value: formatCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
-              { label: 'Total Sales',    value: (data?.totalSales ?? 0).toString(), color: 'var(--sky)', icon: BarChart2 },
+              { label: 'Gross',                   value: formatCurrency(totalGross),    color: 'var(--gold)',  icon: TrendingUp },
+              { label: `Net (Your ${artistPct}%)`, value: formatCurrency(totalNet),      color: 'var(--green)', icon: BarChart2 },
+              { label: `Vuka ${platformPct}% Fee`, value: formatCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
+              { label: 'Total Sales',               value: (data?.totalSales ?? 0).toString(), color: 'var(--sky)', icon: BarChart2 },
             ].map(card => (
               <div key={card.label} className="p-5 rounded-2xl"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -222,7 +230,7 @@ export default function EarningsPage() {
                 <span>Period</span>
                 <span>Type</span>
                 <span className="text-right">Gross</span>
-                <span className="text-right">Net (98%)</span>
+                <span className="text-right">Net ({artistPct}%)</span>
                 <span className="text-right">Currency</span>
               </div>
               <div className="divide-y max-h-80 overflow-y-auto" style={{ borderColor: 'var(--border)' }}>
@@ -263,8 +271,8 @@ export default function EarningsPage() {
             style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
             <span style={{ color: 'var(--gold)', flexShrink: 0 }}>✦</span>
             <p style={{ color: 'var(--text-muted)' }}>
-              All net amounts shown are after Vuka's 2% platform fee.
-              You keep 98% of every sale — no hidden charges.
+              All net amounts shown are after Vuka's {platformPct}% platform fee.
+              You keep {artistPct}% of every sale — no hidden charges.
             </p>
           </div>
         </>

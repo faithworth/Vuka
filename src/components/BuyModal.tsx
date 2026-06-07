@@ -30,6 +30,7 @@ const LICENSES = [
 interface Beat {
   id: string; title: string; artworkUrl: string;
   basicPrice: number; premiumPrice: number; exclPrice: number;
+  artistSharePct?: number;
   artist: { name: string };
 }
 
@@ -38,6 +39,7 @@ interface BuyModalProps {
   release?: {
     id: string; title: string; artworkUrl: string;
     price: number; minPrice: number; payWhatWant: boolean;
+    artistSharePct?: number;
     artist: { name: string };
   };
   onClose: () => void;
@@ -248,16 +250,20 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         )}
 
         {/* Platform fee note */}
-        {price > 0 && (
-          <div
-            className="mb-4 px-3 py-2 rounded-lg"
-            style={{ background: 'rgba(232,200,124,0.07)', border: '1px solid rgba(232,200,124,0.2)' }}
-          >
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>
-              ✦ Vuka takes 2% to keep the platform running. The artist receives 98% of this sale.
-            </p>
-          </div>
-        )}
+        {price > 0 && (() => {
+          const share = beat?.artistSharePct ?? release?.artistSharePct ?? 85;
+          const fee   = 100 - share;
+          return (
+            <div
+              className="mb-4 px-3 py-2 rounded-lg"
+              style={{ background: 'rgba(232,200,124,0.07)', border: '1px solid rgba(232,200,124,0.2)' }}
+            >
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>
+                ✦ Vuka takes {fee}% to keep the platform running. The artist receives {share}% of this sale.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Price summary */}
         <div

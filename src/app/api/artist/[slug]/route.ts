@@ -1,3 +1,5 @@
+import { getEffectivePlan } from '@/lib/plans';
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
@@ -85,10 +87,17 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       };
     }
 
+    const effectivePlan = getEffectivePlan(
+      (artist as any).planSlug ?? 'free',
+      (artist as any).planExpiresAt ?? null,
+    );
+
     return NextResponse.json({
       ...artist,
       distributionReleases: normalisedDistribReleases,
       storefront,
+      artistSharePct:  effectivePlan.artistSharePct,
+      platformFeePct:  effectivePlan.platformFeePct,
     });
   } catch (err) {
     console.error('DB error (artist):', err);

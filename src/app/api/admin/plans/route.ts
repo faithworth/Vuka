@@ -22,14 +22,45 @@ export async function GET(req: NextRequest) {
   const limit       = 50;
 
   try {
-    // Build artist filter
-    const artistWhere: any = {};
-    if (planFilter !== 'all') artistWhere.planSlug = planFilter;
+    // Build artist filter — planSlug may not exist yet if migration hasn't run
+    let artistWhere: any = {};
+    let columnExists = true;
+
+    try {
+      // Quick probe: if this throws, planSlug column doesn't exist yet
+      await prisma.$queryRaw`SELECT "planSlug" FROM "Artist" LIMIT 1`;
+    } catch {
+      columnExists = false;
+    }
+
+    if (columnExists && planFilter !== 'all') artistWhere.planSlug = planFilter;
     if (q) {
       artistWhere.OR = [
         { name:  { contains: q, mode: 'insensitive' } },
         { user:  { email: { contains: q, mode: 'insensitive' } } },
       ];
+    }
+
+    if (!columnExists) {
+      // Column not yet added — return all artists with planSlug='free' fallback
+      const artists = await prisma.artist.findMany({
+        where: artistWhere,
+        select: {
+          id: true, name: true, slug: true,
+          user: { select: { id: true, email: true, createdAt: true } },
+          _count: { select: { beats: true, releases: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      const total = await prisma.artist.count({ where: artistWhere });
+      return NextResponse.json({
+        artists: artists.map(a => ({ ...a, planSlug: 'free', planExpiresAt: null, planSubscriptions: [] })),
+        total, page, pages: Math.ceil(total / limit),
+        planCounts: { free: total, pro: 0, label: 0 },
+        warning: 'Run the SQL migration to add planSlug column',
+      });
     }
 
     const [artists, total] = await Promise.all([
