@@ -364,3 +364,25 @@ CREATE INDEX IF NOT EXISTS "payout_req_artistId_idx"  ON "PayoutRequest" ("artis
 CREATE INDEX IF NOT EXISTS "bank_acct_artistId_idx"   ON "ArtistBankAccount" ("artistId");
 CREATE INDEX IF NOT EXISTS "notification_userId_idx"  ON "Notification" ("userId");
 CREATE INDEX IF NOT EXISTS "revenue_artistId_idx"     ON "RevenueRecord" ("artistId");
+
+-- ── Service role bypass — allows Prisma (postgres user) to bypass RLS ────────
+-- Without this, Prisma's DATABASE_URL connection has no auth.email() context
+-- so all vuka_user_id() calls return NULL and every policy blocks the query.
+DO $$
+DECLARE
+  tables TEXT[] := ARRAY[
+    'User', 'Artist', 'ArtistBankAccount', 'PayoutRequest',
+    'ArtistPayout', 'Purchase', 'Beat', 'Release',
+    'Notification', 'AdminLog', 'SpamSignal', 'RevenueRecord', 'ArtistPost'
+  ];
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY tables LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "prisma_service_role_bypass" ON "%s"', t);
+    EXECUTE format(
+      'CREATE POLICY "prisma_service_role_bypass" ON "%s"
+         FOR ALL TO service_role USING (true) WITH CHECK (true)', t
+    );
+    EXECUTE format('GRANT ALL ON "%s" TO service_role', t);
+  END LOOP;
+END $$;
