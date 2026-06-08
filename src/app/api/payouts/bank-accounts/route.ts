@@ -118,11 +118,11 @@ export async function POST(req: NextRequest) {
     let encryptedAccountNumber: string;
     try {
       encryptedAccountNumber = encrypt(accountNumber);
-    } catch (encErr) {
+    } catch (encErr: any) {
       console.error('[bank-accounts/POST] Encryption failed:', encErr);
-      // Never store plaintext if encryption fails — reject the request
+      // Surface the real reason so it's diagnosable
       return NextResponse.json(
-        { error: 'Account could not be stored securely. Check server configuration.' },
+        { error: `Encryption config error: ${encErr?.message ?? 'unknown'}` },
         { status: 500 }
       );
     }
