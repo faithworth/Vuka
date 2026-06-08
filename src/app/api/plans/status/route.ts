@@ -41,6 +41,11 @@ export async function GET() {
         currentPeriodEnd: subscription.currentPeriodEnd,
         cancelledAt: subscription.cancelledAt,
       } : null,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+      },
     });
   } catch (err: any) {
     console.error('[plans/status] error:', err?.message);
