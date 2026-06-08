@@ -175,9 +175,14 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ account: created }, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[bank-accounts/POST]', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    // Surface the real error in development / first-run so env problems are obvious
+    const isDev = process.env.NODE_ENV !== 'production';
+    const message = isDev
+      ? (err?.message ?? 'Server error')
+      : 'Server error saving account';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
