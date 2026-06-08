@@ -71,7 +71,7 @@ export default function SettingsPage() {
     Promise.all([
       fetch('/api/dashboard/settings').then(r => r.json()).then(d => setArtist(d.artist || d)),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
-      fetch('/api/plans/status', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
+      fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -580,7 +580,7 @@ export default function SettingsPage() {
                          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/mo</span></>
                     }
                   </div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: p.color }}>
+                  <p className="text-xs font-semibold mb-2 whitespace-nowrap" style={{ color: p.color }}>
                     You keep {p.artistSharePct}% · Vuka takes {p.platformFeePct}%
                   </p>
                   <ul className="space-y-1.5 flex-1">

@@ -24,7 +24,7 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/dashboard/stats').then(r => r.json()).catch(() => ({})),
-      fetch('/api/plans/status', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+      fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
     ]).then(([s, p]) => {
       setStats(s);
       setPlan(p);
