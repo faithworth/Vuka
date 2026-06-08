@@ -1,243 +1,103 @@
-// src/app/api/payouts/bank-accounts/route.ts
-// GET    — list artist's saved bank accounts (masked display only)
-// POST   — add a new bank account (account number encrypted at rest)
-// DELETE ?id=xxx — remove a bank account
-//
-// Phase 8: account number is NEVER stored in plaintext.
-//   - On POST: encrypt with AES-256-CBC + HMAC (lib/encryption.ts)
-//   - On GET:  only maskedNumber and safe display fields are returned
-//   - On admin payout processing: decrypt only in worker, never here
-
+// TEMPORARY DIAGNOSTIC ROUTE — DELETE AFTER FIXING
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
-import { requireArtist } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { encrypt, maskAccountNumber } from '@/lib/encryption';
-import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
-import { z } from 'zod';
-
-// ── Validation schema ─────────────────────────────────────────
-
-const SA_BANKS = [
-  'ABSA', 'African Bank', 'Bidvest Bank', 'Capitec', 'Discovery Bank',
-  'FNB', 'Grindrod Bank', 'Investec', 'Nedbank', 'Standard Bank',
-  'TymeBank', 'Old Mutual', 'Sasfin', 'Ubank', 'Other',
-] as const;
-
-const addBankAccountSchema = z.object({
-  accountHolder: z.string()
-    .min(2, 'Account holder name too short')
-    .max(100, 'Account holder name too long')
-    .trim(),
-  bankName: z.string()
-    .min(2, 'Bank name required')
-    .max(60)
-    .trim(),
-  branchCode: z.string()
-    .max(10)
-    .trim()
-    .optional()
-    .default(''),
-  accountNumber: z.string()
-    .min(6, 'Account number too short')
-    .max(20, 'Account number too long')
-    .regex(/^\d+$/, 'Account number must be digits only')
-    .trim(),
-  accountType: z.enum(['current', 'savings', 'transmission', 'credit']).default('current'),
-  isDefault: z.boolean().default(false),
-});
-
-// ── GET — list accounts (safe display fields only) ────────────
+import { encrypt } from '@/lib/encryption';
+import { requireArtist } from '@/lib/auth';
 
 export async function GET() {
+  const results: Record<string, any> = {};
+
+  // 1. Check env vars
+  results.env = {
+    ENCRYPTION_KEY_length: process.env.ENCRYPTION_KEY?.length ?? 'MISSING',
+    HMAC_KEY_length: process.env.HMAC_KEY?.length ?? 'MISSING',
+    DATABASE_URL_prefix: process.env.DATABASE_URL?.slice(0, 45) ?? 'MISSING',
+    NODE_ENV: process.env.NODE_ENV,
+  };
+
+  // 2. Test encryption
+  try {
+    const enc = encrypt('test1234567890');
+    results.encryption = { ok: true, sample: enc.slice(0, 20) + '...' };
+  } catch (e: any) {
+    results.encryption = { ok: false, error: e?.message };
+  }
+
+  // 3. Raw DB ping
+  try {
+    await prisma.$queryRaw`SELECT 1 as ping`;
+    results.db_connection = { ok: true };
+  } catch (e: any) {
+    results.db_connection = { ok: false, error: e?.message };
+  }
+
+  // 4. User table
+  try {
+    const count = await prisma.user.count();
+    results.user_table = { ok: true, count };
+  } catch (e: any) {
+    results.user_table = { ok: false, error: e?.message };
+  }
+
+  // 5. Artist table
+  try {
+    const count = await prisma.artist.count();
+    results.artist_table = { ok: true, count };
+  } catch (e: any) {
+    results.artist_table = { ok: false, error: e?.message };
+  }
+
+  // 6. ArtistBankAccount table
+  try {
+    const count = await prisma.artistBankAccount.count();
+    results.bank_account_table = { ok: true, count };
+  } catch (e: any) {
+    results.bank_account_table = { ok: false, error: e?.message };
+  }
+
+  // 7. SpamSignal table
+  try {
+    const count = await prisma.spamSignal.count();
+    results.spam_signal_table = { ok: true, count };
+  } catch (e: any) {
+    results.spam_signal_table = { ok: false, error: e?.message };
+  }
+
+  // 8. Auth check
   try {
     const user = await requireArtist();
-    if (!user?.artist) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    results.auth = user
+      ? { ok: true, userId: user.id, artistId: user.artist?.id }
+      : { ok: false, error: 'requireArtist returned null — not logged in or no artist profile' };
+  } catch (e: any) {
+    results.auth = { ok: false, error: e?.message };
+  }
 
-    const accounts = await prisma.artistBankAccount.findMany({
-      where: { artistId: user.artist.id },
-      select: {
-        id: true,
-        bankName: true,
-        maskedNumber: true,   // "****1234" — never expose accountNumber
-        accountHolder: true,
-        accountType: true,
-        branchCode: true,
-        isDefault: true,
-        isVerified: true,
-        createdAt: true,
-        // accountNumber field is NEVER selected — encrypted blob stays in DB
+  // 9. Bank insert test (uses fake artistId — should fail on FK, not on RLS)
+  try {
+    await prisma.artistBankAccount.create({
+      data: {
+        artistId: 'TEST_DELETE_ME_' + Date.now(),
+        accountHolder: 'Test',
+        bankName: 'Test Bank',
+        branchCode: '000000',
+        accountNumber: encrypt('1234567890'),
+        maskedNumber: '****7890',
+        accountType: 'current',
+        isDefault: false,
+        isVerified: false,
       },
-      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
     });
-
-    return NextResponse.json({ accounts });
-  } catch (err) {
-    console.error('[bank-accounts/GET]', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    results.bank_insert_test = { ok: false, error: 'Inserted with fake artistId — FK should have rejected this' };
+  } catch (e: any) {
+    const msg = e?.message ?? '';
+    if (msg.includes('foreign key') || msg.includes('violates') || msg.includes('fkey') || msg.includes('Foreign')) {
+      results.bank_insert_test = { ok: true, note: 'DB insert works — correctly blocked by FK constraint on fake artistId' };
+    } else {
+      results.bank_insert_test = { ok: false, error: msg };
+    }
   }
-}
 
-// ── POST — add a bank account (encrypt account number) ────────
-
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireArtist();
-    if (!user?.artist) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const ip = getClientIp(req.headers);
-    const limited = await rateLimit(user.id, RATE_LIMITS.api_general, ip);
-    if (limited) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-    }
-
-    // Parse + validate
-    const raw = await req.json();
-    const parsed = addBankAccountSchema.safeParse(raw);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.errors[0]?.message ?? 'Validation failed' },
-        { status: 400 }
-      );
-    }
-
-    const {
-      accountHolder,
-      bankName,
-      branchCode,
-      accountNumber,
-      accountType,
-      isDefault,
-    } = parsed.data;
-
-    // Encrypt the sensitive account number — ONLY the masked display version stored alongside
-    let encryptedAccountNumber: string;
-    try {
-      encryptedAccountNumber = encrypt(accountNumber);
-    } catch (encErr: any) {
-      console.error('[bank-accounts/POST] Encryption failed:', encErr);
-      // Surface the real reason so it's diagnosable
-      return NextResponse.json(
-        { error: `Encryption config error: ${encErr?.message ?? 'unknown'}` },
-        { status: 500 }
-      );
-    }
-
-    const maskedNumber = maskAccountNumber(accountNumber);
-
-    // If marked default, clear other defaults first (atomic within transaction)
-    await prisma.$transaction(async (tx) => {
-      if (isDefault) {
-        await tx.artistBankAccount.updateMany({
-          where: { artistId: user.artist!.id },
-          data: { isDefault: false },
-        });
-      }
-
-      const existingCount = await tx.artistBankAccount.count({
-        where: { artistId: user.artist!.id },
-      });
-
-      return tx.artistBankAccount.create({
-        data: {
-          artistId: user.artist!.id,
-          accountHolder: accountHolder.trim(),
-          bankName: bankName.trim(),
-          branchCode: branchCode?.trim() ?? '',
-          accountNumber: encryptedAccountNumber,  // encrypted
-          maskedNumber,                            // "****1234"
-          accountType,
-          isDefault: isDefault || existingCount === 0,
-          isVerified: false,
-        },
-      });
-    });
-
-    // Re-fetch with safe select so we never accidentally return accountNumber
-    const created = await prisma.artistBankAccount.findFirst({
-      where: { artistId: user.artist.id, maskedNumber },
-      select: {
-        id: true,
-        bankName: true,
-        maskedNumber: true,
-        accountHolder: true,
-        accountType: true,
-        branchCode: true,
-        isDefault: true,
-        isVerified: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json({ account: created }, { status: 201 });
-  } catch (err: any) {
-    console.error('[bank-accounts/POST]', err);
-    // Surface the real error in development / first-run so env problems are obvious
-    const isDev = process.env.NODE_ENV !== 'production';
-    const message = isDev
-      ? (err?.message ?? 'Server error')
-      : 'Server error saving account';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-// ── DELETE — remove a bank account ────────────────────────────
-
-export async function DELETE(req: NextRequest) {
-  try {
-    const user = await requireArtist();
-    if (!user?.artist) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const id = req.nextUrl.searchParams.get('id');
-    if (!id) {
-      return NextResponse.json({ error: 'id is required' }, { status: 400 });
-    }
-
-    // Verify ownership before delete
-    const account = await prisma.artistBankAccount.findFirst({
-      where: { id, artistId: user.artist.id },
-    });
-    if (!account) {
-      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-    }
-
-    // Block deletion if there's a pending payout referencing this account
-    const pendingPayout = await prisma.payoutRequest.findFirst({
-      where: { bankAccountId: id, status: { in: ['pending', 'approved'] } },
-    });
-    if (pendingPayout) {
-      return NextResponse.json(
-        { error: 'Cannot remove account with a pending payout request' },
-        { status: 409 }
-      );
-    }
-
-    await prisma.artistBankAccount.delete({ where: { id } });
-
-    // Promote the next account to default if needed
-    if (account.isDefault) {
-      const next = await prisma.artistBankAccount.findFirst({
-        where: { artistId: user.artist.id },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (next) {
-        await prisma.artistBankAccount.update({
-          where: { id: next.id },
-          data: { isDefault: true },
-        });
-      }
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error('[bank-accounts/DELETE]', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
+  return NextResponse.json(results, { status: 200 });
 }
