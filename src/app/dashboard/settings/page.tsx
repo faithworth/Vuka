@@ -171,7 +171,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accountType: 'bank',
+          accountType: 'current',
           accountHolder: bankForm.accountHolder,
           bankName: bankForm.bankName,
           branchCode: bankForm.branchCode,
@@ -179,13 +179,17 @@ export default function SettingsPage() {
           isDefault: bankAccounts.length === 0,
         }),
       });
+      const d = await res.json();
       if (res.ok) {
-        const d = await res.json();
         setBankAccounts(prev => [...prev, d.account].filter(Boolean));
         setShowBankForm(false);
         setBankForm({ accountHolder: '', bankName: '', branchCode: '', accountNumber: '' });
+      } else {
+        alert(d.error || 'Failed to save bank account. Please try again.');
       }
-    } catch {}
+    } catch (err: any) {
+      alert('Network error saving bank account: ' + (err?.message || 'Please check your connection.'));
+    }
     setBankSaving(false);
   }
 
