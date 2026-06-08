@@ -65,7 +65,6 @@ export default function UploadPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({});
-  const [payfastMerchant, setPayfastMerchant] = useState<string | null | undefined>(undefined);
 
   // Beat fields — must be declared before any conditional returns (React rules of hooks)
   const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
@@ -93,47 +92,6 @@ export default function UploadPage() {
   const setFileProgress = useCallback((key: string, pct: number) => {
     setProgress(p => ({ ...p, [key]: pct }));
   }, []);
-  
-  useEffect(() => {
-    fetch('/api/dashboard/settings')
-      .then(r => r.json())
-      .then(d => setPayfastMerchant(d.artist?.payfastMerchant || null))
-      .catch(() => setPayfastMerchant(null));
-  }, []);
-  
-  // Block upload if PayFast not set up — conditional returns AFTER all hooks
-  if (payfastMerchant === undefined) return (
-    <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-      <Loader2 size={20} className="animate-spin" /> Loading…
-    </div>
-  );
-
-  if (!payfastMerchant) return (
-    <div className="p-6 md:p-10 max-w-lg">
-      <div className="p-8 rounded-2xl text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(234,179,8,0.3)' }}>
-        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{ background: 'rgba(234,179,8,0.1)' }}>
-          <AlertCircle size={32} style={{ color: '#eab308' }} />
-        </div>
-        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text)' }}>Set up payments first</h2>
-        <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-          You need to connect your PayFast account before you can upload and sell music. This is how buyers pay you directly.
-        </p>
-        <div className="text-left p-4 rounded-xl mb-6 space-y-2 text-sm" style={{ background: 'var(--surface2)' }}>
-          <p style={{ color: 'var(--text-muted)' }}>1. Sign up at <a href="https://www.payfast.co.za/registration" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--sky)' }}>payfast.co.za</a> (free)</p>
-          <p style={{ color: 'var(--text-muted)' }}>2. Verify your ID and bank account</p>
-          <p style={{ color: 'var(--text-muted)' }}>3. Copy your Merchant ID from <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--sky)' }}>my.payfast.io</a></p>
-          <p style={{ color: 'var(--text-muted)' }}>4. Paste it in Settings and save</p>
-        </div>
-        <Link href="/dashboard/settings"
-          className="inline-block w-full py-3 rounded-xl font-bold text-white text-center"
-          style={{ background: 'var(--sky)' }}>
-          Go to Settings →
-        </Link>
-      </div>
-    </div>
-  );
-
 
 
   function resetAll() {

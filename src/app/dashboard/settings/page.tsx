@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  Loader2, CheckCircle2, Mic2, ExternalLink, Info,
+  Loader2, CheckCircle2, Mic2, ExternalLink,
   QrCode, Download, Building2, Plus, Trash2, Wallet,
   Crown, Zap, Star, Check, ArrowRight, AlertTriangle,
 } from 'lucide-react';
@@ -46,8 +46,6 @@ export default function SettingsPage() {
   const [artist, setArtist]             = useState<any>(null);
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
-  const [savingPayfast, setSavingPayfast] = useState(false);
-  const [savedPayfast, setSavedPayfast] = useState(false);
   const [saved, setSaved]               = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -152,20 +150,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function savePayfast() {
-    setSavingPayfast(true);
-    const res = await fetch('/api/dashboard/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payfastMerchant: artist.payfastMerchant || '' }),
-    });
-    const data = await res.json();
-    if (data.artist) setArtist((p: any) => ({ ...p, payfastMerchant: data.artist.payfastMerchant }));
-    setSavingPayfast(false);
-    setSavedPayfast(true);
-    setTimeout(() => setSavedPayfast(false), 3000);
-  }
-
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -236,57 +220,8 @@ export default function SettingsPage() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Connect your SA payment accounts. Buyers in South Africa pay via PayFast.
-            Add your bank account for EFT payouts.
+            Add your bank account so Vuka can pay you every Friday via EFT.
           </p>
-        </div>
-
-        {/* PayFast */}
-        <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>PayFast — SA Payments</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>ZAR payments via PayShap, EFT, credit cards — SA buyers</p>
-            </div>
-            <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
-              background: artist.payfastMerchant ? 'color-mix(in srgb,var(--green) 15%,transparent)' : 'var(--surface2)',
-              color: artist.payfastMerchant ? 'var(--green)' : 'var(--text-muted)',
-            }}>
-              {artist.payfastMerchant ? '✓ Connected' : 'Not connected'}
-            </span>
-          </div>
-          <div>
-            <label className="block text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-              PayFast Merchant ID
-            </label>
-            <input
-              value={artist.payfastMerchant || ''}
-              placeholder="e.g. 12345678"
-              onChange={e => setArtist((p: any) => ({ ...p, payfastMerchant: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl text-sm"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            />
-            <div className="flex items-start gap-1.5 mt-2">
-              <Info size={12} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Find your Merchant ID in your{' '}
-                <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer"
-                  className="underline inline-flex items-center gap-0.5"
-                  style={{ color: 'var(--sky)' }}>
-                  my.payfast.io <ExternalLink size={10} />
-                </a>
-                . Required for SA buyers to pay you directly via PayShap or EFT.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={savePayfast}
-              disabled={savingPayfast}
-              className="mt-3 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
-              style={{ background: savedPayfast ? 'var(--green)' : 'linear-gradient(135deg,#00a05a,#007a44)' }}>
-              {savingPayfast ? 'Saving…' : savedPayfast ? '✓ Saved!' : 'Save PayFast ID'}
-            </button>
-          </div>
         </div>
 
         {/* SA Bank Account */}

@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
-  Wallet, Settings, LogOut, Music2, ChevronRight, AlertTriangle,
+  Wallet, Settings, LogOut, Music2, ChevronRight,
   MoreHorizontal, X, Send, Users, Store, Briefcase, Video,
   MessageSquare, User,
 } from 'lucide-react';
@@ -49,7 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [checking, setChecking]             = useState(true);
   const [userEmail, setUserEmail]           = useState('');
   const [artistName, setArtistName]         = useState('');
-  const [payfastMerchant, setPayfastMerchant] = useState<string | null>(null);
   const [moreOpen, setMoreOpen]             = useState(false);
   const [unreadMsgs, setUnreadMsgs]         = useState(0);
 
@@ -75,7 +74,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               ]);
               if (settingsRes.ok) {
                 const sd = await settingsRes.json();
-                setPayfastMerchant(sd.artist?.payfastMerchant || null);
               }
               if (msgsRes.ok) {
                 const md = await msgsRes.json();
@@ -190,19 +188,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Main Content ─────────────────────────────────────── */}
       <main className="flex-1 min-w-0 pb-24 md:pb-0">
 
-        {/* PayFast setup banner */}
-        {!payfastMerchant && pathname !== '/dashboard/settings' && (
-          <div className="flex items-center gap-3 px-5 py-3 text-sm"
-            style={{ background: 'rgba(234,179,8,0.1)', borderBottom: '1px solid rgba(234,179,8,0.25)' }}>
-            <AlertTriangle size={16} style={{ color: '#eab308', flexShrink: 0 }} />
-            <p style={{ color: '#ca8a04' }}>
-              <strong>Action required:</strong> Connect your PayFast account to receive payments.{' '}
-              <Link href="/dashboard/settings" className="underline font-semibold" style={{ color: '#92400e' }}>
-                Set up now →
-              </Link>
-            </p>
-          </div>
-        )}
+
 
         {children}
       </main>

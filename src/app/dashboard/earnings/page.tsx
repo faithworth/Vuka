@@ -81,6 +81,18 @@ export default function EarningsPage() {
   return (
     <div className="p-6 md:p-10 max-w-5xl">
 
+      {/* Payout schedule info */}
+      <div className="flex items-start gap-3 p-4 rounded-xl mb-6 text-sm"
+        style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+        <span style={{ color: '#22c55e', fontSize: 18, lineHeight: 1.2 }}>💸</span>
+        <p style={{ color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text)' }}>Payouts every Friday.</strong>{' '}
+          All earnings are collected by Vuka and paid out to you every Friday via EFT.
+          Make sure your banking details are up to date in{' '}
+          <a href="/dashboard/settings" className="underline" style={{ color: 'var(--sky)' }}>Settings</a>.
+        </p>
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
