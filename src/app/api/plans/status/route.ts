@@ -34,11 +34,18 @@ export async function GET() {
     const artist = rows[0];
     const effectivePlan = getEffectivePlan(artist.planSlug, artist.planExpiresAt);
 
-    // Get latest subscription record
-    const subscription = await (prisma as any).artistPlanSubscription.findFirst({
-      where: { artistId: user.artist.id },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Get latest subscription record — wrapped in try/catch because the
+    // artist_plan_subscriptions table may not be migrated yet; a missing
+    // table must never 500 this route.
+    let subscription = null;
+    try {
+      subscription = await prisma.artistPlanSubscription.findFirst({
+        where: { artistId: user.artist.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (subErr: any) {
+      console.warn('[plans/status] subscription lookup skipped:', subErr?.message?.split('\n')[0]);
+    }
 
     return NextResponse.json({
       planSlug: effectivePlan.slug,
