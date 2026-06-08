@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [showBankForm, setShowBankForm] = useState(false);
   const [bankSaving, setBankSaving]     = useState(false);
+  const [bankError, setBankError]       = useState<string | null>(null);
   const [bankForm, setBankForm]         = useState({
     accountHolder: '', bankName: '', branchCode: '', accountNumber: '',
   });
@@ -166,6 +167,7 @@ export default function SettingsPage() {
   async function saveBankAccount() {
     if (!bankForm.accountHolder || !bankForm.bankName || !bankForm.accountNumber) return;
     setBankSaving(true);
+    setBankError(null);
     try {
       const res = await fetch('/api/payouts/bank-accounts', {
         method: 'POST',
@@ -183,12 +185,13 @@ export default function SettingsPage() {
       if (res.ok) {
         setBankAccounts(prev => [...prev, d.account].filter(Boolean));
         setShowBankForm(false);
+        setBankError(null);
         setBankForm({ accountHolder: '', bankName: '', branchCode: '', accountNumber: '' });
       } else {
-        alert(d.error || 'Failed to save bank account. Please try again.');
+        setBankError(d.error || 'Failed to save bank account. Please try again.');
       }
     } catch (err: any) {
-      alert('Network error saving bank account: ' + (err?.message || 'Please check your connection.'));
+      setBankError('Network error: ' + (err?.message || 'Please check your connection.'));
     }
     setBankSaving(false);
   }
@@ -271,36 +274,45 @@ export default function SettingsPage() {
           )}
 
           {!showBankForm ? (
-            <button onClick={() => setShowBankForm(true)}
+            <button onClick={() => { setShowBankForm(true); setBankError(null); }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm"
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
               <Plus size={14} />
               {bankAccounts.length === 0 ? 'Add Bank Account' : 'Add Another Account'}
             </button>
           ) : (
-            <div className="space-y-3 p-4 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+            <div className="space-y-4 p-5 rounded-xl" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
               <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>Add SA Bank Account</p>
 
+              {/* Inline error banner */}
+              {bankError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg text-sm"
+                  style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}>
+                  <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
+                  <span>{bankError}</span>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Account Holder Name</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Account Holder Name</label>
                 <input
                   value={bankForm.accountHolder}
                   onChange={e => setBankForm(p => ({ ...p, accountHolder: e.target.value }))}
                   placeholder="Full name as it appears on your bank account"
-                  className="w-full px-3 py-2.5 rounded-lg text-sm"
+                  className="w-full px-4 py-3 rounded-xl text-sm"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 />
               </div>
 
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Bank</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Bank</label>
                 <select
                   value={bankForm.bankName}
                   onChange={e => {
                     const bank = SA_BANKS.find(b => b.name === e.target.value);
                     setBankForm(p => ({ ...p, bankName: e.target.value, branchCode: bank?.branch || '' }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm"
+                  className="w-full px-4 py-3 rounded-xl text-sm"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 >
                   <option value="">Select your bank</option>
@@ -312,35 +324,35 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Branch Code</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Branch Code</label>
                   <input
                     value={bankForm.branchCode}
                     onChange={e => setBankForm(p => ({ ...p, branchCode: e.target.value }))}
                     placeholder="Auto-filled"
-                    className="w-full px-3 py-2.5 rounded-lg text-sm"
+                    className="w-full px-4 py-3 rounded-xl text-sm"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Account Number</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Account Number</label>
                   <input
                     value={bankForm.accountNumber}
                     onChange={e => setBankForm(p => ({ ...p, accountNumber: e.target.value }))}
                     placeholder="Your account number"
-                    className="w-full px-3 py-2.5 rounded-lg text-sm"
+                    className="w-full px-4 py-3 rounded-xl text-sm"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-3 pt-1">
                 <button onClick={saveBankAccount} disabled={bankSaving}
-                  className="flex-1 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-60"
+                  className="flex-1 py-3 rounded-xl font-bold text-sm text-white disabled:opacity-60"
                   style={{ background: 'var(--sky)' }}>
                   {bankSaving ? <><Loader2 size={14} className="animate-spin inline mr-2" />Saving…</> : 'Save Account'}
                 </button>
-                <button onClick={() => setShowBankForm(false)}
-                  className="px-4 py-2.5 rounded-lg text-sm font-medium"
+                <button onClick={() => { setShowBankForm(false); setBankError(null); }}
+                  className="px-5 py-3 rounded-xl text-sm font-medium"
                   style={{ background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                   Cancel
                 </button>
@@ -490,74 +502,80 @@ export default function SettingsPage() {
           Upgrade to keep more of every sale and unlock unlimited releases.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-stretch">
+        <div className="grid grid-cols-1 gap-4 mb-4">
           {PLAN_DEFS.map(p => {
             const isActive = planInfo?.planSlug === p.slug;
             const Icon = p.Icon;
             return (
-              <div key={p.slug} className="rounded-2xl p-5 flex flex-col justify-between"
+              <div key={p.slug} className="rounded-2xl p-6 flex flex-col"
                 style={{
                   background: isActive ? `${p.color}0d` : 'var(--surface2)',
                   border: `1.5px solid ${isActive ? p.color : 'var(--border)'}`,
-                  minHeight: '320px',
                 }}>
-                <div className="flex flex-col flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon size={16} style={{ color: p.color }} />
-                    <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{p.name}</span>
+                {/* Header row */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Icon size={18} style={{ color: p.color }} />
+                    <span className="font-bold text-base" style={{ color: 'var(--text)' }}>{p.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
                     {isActive && (
-                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: `${p.color}22`, color: p.color }}>
-                        Active
+                        ✓ Active
                       </span>
                     )}
-                  </div>
-                  <div className="mb-3">
-                    {p.priceZAR === 0
-                      ? <span className="text-2xl font-black" style={{ color: p.color }}>Free</span>
-                      : <><span className="text-2xl font-black" style={{ color: p.color }}>R{p.priceZAR}</span>
-                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/mo</span></>
-                    }
-                  </div>
-                  <p className="text-xs font-semibold mb-2 whitespace-nowrap" style={{ color: p.color }}>
-                    You keep {p.artistSharePct}% · Vuka takes {p.platformFeePct}%
-                  </p>
-                  <ul className="space-y-1.5 flex-1">
-                    {p.features.map(f => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <Check size={11} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--green)' }} />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="mt-4">
-                  {!isActive && p.priceZAR > 0 && (
-                    <button
-                      onClick={() => upgradePlan(p.slug)}
-                      disabled={planLoading}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-60"
-                      style={{ background: p.color }}>
-                      {planLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-                      Upgrade to {p.name}
-                    </button>
-                  )}
-                  {isActive && p.priceZAR > 0 && planInfo?.subscription?.status !== 'cancelled' && (
-                    <button
-                      onClick={cancelPlan}
-                      disabled={cancellingPlan}
-                      className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-60"
-                      style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                      {cancellingPlan ? 'Cancelling…' : 'Cancel plan'}
-                    </button>
-                  )}
-                  {isActive && planInfo?.subscription?.status === 'cancelled' && (
-                    <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--gold)' }}>
-                      <AlertTriangle size={12} />
-                      Access until {planInfo?.planExpiresAt ? new Date(planInfo.planExpiresAt).toLocaleDateString('en-ZA') : ''}
+                    <div>
+                      {p.priceZAR === 0
+                        ? <span className="text-xl font-black" style={{ color: p.color }}>Free</span>
+                        : <><span className="text-xl font-black" style={{ color: p.color }}>R{p.priceZAR}</span>
+                           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/mo</span></>
+                      }
                     </div>
-                  )}
+                  </div>
                 </div>
+
+                {/* Share line */}
+                <p className="text-sm font-semibold mb-3" style={{ color: p.color }}>
+                  You keep {p.artistSharePct}% · Vuka takes {p.platformFeePct}%
+                </p>
+
+                {/* Features */}
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-4">
+                  {p.features.map(f => (
+                    <li key={f} className="flex items-start gap-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <Check size={13} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--green)' }} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Action */}
+                {!isActive && p.priceZAR > 0 && (
+                  <button
+                    onClick={() => upgradePlan(p.slug)}
+                    disabled={planLoading}
+                    className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ background: p.color }}>
+                    {planLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                    Upgrade to {p.name}
+                  </button>
+                )}
+                {isActive && p.priceZAR > 0 && planInfo?.subscription?.status !== 'cancelled' && (
+                  <button
+                    onClick={cancelPlan}
+                    disabled={cancellingPlan}
+                    className="w-full py-3 rounded-xl text-sm font-medium disabled:opacity-60"
+                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                    {cancellingPlan ? 'Cancelling…' : 'Cancel plan'}
+                  </button>
+                )}
+                {isActive && planInfo?.subscription?.status === 'cancelled' && (
+                  <div className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--gold)' }}>
+                    <AlertTriangle size={14} />
+                    Access until {planInfo?.planExpiresAt ? new Date(planInfo.planExpiresAt).toLocaleDateString('en-ZA') : ''}
+                  </div>
+                )}
               </div>
             );
           })}
