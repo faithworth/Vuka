@@ -28,6 +28,7 @@ const ARTIST_NAV = [
   { href: '/dashboard/earnings',       label: 'Earnings',    icon: Wallet },
   { href: '/dashboard/social',         label: 'Posts',       icon: Send },
   { href: '/dashboard/services',       label: 'Services',    icon: Briefcase },
+  { href: '/dashboard/videos',         label: 'Videos',      icon: Video },
   { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
   { href: '/dashboard/storefront',     label: 'Storefront',  icon: Store },
   { href: '/dashboard/purchases',      label: 'Sales',       icon: ShoppingBag },

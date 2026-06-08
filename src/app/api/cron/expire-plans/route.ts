@@ -1,6 +1,7 @@
 // ============================================================
 // src/app/api/cron/expire-plans/route.ts
 // Daily cron job — drops artists back to Free when planExpiresAt has passed.
+// Artists with planExpiresAt = NULL are lifetime / owner plans and are NEVER touched.
 // Also marks their subscription records as expired.
 //
 // Call via Vercel cron (vercel.json) or external service:
@@ -23,11 +24,12 @@ export async function GET(req: NextRequest) {
   try {
     const now = new Date();
 
-    // Find all artists whose plan has expired
+    // Only expire artists whose planExpiresAt is explicitly set AND has passed.
+    // planExpiresAt = NULL means lifetime / owner promo — never expire these.
     const expired = await prisma.artist.findMany({
       where: {
         planSlug:      { not: 'free' },
-        planExpiresAt: { lte: now },
+        planExpiresAt: { not: null, lte: now },
       },
       select: { id: true, name: true, planSlug: true, planExpiresAt: true },
     });

@@ -34,6 +34,7 @@ const NEW_MIGRATIONS = [
   'phase8_security_hardening',
   'phase9_email_system',
   '20260604_phase12_cleanup',
+  '20260608_fix_owner_plan_expiry',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

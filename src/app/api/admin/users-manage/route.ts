@@ -1,7 +1,7 @@
 /**
  * GET  /api/admin/users-manage?q=search&role=all|artist|fan|admin&page=1
- * POST /api/admin/users-manage { userId, action, value?, reason? }
- * Actions: suspend | unsuspend | set_role | verify | unverify | delete
+ * POST /api/admin/users-manage { userId, action, value?, reason?, months? }
+ * Actions: suspend | unsuspend | set_role | verify | unverify | delete | set_plan
  */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { userId, action, value, reason } = await req.json();
+    const { userId, action, value, reason, months } = await req.json();
     if (!userId || !action)
       return NextResponse.json({ error: 'userId and action required' }, { status: 400 });
 
@@ -87,17 +87,17 @@ export async function POST(req: NextRequest) {
           },
         });
         await auditLog.adminAction('auth.ban', 'User', userId, admin.id, reason || '');
-        // Phase 9: notify user of suspension
         try {
           await sendAccountSuspended({
             to: target.email,
             displayName: target.name || target.email,
-            reason: reason || 'Your account has been suspended for violating Vuka\'s Terms of Service.',
+            reason: reason || "Your account has been suspended for violating Vuka's Terms of Service.",
             appealUrl: `${APP_URL()}/appeal?userId=${userId}`,
           });
         } catch (e) { console.error('[admin/users] suspend email failed:', e); }
         return NextResponse.json({ ok: true });
       }
+
       case 'unsuspend': {
         await prisma.user.update({
           where: { id: userId },
@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
         await auditLog.adminAction('auth.unban', 'User', userId, admin.id, '');
         return NextResponse.json({ ok: true });
       }
+
       case 'set_role': {
         const allowed = ['fan', 'artist', 'producer', 'industry', 'moderator', 'admin'];
         if (!allowed.includes(value))
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
         await auditLog.adminAction('auth.role_change', 'User', userId, admin.id, `${prev}→${value}`);
         return NextResponse.json({ ok: true });
       }
+
       case 'verify': {
         if (target.artist) {
           await prisma.artist.update({ where: { userId }, data: { isVerified: true } });
@@ -122,6 +124,7 @@ export async function POST(req: NextRequest) {
         }
         return NextResponse.json({ ok: true });
       }
+
       case 'unverify': {
         if (target.artist) {
           await prisma.artist.update({ where: { userId }, data: { isVerified: false } });
@@ -129,11 +132,13 @@ export async function POST(req: NextRequest) {
         }
         return NextResponse.json({ ok: true });
       }
+
       case 'delete': {
         await prisma.user.delete({ where: { id: userId } });
         await auditLog.adminAction('admin.user_deleted', 'User', userId, admin.id, reason || '');
         return NextResponse.json({ ok: true });
       }
+
       case 'set_plan': {
         // value = 'free' | 'pro' | 'label'
         const allowedPlans = ['free', 'pro', 'label'];
@@ -149,10 +154,17 @@ export async function POST(req: NextRequest) {
         if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 400 });
 
         const now = new Date();
+        // planExpiresAt = null means LIFETIME — the plan never auto-expires and the
+        // nightly cron (expire-plans) will NOT touch it because its query filters on
+        // `planExpiresAt: { lte: now }` which excludes NULL rows.
+        //
+        // Only set a real expiry when the caller explicitly passes months > 0.
+        // This prevents any admin action from accidentally creating a short-lived
+        // promo that the cron later drops back to free.
         let expiresAt: Date | null = null;
-        if (plan.priceZAR > 0) {
+        if (plan.priceZAR > 0 && months && months > 0) {
           expiresAt = new Date(now);
-          expiresAt.setMonth(expiresAt.getMonth() + 1);
+          expiresAt.setMonth(expiresAt.getMonth() + months);
         }
 
         await prisma.artist.update({
@@ -160,9 +172,16 @@ export async function POST(req: NextRequest) {
           data: { planSlug: value, planExpiresAt: expiresAt },
         });
 
-        await auditLog.adminAction('plan.admin_override', 'Artist', target.artist.id, admin.id, `Plan set to ${value}`);
+        await auditLog.adminAction(
+          'plan.admin_override',
+          'Artist',
+          target.artist.id,
+          admin.id,
+          `Plan set to ${value} (expires ${expiresAt?.toISOString() ?? 'never'})`,
+        );
         return NextResponse.json({ ok: true });
       }
+
       default:
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }

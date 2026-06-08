@@ -131,12 +131,12 @@ export async function POST(req: NextRequest) {
         if (!plan) return NextResponse.json({ error: 'Invalid plan slug' }, { status: 400 });
 
         const now = new Date();
+        // null = lifetime / never expires (owner promo, admin override with no expiry).
+        // Only set an expiry when caller explicitly passes months > 0.
         let expiresAt: Date | null = null;
-
-        if (plan.priceZAR > 0) {
-          // Paid plan: give them 1 month from now (admin override / complimentary)
+        if (plan.priceZAR > 0 && months && months > 0) {
           expiresAt = new Date(now);
-          expiresAt.setMonth(expiresAt.getMonth() + (months || 1));
+          expiresAt.setMonth(expiresAt.getMonth() + months);
         }
 
         await prisma.artist.update({
@@ -144,7 +144,15 @@ export async function POST(req: NextRequest) {
           data: { planSlug: plan.slug, planExpiresAt: expiresAt },
         });
 
+        // Record the subscription. For lifetime grants, currentPeriodEnd is
+        // set far in the future (10 years) so the record is always valid.
         if (plan.priceZAR > 0) {
+          const periodEnd = expiresAt ?? (() => {
+            const d = new Date(now);
+            d.setFullYear(d.getFullYear() + 10);
+            return d;
+          })();
+
           await (prisma as any).artistPlanSubscription.create({
             data: {
               artistId,
@@ -154,7 +162,7 @@ export async function POST(req: NextRequest) {
               currency: 'ZAR',
               billingInterval: 'monthly',
               currentPeriodStart: now,
-              currentPeriodEnd: expiresAt!,
+              currentPeriodEnd: periodEnd,
             },
           });
         }

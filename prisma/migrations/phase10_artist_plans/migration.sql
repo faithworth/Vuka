@@ -14,13 +14,14 @@ ALTER TABLE "Artist"
 CREATE INDEX IF NOT EXISTS "Artist_planExpiresAt_idx" ON "Artist"("planExpiresAt");
 
 -- ── Promo upgrades ────────────────────────────────────────────
--- Add any artist emails below to give them 6 months Pro free.
+-- planExpiresAt = NULL means never expires (lifetime / owner promo).
+-- Add any artist emails below to give them lifetime Pro free.
 -- Format: ('email@example.com')
 -- ─────────────────────────────────────────────────────────────
 UPDATE "Artist"
 SET
   "planSlug"      = 'pro',
-  "planExpiresAt" = NOW() + INTERVAL '6 months'
+  "planExpiresAt" = NULL
 WHERE "userId" IN (
   SELECT id FROM "User" WHERE email IN (
     'itshepang26@gmail.com'
