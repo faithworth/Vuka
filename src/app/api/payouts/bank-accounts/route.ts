@@ -153,7 +153,6 @@ export async function POST(req: NextRequest) {
           accountType,
           isDefault: isDefault || existingCount === 0,
           isVerified: false,
-          updatedAt: new Date(),
         },
       });
     });
