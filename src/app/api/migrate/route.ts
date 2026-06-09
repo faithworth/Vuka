@@ -56,6 +56,14 @@ const NEW_MIGRATIONS = [
   '20260604_phase12_cleanup',
   // 2026-06-04: Role repair — fix users with Artist/IndustryUser records but wrong role in DB
   '20260604_role_repair',
+  // 2026-06-08: Artist plan columns (planSlug, planExpiresAt) + index.
+  // Required by /api/admin/plans, /api/admin/users, and the plan subscription system.
+  'phase10_artist_plans',
+  // 2026-06-08: ArtistPlanSubscription table (subscription history / billing records).
+  '20260608_create_artist_plan_subscriptions',
+  // 2026-06-08: Fix bank account updatedAt default + fix owner plan expiry grant.
+  '20260608_fix_bank_account_updatedat',
+  '20260608_fix_owner_plan_expiry',
 ];
 
 export async function GET(req: NextRequest) {

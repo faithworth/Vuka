@@ -10,6 +10,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
+/** True if this is a Prisma unknown-field validation error for planSlug / planExpiresAt */
+function isPlanFieldError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('planSlug') || msg.includes('planExpiresAt') || msg.includes('Unknown field');
+}
+
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,20 +36,10 @@ export async function GET(req: NextRequest) {
     }
     if (role !== 'all') where.role = role;
 
-    // Probe whether Artist.planSlug column exists — may be absent if migration hasn't run yet
-    let artistHasPlan = true;
-    try {
-      await prisma.$queryRaw`SELECT "planSlug" FROM "Artist" LIMIT 1`;
-    } catch {
-      artistHasPlan = false;
-    }
-
-    const artistSelect = artistHasPlan
-      ? { id: true, slug: true, name: true, isVerified: true, planSlug: true, planExpiresAt: true, totalPlays: true }
-      : { id: true, slug: true, name: true, isVerified: true, totalPlays: true };
-
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
+    // Try with plan fields first (works once migration + client regeneration has run).
+    // Fall back to without plan fields if Prisma or DB rejects them.
+    async function fetchWithPlan() {
+      return prisma.user.findMany({
         where,
         select: {
           id: true,
@@ -52,15 +48,75 @@ export async function GET(req: NextRequest) {
           role: true,
           createdAt: true,
           isSuspended: true,
-          artist: { select: artistSelect as any },
+          artist: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              isVerified: true,
+              planSlug: true,
+              planExpiresAt: true,
+              totalPlays: true,
+            } as any,
+          },
           _count: { select: { purchases: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip:  (page - 1) * limit,
         take:  limit,
-      }),
-      prisma.user.count({ where }),
-    ]);
+      });
+    }
+
+    async function fetchWithoutPlan() {
+      return prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          isSuspended: true,
+          artist: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              isVerified: true,
+              totalPlays: true,
+            },
+          },
+          _count: { select: { purchases: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip:  (page - 1) * limit,
+        take:  limit,
+      });
+    }
+
+    let users: any[];
+    let usePlan = true;
+
+    try {
+      users = await fetchWithPlan();
+    } catch (planErr) {
+      if (isPlanFieldError(planErr)) {
+        usePlan = false;
+        users = await fetchWithoutPlan();
+      } else {
+        throw planErr;
+      }
+    }
+
+    const total = await prisma.user.count({ where });
+
+    // Normalise: ensure artist always has planSlug/planExpiresAt keys
+    if (!usePlan) {
+      users = users.map(u => ({
+        ...u,
+        artist: u.artist ? { ...u.artist, planSlug: 'free', planExpiresAt: null } : null,
+      }));
+    }
 
     return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
