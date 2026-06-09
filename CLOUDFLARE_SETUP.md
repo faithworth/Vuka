@@ -112,7 +112,7 @@ Apply this CORS policy to the `vuka-audio` and `vuka-artwork` buckets:
 ## SSL/TLS Settings
 
 In Cloudflare dashboard → SSL/TLS:
-- Mode: **Full (strict)**
+- Mode: **Full (strict)**v
 - Minimum TLS Version: **TLS 1.2**
 - HSTS: Enabled, max-age 63072000, includeSubDomains, preload
 - Opportunistic Encryption: On
