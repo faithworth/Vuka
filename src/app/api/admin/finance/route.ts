@@ -3,7 +3,7 @@
  * Platform-wide financial data for the admin finance page.
  *
  * Purchase has NO artistId — artist is resolved through the
- * linked item (beat, release, video, sample).
+ * linked item (beat, release, video, sample, distributionRelease).
  * SupportTxn has NO platformFee/netAmount — computed at 8 % / 92 %.
  *
  * NOTE: All queries are sequential (no Promise.all) to stay within
@@ -22,12 +22,14 @@ function resolveArtist(p: {
   release?: { artistId: string; artist?: any } | null;
   video?: { artistId: string; artist?: any } | null;
   sample?: { artistId: string; artist?: any } | null;
+  distributionRelease?: { artistId: string; artist?: any } | null;
 }) {
   return (
     p.beat?.artist ||
     p.release?.artist ||
     p.video?.artist ||
     p.sample?.artist ||
+    p.distributionRelease?.artist ||
     null
   );
 }
@@ -37,12 +39,14 @@ function resolveArtistId(p: {
   release?: { artistId: string } | null;
   video?: { artistId: string } | null;
   sample?: { artistId: string } | null;
+  distributionRelease?: { artistId: string } | null;
 }) {
   return (
     p.beat?.artistId ||
     p.release?.artistId ||
     p.video?.artistId ||
     p.sample?.artistId ||
+    p.distributionRelease?.artistId ||
     null
   );
 }
@@ -68,6 +72,12 @@ const PURCHASE_INCLUDE = {
     },
   },
   sample: {
+    select: {
+      artistId: true, title: true,
+      artist: { select: { id: true, name: true, photoUrl: true } },
+    },
+  },
+  distributionRelease: {
     select: {
       artistId: true, title: true,
       artist: { select: { id: true, name: true, photoUrl: true } },
@@ -154,6 +164,7 @@ export async function GET(req: NextRequest) {
           release: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
           video:   { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
           sample:  { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
+          distributionRelease: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
         },
       });
 
@@ -336,10 +347,11 @@ export async function GET(req: NextRequest) {
         where: {
           status: 'confirmed',
           OR: [
-            { beat:    { is: { artistId } } },
-            { release: { is: { artistId } } },
-            { video:   { is: { artistId } } },
-            { sample:  { is: { artistId } } },
+            { beat:               { is: { artistId } } },
+            { release:            { is: { artistId } } },
+            { video:              { is: { artistId } } },
+            { sample:             { is: { artistId } } },
+            { distributionRelease: { is: { artistId } } },
           ],
         },
         include: PURCHASE_INCLUDE,

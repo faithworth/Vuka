@@ -73,6 +73,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-09: PayoutRequest.createdAt — original table used requestedAt; Prisma expects createdAt.
   // Confirmed missing via Vercel log: "The column PayoutRequest.createdAt does not exist".
   '20260609_fix_payoutrequest_createdat',
+  // 2026-06-09: DistributionRelease pricing — price/minPrice/payWhatYouWant missing from DB.
+  // All dist. release sales were R0. Also adds Purchase.distributionReleaseId FK.
+  '20260609_fix_distributionrelease_pricing',
 ];
 
 export async function GET(req: NextRequest) {
