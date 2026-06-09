@@ -67,6 +67,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-09: DMCAReport missing columns — contentType, contentId, itemType, etc.
   // Table existed from a baseline migration but was created without these fields.
   '20260609_fix_dmca_missing_columns',
+  // 2026-06-09: PayoutRequest.bankAccountId FK + ArtistPayout.reference/notes/currency/method.
+  // Both columns confirmed missing in production via Vercel logs (503 errors on /api/admin/finance).
+  '20260609_fix_payout_missing_columns',
 ];
 
 export async function GET(req: NextRequest) {
