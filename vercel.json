@@ -3,30 +3,78 @@
   "buildCommand": "node scripts/migrate.js && npx prisma generate && next build",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/workers/cron?job=search_sync", "schedule": "0 2 * * *" },
-    { "path": "/api/workers/cron?job=trending", "schedule": "0 3 * * *" },
-    { "path": "/api/workers/cron?job=milestones", "schedule": "0 4 * * *" },
-    { "path": "/api/workers/cron?job=cleanup", "schedule": "0 5 * * *" },
-    { "path": "/api/workers/cron?job=notify_live", "schedule": "0 6 * * *" },
-    { "path": "/api/workers/cron?job=distribution_retry", "schedule": "0 7 * * *" },
-    { "path": "/api/workers/cron?job=payout_process", "schedule": "0 9 * * 1-5" },
-    { "path": "/api/cron/expire-plans", "schedule": "0 0 * * *" }
+    {
+      "path": "/api/workers/cron?job=search_sync",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=trending",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=milestones",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=cleanup",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=notify_live",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=distribution_retry",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/workers/cron?job=payout_process",
+      "schedule": "0 9 * * 1-5"
+    },
+    {
+      "path": "/api/cron/expire-plans",
+      "schedule": "0 0 * * *"
+    }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
       ]
     }
   ],
   "functions": {
-    "src/app/api/migrate/route.ts": { "maxDuration": 60 },
-    "src/app/api/workers/cron/route.ts": { "maxDuration": 60 },
-    "src/app/api/distribution/**": { "maxDuration": 60 },
-    "src/app/api/dashboard/settings/upload-url/route.ts": { "maxDuration": 60 },
-    "src/app/api/download/**": { "maxDuration": 60 },
-    "src/app/api/admin/**": { "maxDuration": 30 }
+    "src/app/api/migrate/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/workers/cron/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/distribution/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/dashboard/settings/upload-url/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/download/**": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/**": {
+      "maxDuration": 30
+    },
+    "src/app/api/checkout/payfast/notify/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/purchase/**": {
+      "maxDuration": 15
+    }
   }
 }

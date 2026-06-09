@@ -1,31 +1,50 @@
 'use client';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 
 function SuccessContent() {
-  const searchParams = useSearchParams();
-  const purchaseId = searchParams.get('purchaseId');
+  const searchParams  = useSearchParams();
+  const purchaseId    = searchParams.get('purchaseId');
   const [purchase, setPurchase] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const emailFired = useRef(false);
 
   useEffect(() => {
     if (!purchaseId) { setLoading(false); return; }
     let attempts = 0;
+
+    const triggerFallbackEmail = async () => {
+      if (emailFired.current) return;
+      emailFired.current = true;
+      try {
+        await fetch(`/api/purchase/${purchaseId}/send-confirmation`, { method: 'POST' });
+      } catch {
+        // Silent — best-effort fallback
+      }
+    };
+
     const poll = async () => {
       try {
-        const res = await fetch(`/api/purchase/${purchaseId}`);
+        const res  = await fetch(`/api/purchase/${purchaseId}`);
         if (res.ok) {
           const data = await res.json();
           setPurchase(data);
-          if (data.status === 'confirmed' || attempts > 10) { setLoading(false); return; }
+          if (data.status === 'confirmed') {
+            setLoading(false);
+            // Trigger fallback email in case notify didn't reach Resend
+            triggerFallbackEmail();
+            return;
+          }
+          if (attempts > 10) { setLoading(false); return; }
         }
       } catch {}
       attempts++;
       if (attempts < 12) setTimeout(poll, 2500);
       else setLoading(false);
     };
+
     poll();
   }, [purchaseId]);
 

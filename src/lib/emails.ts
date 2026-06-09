@@ -761,35 +761,36 @@ export async function sendBroadcast({
 // ═══════════════════════════════════════════════════════════════
 
 export async function sendPurchaseConfirmation({
-  to, buyerName, itemName, itemType, licenseType, downloadUrl, amount, currency, licenseId, artworkUrl,
+  to, buyerName, itemName, itemType, licenseType, downloadUrl, amount, currency, licenseId, artworkUrl, licenseUrl,
 }: {
   to: string; buyerName: string; itemName: string; itemType: string; licenseType?: string;
-  downloadUrl: string; amount: number; currency: string; licenseId: string; artworkUrl?: string;
+  downloadUrl: string; amount: number; currency: string; licenseId: string; artworkUrl?: string; licenseUrl?: string;
 }) {
-  const subject = `Sharp! Your ${itemType} is ready — Vuka`;
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+  const isFree = amount === 0;
+  const subject = isFree
+    ? `Your free download is ready — Vuka`
+    : `Purchase confirmed — ${itemName}`;
+
+  const html = layout(card(`
+    ${artworkUrl ? `<div style="text-align:center;margin-bottom:32px;"><img src="${artworkUrl}" style="width:100px;height:100px;border-radius:12px;object-fit:cover;display:inline-block;" /></div>` : `${icon('🎵')}`}
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;">VUKA</h1>
+      ${heading(`Sharp, ${buyerName}! It's yours.`)}
+      ${sub(isFree ? 'Your free download is ready. Enjoy the music.' : 'Your payment is confirmed. Your download is ready below.')}
     </div>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;">
-      ${artworkUrl ? `<img src="${artworkUrl}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;margin:0 auto 24px;" />` : ''}
-      <h2 style="font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;">Sharp! It's yours 🎵</h2>
-      <p style="color:#8b7daa;text-align:center;margin:0 0 24px;">Hey ${buyerName}, your purchase is confirmed.</p>
-      <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Item</span><span style="font-weight:600;">${itemName}</span></div>
-        ${licenseType ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">License</span><span style="font-weight:600;text-transform:capitalize;">${licenseType}</span></div>` : ''}
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="font-weight:600;color:#10b981;">${currency} ${amount.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Reference</span><span style="font-weight:600;font-family:monospace;font-size:12px;">${licenseId.substring(0, 16).toUpperCase()}</span></div>
-      </div>
-      <a href="${downloadUrl}" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px 32px;border-radius:12px;font-weight:700;font-size:16px;margin-bottom:16px;">⬇️ Download Now</a>
-      <p style="color:#8b7daa;font-size:13px;text-align:center;">Download link valid for 30 days · 10 downloads max</p>
-      <p style="color:#8b7daa;font-size:13px;text-align:center;margin-top:8px;">Need to re-download? Visit <a href="${APP_URL()}/redownload" style="color:#38b6e8;">vuka.app/redownload</a></p>
-    </div>
-    <p style="color:#8b7daa;font-size:12px;text-align:center;margin-top:24px;">Vuka — Africa's independent music platform.</p>
-  </div>
-</body></html>`;
+    ${infoTable(`
+      ${row('Item', `<strong>${itemName}</strong>`)}
+      ${licenseType ? row('License', `<span style="text-transform:capitalize;">${licenseType}</span>`) : ''}
+      ${row('Amount', isFree ? '<span style="color:#A0E87C;">Free</span>' : `<span style="color:#A0E87C;">${currency} ${amount.toFixed(2)}</span>`, true)}
+      ${row('Reference', `<span style="font-family:monospace;font-size:12px;letter-spacing:0.5px;">${licenseId.substring(0, 16).toUpperCase()}</span>`)}
+    `)}
+    ${btn(downloadUrl, '⬇ Download Now')}
+    ${licenseUrl ? `<div style="margin-top:12px;">${btn(licenseUrl, '📄 Download License PDF', 'secondary')}</div>` : ''}
+    <p style="color:#6B6B6B;font-size:12px;text-align:center;margin-top:20px;line-height:1.6;">
+      Link valid for 30 days · 10 downloads max<br/>
+      Need it again? <a href="${APP_URL()}/redownload" style="color:#A0E87C;text-decoration:none;">Re-download portal →</a>
+    </p>
+  `));
+
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
@@ -927,25 +928,42 @@ export async function sendRedownloadLinks({
   purchases: { itemName: string; downloadUrl: string }[];
 }) {
   const subject = `Your Vuka download links`;
-  const rows = purchases.map(p =>
-    `<div style="background:#1e1828;border-radius:12px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
-      <span>${p.itemName}</span>
-      <a href="${p.downloadUrl}" style="background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:700;font-size:14px;">Download</a>
-    </div>`
-  ).join('');
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
-      <h2 style="margin:0 0 8px;">Hey ${buyerName}, here are your downloads</h2>
-      <p style="color:#8b7daa;margin:0 0 24px;">Your purchase history download links:</p>
-      ${rows}
+
+  const purchaseRows = purchases.map((p, i) => `
+    <tr>
+      <td style="padding:20px 0;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.06);' : ''}">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="vertical-align:middle;">
+              <p style="margin:0;font-size:15px;font-weight:600;color:#F5F5F5;">${p.itemName}</p>
+            </td>
+            <td style="text-align:right;vertical-align:middle;white-space:nowrap;padding-left:16px;">
+              <a href="${p.downloadUrl}" style="display:inline-block;background:linear-gradient(135deg,#A0E87C,#6BB84A);color:#0A0A0A;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;letter-spacing:0.3px;">&#8659; Download</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `).join('');
+
+  const html = layout(card(`
+    ${icon('📦')}
+    <div style="text-align:center;margin-bottom:32px;">
+      ${heading(`Here are your downloads, ${buyerName}`)}
+      ${sub('All your confirmed purchases are listed below. Each link is valid for 30 days.')}
     </div>
-  </div>
-</body></html>`;
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1A1A1A;border-radius:12px;padding:0 24px;">
+      ${purchaseRows}
+    </table>
+    <p style="color:#6B6B6B;font-size:12px;text-align:center;margin-top:24px;line-height:1.6;">
+      Links expire after 30 days or 10 downloads.<br/>
+      Need help? <a href="${APP_URL()}/support" style="color:#A0E87C;text-decoration:none;">Contact support →</a>
+    </p>
+  `));
+
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
+
 
 export async function sendSupportArtistNotification({
   to, artistName, fanName, amount, currency, message, tier,

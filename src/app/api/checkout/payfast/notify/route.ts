@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
     let artworkUrl   = '';
     let artistId     = '';
     let paymentMethod = 'payfast';
+    let licenseUrl   = '';
 
     // ── BEAT ─────────────────────────────────────────────────
     if (purchase.itemType === 'beat' && purchase.beatId) {
@@ -158,7 +159,9 @@ export async function POST(req: NextRequest) {
           });
           const pdfKey = r2Keys.license(purchase.licenseId);
           await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-          await prisma.purchase.update({ where: { id: purchaseId }, data: { licenseUrl: getPublicUrl(pdfKey) } });
+          const generatedLicenseUrl = getPublicUrl(pdfKey);
+          await prisma.purchase.update({ where: { id: purchaseId }, data: { licenseUrl: generatedLicenseUrl } });
+          licenseUrl = generatedLicenseUrl;
         } catch (pdfErr) {
           logger.error('[payfast/notify] License PDF failed', {
             traceId, purchaseId, error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
@@ -279,23 +282,32 @@ export async function POST(req: NextRequest) {
     await auditLog.purchaseConfirmed(purchaseId, itemName, purchase.amount, purchase.currency, purchase.buyerEmail);
 
     // ── EMAILS ───────────────────────────────────────────────
-    try {
-      await sendPurchaseConfirmation({
-        to:          purchase.buyerEmail,
-        buyerName:   purchase.buyerName,
-        itemName,
-        itemType:    purchase.itemType,
-        licenseType: purchase.licenseType || undefined,
-        downloadUrl,
-        amount:      purchase.amount,
-        currency:    purchase.currency,
-        licenseId:   purchase.licenseId,
-        artworkUrl:  artworkUrl || undefined,
-      });
-    } catch (emailErr) {
-      logger.error('[payfast/notify] Buyer email failed', {
-        traceId, purchaseId, error: emailErr instanceof Error ? emailErr.message : String(emailErr),
-      });
+    // Guard: if the success-page fallback already sent the email, skip to avoid duplicate
+    const freshPurchase = await prisma.purchase.findUnique({ where: { id: purchaseId }, select: { receiptUrl: true } });
+    const alreadyEmailed = freshPurchase?.receiptUrl === 'email:sent';
+
+    if (!alreadyEmailed) {
+      try {
+        await sendPurchaseConfirmation({
+          to:          purchase.buyerEmail,
+          buyerName:   purchase.buyerName,
+          itemName,
+          itemType:    purchase.itemType,
+          licenseType: purchase.licenseType || undefined,
+          downloadUrl,
+          amount:      purchase.amount,
+          currency:    purchase.currency,
+          licenseId:   purchase.licenseId,
+          artworkUrl:  artworkUrl || undefined,
+          licenseUrl:  licenseUrl || undefined,
+        });
+        // Mark sent so the success-page fallback doesn't double-send
+        await prisma.purchase.update({ where: { id: purchaseId }, data: { receiptUrl: 'email:sent' } });
+      } catch (emailErr) {
+        logger.error('[payfast/notify] Buyer email failed', {
+          traceId, purchaseId, error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+        });
+      }
     }
 
     if (artistEmail) {

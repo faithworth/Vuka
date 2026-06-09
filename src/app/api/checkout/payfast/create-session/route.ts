@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { buildPayFastForm } from '@/lib/payfast';
 import { logger } from '@/lib/logger';
+import { sendPurchaseConfirmation } from '@/lib/emails';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -160,6 +161,24 @@ export async function POST(req: NextRequest) {
           netAmount:               0,
         },
       });
+      const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
+      try {
+        await sendPurchaseConfirmation({
+          to:          buyerEmail,
+          buyerName,
+          itemName:    itemName || 'your item',
+          itemType,
+          licenseType: licenseType || undefined,
+          downloadUrl,
+          amount:      0,
+          currency,
+          licenseId,
+        });
+      } catch (emailErr) {
+        logger.error('[create-session] Free item email failed', {
+          error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+        });
+      }
       return NextResponse.json({
         url: `${appUrl}/checkout/success?purchaseId=${purchase.id}`,
         method: 'free',
