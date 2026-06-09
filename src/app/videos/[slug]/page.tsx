@@ -96,7 +96,7 @@ export default function VideoPage() {
                   className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white"
                   style={{ background: 'var(--sky)' }}>
                   <ShoppingCart size={16} />
-                  Buy for R{video.price}
+                  Buy — R{video.price}
                 </button>
               </div>
             </>
@@ -155,7 +155,19 @@ export default function VideoPage() {
       </div>
 
       {buyOpen && video && (
-        <BuyModal item={video} itemType="video" onClose={() => setBuyOpen(false)} />
+        <BuyModal
+          release={{
+            id: video.id,
+            title: video.title,
+            artworkUrl: video.thumbnailUrl || '',
+            price: video.price,
+            minPrice: video.price,
+            payWhatWant: false,
+            artistSharePct: video.artist?.artistSharePct,
+            artist: { name: video.artist?.name || '' },
+          }}
+          onClose={() => setBuyOpen(false)}
+        />
       )}
     </div>
   );

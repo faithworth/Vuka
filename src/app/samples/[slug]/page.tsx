@@ -137,7 +137,19 @@ export default function SamplePage() {
       </div>
 
       {buyOpen && sample && (
-        <BuyModal item={sample} itemType="sample" onClose={() => setBuyOpen(false)} />
+        <BuyModal
+          release={{
+            id: sample.id,
+            title: sample.title,
+            artworkUrl: sample.artworkUrl || '',
+            price: sample.price,
+            minPrice: sample.price,
+            payWhatYouWant: false,
+            artistSharePct: sample.artist?.artistSharePct,
+            artist: { name: sample.artist?.name || '' },
+          }}
+          onClose={() => setBuyOpen(false)}
+        />
       )}
     </div>
   );
