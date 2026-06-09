@@ -392,7 +392,14 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
   const load = () => {
     setLoading(true);
     fetch(`/api/admin/finance?view=artist&id=${artistId}`)
-      .then(r => r.json()).then(d => { setData(d); }).finally(() => setLoading(false));
+      .then(async r => {
+        const d = await r.json();
+        // Preserve error shape so the error UI can show it
+        if (!r.ok && !d.error) d.error = `Server error (${r.status})`;
+        setData(d);
+      })
+      .catch(() => setData({ error: 'Network error — could not reach server' }))
+      .finally(() => setLoading(false));
   };
 
   useEffect(load, [artistId]);
@@ -437,6 +444,33 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin" size={24} style={{ color: 'var(--green)' }} /></div>;
   if (!data) return null;
+
+  // API returned an error object (e.g. 503 DB error, 404 not found)
+  if (data.error || !data.summary) {
+    return (
+      <div className="space-y-4">
+        <button onClick={onBack}
+          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+          <ArrowLeft size={13} /> Back
+        </button>
+        <div className="flex items-center gap-3 p-5 rounded-2xl"
+          style={{ background: 'var(--surface)', border: '1px solid rgba(255,77,77,0.25)' }}>
+          <AlertTriangle size={18} style={{ color: '#ff4d4d', flexShrink: 0 }} />
+          <div>
+            <p className="font-bold text-sm" style={{ color: '#ff4d4d' }}>Failed to load artist data</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {data.error || 'Unexpected response from server. Try refreshing.'}
+            </p>
+          </div>
+          <button onClick={load} className="ml-auto text-xs px-3 py-1.5 rounded-lg font-semibold"
+            style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const { artist, summary, purchases, tips, payoutRequests, payoutsLedger, bankAccounts = [] } = data;
   const defaultBank = bankAccounts.find((b: any) => b.isDefault) || bankAccounts[0] || null;

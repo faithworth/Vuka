@@ -347,15 +347,16 @@ export async function GET(req: NextRequest) {
           where:  { id: artistId },
           select: { id: true, name: true, photoUrl: true, slug: true },
         }),
-        // Purchases where any item belongs to this artist
+        // Purchases where any item belongs to this artist.
+        // Use `is:` for nullable relation filters (Prisma requirement).
         prisma.purchase.findMany({
           where: {
             status: 'confirmed',
             OR: [
-              { beat:    { artistId } },
-              { release: { artistId } },
-              { video:   { artistId } },
-              { sample:  { artistId } },
+              { beat:    { is: { artistId } } },
+              { release: { is: { artistId } } },
+              { video:   { is: { artistId } } },
+              { sample:  { is: { artistId } } },
             ],
           },
           include: PURCHASE_INCLUDE,
@@ -393,6 +394,8 @@ export async function GET(req: NextRequest) {
         ...p,
         artist: resolveArtist(p as any),
       }));
+
+      if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
       const tipsWithFees = tips.map((t) => ({
         ...t,
