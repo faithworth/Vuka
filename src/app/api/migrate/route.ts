@@ -64,6 +64,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-08: Fix bank account updatedAt default + fix owner plan expiry grant.
   '20260608_fix_bank_account_updatedat',
   '20260608_fix_owner_plan_expiry',
+  // 2026-06-09: DMCAReport missing columns — contentType, contentId, itemType, etc.
+  // Table existed from a baseline migration but was created without these fields.
+  '20260609_fix_dmca_missing_columns',
 ];
 
 export async function GET(req: NextRequest) {

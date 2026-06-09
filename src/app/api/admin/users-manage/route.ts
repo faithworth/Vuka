@@ -1,5 +1,5 @@
 /**
- * GET  /api/admin/users-manage?q=search&role=all|artist|fan|admin&page=1
+ * GET  /api/admin/users-manage?q=&role=all&page=1
  * POST /api/admin/users-manage { userId, action, value?, reason?, months? }
  * Actions: suspend | unsuspend | set_role | verify | unverify | delete | set_plan
  */
@@ -21,36 +21,65 @@ export async function GET(req: NextRequest) {
   const role  = searchParams.get('role') || 'all';
   const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const limit = 50;
+  const offset = (page - 1) * limit;
 
   try {
-    const where: any = {};
-    if (q) {
-      where.OR = [
-        { name:  { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-      ];
-    }
-    if (role !== 'all') where.role = role.toLowerCase();
+    const conditions: string[] = [];
+    const params: any[]        = [];
+    let   pi                   = 1;
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        include: {
-          artist: {
-            select: {
-              id: true, slug: true, isVerified: true,
-              payfastMerchant: true, totalPlays: true,
-              planSlug: true, planExpiresAt: true,
-            },
-          },
-          _count: { select: { purchases: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip:  (page - 1) * limit,
-        take:  limit,
-      }),
-      prisma.user.count({ where }),
+    if (q) {
+      conditions.push(`(u.name ILIKE $${pi} OR u.email ILIKE $${pi})`);
+      params.push(`%${q}%`);
+      pi++;
+    }
+    if (role !== 'all') {
+      conditions.push(`u.role = $${pi}`);
+      params.push(role.toLowerCase());
+      pi++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [rows, countRows] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT
+          u.id, u.name, u.email, u.role, u."createdAt", u."isSuspended",
+          a.id             AS "artistId",
+          a.slug           AS "artistSlug",
+          a."isVerified",
+          a."payfastMerchant",
+          a."totalPlays",
+          a."planSlug",
+          a."planExpiresAt",
+          (SELECT COUNT(*) FROM "Purchase" p WHERE p."userId" = u.id)::int AS purchases
+        FROM "User" u
+        LEFT JOIN "Artist" a ON a."userId" = u.id
+        ${where}
+        ORDER BY u."createdAt" DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `, ...params),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT COUNT(*)::int AS total FROM "User" u ${where}
+      `, ...params),
     ]);
+
+    const total = countRows[0]?.total ?? 0;
+
+    const users = rows.map(r => ({
+      id: r.id, name: r.name, email: r.email, role: r.role,
+      createdAt: r.createdAt, isSuspended: r.isSuspended,
+      artist: r.artistId ? {
+        id:              r.artistId,
+        slug:            r.artistSlug,
+        isVerified:      r.isVerified,
+        payfastMerchant: r.payfastMerchant,
+        totalPlays:      r.totalPlays ?? 0,
+        planSlug:        r.planSlug ?? 'free',
+        planExpiresAt:   r.planExpiresAt ?? null,
+      } : null,
+      _count: { purchases: r.purchases ?? 0 },
+    }));
 
     return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
@@ -70,11 +99,10 @@ export async function POST(req: NextRequest) {
 
     const target = await prisma.user.findUnique({
       where: { id: userId },
-      include: { artist: { select: { id: true, slug: true, isVerified: true, planSlug: true } } },
+      include: { artist: { select: { id: true, slug: true, isVerified: true } } },
     });
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Prevent modifying a higher-privilege admin
     const elevated = ['admin', 'owner', 'super_admin'];
     if (elevated.includes(target.role) && !['owner', 'super_admin'].includes(admin.role))
       return NextResponse.json({ error: 'Cannot modify another admin' }, { status: 403 });
@@ -83,11 +111,7 @@ export async function POST(req: NextRequest) {
       case 'suspend': {
         await prisma.user.update({
           where: { id: userId },
-          data: {
-            isSuspended:     true,
-            suspendedAt:     new Date(),
-            suspendedReason: reason || 'Suspended by admin',
-          },
+          data: { isSuspended: true, suspendedAt: new Date(), suspendedReason: reason || 'Suspended by admin' },
         });
         await auditLog.adminAction('auth.ban', 'User', userId, admin.id, reason || '');
         try {
@@ -102,10 +126,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'unsuspend': {
-        await prisma.user.update({
-          where: { id: userId },
-          data: { isSuspended: false, suspendedReason: '' },
-        });
+        await prisma.user.update({ where: { id: userId }, data: { isSuspended: false, suspendedReason: '' } });
         await auditLog.adminAction('auth.unban', 'User', userId, admin.id, '');
         return NextResponse.json({ ok: true });
       }
@@ -121,22 +142,18 @@ export async function POST(req: NextRequest) {
       }
 
       case 'verify': {
-        const artistToVerify = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
-        if (!artistToVerify) {
-          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
-        }
-        await prisma.artist.update({ where: { id: artistToVerify.id }, data: { isVerified: true } });
-        await auditLog.adminAction('moderation.artist_verified', 'Artist', artistToVerify.id, admin.id, 'verified');
+        const a = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
+        if (!a) return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
+        await prisma.artist.update({ where: { id: a.id }, data: { isVerified: true } });
+        await auditLog.adminAction('moderation.artist_verified', 'Artist', a.id, admin.id, 'verified');
         return NextResponse.json({ ok: true });
       }
 
       case 'unverify': {
-        const artistToUnverify = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
-        if (!artistToUnverify) {
-          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
-        }
-        await prisma.artist.update({ where: { id: artistToUnverify.id }, data: { isVerified: false } });
-        await auditLog.adminAction('moderation.artist_verified', 'Artist', artistToUnverify.id, admin.id, 'unverified');
+        const a = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
+        if (!a) return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
+        await prisma.artist.update({ where: { id: a.id }, data: { isVerified: false } });
+        await auditLog.adminAction('moderation.artist_verified', 'Artist', a.id, admin.id, 'unverified');
         return NextResponse.json({ ok: true });
       }
 
@@ -152,11 +169,8 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
 
         const artistForPlan = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
-        if (!artistForPlan) {
-          return NextResponse.json({
-            error: 'User has no artist profile. Ask them to complete artist setup first, or use the Plans page.',
-          }, { status: 400 });
-        }
+        if (!artistForPlan)
+          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
 
         const { PLANS } = await import('@/lib/plans');
         const plan = PLANS.find(p => p.slug === value);
@@ -169,18 +183,12 @@ export async function POST(req: NextRequest) {
           expiresAt.setMonth(expiresAt.getMonth() + months);
         }
 
-        await prisma.artist.update({
-          where: { id: artistForPlan.id },
-          data: { planSlug: value, planExpiresAt: expiresAt },
-        });
-
-        await auditLog.adminAction(
-          'plan.admin_override',
-          'Artist',
-          artistForPlan.id,
-          admin.id,
-          `Plan set to ${value} (expires ${expiresAt?.toISOString() ?? 'never'})`,
-        );
+        await prisma.$executeRaw`
+          UPDATE "Artist" SET "planSlug" = ${value}, "planExpiresAt" = ${expiresAt}
+          WHERE id = ${artistForPlan.id}
+        `;
+        await auditLog.adminAction('plan.admin_override', 'Artist', artistForPlan.id, admin.id,
+          `Plan set to ${value} (expires ${expiresAt?.toISOString() ?? 'never'})`);
         return NextResponse.json({ ok: true });
       }
 

@@ -1,8 +1,7 @@
 /**
- * GET  /api/admin/users?q=search&role=all|artist|fan|admin|industry&page=1
- *
- * Full user listing with artist profile data.
- * POST actions (suspend, verify, set_plan, etc.) go to /api/admin/users-manage.
+ * GET /api/admin/users?q=&role=all&page=1
+ * Uses $queryRaw so it works regardless of Prisma client version —
+ * planSlug/planExpiresAt are read directly from the DB.
  */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,50 +13,76 @@ export async function GET(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const q     = searchParams.get('q')    || searchParams.get('search') || '';
+  const q     = searchParams.get('q') || searchParams.get('search') || '';
   const role  = (searchParams.get('role') || 'all').toLowerCase();
   const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const limit = 50;
+  const offset = (page - 1) * limit;
 
   try {
-    const where: any = {};
-    if (q) {
-      where.OR = [
-        { name:  { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-      ];
-    }
-    if (role !== 'all') where.role = role;
+    // Build dynamic WHERE clauses
+    const conditions: string[] = [];
+    const params: any[]        = [];
+    let   pi                   = 1; // param index
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          isSuspended: true,
-          artist: {
-            select: {
-              id: true,
-              slug: true,
-              name: true,
-              isVerified: true,
-              planSlug: true,
-              planExpiresAt: true,
-              totalPlays: true,
-            },
-          },
-          _count: { select: { purchases: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip:  (page - 1) * limit,
-        take:  limit,
-      }),
-      prisma.user.count({ where }),
+    if (q) {
+      conditions.push(`(u.name ILIKE $${pi} OR u.email ILIKE $${pi})`);
+      params.push(`%${q}%`);
+      pi++;
+    }
+    if (role !== 'all') {
+      conditions.push(`u.role = $${pi}`);
+      params.push(role);
+      pi++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Raw query — works with any Prisma client version
+    const [rows, countRows] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT
+          u.id, u.name, u.email, u.role, u."createdAt", u."isSuspended",
+          a.id          AS "artistId",
+          a.slug        AS "artistSlug",
+          a.name        AS "artistName",
+          a."isVerified",
+          a."planSlug",
+          a."planExpiresAt",
+          a."totalPlays",
+          (SELECT COUNT(*) FROM "Purchase" p WHERE p."userId" = u.id)::int AS purchases
+        FROM "User" u
+        LEFT JOIN "Artist" a ON a."userId" = u.id
+        ${where}
+        ORDER BY u."createdAt" DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `, ...params),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT COUNT(*)::int AS total FROM "User" u ${where}
+      `, ...params),
     ]);
+
+    const total = countRows[0]?.total ?? 0;
+
+    // Reshape to match the shape the frontend expects
+    const users = rows.map(r => ({
+      id:          r.id,
+      name:        r.name,
+      email:       r.email,
+      role:        r.role,
+      createdAt:   r.createdAt,
+      isSuspended: r.isSuspended,
+      artist: r.artistId ? {
+        id:          r.artistId,
+        slug:        r.artistSlug,
+        name:        r.artistName,
+        isVerified:  r.isVerified,
+        planSlug:    r.planSlug ?? 'free',
+        planExpiresAt: r.planExpiresAt ?? null,
+        totalPlays:  r.totalPlays ?? 0,
+      } : null,
+      _count: { purchases: r.purchases ?? 0 },
+    }));
 
     return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
