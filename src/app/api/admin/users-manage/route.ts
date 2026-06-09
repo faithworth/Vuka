@@ -121,7 +121,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'verify': {
-        // Resolve artist by userId — covers both the included relation and a direct lookup
         const artistToVerify = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
         if (!artistToVerify) {
           return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
@@ -148,16 +147,14 @@ export async function POST(req: NextRequest) {
       }
 
       case 'set_plan': {
-        // value = 'free' | 'pro' | 'label'
         const allowedPlans = ['free', 'pro', 'label'];
         if (!allowedPlans.includes(value))
           return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
 
-        // Resolve artist — the included relation may be null if no Artist row exists yet
         const artistForPlan = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
         if (!artistForPlan) {
           return NextResponse.json({
-            error: 'User has no artist profile. Ask them to complete their artist setup first, or use the Plans page which manages artists directly.',
+            error: 'User has no artist profile. Ask them to complete artist setup first, or use the Plans page.',
           }, { status: 400 });
         }
 
@@ -166,13 +163,6 @@ export async function POST(req: NextRequest) {
         if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 400 });
 
         const now = new Date();
-        // planExpiresAt = null means LIFETIME — the plan never auto-expires and the
-        // nightly cron (expire-plans) will NOT touch it because its query filters on
-        // `planExpiresAt: { lte: now }` which excludes NULL rows.
-        //
-        // Only set a real expiry when the caller explicitly passes months > 0.
-        // This prevents any admin action from accidentally creating a short-lived
-        // promo that the cron later drops back to free.
         let expiresAt: Date | null = null;
         if (plan.priceZAR > 0 && months && months > 0) {
           expiresAt = new Date(now);

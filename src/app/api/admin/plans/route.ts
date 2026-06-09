@@ -10,127 +10,72 @@ import { PLANS } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import prisma from '@/lib/prisma';
 
-/** True if this is a Prisma unknown-field validation error for plan columns */
-function isPlanFieldError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes('planSlug') || msg.includes('planExpiresAt') || msg.includes('Unknown field');
-}
-
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const planFilter   = searchParams.get('plan')   || 'all';
-  const q            = searchParams.get('q')       || '';
-  const page         = Math.max(1, parseInt(searchParams.get('page') || '1'));
-  const limit        = 50;
+  const planFilter = searchParams.get('plan') || 'all';
+  const q          = searchParams.get('q')    || '';
+  const page       = Math.max(1, parseInt(searchParams.get('page') || '1'));
+  const limit      = 50;
 
   try {
-    const baseWhere: any = {};
+    const where: any = {};
+    if (planFilter !== 'all') where.planSlug = planFilter;
     if (q) {
-      baseWhere.OR = [
-        { name:  { contains: q, mode: 'insensitive' } },
-        { user:  { email: { contains: q, mode: 'insensitive' } } },
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { user: { email: { contains: q, mode: 'insensitive' } } },
       ];
     }
 
-    // ── Try with plan columns (post-migration) ─────────────────────────────
-    async function fetchWithPlan() {
-      const where: any = { ...baseWhere };
-      if (planFilter !== 'all') where.planSlug = planFilter;
-
-      const [artists, total] = await Promise.all([
-        prisma.artist.findMany({
-          where,
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            planSlug: true,
-            planExpiresAt: true,
-            user: { select: { id: true, email: true, createdAt: true } },
-            planSubscriptions: {
-              orderBy: { createdAt: 'desc' },
-              take: 5,
-            },
-            _count: { select: { beats: true, releases: true } },
-          } as any,
-          orderBy: { createdAt: 'desc' },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        prisma.artist.count({ where }),
-      ]);
-
-      const planCounts = await prisma.artist.groupBy({
-        by: ['planSlug' as any],
-        _count: { _all: true },
-      });
-
-      let incompleteCount = 0;
-      try {
-        incompleteCount = await prisma.user.count({
-          where: { role: 'artist', artist: { is: null } },
-        });
-      } catch { /* non-critical */ }
-
-      return NextResponse.json({
-        artists,
-        total,
-        page,
-        pages: Math.ceil(total / limit),
-        planCounts: (planCounts as any[]).reduce((acc: any, row: any) => {
-          acc[row.planSlug] = row._count._all;
-          return acc;
-        }, {}),
-        incompleteArtistCount: incompleteCount,
-      });
-    }
-
-    // ── Fallback: no plan columns yet ──────────────────────────────────────
-    async function fetchWithoutPlan() {
-      const [artists, total] = await Promise.all([
-        prisma.artist.findMany({
-          where: baseWhere,
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            user: { select: { id: true, email: true, createdAt: true } },
-            _count: { select: { beats: true, releases: true } },
+    const [artists, total] = await Promise.all([
+      prisma.artist.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          planSlug: true,
+          planExpiresAt: true,
+          user: { select: { id: true, email: true, createdAt: true } },
+          planSubscriptions: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
           },
-          orderBy: { createdAt: 'desc' },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        prisma.artist.count({ where: baseWhere }),
-      ]);
+          _count: { select: { beats: true, releases: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.artist.count({ where }),
+    ]);
 
-      return NextResponse.json({
-        artists: artists.map((a: any) => ({
-          ...a,
-          planSlug: 'free',
-          planExpiresAt: null,
-          planSubscriptions: [],
-        })),
-        total,
-        page,
-        pages: Math.ceil(total / limit),
-        planCounts: { free: total, pro: 0, label: 0 },
-        incompleteArtistCount: 0,
-        warning: 'Run phase10_artist_plans migration to enable plan management',
-      });
-    }
+    const planCounts = await prisma.artist.groupBy({
+      by: ['planSlug'],
+      _count: { _all: true },
+    });
 
+    let incompleteCount = 0;
     try {
-      return await fetchWithPlan();
-    } catch (err) {
-      if (isPlanFieldError(err)) {
-        return await fetchWithoutPlan();
-      }
-      throw err;
-    }
+      incompleteCount = await prisma.user.count({
+        where: { role: 'artist', artist: { is: null } },
+      });
+    } catch { /* non-critical */ }
+
+    return NextResponse.json({
+      artists,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      planCounts: planCounts.reduce((acc: any, row) => {
+        acc[row.planSlug] = row._count._all;
+        return acc;
+      }, {}),
+      incompleteArtistCount: incompleteCount,
+    });
   } catch (err: any) {
     console.error('[admin/plans] GET error:', err?.message);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
@@ -148,7 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'artistId and action required' }, { status: 400 });
     }
 
-    const artist = await (prisma.artist.findUnique as any)({
+    const artist = await prisma.artist.findUnique({
       where: { id: artistId },
       select: { id: true, name: true, planSlug: true, planExpiresAt: true },
     });
@@ -166,7 +111,7 @@ export async function POST(req: NextRequest) {
           expiresAt.setMonth(expiresAt.getMonth() + months);
         }
 
-        await (prisma.artist.update as any)({
+        await prisma.artist.update({
           where: { id: artistId },
           data: { planSlug: plan.slug, planExpiresAt: expiresAt },
         });
@@ -178,7 +123,7 @@ export async function POST(req: NextRequest) {
             return d;
           })();
 
-          await (prisma as any).artistPlanSubscription.create({
+          await prisma.artistPlanSubscription.create({
             data: {
               artistId,
               planSlug: plan.slug,
@@ -204,12 +149,12 @@ export async function POST(req: NextRequest) {
       }
 
       case 'cancel_plan': {
-        await (prisma.artist.update as any)({
+        await prisma.artist.update({
           where: { id: artistId },
           data: { planSlug: 'free', planExpiresAt: null },
         });
 
-        await (prisma as any).artistPlanSubscription.updateMany({
+        await prisma.artistPlanSubscription.updateMany({
           where: { artistId, status: 'active' },
           data: { status: 'cancelled', cancelledAt: new Date() },
         });
@@ -232,7 +177,7 @@ export async function POST(req: NextRequest) {
           : new Date();
         base.setMonth(base.getMonth() + extMonths);
 
-        await (prisma.artist.update as any)({
+        await prisma.artist.update({
           where: { id: artistId },
           data: { planExpiresAt: base },
         });
