@@ -93,9 +93,13 @@ export async function GET(req: NextRequest) {
     });
 
     // Count users with artist role who have no Artist profile (incomplete setup)
-    const incompleteCount = await prisma.user.count({
-      where: { role: 'artist', artist: null },
-    });
+    // Wrapped in try/catch — non-critical, page works fine if this fails
+    let incompleteCount = 0;
+    try {
+      incompleteCount = await prisma.user.count({
+        where: { role: 'artist', artist: { is: null } },
+      });
+    } catch { /* ignore — schema may vary */ }
 
     return NextResponse.json({
       artists,

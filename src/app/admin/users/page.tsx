@@ -38,21 +38,29 @@ export default function AdminUsersPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [page, setPage] = useState(1);
 
+  const [error, setError] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = new URLSearchParams({
         q: search,
         role: roleFilter === 'ALL' ? 'all' : roleFilter,
         page: String(page),
       });
-      // Use users-manage which includes artist data (planSlug, isVerified, slug)
-      const res = await fetch(`/api/admin/users-manage?${params}`);
+      // /api/admin/users is the proven-working route; now upgraded to return artist data
+      const res = await fetch(`/api/admin/users?${params}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
         setTotal(data.total || 0);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || `HTTP ${res.status}`);
       }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
     } finally { setLoading(false); }
   }, [search, roleFilter, page]);
 
@@ -113,6 +121,14 @@ export default function AdminUsersPage() {
           {STATUS.map(s => <option key={s}>{s}</option>)}
         </select>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+          style={{ background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.2)', color: '#ff4d4d' }}>
+          Failed to load users: {error}
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
