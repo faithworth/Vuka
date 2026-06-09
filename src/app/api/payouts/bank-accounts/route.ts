@@ -153,6 +153,7 @@ export async function POST(req: NextRequest) {
           accountType,
           isDefault: isDefault || existingCount === 0,
           isVerified: false,
+          updatedAt: new Date(),
         },
       });
     });
@@ -177,11 +178,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ account: created }, { status: 201 });
   } catch (err: any) {
     console.error('[bank-accounts/POST]', err);
-    // Surface the real error in development / first-run so env problems are obvious
-    const isDev = process.env.NODE_ENV !== 'production';
-    const message = isDev
-      ? (err?.message ?? 'Server error')
-      : 'Server error saving account';
+    const message = err?.message ?? err?.code ?? String(err) ?? 'unknown';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
