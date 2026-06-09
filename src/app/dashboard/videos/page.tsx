@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, Upload, Video, Music, Image as ImageIcon, X, AlertCircle, Plus, Trash2, Eye } from 'lucide-react';
+import { Loader2, CheckCircle2, Upload, Video, Music, Image as ImageIcon, X, AlertCircle, Plus, Trash2, Eye, Pencil, Check, AlertTriangle } from 'lucide-react';
 
 const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House', 'Jazz', 'Gospel', 'Kwaito', 'Pop', 'Electronic'];
 
@@ -47,6 +47,13 @@ export default function VideosPage() {
   const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
 
+  // Edit/delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', genre: '', price: '', bpm: '', keySignature: '', tags: '' });
+  const [savingId, setSavingId] = useState<string | null>(null);
+
   // Video fields
   const [videoMeta, setVideoMeta] = useState({ title: '', description: '', genre: '', price: '0', tags: '' });
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -77,6 +84,68 @@ export default function VideosPage() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  async function deleteItem(id: string, type: 'video' | 'sample') {
+    setDeletingId(id);
+    setConfirmDeleteId(null);
+    const res = await fetch(`/api/dashboard/videos?itemId=${id}&type=${type}`, { method: 'DELETE' });
+    if (res.ok) {
+      setItems(prev => prev.filter(i => i.id !== id));
+    } else {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || 'Could not delete this item.');
+    }
+    setDeletingId(null);
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setEditForm({
+      title: item.title || '',
+      description: item.description || '',
+      genre: item.genre || '',
+      price: String(item.price ?? ''),
+      bpm: String(item.bpm ?? ''),
+      keySignature: item.keySignature || '',
+      tags: Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''),
+    });
+  }
+
+  async function saveEdit(item: any) {
+    setSavingId(item.id);
+    const body: any = {
+      itemId: item.id,
+      type: item._type,
+      title: editForm.title,
+      description: editForm.description,
+      genre: editForm.genre,
+      price: editForm.price,
+      tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+    };
+    if (item._type === 'sample') {
+      body.bpm = editForm.bpm;
+      body.keySignature = editForm.keySignature;
+    }
+    const res = await fetch('/api/dashboard/videos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      setItems(prev => prev.map(i => i.id === item.id ? {
+        ...i,
+        title: editForm.title,
+        description: editForm.description,
+        genre: editForm.genre,
+        price: parseFloat(editForm.price) || 0,
+        bpm: editForm.bpm ? parseInt(editForm.bpm) : i.bpm,
+        keySignature: editForm.keySignature || i.keySignature,
+        tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+      } : i));
+      setEditingId(null);
+    }
+    setSavingId(null);
+  }
 
   async function handleVideoSubmit() {
     if (!videoMeta.title.trim()) { setError('Title is required'); return; }
@@ -245,23 +314,104 @@ export default function VideosPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {items.map(item => (
-              <div key={item.id} className="rounded-2xl overflow-hidden"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div className="aspect-video bg-black flex items-center justify-center relative overflow-hidden"
-                  style={{ background: 'var(--surface2)' }}>
-                  {item.thumbnailUrl || item.artworkUrl
-                    ? <img src={item.thumbnailUrl || item.artworkUrl} alt={item.title} className="w-full h-full object-cover" />
-                    : <Video size={32} style={{ color: 'var(--text-muted)' }} />}
+            {items.map(item => {
+              const isVideo = item._type === 'video';
+              if (editingId === item.id) {
+                return (
+                  <div key={item.id} className="rounded-2xl p-5 col-span-1 sm:col-span-2"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>
+                      Editing — {isVideo ? 'Music Video' : 'Sample Pack'}
+                    </p>
+                    <div className="space-y-3">
+                      <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                        placeholder="Title" />
+                      <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg text-sm h-16 resize-none"
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                        placeholder="Description" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <select value={editForm.genre} onChange={e => setEditForm(f => ({ ...f, genre: e.target.value }))}
+                          className="px-3 py-2 rounded-lg text-sm"
+                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                          <option value="">Genre…</option>
+                          {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <input type="number" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
+                          className="px-3 py-2 rounded-lg text-sm"
+                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                          placeholder="Price (ZAR)" />
+                      </div>
+                      {!isVideo && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="number" value={editForm.bpm} onChange={e => setEditForm(f => ({ ...f, bpm: e.target.value }))}
+                            className="px-3 py-2 rounded-lg text-sm"
+                            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                            placeholder="BPM" />
+                          <input value={editForm.keySignature} onChange={e => setEditForm(f => ({ ...f, keySignature: e.target.value }))}
+                            className="px-3 py-2 rounded-lg text-sm"
+                            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                            placeholder="Key (e.g. C min)" />
+                        </div>
+                      )}
+                      <input value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                        placeholder="Tags (comma separated)" />
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={() => saveEdit(item)} disabled={!!savingId}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm text-white"
+                          style={{ background: 'var(--sky)' }}>
+                          <Check size={13} /> {savingId === item.id ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditingId(null)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm"
+                          style={{ color: 'var(--text-muted)' }}>
+                          <X size={13} /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={item.id} className="rounded-2xl overflow-hidden"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', opacity: deletingId === item.id ? 0.5 : 1 }}>
+                  <div className="aspect-video flex items-center justify-center relative overflow-hidden"
+                    style={{ background: 'var(--surface2)' }}>
+                    {item.thumbnailUrl || item.artworkUrl
+                      ? <img src={item.thumbnailUrl || item.artworkUrl} alt={item.title} className="w-full h-full object-cover" />
+                      : <Video size={32} style={{ color: 'var(--text-muted)' }} />}
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                      {isVideo ? 'Video' : 'Sample'}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="font-bold truncate flex-1" style={{ color: 'var(--text)' }}>{item.title}</p>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => startEdit(item)} title="Edit"
+                          className="p-1.5 rounded-lg hover:opacity-80" style={{ color: 'var(--text-muted)' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(item.id)} title="Delete"
+                          className="p-1.5 rounded-lg hover:opacity-80" style={{ color: '#ef4444' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span style={{ color: 'var(--green)' }}>{item.price === 0 ? 'Free' : `R${item.price}`}</span>
+                      {item.genre && <span style={{ color: 'var(--text-muted)' }}>{item.genre}</span>}
+                      {!isVideo && item.bpm ? <span style={{ color: 'var(--text-muted)' }}>{item.bpm} BPM</span> : null}
+                    </div>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{item.title}</p>
-                  <p className="text-sm" style={{ color: 'var(--green)' }}>
-                    {item.price === 0 ? 'Free' : `R${item.price}`}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       ) : (
@@ -393,6 +543,42 @@ export default function VideosPage() {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteId && (() => {
+        const item = items.find(i => i.id === confirmDeleteId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.1)' }}>
+                  <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                </div>
+                <div>
+                  <p className="font-bold" style={{ color: 'var(--text)' }}>Delete "{item?.title}"?</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>This cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+                Items with confirmed sales cannot be deleted — hide them instead.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                  style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
+                  Cancel
+                </button>
+                <button onClick={() => item && deleteItem(item.id, item._type)}
+                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white"
+                  style={{ background: '#ef4444' }}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

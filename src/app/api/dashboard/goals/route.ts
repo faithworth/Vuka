@@ -43,14 +43,34 @@ export async function PATCH(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { id, isActive } = await req.json();
+    const { id, isActive, title, description, targetAmount, deadline } = await req.json();
+    const data: any = {};
+    if (isActive    !== undefined) data.isActive     = isActive;
+    if (title       !== undefined) data.title        = title;
+    if (description !== undefined) data.description  = description;
+    if (targetAmount !== undefined) data.targetAmount = parseFloat(targetAmount);
+    if (deadline    !== undefined) data.deadline     = deadline ? new Date(deadline) : null;
     const goal = await prisma.goal.updateMany({
       where: { id, artistId: user.artist.id },
-      data: { isActive },
+      data,
     });
     return NextResponse.json({ goal });
   } catch (err) {
     console.error('[goals] PATCH error:', err);
+    return NextResponse.json({ error: 'Database error' }, { status: 503 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await requireArtist();
+    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const id = new URL(req.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    await prisma.goal.deleteMany({ where: { id, artistId: user.artist.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[goals] DELETE error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
   }
 }
