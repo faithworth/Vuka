@@ -70,6 +70,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-09: PayoutRequest.bankAccountId FK + ArtistPayout.reference/notes/currency/method.
   // Both columns confirmed missing in production via Vercel logs (503 errors on /api/admin/finance).
   '20260609_fix_payout_missing_columns',
+  // 2026-06-09: PayoutRequest.createdAt — original table used requestedAt; Prisma expects createdAt.
+  // Confirmed missing via Vercel log: "The column PayoutRequest.createdAt does not exist".
+  '20260609_fix_payoutrequest_createdat',
 ];
 
 export async function GET(req: NextRequest) {

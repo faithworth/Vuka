@@ -5,6 +5,9 @@
  * Purchase has NO artistId — artist is resolved through the
  * linked item (beat, release, video, sample).
  * SupportTxn has NO platformFee/netAmount — computed at 8 % / 92 %.
+ *
+ * NOTE: All queries are sequential (no Promise.all) to stay within
+ * the Prisma connection pool limit of 1 on serverless/hobby Postgres.
  */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -82,39 +85,36 @@ export async function GET(req: NextRequest) {
   try {
     // ─── OVERVIEW ────────────────────────────────────────────────────────────
     if (view === 'overview') {
-      const now    = new Date();
-      const d30    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // All confirmed purchases
-      const [allPurchases, monthPurchases, allTips, monthTips, paidPayouts, pendingPayouts] =
-        await Promise.all([
-          prisma.purchase.findMany({
-            where: { status: 'confirmed' },
-            select: { amount: true, platformFee: true, netAmount: true },
-          }),
-          prisma.purchase.findMany({
-            where: { status: 'confirmed', createdAt: { gte: d30 } },
-            select: { amount: true, platformFee: true, netAmount: true },
-          }),
-          prisma.supportTxn.findMany({
-            where: { status: 'confirmed' },
-            select: { amount: true },
-          }),
-          prisma.supportTxn.findMany({
-            where: { status: 'confirmed', createdAt: { gte: d30 } },
-            select: { amount: true },
-          }),
-          prisma.payoutRequest.aggregate({
-            where: { status: 'paid' },
-            _sum: { amount: true },
-            _count: true,
-          }),
-          prisma.payoutRequest.aggregate({
-            where: { status: 'pending' },
-            _sum: { amount: true },
-            _count: true,
-          }),
-        ]);
+      // Sequential queries — avoids connection pool exhaustion (limit: 1)
+      const allPurchases = await prisma.purchase.findMany({
+        where: { status: 'confirmed' },
+        select: { amount: true, platformFee: true, netAmount: true },
+      });
+      const monthPurchases = await prisma.purchase.findMany({
+        where: { status: 'confirmed', createdAt: { gte: d30 } },
+        select: { amount: true, platformFee: true, netAmount: true },
+      });
+      const allTips = await prisma.supportTxn.findMany({
+        where: { status: 'confirmed' },
+        select: { amount: true },
+      });
+      const monthTips = await prisma.supportTxn.findMany({
+        where: { status: 'confirmed', createdAt: { gte: d30 } },
+        select: { amount: true },
+      });
+      const paidPayouts = await prisma.payoutRequest.aggregate({
+        where: { status: 'paid' },
+        _sum: { amount: true },
+        _count: true,
+      });
+      const pendingPayouts = await prisma.payoutRequest.aggregate({
+        where: { status: 'pending' },
+        _sum: { amount: true },
+        _count: true,
+      });
 
       const sumPurchases = allPurchases.reduce(
         (a, p) => ({
@@ -137,14 +137,6 @@ export async function GET(req: NextRequest) {
       );
       const sumMonthTips = monthTips.reduce((a, t) => a + (t.amount || 0), 0);
 
-      // Sales by type — from confirmed purchases
-      const salesByTypeMap: Record<string, { count: number; gross: number; platform: number }> = {};
-      for (const p of allPurchases) {
-        // We can't groupBy itemType here without a raw query, so we skip type breakdown in overview
-        // (SalesTab has per-row itemType; here we just show totals)
-      }
-
-      // Per-purchase groupBy type needs all rows — so do a separate aggregation
       const salesByTypeRows = await prisma.purchase.groupBy({
         by: ['itemType'],
         where: { status: 'confirmed' },
@@ -152,7 +144,6 @@ export async function GET(req: NextRequest) {
         _count: true,
       });
 
-      // Top artists — get all confirmed purchases with artist info, then aggregate in JS
       const topPurchases = await prisma.purchase.findMany({
         where: { status: 'confirmed' },
         select: {
@@ -171,7 +162,6 @@ export async function GET(req: NextRequest) {
         select: { artistId: true, amount: true, artist: { select: { id: true, name: true, photoUrl: true } } },
       });
 
-      // All paid payouts per artist
       const paidPerArtist = await prisma.payoutRequest.groupBy({
         by: ['artistId'],
         where: { status: 'paid' },
@@ -180,7 +170,6 @@ export async function GET(req: NextRequest) {
       const paidMap: Record<string, number> = {};
       for (const r of paidPerArtist) paidMap[r.artistId] = r._sum.amount || 0;
 
-      // Pending payout requests per artist (to show what's already in-flight)
       const pendingPerArtist = await prisma.payoutRequest.groupBy({
         by: ['artistId'],
         where: { status: { in: ['pending', 'approved'] } },
@@ -189,7 +178,6 @@ export async function GET(req: NextRequest) {
       const pendingMap: Record<string, number> = {};
       for (const r of pendingPerArtist) pendingMap[r.artistId] = r._sum.amount || 0;
 
-      // Default bank account per artist
       const allDefaultAccounts = await prisma.artistBankAccount.findMany({
         where: { isDefault: true },
         select: {
@@ -201,7 +189,6 @@ export async function GET(req: NextRequest) {
       const bankMap: Record<string, any> = {};
       for (const a of allDefaultAccounts) bankMap[a.artistId] = a;
 
-      // Aggregate per artist
       const artistMap: Record<string, {
         artist: any; grossSales: number; platformCut: number; artistOwes: number;
         salesCount: number; tipsCount: number; grossTips: number; payoutsTotal: number;
@@ -234,15 +221,15 @@ export async function GET(req: NextRequest) {
             pendingRequests: 0, defaultBank: bankMap[artistId] || null,
           };
         }
-        artistMap[artistId].grossTips  += t.amount || 0;
-        artistMap[artistId].artistOwes += (t.amount || 0) * (1 - PLATFORM_RATE);
+        artistMap[artistId].grossTips   += t.amount || 0;
+        artistMap[artistId].artistOwes  += (t.amount || 0) * (1 - PLATFORM_RATE);
         artistMap[artistId].platformCut += (t.amount || 0) * PLATFORM_RATE;
-        artistMap[artistId].tipsCount  += 1;
+        artistMap[artistId].tipsCount   += 1;
       }
 
       for (const id of Object.keys(artistMap)) {
-        artistMap[id].payoutsTotal      = paidMap[id] || 0;
-        artistMap[id].pendingRequests   = pendingMap[id] || 0;
+        artistMap[id].payoutsTotal    = paidMap[id] || 0;
+        artistMap[id].pendingRequests = pendingMap[id] || 0;
         if (!artistMap[id].defaultBank) artistMap[id].defaultBank = bankMap[id] || null;
       }
 
@@ -253,15 +240,15 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         revenue: {
-          gross:            sumPurchases.gross + sumTips,
-          platformCut:      sumPurchases.platform + tipPlatform,
-          artistTotal:      sumPurchases.net + tipNet,
-          salesCount:       allPurchases.length,
-          tipsCount:        allTips.length,
-          monthGross:       sumMonthPurchases.gross + sumMonthTips,
-          monthPlatform:    sumMonthPurchases.platform + sumMonthTips * PLATFORM_RATE,
-          monthSalesCount:  monthPurchases.length,
-          monthTipsCount:   monthTips.length,
+          gross:           sumPurchases.gross + sumTips,
+          platformCut:     sumPurchases.platform + tipPlatform,
+          artistTotal:     sumPurchases.net + tipNet,
+          salesCount:      allPurchases.length,
+          tipsCount:       allTips.length,
+          monthGross:      sumMonthPurchases.gross + sumMonthTips,
+          monthPlatform:   sumMonthPurchases.platform + sumMonthTips * PLATFORM_RATE,
+          monthSalesCount: monthPurchases.length,
+          monthTipsCount:  monthTips.length,
         },
         payouts: {
           paidAmount:    paidPayouts._sum.amount  || 0,
@@ -288,16 +275,14 @@ export async function GET(req: NextRequest) {
         ];
       }
 
-      const [purchases, total] = await Promise.all([
-        prisma.purchase.findMany({
-          where,
-          include: PURCHASE_INCLUDE,
-          orderBy: { createdAt: 'desc' },
-          skip:    (page - 1) * limit,
-          take:    limit,
-        }),
-        prisma.purchase.count({ where }),
-      ]);
+      const purchases = await prisma.purchase.findMany({
+        where,
+        include: PURCHASE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      });
+      const total = await prisma.purchase.count({ where });
 
       const rows = purchases.map((p) => ({
         ...p,
@@ -317,16 +302,14 @@ export async function GET(req: NextRequest) {
       const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
       const limit = 50;
 
-      const [tips, total] = await Promise.all([
-        prisma.supportTxn.findMany({
-          where: { status: 'confirmed' },
-          include: { artist: { select: { id: true, name: true, photoUrl: true } } },
-          orderBy: { createdAt: 'desc' },
-          skip:    (page - 1) * limit,
-          take:    limit,
-        }),
-        prisma.supportTxn.count({ where: { status: 'confirmed' } }),
-      ]);
+      const tips = await prisma.supportTxn.findMany({
+        where: { status: 'confirmed' },
+        include: { artist: { select: { id: true, name: true, photoUrl: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      });
+      const total = await prisma.supportTxn.count({ where: { status: 'confirmed' } });
 
       const rows = tips.map((t) => ({
         ...t,
@@ -342,60 +325,57 @@ export async function GET(req: NextRequest) {
       const artistId = searchParams.get('id');
       if (!artistId) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-      const [artist, rawPurchases, tips, payoutRequests, artistPayouts, bankAccounts] = await Promise.all([
-        prisma.artist.findUnique({
-          where:  { id: artistId },
-          select: { id: true, name: true, photoUrl: true, slug: true },
-        }),
-        // Purchases where any item belongs to this artist.
-        // Use `is:` for nullable relation filters (Prisma requirement).
-        prisma.purchase.findMany({
-          where: {
-            status: 'confirmed',
-            OR: [
-              { beat:    { is: { artistId } } },
-              { release: { is: { artistId } } },
-              { video:   { is: { artistId } } },
-              { sample:  { is: { artistId } } },
-            ],
+      const artist = await prisma.artist.findUnique({
+        where:  { id: artistId },
+        select: { id: true, name: true, photoUrl: true, slug: true },
+      });
+      if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
+
+      // Use `is:` for nullable relation filters (Prisma requirement)
+      const rawPurchases = await prisma.purchase.findMany({
+        where: {
+          status: 'confirmed',
+          OR: [
+            { beat:    { is: { artistId } } },
+            { release: { is: { artistId } } },
+            { video:   { is: { artistId } } },
+            { sample:  { is: { artistId } } },
+          ],
+        },
+        include: PURCHASE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      });
+      const tips = await prisma.supportTxn.findMany({
+        where:   { artistId, status: 'confirmed' },
+        include: { artist: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      const payoutRequests = await prisma.payoutRequest.findMany({
+        where:   { artistId },
+        include: {
+          bankAccount: {
+            select: { id: true, bankName: true, accountHolder: true, maskedNumber: true, branchCode: true, accountType: true },
           },
-          include: PURCHASE_INCLUDE,
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.supportTxn.findMany({
-          where:   { artistId, status: 'confirmed' },
-          include: { artist: { select: { id: true, name: true } } },
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.payoutRequest.findMany({
-          where:   { artistId },
-          include: {
-            bankAccount: {
-              select: { id: true, bankName: true, accountHolder: true, maskedNumber: true, branchCode: true, accountType: true },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.artistPayout.findMany({
-          where:   { artistId },
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.artistBankAccount.findMany({
-          where:   { artistId },
-          select: {
-            id: true, bankName: true, accountHolder: true,
-            maskedNumber: true, branchCode: true, accountType: true, isDefault: true,
-          },
-          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
-        }),
-      ]);
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      const artistPayouts = await prisma.artistPayout.findMany({
+        where:   { artistId },
+        orderBy: { createdAt: 'desc' },
+      });
+      const bankAccounts = await prisma.artistBankAccount.findMany({
+        where:   { artistId },
+        select: {
+          id: true, bankName: true, accountHolder: true,
+          maskedNumber: true, branchCode: true, accountType: true, isDefault: true,
+        },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+      });
 
       const purchases = rawPurchases.map((p) => ({
         ...p,
         artist: resolveArtist(p as any),
       }));
-
-      if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
       const tipsWithFees = tips.map((t) => ({
         ...t,
@@ -436,7 +416,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // ─── PAYOUTS (delegates to /api/admin/payouts but we mirror it here) ──────
+    // ─── PAYOUTS ──────────────────────────────────────────────────────────────
     if (view === 'payouts') {
       const status = searchParams.get('status') || 'all';
       const page   = Math.max(1, parseInt(searchParams.get('page') || '1'));
@@ -444,31 +424,29 @@ export async function GET(req: NextRequest) {
 
       const where: any = status === 'all' ? {} : { status };
 
-      const [requests, total, pendingAgg, paidAgg] = await Promise.all([
-        prisma.payoutRequest.findMany({
-          where,
-          include: {
-            artist: {
-              select: {
-                id: true, name: true, slug: true,
-                user: { select: { email: true } },
-              },
-            },
-            bankAccount: {
-              select: {
-                bankName: true, accountHolder: true,
-                maskedNumber: true, branchCode: true, accountType: true,
-              },
+      const requests = await prisma.payoutRequest.findMany({
+        where,
+        include: {
+          artist: {
+            select: {
+              id: true, name: true, slug: true,
+              user: { select: { email: true } },
             },
           },
-          orderBy: { createdAt: 'desc' },
-          skip:    (page - 1) * limit,
-          take:    limit,
-        }),
-        prisma.payoutRequest.count({ where }),
-        prisma.payoutRequest.aggregate({ where: { status: 'pending' }, _sum: { amount: true }, _count: true }),
-        prisma.payoutRequest.aggregate({ where: { status: 'paid' },    _sum: { amount: true }, _count: true }),
-      ]);
+          bankAccount: {
+            select: {
+              bankName: true, accountHolder: true,
+              maskedNumber: true, branchCode: true, accountType: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      });
+      const total      = await prisma.payoutRequest.count({ where });
+      const pendingAgg = await prisma.payoutRequest.aggregate({ where: { status: 'pending' }, _sum: { amount: true }, _count: true });
+      const paidAgg    = await prisma.payoutRequest.aggregate({ where: { status: 'paid' },    _sum: { amount: true }, _count: true });
 
       return NextResponse.json({
         requests,
@@ -495,13 +473,9 @@ export async function GET(req: NextRequest) {
  * POST /api/admin/finance
  * Admin-initiated payout actions:
  *   { action: 'create_payout', artistId, amount, bankAccountId, notes }
- *     → creates a PayoutRequest with status 'approved' (bypasses artist request step)
  *   { action: 'mark_paid', requestId, reference, notes }
- *     → marks an approved PayoutRequest as paid and writes ArtistPayout ledger entry
  *   { action: 'approve', requestId, notes }
- *     → moves pending → approved
  *   { action: 'reject', requestId, notes }
- *     → moves pending|approved → rejected
  */
 export async function POST(req: NextRequest) {
   const user = await requireAdmin();
@@ -511,7 +485,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action } = body;
 
-    // ── Create payout (admin initiates without artist request) ────────────────
+    // ── Create payout ─────────────────────────────────────────────────────────
     if (action === 'create_payout') {
       const { artistId, amount, bankAccountId, notes } = body;
       if (!artistId || !amount) {
@@ -531,7 +505,6 @@ export async function POST(req: NextRequest) {
         if (!acct) return NextResponse.json({ error: 'Bank account not found or does not belong to artist' }, { status: 404 });
       }
 
-      // Create directly as 'approved' — admin has already decided to pay
       const request = await prisma.payoutRequest.create({
         data: {
           artistId,
@@ -593,9 +566,9 @@ export async function POST(req: NextRequest) {
     if (action === 'approve') {
       const { requestId, notes } = body;
       if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
-      const req = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
-      if (!req) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      if (req.status !== 'pending') return NextResponse.json({ error: `Already ${req.status}` }, { status: 409 });
+      const r = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
+      if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      if (r.status !== 'pending') return NextResponse.json({ error: `Already ${r.status}` }, { status: 409 });
       await prisma.payoutRequest.update({
         where: { id: requestId },
         data:  { status: 'approved', adminNotes: notes || '' },
@@ -607,10 +580,10 @@ export async function POST(req: NextRequest) {
     if (action === 'reject') {
       const { requestId, notes } = body;
       if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
-      const req = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
-      if (!req) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      if (!['pending', 'approved'].includes(req.status)) {
-        return NextResponse.json({ error: `Cannot reject ${req.status} request` }, { status: 409 });
+      const r = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
+      if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      if (!['pending', 'approved'].includes(r.status)) {
+        return NextResponse.json({ error: `Cannot reject ${r.status} request` }, { status: 409 });
       }
       await prisma.payoutRequest.update({
         where: { id: requestId },
