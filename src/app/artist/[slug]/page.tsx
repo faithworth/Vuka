@@ -1,4 +1,5 @@
 import { Navbar } from '@/components/Navbar';
+import { Instagram, Twitter, Youtube, Music2, Radio } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import FollowButton from './FollowButton';
 import ArtistTabs from './ArtistTabs';
@@ -86,6 +87,38 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
               </p>
             )}
           </div>
+
+          {/* Social links */}
+          {(() => {
+            const links = artist.socialLinks || artist.storefront?.socialLinks || {};
+            const icons: Record<string, any> = {
+              instagram: { icon: Instagram, label: 'Instagram', base: 'https://instagram.com/' },
+              twitter:   { icon: Twitter,   label: 'Twitter',   base: 'https://twitter.com/' },
+              youtube:   { icon: Youtube,   label: 'YouTube',   base: '' },
+              spotify:   { icon: Music2,    label: 'Spotify',   base: '' },
+              soundcloud:{ icon: Radio,     label: 'SoundCloud',base: '' },
+            };
+            const entries = Object.entries(links).filter(([, v]) => v);
+            if (!entries.length) return null;
+            return (
+              <div className="flex gap-3 mt-3 flex-wrap">
+                {entries.map(([platform, url]: [string, any]) => {
+                  const cfg = icons[platform];
+                  if (!cfg) return null;
+                  const href = url.startsWith('http') ? url : `${cfg.base}${url}`;
+                  const Icon = cfg.icon;
+                  return (
+                    <a key={platform} href={href} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-80 transition-opacity"
+                      style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                      <Icon size={13} />
+                      {cfg.label}
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Action buttons */}
           <div className="flex flex-row md:flex-col gap-3 md:items-stretch flex-shrink-0">

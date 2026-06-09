@@ -20,6 +20,16 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
           orderBy: { createdAt: 'desc' },
           take: 50,
         },
+        videos: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
+        samples: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
         supportReceived: {
           where: { status: 'confirmed', isPublic: true },
           orderBy: { createdAt: 'desc' },
@@ -96,6 +106,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       ...artist,
       distributionReleases: normalisedDistribReleases,
       storefront,
+      socialLinks: (artist as any).socialLinks || storefront?.socialLinks || {},
       artistSharePct:  effectivePlan.artistSharePct,
       platformFeePct:  effectivePlan.platformFeePct,
     });
