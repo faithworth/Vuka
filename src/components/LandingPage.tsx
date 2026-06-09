@@ -270,7 +270,7 @@ export default function LandingPage() {
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>85%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
-                  {['Up to 2 releases/year', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'PayFast + Flutterwave'].map(f => (
+                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'PayFast + Flutterwave'].map(f => (
                     <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                       <span style={{ color: 'var(--green)' }}>✓</span> {f}
                     </div>
