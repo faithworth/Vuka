@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { validatePayFastITN, PAYFAST_IPS } from '@/lib/payfast';
 import { sendSupportFanConfirmation, sendSupportArtistNotification } from '@/lib/emails';
+import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 
 export async function POST(req: NextRequest) {
   const clientIp =
@@ -44,6 +45,21 @@ export async function POST(req: NextRequest) {
             goals: { where: { isActive: true }, take: 1 },
           },
         },
+      },
+    });
+
+    // Deduct platform fee (uses artist's plan rate) and queue net payout
+    const tipFee = calcFee(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt);
+    const tipNet = calcNet(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt);
+    await prisma.artistPayout.create({
+      data: {
+        artistId:  txn.artistId,
+        amount:    tipNet,
+        method:    'payfast',
+        currency:  txn.currency,
+        status:    'pending',
+        reference: pfPaymentId,
+        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka)`,
       },
     });
 

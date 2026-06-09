@@ -42,10 +42,11 @@ interface BuyModalProps {
     artistSharePct?: number;
     artist: { name: string };
   };
+  itemType?: string;  // override for video/sample; defaults to 'beat' or 'release'
   onClose: () => void;
 }
 
-export function BuyModal({ beat, release, onClose }: BuyModalProps) {
+export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: BuyModalProps) {
   const [license, setLicense]           = useState('basic');
   const [email, setEmail]               = useState('');
   const [name, setName]                 = useState('');
@@ -87,7 +88,7 @@ export function BuyModal({ beat, release, onClose }: BuyModalProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemType:     beat ? 'beat' : 'release',
+          itemType:     itemTypeProp ?? (beat ? 'beat' : 'release'),
           itemId:       beat ? beat.id : release!.id,
           licenseType:  beat ? license : undefined,
           customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,

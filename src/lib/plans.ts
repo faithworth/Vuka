@@ -12,7 +12,7 @@ export interface VukaPlan {
   billingPeriod:   'MONTHLY' | 'YEARLY' | 'FREE';
   platformFeePct:  number;   // what Vuka keeps (e.g. 15 = 15%)
   artistSharePct:  number;   // what artist keeps
-  releasesPerYear: number | null; // null = unlimited
+  releasesPerMonth: number | null; // null = unlimited
   features:        string[];
 }
 
@@ -24,9 +24,9 @@ export const PLANS: VukaPlan[] = [
     billingPeriod:   'FREE',
     platformFeePct:  15,
     artistSharePct:  85,
-    releasesPerYear: 2,
+    releasesPerMonth: 2,
     features: [
-      'Up to 2 releases per year',
+      'Up to 2 releases per month',
       'Beat store & licensing',
       'Fan memberships',
       'PDF license generation',
@@ -41,7 +41,7 @@ export const PLANS: VukaPlan[] = [
     billingPeriod:   'MONTHLY',
     platformFeePct:  8,
     artistSharePct:  92,
-    releasesPerYear: null,
+    releasesPerMonth: null,
     features: [
       'Unlimited releases',
       'Lower 8% platform fee',
@@ -58,7 +58,7 @@ export const PLANS: VukaPlan[] = [
     billingPeriod:   'MONTHLY',
     platformFeePct:  5,
     artistSharePct:  95,
-    releasesPerYear: null,
+    releasesPerMonth: null,
     features: [
       'Unlimited releases',
       'Lowest 5% platform fee',
@@ -106,4 +106,22 @@ export function artistNet(grossAmount: number, planSlug: string | null | undefin
 /** Platform fee amount */
 export function platformFee(grossAmount: number, planSlug: string | null | undefined, expiresAt?: Date | null): number {
   return Math.round(grossAmount * platformFeeRate(planSlug, expiresAt) * 100) / 100;
+}
+
+/**
+ * Check if an artist has hit their monthly upload limit.
+ * Pass the count of releases/beats/videos they've created THIS calendar month.
+ * Returns { allowed: true } or { allowed: false, limit: N }
+ */
+export function checkMonthlyUploadLimit(
+  planSlug: string | null | undefined,
+  expiresAt: Date | null | undefined,
+  uploadsThisMonth: number,
+): { allowed: boolean; limit: number | null } {
+  const plan = getEffectivePlan(planSlug, expiresAt);
+  if (plan.releasesPerMonth === null) return { allowed: true, limit: null };
+  if (uploadsThisMonth >= plan.releasesPerMonth) {
+    return { allowed: false, limit: plan.releasesPerMonth };
+  }
+  return { allowed: true, limit: plan.releasesPerMonth };
 }

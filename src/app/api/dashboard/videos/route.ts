@@ -82,6 +82,27 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { type } = body;
 
+    // ── Plan upload limit check ──────────────────────────────
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [videosThisMonth, samplesThisMonth] = await Promise.all([
+      prisma.video.count({ where: { artistId: user.artist.id, createdAt: { gte: monthStart } } }),
+      prisma.sample.count({ where: { artistId: user.artist.id, createdAt: { gte: monthStart } } }),
+    ]);
+    const { checkMonthlyUploadLimit } = await import('@/lib/plans');
+    const limitCheck = checkMonthlyUploadLimit(
+      (user.artist as any).planSlug,
+      (user.artist as any).planExpiresAt,
+      videosThisMonth + samplesThisMonth,
+    );
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: `You've reached your ${limitCheck.limit} upload${limitCheck.limit === 1 ? '' : 's'}/month limit on the Free plan. Upgrade to Pro for unlimited uploads.`,
+        upgradeRequired: true,
+      }, { status: 403 });
+    }
+    // ────────────────────────────────────────────────────────
+
     // ── video ────────────────────────────────────────────────
     if (type === 'video') {
       const { title, description, genre, price, tags, videoType, thumbType } = body;

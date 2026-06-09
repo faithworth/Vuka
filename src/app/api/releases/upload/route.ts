@@ -11,12 +11,32 @@ import { getPresignedUploadUrl, getPublicUrl, r2Keys } from '@/lib/r2';
 import { requireArtist } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
 import { generateISRC, generateUPC } from '@/lib/distribution';
+import { getEffectivePlan, checkMonthlyUploadLimit } from '@/lib/plans';
 
 // POST: create release + track records, return presigned R2 PUT URLs for direct browser upload
 export async function POST(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // ── Plan upload limit check ──────────────────────────────
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const uploadsThisMonth = await prisma.release.count({
+      where: { artistId: user.artist.id, createdAt: { gte: monthStart } },
+    });
+    const limitCheck = checkMonthlyUploadLimit(
+      (user.artist as any).planSlug,
+      (user.artist as any).planExpiresAt,
+      uploadsThisMonth,
+    );
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: `You've reached your ${limitCheck.limit} release${limitCheck.limit === 1 ? '' : 's'}/month limit on the Free plan. Upgrade to Pro for unlimited releases.`,
+        upgradeRequired: true,
+      }, { status: 403 });
+    }
+    // ────────────────────────────────────────────────────────
 
     const body = await req.json();
     const { title, releaseType, price, minPrice, payWhatWant, description, credits, releaseDate, tracks, artworkType, trackAudioTypes } = body;

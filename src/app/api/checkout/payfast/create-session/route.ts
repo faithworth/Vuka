@@ -106,6 +106,30 @@ export async function POST(req: NextRequest) {
         artistEmail = distRelease.artist.user.email;
       }
 
+    } else if (itemType === 'video') {
+      const video = await prisma.video.findUnique({
+        where: { id: itemId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (!video || !video.isActive) {
+        return NextResponse.json({ error: 'Video not found or inactive' }, { status: 404 });
+      }
+      amount      = video.price;
+      itemName    = video.title;
+      artistEmail = video.artist.user.email;
+
+    } else if (itemType === 'sample') {
+      const sample = await prisma.sample.findUnique({
+        where: { id: itemId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (!sample || !sample.isActive) {
+        return NextResponse.json({ error: 'Sample not found or inactive' }, { status: 404 });
+      }
+      amount      = sample.price;
+      itemName    = sample.title;
+      artistEmail = sample.artist.user.email;
+
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
     }
@@ -125,6 +149,8 @@ export async function POST(req: NextRequest) {
           beatId:                  itemType === 'beat' ? itemId : null,
           releaseId:               itemType === 'release' && !isDistrib ? itemId : null,
           distributionReleaseId:   itemType === 'release' && isDistrib ? itemId : null,
+          videoId:                 itemType === 'video' ? itemId : null,
+          sampleId:                itemType === 'sample' ? itemId : null,
           amount:                  0,
           currency,
           licenseType:             licenseType || '',
@@ -151,6 +177,8 @@ export async function POST(req: NextRequest) {
         beatId:                itemType === 'beat' ? itemId : null,
         releaseId:             itemType === 'release' && !isDistribPaid ? itemId : null,
         distributionReleaseId: itemType === 'release' && isDistribPaid  ? itemId : null,
+        videoId:               itemType === 'video' ? itemId : null,
+        sampleId:              itemType === 'sample' ? itemId : null,
         amount,
         currency,
         licenseType:           licenseType || '',

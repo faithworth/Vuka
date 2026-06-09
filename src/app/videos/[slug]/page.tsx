@@ -156,6 +156,7 @@ export default function VideoPage() {
 
       {buyOpen && video && (
         <BuyModal
+          itemType="video"
           release={{
             id: video.id,
             title: video.title,

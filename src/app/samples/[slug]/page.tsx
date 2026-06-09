@@ -138,6 +138,7 @@ export default function SamplePage() {
 
       {buyOpen && sample && (
         <BuyModal
+          itemType="sample"
           release={{
             id: sample.id,
             title: sample.title,
