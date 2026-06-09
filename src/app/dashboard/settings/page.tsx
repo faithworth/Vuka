@@ -15,7 +15,7 @@ import {
 const PLAN_DEFS = [
   {
     slug: 'free', name: 'Free', priceZAR: 0, artistSharePct: 85, platformFeePct: 15,
-    features: ['Up to 2 releases/year', 'Beat store & licensing', 'Fan memberships', 'Basic analytics'],
+    features: ['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'Basic analytics'],
     color: 'var(--text-muted)', Icon: Zap,
   },
   {
