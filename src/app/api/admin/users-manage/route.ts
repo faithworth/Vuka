@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         { email: { contains: q, mode: 'insensitive' } },
       ];
     }
-    if (role !== 'all') where.role = role;
+    if (role !== 'all') where.role = role.toLowerCase();
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -68,7 +68,10 @@ export async function POST(req: NextRequest) {
     if (!userId || !action)
       return NextResponse.json({ error: 'userId and action required' }, { status: 400 });
 
-    const target = await prisma.user.findUnique({ where: { id: userId } });
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { artist: { select: { id: true, slug: true, isVerified: true, planSlug: true } } },
+    });
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // Prevent modifying a higher-privilege admin
@@ -118,18 +121,23 @@ export async function POST(req: NextRequest) {
       }
 
       case 'verify': {
-        if (target.artist) {
-          await prisma.artist.update({ where: { userId }, data: { isVerified: true } });
-          await auditLog.adminAction('moderation.artist_verified', 'Artist', target.artist.id, admin.id, '');
+        // Resolve artist by userId — covers both the included relation and a direct lookup
+        const artistToVerify = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
+        if (!artistToVerify) {
+          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
         }
+        await prisma.artist.update({ where: { id: artistToVerify.id }, data: { isVerified: true } });
+        await auditLog.adminAction('moderation.artist_verified', 'Artist', artistToVerify.id, admin.id, 'verified');
         return NextResponse.json({ ok: true });
       }
 
       case 'unverify': {
-        if (target.artist) {
-          await prisma.artist.update({ where: { userId }, data: { isVerified: false } });
-          await auditLog.adminAction('moderation.artist_verified', 'Artist', target.artist.id, admin.id, 'unverified');
+        const artistToUnverify = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
+        if (!artistToUnverify) {
+          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
         }
+        await prisma.artist.update({ where: { id: artistToUnverify.id }, data: { isVerified: false } });
+        await auditLog.adminAction('moderation.artist_verified', 'Artist', artistToUnverify.id, admin.id, 'unverified');
         return NextResponse.json({ ok: true });
       }
 
@@ -145,8 +153,12 @@ export async function POST(req: NextRequest) {
         if (!allowedPlans.includes(value))
           return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
 
-        if (!target.artist) {
-          return NextResponse.json({ error: 'User has no artist profile' }, { status: 400 });
+        // Resolve artist — the included relation may be null if no Artist row exists yet
+        const artistForPlan = target.artist ?? await prisma.artist.findUnique({ where: { userId } });
+        if (!artistForPlan) {
+          return NextResponse.json({
+            error: 'User has no artist profile. Ask them to complete their artist setup first, or use the Plans page which manages artists directly.',
+          }, { status: 400 });
         }
 
         const { PLANS } = await import('@/lib/plans');
@@ -168,14 +180,14 @@ export async function POST(req: NextRequest) {
         }
 
         await prisma.artist.update({
-          where: { userId },
+          where: { id: artistForPlan.id },
           data: { planSlug: value, planExpiresAt: expiresAt },
         });
 
         await auditLog.adminAction(
           'plan.admin_override',
           'Artist',
-          target.artist.id,
+          artistForPlan.id,
           admin.id,
           `Plan set to ${value} (expires ${expiresAt?.toISOString() ?? 'never'})`,
         );

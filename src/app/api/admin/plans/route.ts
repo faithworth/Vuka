@@ -92,6 +92,11 @@ export async function GET(req: NextRequest) {
       _count: { _all: true },
     });
 
+    // Count users with artist role who have no Artist profile (incomplete setup)
+    const incompleteCount = await prisma.user.count({
+      where: { role: 'artist', artist: null },
+    });
+
     return NextResponse.json({
       artists,
       total,
@@ -101,6 +106,7 @@ export async function GET(req: NextRequest) {
         acc[row.planSlug] = row._count._all;
         return acc;
       }, {}),
+      incompleteArtistCount: incompleteCount,
     });
   } catch (err: any) {
     console.error('[admin/plans] GET error:', err?.message);

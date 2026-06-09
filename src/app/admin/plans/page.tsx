@@ -43,6 +43,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function AdminPlansPage() {
   const [artists, setArtists] = useState<any[]>([]);
   const [planCounts, setPlanCounts] = useState<any>({});
+  const [incompleteCount, setIncompleteCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
@@ -68,6 +69,7 @@ export default function AdminPlansPage() {
         setPlanCounts(d.planCounts || {});
         setTotalPages(d.pages || 1);
         setTotal(d.total || 0);
+        setIncompleteCount(d.incompleteArtistCount || 0);
       }
     } finally { setLoading(false); }
   }, [planFilter, search, page]);
@@ -133,6 +135,15 @@ export default function AdminPlansPage() {
           </div>
         ))}
       </div>
+
+      {/* Incomplete artist profiles notice */}
+      {incompleteCount > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+          style={{ background: 'rgba(232,168,124,0.08)', border: '1px solid rgba(232,168,124,0.25)', color: '#e8a87c' }}>
+          ⚠ {incompleteCount} user{incompleteCount !== 1 ? 's' : ''} registered with role=artist but never completed artist profile setup — they won&apos;t appear in this table. You can manage them from the{' '}
+          <a href="/admin/users" style={{ textDecoration: 'underline' }}>Users page</a>.
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
