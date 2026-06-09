@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       id: true, slug: true, name: true, bio: true, city: true, country: true,
       photoUrl: true, coverUrl: true, genreTags: true, socialLinks: true,
       currency: true, totalPlays: true, payfastMerchant: true,
-      goals: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+      goals: { where: { isActive: true, OR: [{ deadline: null }, { deadline: { gt: new Date() } }] }, orderBy: { createdAt: 'desc' } },
       beats: {
         where: { isActive: true },
         select: { id: true, title: true, slug: true, artworkUrl: true, previewUrl: true, basicPrice: true, bpm: true, keySignature: true, genre: true, tags: true, waveformData: true },

@@ -88,6 +88,8 @@ export function Navbar() {
     { href: '/store', label: 'Store' },
     { href: '/store/beats', label: 'Beats' },
     { href: '/store/releases', label: 'Releases' },
+    { href: '/store/videos', label: 'Videos' },
+    { href: '/store/samples', label: 'Samples' },
     { href: '/industry', label: 'Industry' },
   ];
 

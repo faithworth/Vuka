@@ -3,6 +3,7 @@ import { Instagram, Twitter, Youtube, Music2, Radio } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import FollowButton from './FollowButton';
 import ArtistTabs from './ArtistTabs';
+import { VerifiedBadge } from '@/components/VerifiedBadge';
 
 async function getArtist(slug: string) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/artist/${slug}`, { cache: 'no-store' });
@@ -40,108 +41,104 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
       <Navbar />
 
       {/* Cover */}
-      <div className="relative h-48 md:h-64 overflow-hidden" style={{ background: 'var(--surface2)' }}>
+      <div className="relative h-52 md:h-72 overflow-hidden" style={{ background: 'var(--surface2)' }}>
         {artist.coverUrl && <img src={artist.coverUrl} alt="" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, var(--bg))' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, var(--bg) 100%)' }} />
       </div>
 
       {/* Profile header */}
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-start gap-6 -mt-14 mb-8 relative z-10">
-          <div className="w-28 h-28 rounded-2xl overflow-hidden flex-shrink-0 border-4" style={{ borderColor: 'var(--bg)' }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        {/* Avatar + name row — avatar overlaps cover */}
+        <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-16 md:-mt-20 mb-5 relative z-10">
+          <div className="w-32 h-32 md:w-36 md:h-36 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl" style={{ border: '4px solid var(--bg)' }}>
             {artist.photoUrl
               ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎤</div>}
+              : <div className="w-full h-full flex items-center justify-center text-5xl" style={{ background: 'var(--surface2)' }}>🎤</div>}
           </div>
-          <div className="flex-1 pt-14 md:pt-10">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>{artist.name}</h1>
-              {artist.isVerified && <span className="badge badge-sky">✓ Verified</span>}
+
+          <div className="flex-1 min-w-0 pb-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl md:text-4xl font-black leading-none" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{artist.name}</h1>
+              {artist.isVerified && <VerifiedBadge size={28} />}
             </div>
-
-            {/* Location */}
-            <p className="mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}
-            </p>
-
-            {/* Storefront tagline — shown if set, otherwise falls back silently */}
-            {artist.storefront?.tagline && (
-              <p className="mt-1 text-sm font-semibold" style={{ color: accent }}>
-                {artist.storefront.tagline}
+            {(artist.city || artist.country) && (
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                {artist.city}{artist.city && artist.country ? ', ' : ''}{artist.country}
               </p>
             )}
-
-            {/* Genre tags */}
+            {artist.storefront?.tagline && (
+              <p className="mt-1 text-sm font-semibold" style={{ color: accent }}>{artist.storefront.tagline}</p>
+            )}
             {artist.genreTags?.length > 0 && (
-              <div className="flex gap-2 mt-2 flex-wrap">
+              <div className="flex gap-1.5 mt-2 flex-wrap">
                 {artist.genreTags.map((g: string) => (
-                  <span key={g} className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: accent }}>{g}</span>
+                  <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: 'var(--surface2)', color: accent }}>{g}</span>
                 ))}
               </div>
             )}
-
-            {/* Bio — show extended bio from storefront if set, otherwise short bio from profile */}
-            {(artist.storefront?.bioLong || artist.bio) && (
-              <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                {artist.storefront?.bioLong || artist.bio}
-              </p>
-            )}
           </div>
 
-          {/* Social links */}
-          {(() => {
-            const links = artist.socialLinks || artist.storefront?.socialLinks || {};
-            const icons: Record<string, any> = {
-              instagram: { icon: Instagram, label: 'Instagram', base: 'https://instagram.com/' },
-              twitter:   { icon: Twitter,   label: 'Twitter',   base: 'https://twitter.com/' },
-              youtube:   { icon: Youtube,   label: 'YouTube',   base: '' },
-              spotify:   { icon: Music2,    label: 'Spotify',   base: '' },
-              soundcloud:{ icon: Radio,     label: 'SoundCloud',base: '' },
-            };
-            const entries = Object.entries(links).filter(([, v]) => v);
-            if (!entries.length) return null;
-            return (
-              <div className="flex gap-3 mt-3 flex-wrap">
-                {entries.map(([platform, url]: [string, any]) => {
-                  const cfg = icons[platform];
-                  if (!cfg) return null;
-                  const href = url.startsWith('http') ? url : `${cfg.base}${url}`;
-                  const Icon = cfg.icon;
-                  return (
-                    <a key={platform} href={href} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-80 transition-opacity"
-                      style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                      <Icon size={13} />
-                      {cfg.label}
-                    </a>
-                  );
-                })}
-              </div>
-            );
-          })()}
-
-          {/* Action buttons */}
-          <div className="flex flex-row md:flex-col gap-3 md:items-stretch flex-shrink-0">
+          {/* Action buttons — pinned top-right on desktop */}
+          <div className="flex flex-row md:flex-col gap-2 md:items-stretch flex-shrink-0 pb-1">
             <a href={`/support/${artist.slug}`}
-              className="px-5 py-2.5 rounded-xl font-bold text-white text-center text-sm"
-              style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
+              className="px-5 py-2.5 rounded-xl font-bold text-white text-center text-sm whitespace-nowrap"
+              style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.3)' }}>
               ♥ Support
             </a>
             <FollowButton artistId={artist.id} artistName={artist.name} />
           </div>
         </div>
 
-        {/* Stats row — Releases count includes distribution releases */}
-        <div className="flex gap-6 mb-8 flex-wrap">
+        {/* Bio */}
+        {(artist.storefront?.bioLong || artist.bio) && (
+          <p className="max-w-2xl text-sm leading-relaxed mb-4" style={{ color: 'var(--text-muted)' }}>
+            {artist.storefront?.bioLong || artist.bio}
+          </p>
+        )}
+
+        {/* Social links */}
+        {(() => {
+          const links = artist.socialLinks || artist.storefront?.socialLinks || {};
+          const icons: Record<string, any> = {
+            instagram: { icon: Instagram, label: 'Instagram', base: 'https://instagram.com/' },
+            twitter:   { icon: Twitter,   label: 'Twitter',   base: 'https://twitter.com/' },
+            youtube:   { icon: Youtube,   label: 'YouTube',   base: '' },
+            spotify:   { icon: Music2,    label: 'Spotify',   base: '' },
+            soundcloud:{ icon: Radio,     label: 'SoundCloud',base: '' },
+          };
+          const entries = Object.entries(links).filter(([, v]) => v);
+          if (!entries.length) return null;
+          return (
+            <div className="flex gap-2 mb-5 flex-wrap">
+              {entries.map(([platform, url]: [string, any]) => {
+                const cfg = icons[platform];
+                if (!cfg) return null;
+                const href = url.startsWith('http') ? url : `${cfg.base}${url}`;
+                const Icon = cfg.icon;
+                return (
+                  <a key={platform} href={href} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-80 transition-opacity"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    <Icon size={13} />
+                    {cfg.label}
+                  </a>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* Stats row */}
+        <div className="flex gap-0 mb-8 rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           {[
             { label: 'Beats',      value: artist.beats?.length || 0 },
             { label: 'Releases',   value: totalReleases },
             { label: 'Supporters', value: artist.supportReceived?.length || 0 },
             { label: 'Followers',  value: artist.followers?.length || 0 },
-          ].map(s => (
-            <div key={s.label}>
-              <p className="text-xl font-bold" style={{ color: 'var(--text)' }}>{s.value}</p>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+          ].map((s, i, arr) => (
+            <div key={s.label} className="flex-1 py-4 text-center" style={{ borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <p className="text-xl font-black" style={{ color: 'var(--text)' }}>{s.value}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -149,27 +146,44 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         {/* Tabbed: Beats / Releases / Posts */}
         <ArtistTabs artist={artist} />
 
-        {/* Goals */}
-        {artist.goals?.filter((g: any) => g.isActive).length > 0 && (
+        {/* Goals — auto-hide any past their deadline */}
+        {(() => {
+          const now = new Date();
+          const liveGoals = Array.from(
+            new Map(
+              (artist.goals || [])
+                .filter((g: any) => g.isActive && (!g.deadline || new Date(g.deadline) > now))
+                .map((g: any) => [g.id, g])
+            ).values()
+          );
+          if (!liveGoals.length) return null;
+          return (
           <section className="mb-12">
             <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>🎯 Support Goals</h2>
             <div className="space-y-4">
-              {Array.from(new Map(artist.goals.filter((g: any) => g.isActive).map((g: any) => [g.id, g])).values()).map((goal: any) => {
+              {liveGoals.map((goal: any) => {
                 const pct = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
+                const daysLeft = goal.deadline
+                  ? Math.ceil((new Date(goal.deadline).getTime() - now.getTime()) / 86400000)
+                  : null;
                 return (
-                  <div key={goal.id} className="p-5 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div key={goal.id} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h3 className="font-bold" style={{ color: 'var(--text)' }}>{goal.title}</h3>
                         {goal.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{goal.description}</p>}
                       </div>
-                      {goal.deadline && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          Due {new Date(goal.deadline).toLocaleDateString('en-ZA')}
+                      {daysLeft !== null && (
+                        <span className="text-xs px-2 py-1 rounded-full flex-shrink-0 ml-3"
+                          style={{
+                            background: daysLeft <= 7 ? 'rgba(239,68,68,0.1)' : 'var(--surface2)',
+                            color: daysLeft <= 7 ? '#ef4444' : 'var(--text-muted)',
+                          }}>
+                          {daysLeft === 0 ? 'Last day!' : `${daysLeft}d left`}
                         </span>
                       )}
                     </div>
-                    <div className="h-3 rounded-full overflow-hidden my-3" style={{ background: 'var(--surface2)' }}>
+                    <div className="h-2.5 rounded-full overflow-hidden my-3" style={{ background: 'var(--surface2)' }}>
                       <div className="h-full rounded-full transition-all duration-500"
                         style={{ width: `${pct}%`, background: accent }} />
                     </div>
@@ -191,7 +205,8 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
               })}
             </div>
           </section>
-        )}
+          );
+        })()}
 
         {/* Support wall */}
         {artist.supportReceived?.length > 0 && (
