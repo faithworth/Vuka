@@ -77,8 +77,8 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
         <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>All-time Revenue</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Total Gross" value={formatCurrency(revenue.gross)} color="var(--green)" sub={`${revenue.salesCount} sales · ${revenue.tipsCount} tips`} />
-          <StatCard label="Vuka Keeps (8%)" value={formatCurrency(revenue.platformCut)} color="var(--gold)" />
-          <StatCard label="Artists Get (92%)" value={formatCurrency(revenue.artistTotal)} color="#38b6e8" />
+          <StatCard label="Vuka Keeps" value={formatCurrency(revenue.platformCut)} color="var(--gold)" />
+          <StatCard label="Artists Get" value={formatCurrency(revenue.artistTotal)} color="#38b6e8" />
           <StatCard label="Paid Out" value={formatCurrency(payouts.paidAmount)} color="#a0a0a0" sub={`${payouts.paidCount} payouts`} />
         </div>
       </div>
@@ -101,7 +101,7 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
               <table className="w-full text-sm" style={{ minWidth: 500 }}>
                 <thead>
                   <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                    {['Type', 'Sales', 'Gross', 'Platform (8%)', 'Artists (92%)'].map(h => (
+                    {['Type', 'Sales', 'Gross', 'Platform Fee', 'Artist Net'].map(h => (
                       <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
@@ -228,7 +228,7 @@ function SalesTab() {
           <table className="w-full text-sm" style={{ minWidth: 900 }}>
             <thead>
               <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Buyer', 'Artist', 'Type', 'Item', 'License', 'Gross', 'Vuka (8%)', 'Artist (92%)', 'Status', 'Ref'].map(h => (
+                {['Date', 'Buyer', 'Artist', 'Type', 'Item', 'License', 'Gross', 'Vuka Fee', 'Artist Net', 'Status', 'Ref'].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
@@ -328,7 +328,7 @@ function TipsTab() {
           <table className="w-full text-sm" style={{ minWidth: 700 }}>
             <thead>
               <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Fan', 'Artist', 'Tier', 'Gross', 'Vuka (8%)', 'Artist (92%)', 'Message'].map(h => (
+                {['Date', 'Fan', 'Artist', 'Tier', 'Gross', 'Vuka Fee', 'Artist Net', 'Message'].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
@@ -504,8 +504,8 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Gross" value={formatCurrency(summary.grossSales + summary.grossTips)} color="var(--green)" sub={`${summary.salesCount} sales · ${summary.tipsCount} tips`} />
-        <StatCard label="Vuka Keeps" value={formatCurrency(summary.totalPlatform)} color="var(--gold)" sub="8% across all" />
-        <StatCard label="Artist Total" value={formatCurrency(summary.totalEarned)} color="#38b6e8" sub="92% to artist" />
+        <StatCard label="Vuka Keeps" value={formatCurrency(summary.totalPlatform)} color="var(--gold)" sub="per artist plan rate" />
+        <StatCard label="Artist Total" value={formatCurrency(summary.totalEarned)} color="#38b6e8" sub="after platform fee" />
         <StatCard label="Balance Owed" value={formatCurrency(summary.balance)} color={summary.balance > 0 ? '#e8c87c' : '#a0e87c'} sub={`Paid out: ${formatCurrency(summary.paidOut)}`} />
       </div>
 
@@ -1098,7 +1098,7 @@ export default function AdminFinancePage() {
         <div>
           <h1 className="text-2xl font-black font-display">Finance</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Every sale, tip, and payout — 8% platform · 92% artist
+            Every sale, tip, and payout — fees vary by artist plan (Free 15% · Pro 8% · Label 5%)
           </p>
         </div>
       </div>

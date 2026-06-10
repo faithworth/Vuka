@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { buildPayFastForm } from '@/lib/payfast';
-import { createClient } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,22 +25,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Service not available' }, { status: 404 });
     }
 
-    // Resolve buyer userId if logged in (optional — marketplace allows guest orders)
-    const supabase = createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    let buyerUserId: string | null = null;
-    if (authUser) {
-      const dbUser = await prisma.user.findUnique({ where: { id: authUser.id }, select: { id: true } });
-      if (dbUser) buyerUserId = dbUser.id;
-    }
-
-    // Require authenticated buyer to prevent spam orders
-    if (!buyerUserId) {
+    // Require authenticated buyer — uses server-side session cookies correctly
+    const user = await requireAuth();
+    if (!user) {
       return NextResponse.json({ error: 'You must be logged in to place an order' }, { status: 401 });
     }
 
     // Block artists from ordering their own service
-    const buyerArtist = await prisma.artist.findUnique({ where: { userId: buyerUserId }, select: { id: true } });
+    const buyerArtist = await prisma.artist.findUnique({ where: { userId: user.id }, select: { id: true } });
     if (buyerArtist?.id === service.artistId) {
       return NextResponse.json({ error: 'Cannot order your own service' }, { status: 400 });
     }
@@ -53,7 +45,7 @@ export async function POST(req: NextRequest) {
     const order = await prisma.marketplaceOrder.create({
       data: {
         serviceId,
-        buyerId:      buyerUserId,
+        buyerId:      user.id,
         sellerId:     service.artistId,
         amount:       Number(amount),
         currency:     'ZAR',
@@ -80,16 +72,16 @@ export async function POST(req: NextRequest) {
         return_url:    `${appUrl}/marketplace?order=success&id=${order.id}`,
         cancel_url:    `${appUrl}/marketplace`,
         notify_url:    `${appUrl}/api/marketplace/checkout/notify`,
-        name_first:    buyerName.split(' ')[0] || buyerName,
-        name_last:     buyerName.split(' ').slice(1).join(' ') || '',
-        email_address: buyerEmail,
+        name_first:    (buyerName || user.name || '').split(' ')[0] || 'Fan',
+        name_last:     (buyerName || user.name || '').split(' ').slice(1).join(' ') || '',
+        email_address: buyerEmail || user.email,
         m_payment_id:  order.id,
         amount:        Number(amount).toFixed(2),
         item_name:     `${service.title} — ${packageName || 'Service'}`.substring(0, 100),
         custom_str1:   order.id,        // orderId
         custom_str2:   'marketplace',
         custom_str3:   service.artistId,
-        custom_str4:   buyerEmail,
+        custom_str4:   buyerEmail || user.email,
       },
       passphrase,
     );
