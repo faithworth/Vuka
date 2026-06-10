@@ -98,6 +98,8 @@ model Artist {
   verificationRequest   VerificationRequest?
   searchIndex           SearchIndex[]
   planSubscriptions     ArtistPlanSubscription[]
+  industryOrders        IndustryServiceOrder[]
+  openToOffers          Boolean              @default(true)
   createdAt             DateTime             @default(now())
 }
 
@@ -402,17 +404,18 @@ model AdminLog {
 // ── INDUSTRY ─────────────────────────────────────────────────
 
 model IndustryUser {
-  id          String             @id @default(cuid())
-  userId      String             @unique
-  user        User               @relation(fields: [userId], references: [id])
-  companyName String
-  role        String             @default("")
-  website     String             @default("")
-  verified    Boolean            @default(false)
-  services    IndustryService[]
-  deals       Deal[]
-  referrals   IndustryReferral[]
-  createdAt   DateTime           @default(now())
+  id            String                  @id @default(cuid())
+  userId        String                  @unique
+  user          User                    @relation(fields: [userId], references: [id])
+  companyName   String
+  role          String                  @default("")
+  website       String                  @default("")
+  verified      Boolean                 @default(false)
+  services      IndustryService[]
+  deals         Deal[]
+  referrals     IndustryReferral[]
+  serviceOrders IndustryServiceOrder[]
+  createdAt     DateTime                @default(now())
 }
 
 model IndustryReferral {
@@ -435,20 +438,41 @@ model IndustryReferral {
 }
 
 model IndustryService {
-  id             String            @id @default(cuid())
+  id             String                  @id @default(cuid())
   industryUserId String
-  industryUser   IndustryUser      @relation(fields: [industryUserId], references: [id])
+  industryUser   IndustryUser            @relation(fields: [industryUserId], references: [id])
   title          String
-  description    String            @default("")
-  category       String            @default("")
+  description    String                  @default("")
+  category       String                  @default("")
   price          Float?
-  priceZAR       Float             @default(0)
-  pricingModel   String            @default("fixed")
-  deliveryDays   Int               @default(7)
-  currency       String            @default("ZAR")
-  isActive       Boolean           @default(true)
+  priceZAR       Float                   @default(0)
+  pricingModel   String                  @default("fixed")
+  deliveryDays   Int                     @default(7)
+  currency       String                  @default("ZAR")
+  isActive       Boolean                 @default(true)
   inquiries      ServiceInquiry[]
-  createdAt      DateTime          @default(now())
+  orders         IndustryServiceOrder[]
+  createdAt      DateTime                @default(now())
+}
+
+// ── Industry Service Orders (paid through Vuka — 10% fee on industry) ──────
+model IndustryServiceOrder {
+  id               String          @id @default(cuid())
+  serviceId        String
+  service          IndustryService @relation(fields: [serviceId], references: [id])
+  artistId         String
+  artist           Artist          @relation(fields: [artistId], references: [id])
+  industryUserId   String
+  industryUser     IndustryUser    @relation(fields: [industryUserId], references: [id])
+  amount           Float           // gross amount paid by artist (ZAR)
+  platformFee      Float           @default(0)  // 10% of amount (charged to industry)
+  netAmount        Float           @default(0)  // amount - platformFee (industry keeps this)
+  currency         String          @default("ZAR")
+  status           String          @default("pending") // pending | paid | completed | refunded
+  requirements     String          @default("")
+  payfastPaymentId String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
 
 model Deal {

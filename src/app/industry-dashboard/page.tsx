@@ -9,7 +9,7 @@ import {
   CheckCircle, Clock, XCircle, Eye, EyeOff, MessageSquare,
   DollarSign, Calendar, Send, Settings, TrendingUp,
   Building2, Globe, User, Mail, Shield, BadgeCheck,
-  ChevronRight, Handshake, AlertCircle, RefreshCw,
+  ChevronRight, Handshake, AlertCircle, RefreshCw, Users,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -303,6 +303,11 @@ export default function IndustryDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => router.push('/browse-artists')}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg"
+              style={{ background: 'rgba(201,162,39,0.12)', color: 'var(--gold)' }}>
+              <Users size={14} /> Find Artists
+            </button>
             <button onClick={() => router.push('/messages')}
               className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg"
               style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
@@ -602,15 +607,15 @@ export default function IndustryDashboardPage() {
         {/* ── TAB: EARNINGS ── */}
         {tab === 'earnings' && (
           <div>
-            <h2 className="text-xl font-black mb-2" style={{ color: 'var(--text)' }}>Earnings & Referrals</h2>
+            <h2 className="text-xl font-black mb-2" style={{ color: 'var(--text)' }}>Earnings & Payouts</h2>
             <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              When you refer artists to Vuka and they make sales, you earn a referral commission.
+              Track payments from your service orders. Vuka deducts a 10% platform fee per order — you keep 90%.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Total Referrals', value: referrals.length, color: 'var(--sky)' },
-                { label: 'Total Commission', value: `R${totalCommission.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'var(--gold)' },
+                { label: 'Total Commission (referrals)', value: `R${totalCommission.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'var(--gold)' },
                 { label: 'Paid Out', value: `R${paidCommission.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'var(--green)' },
               ].map(stat => (
                 <div key={stat.label} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -620,19 +625,22 @@ export default function IndustryDashboardPage() {
               ))}
             </div>
 
-            <div className="p-4 rounded-xl mb-6 flex items-start gap-3" style={{ background: 'rgba(56,182,232,0.06)', border: '1px solid rgba(56,182,232,0.15)' }}>
-              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--sky)' }} />
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Your service fees go directly to you — Vuka does not take a cut on industry services.
-                Artist music sales on the platform use a <strong style={{ color: 'var(--text)' }}>98% / 2% split</strong> (artist keeps 98%).
-                Referral commissions are tracked here and paid out separately.
-              </p>
+            <div className="p-4 rounded-xl mb-6 flex items-start gap-3" style={{ background: 'rgba(201,162,39,0.06)', border: '1px solid rgba(201,162,39,0.2)' }}>
+              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--gold)' }} />
+              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>How fees work</p>
+                <p>
+                  When an artist pays for your service, <strong style={{ color: 'var(--gold)' }}>Vuka deducts 10%</strong> as a platform fee.
+                  You receive <strong style={{ color: 'var(--green)' }}>90% of the order amount</strong> in your next payout.
+                  Example: artist pays R1,000 → Vuka fee R100 → you receive R900.
+                </p>
+              </div>
             </div>
 
             {referrals.length === 0 ? (
               <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <TrendingUp size={36} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-                <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>No referrals yet</p>
+                <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>No referral earnings yet</p>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Refer artists to Vuka to earn commission on their sales.</p>
               </div>
             ) : (

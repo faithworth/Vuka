@@ -4,11 +4,11 @@ import Navbar from '@/components/Navbar';
 import {
   ArrowRight, CheckCircle, Megaphone, Building2, Briefcase,
   Radio, Search, Music, Camera, Headphones, Scale, Star,
-  DollarSign, Users, Clock
+  DollarSign, Users, Clock, Shield, Zap, TrendingUp,
 } from 'lucide-react';
 
 const SERVICE_TYPES = [
-  { icon: Megaphone,  label: 'Promotion & Marketing',  desc: 'Social media campaigns, playlist pitching, press releases, radio plugging.' },
+  { icon: Megaphone,  label: 'Promotion & Marketing',   desc: 'Social campaigns, playlist pitching, press releases, radio plugging.' },
   { icon: Building2,  label: 'Distribution & Publishing', desc: 'Get artists onto streaming platforms, collect royalties, handle publishing admin.' },
   { icon: Radio,      label: 'Sync & Licensing',         desc: 'Place music in film, TV, adverts, and video games. Handle sync clearance.' },
   { icon: Briefcase,  label: 'Artist Management',        desc: 'Day-to-day artist management, bookings, strategy, and career development.' },
@@ -20,17 +20,31 @@ const SERVICE_TYPES = [
 ];
 
 const HOW_IT_WORKS = [
-  { n: '01', t: 'Create your profile', d: 'Sign up as an Industry Professional. Add your company, role, and a short bio about what you offer.' },
-  { n: '02', t: 'List your services', d: 'Create service listings with your price, turnaround time, and exactly what artists get when they hire you.' },
-  { n: '03', t: 'Artists find and hire you', d: 'Artists on Vuka browse industry professionals by category. They send you an inquiry directly through the platform.' },
-  { n: '04', t: 'Deliver and get paid', d: 'You agree on the scope, deliver your service, and handle payment directly with the artist — outside or through the platform.' },
+  {
+    n: '01', t: 'Create your profile',
+    d: 'Sign up as an Industry Professional. Add your company, role, and a short bio about what you offer.',
+  },
+  {
+    n: '02', t: 'List your services',
+    d: 'Create service listings with your price, turnaround time, and exactly what artists get when they hire you.',
+  },
+  {
+    n: '03', t: 'Artists find and hire you',
+    d: 'Artists on Vuka browse the Services hub. They pay directly through Vuka — payment is immediate, no chasing invoices.',
+  },
+  {
+    n: '04', t: 'You receive 90% instantly',
+    d: 'Vuka deducts 10% as a platform fee. The remaining 90% is queued for your next payout. No admin, no delays.',
+  },
 ];
 
 const WHY = [
-  { icon: Users,      t: 'Direct access to active artists', d: 'All artists on Vuka are already selling music — they have revenue and they invest in their careers.' },
-  { icon: DollarSign, t: 'You set your own price',          d: 'No platform dictating your rates. You list what you charge; artists decide if they want to hire you.' },
-  { icon: Clock,      t: 'No commission on your services',  d: 'Vuka charges artists 2% on music sales only. Your service fees are entirely yours.' },
-  { icon: Music,      t: 'Africa-first community',          d: 'Built for Amapiano, Afrobeats, Gqom, Hip Hop, Kwaito and more. Work with artists who need you.' },
+  { icon: DollarSign, t: 'You keep 90% of every order',      d: 'Vuka charges a flat 10% platform fee on industry service orders. You set your own price — Vuka never dictates rates.' },
+  { icon: Zap,        t: 'Instant payment confirmation',      d: 'Artists pay via PayFast at checkout. Payment is confirmed immediately — no waiting, no invoicing back and forth.' },
+  { icon: Users,      t: 'Direct access to active artists',  d: 'All artists on Vuka are already selling music. They have revenue and they invest in their careers.' },
+  { icon: Shield,     t: 'Vuka holds payment safely',        d: 'Payments go through Vuka\'s escrow — artists can\'t cancel a confirmed payment, and you always get paid.' },
+  { icon: Music,      t: 'Africa-first community',           d: 'Built for Amapiano, Afrobeats, Gqom, Hip Hop, Kwaito and more. Work with artists who need you.' },
+  { icon: TrendingUp, t: 'Browse and find artists too',      d: 'Industry professionals can browse all artists on Vuka, filter by genre, and send deals or offers directly.' },
 ];
 
 export default function IndustryPage() {
@@ -54,18 +68,29 @@ export default function IndustryPage() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight" style={{ color: 'var(--text)' }}>
-              Offer your services.<br />
-              <span style={{ color: 'var(--gold)' }}>Artists will hire you.</span>
+              List your services.<br />
+              <span style={{ color: 'var(--gold)' }}>Get paid automatically.</span>
             </h1>
 
-            <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              Vuka is where Africa's artists come to sell their music. Create a profile, list your professional services with your own pricing, and get hired directly by artists who need what you do.
+            <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
+              Vuka is where Africa's artists come to sell their music. Create a profile, list your professional services,
+              and get hired directly by artists — with payment handled instantly through the platform.
             </p>
+
+            {/* Fee callout */}
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl mb-8" style={{
+              background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.2)',
+            }}>
+              <DollarSign size={16} style={{ color: 'var(--gold)' }} />
+              <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+                Vuka charges <span style={{ color: 'var(--gold)' }}>10% per order</span> · You keep 90% · No subscription fee
+              </span>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/register?role=industry"
                 className="btn btn-primary text-base px-8 py-4 font-bold inline-flex items-center gap-2"
-                style={{ background: 'var(--gold)', color: 'white' }}>
+                style={{ background: 'var(--gold)', color: '#0a0a0a' }}>
                 Create Industry Profile <ArrowRight size={18} />
               </Link>
               <Link href="/services"
@@ -73,10 +98,6 @@ export default function IndustryPage() {
                 Browse Services
               </Link>
             </div>
-
-            <p className="text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
-              Free to list. You set your own rates. No platform cut on services.
-            </p>
           </div>
         </section>
 
@@ -93,7 +114,7 @@ export default function IndustryPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {SERVICE_TYPES.map(s => (
-                <div key={s.label} className="p-5 rounded-2xl"
+                <div key={s.label} className="p-5 rounded-2xl transition-all hover:border-yellow-500/30"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                     style={{ background: 'rgba(201,162,39,0.1)' }}>
@@ -104,9 +125,6 @@ export default function IndustryPage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm mt-8" style={{ color: 'var(--text-muted)' }}>
-              Don't see your service type? List it under "Other" — you write the description.
-            </p>
           </div>
         </section>
 
@@ -121,7 +139,7 @@ export default function IndustryPage() {
                 <div key={h.n} className="flex gap-6 p-6 rounded-2xl"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div className="text-3xl font-black flex-shrink-0 w-12 text-center leading-none"
-                    style={{ color: 'var(--gold)', opacity: 0.4 }}>{h.n}</div>
+                    style={{ color: 'var(--gold)', opacity: 0.5 }}>{h.n}</div>
                   <div>
                     <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>{h.t}</p>
                     <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{h.d}</p>
@@ -132,19 +150,44 @@ export default function IndustryPage() {
           </div>
         </section>
 
+        {/* FEE TRANSPARENCY */}
+        <section className="py-16 px-4" style={{ background: 'rgba(201,162,39,0.04)', borderTop: '1px solid rgba(201,162,39,0.1)', borderBottom: '1px solid rgba(201,162,39,0.1)' }}>
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl md:text-3xl font-black mb-6" style={{ color: 'var(--text)' }}>
+              Simple, transparent pricing
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              {[
+                { label: 'Order amount', example: 'R5,000', color: 'var(--text)' },
+                { label: 'Vuka fee (10%)', example: '− R500', color: 'var(--gold)' },
+                { label: 'You receive', example: 'R4,500', color: 'var(--green)' },
+              ].map(item => (
+                <div key={item.label} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>{item.label}</p>
+                  <p className="text-2xl font-black" style={{ color: item.color }}>{item.example}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              The fee is calculated automatically — no invoices to send, no chasing payments.
+              Artists pay at checkout; Vuka routes the net amount to your payout queue.
+            </p>
+          </div>
+        </section>
+
         {/* WHY VUKA */}
         <section className="py-20 px-4" style={{ background: 'var(--surface)' }}>
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-black text-center mb-14" style={{ color: 'var(--text)' }}>
               Why list on Vuka?
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {WHY.map(w => (
                 <div key={w.t} className="flex gap-4 p-6 rounded-2xl"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(56,182,232,0.1)' }}>
-                    <w.icon size={18} style={{ color: 'var(--sky)' }} />
+                    style={{ background: 'rgba(201,162,39,0.1)' }}>
+                    <w.icon size={18} style={{ color: 'var(--gold)' }} />
                   </div>
                   <div>
                     <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>{w.t}</p>
@@ -164,14 +207,21 @@ export default function IndustryPage() {
             </h2>
             <p className="text-lg mb-10" style={{ color: 'var(--text-muted)' }}>
               Create your free profile and start listing your services today.
+              Payments happen automatically — you focus on the work.
             </p>
-            <Link href="/auth/register?role=industry"
-              className="btn btn-primary text-base px-10 py-4 font-bold inline-flex items-center gap-2"
-              style={{ background: 'var(--gold)', color: 'white' }}>
-              Get Started — It's Free <ArrowRight size={18} />
-            </Link>
-            <div className="flex items-center justify-center gap-6 mt-8 text-sm" style={{ color: 'var(--text-muted)' }}>
-              {['No subscription fee', 'You set your price', 'No commission on services'].map(t => (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              <Link href="/auth/register?role=industry"
+                className="btn btn-primary text-base px-10 py-4 font-bold inline-flex items-center gap-2"
+                style={{ background: 'var(--gold)', color: '#0a0a0a' }}>
+                Get Started — It's Free <ArrowRight size={18} />
+              </Link>
+              <Link href="/browse-artists"
+                className="btn btn-secondary text-base px-8 py-4 font-bold inline-flex items-center gap-2">
+                Browse Artists <Users size={16} />
+              </Link>
+            </div>
+            <div className="flex items-center justify-center gap-6 text-sm flex-wrap" style={{ color: 'var(--text-muted)' }}>
+              {['No subscription fee', 'You set your price', '10% platform fee only'].map(t => (
                 <span key={t} className="flex items-center gap-1.5">
                   <CheckCircle size={14} style={{ color: 'var(--green)' }} /> {t}
                 </span>

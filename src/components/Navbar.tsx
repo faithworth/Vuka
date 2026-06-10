@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import {
   Menu, X, Music2, Rss, Compass, MessageSquare, Bell,
-  LayoutDashboard, BookOpen, Briefcase, ShieldCheck,
+  LayoutDashboard, BookOpen, Briefcase, ShieldCheck, Users,
 } from 'lucide-react';
 
 type Role = 'fan' | 'artist' | 'industry' | 'admin' | null;
@@ -33,7 +33,6 @@ export function Navbar() {
           else if (data.isArtist || r === 'artist' || r === 'producer') setRole('artist');
           else setRole('fan');
 
-          // Load notification + message unread counts
           try {
             const [nRes, mRes] = await Promise.all([
               fetch('/api/social/notifications'),
@@ -51,9 +50,7 @@ export function Navbar() {
             }
           } catch {}
         }
-      } catch {
-        setRole('fan');
-      }
+      } catch { setRole('fan'); }
     };
 
     supabase.auth.getUser().then(({ data }) => loadUser(data.user));
@@ -63,7 +60,6 @@ export function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => setMobileOpen(false), [pathname]);
 
   const dashboardHref =
@@ -73,51 +69,57 @@ export function Navbar() {
     '/fan';
 
   const dashboardLabel =
-    role === 'admin' ? 'Admin' :
+    role === 'admin'    ? 'Admin' :
     role === 'industry' ? 'My Portal' :
-    role === 'artist' ? 'Dashboard' :
+    role === 'artist'   ? 'Dashboard' :
     'My Library';
 
   const DashIcon =
-    role === 'admin' ? ShieldCheck :
+    role === 'admin'    ? ShieldCheck :
     role === 'industry' ? Briefcase :
-    role === 'artist' ? LayoutDashboard :
+    role === 'artist'   ? LayoutDashboard :
     BookOpen;
 
+  // Public links — core store nav
   const publicLinks = [
-    { href: '/store', label: 'Store' },
-    { href: '/store/beats', label: 'Beats' },
+    { href: '/store',          label: 'Store' },
+    { href: '/store/beats',    label: 'Beats' },
     { href: '/store/releases', label: 'Releases' },
-    { href: '/store/videos', label: 'Videos' },
-    { href: '/store/samples', label: 'Samples' },
-    { href: '/marketplace', label: 'Marketplace' },
-    { href: '/industry', label: 'Industry' },
+    { href: '/store/videos',   label: 'Videos' },
+    { href: '/store/samples',  label: 'Samples' },
+    { href: '/services',       label: 'Services' },    // ← unified services hub
+    { href: '/industry',       label: 'For Industry' },
   ];
 
-  const authedLinks = user ? [
-    { href: '/feed', label: 'Feed', icon: Rss },
+  // Role-specific extra links
+  const roleLinks = user ? [
+    ...(role === 'industry' ? [
+      { href: '/browse-artists', label: 'Find Artists', icon: Users },
+    ] : []),
+    { href: '/feed',     label: 'Feed',     icon: Rss },
     { href: '/discover', label: 'Discover', icon: Compass },
   ] : [];
 
-  const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(href));
+  const isActive = (href: string) =>
+    pathname === href || (href !== '/' && pathname.startsWith(href));
 
   return (
     <nav
       className="sticky top-0 z-50"
       style={{
-        background: 'rgba(232,244,253,0.92)',
+        background: 'rgba(10,10,10,0.95)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border)',
-        boxShadow: '0 1px 16px rgba(56,182,232,0.07)',
+        boxShadow: '0 1px 20px rgba(0,0,0,0.4)',
       }}
     >
       <div className="flex items-center justify-between px-5 py-3.5 max-w-7xl mx-auto">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
-            <Music2 size={15} className="text-white" />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--green)' }}>
+            <Music2 size={15} className="text-black" />
           </div>
           <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
             Vuka
@@ -125,27 +127,27 @@ export function Navbar() {
         </Link>
 
         {/* Desktop center links */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-0.5">
           {publicLinks.map(l => (
             <Link
               key={l.href} href={l.href}
               className="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               style={{
-                color: isActive(l.href) ? 'var(--sky)' : 'var(--text-muted)',
-                background: isActive(l.href) ? 'rgba(56,182,232,0.08)' : 'transparent',
+                color:      isActive(l.href) ? 'var(--green)' : 'var(--text-muted)',
+                background: isActive(l.href) ? 'rgba(160,232,124,0.08)' : 'transparent',
               }}>
               {l.label}
             </Link>
           ))}
-          {authedLinks.map(l => (
+          {roleLinks.map(l => (
             <Link
               key={l.href} href={l.href}
               className="px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
               style={{
-                color: isActive(l.href) ? 'var(--sky)' : 'var(--text-muted)',
-                background: isActive(l.href) ? 'rgba(56,182,232,0.08)' : 'transparent',
+                color:      isActive(l.href) ? 'var(--green)' : 'var(--text-muted)',
+                background: isActive(l.href) ? 'rgba(160,232,124,0.08)' : 'transparent',
               }}>
-              <l.icon size={13} />
+              {'icon' in l && <l.icon size={13} />}
               {l.label}
             </Link>
           ))}
@@ -155,21 +157,18 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <>
-              {/* Messages icon */}
               <Link href="/messages" className="relative p-2 rounded-lg transition-colors"
-                style={{ color: isActive('/messages') ? 'var(--sky)' : 'var(--text-muted)' }}>
+                style={{ color: isActive('/messages') ? 'var(--green)' : 'var(--text-muted)' }}>
                 <MessageSquare size={18} />
                 {unreadMsgs > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                    style={{ background: 'var(--sky)' }}>
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-black flex items-center justify-center"
+                    style={{ background: 'var(--green)' }}>
                     {unreadMsgs > 9 ? '9+' : unreadMsgs}
                   </span>
                 )}
               </Link>
-
-              {/* Notifications icon */}
               <Link href="/notifications" className="relative p-2 rounded-lg transition-colors"
-                style={{ color: isActive('/notifications') ? 'var(--sky)' : 'var(--text-muted)' }}>
+                style={{ color: isActive('/notifications') ? 'var(--green)' : 'var(--text-muted)' }}>
                 <Bell size={18} />
                 {unreadNotifs > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
@@ -178,8 +177,6 @@ export function Navbar() {
                   </span>
                 )}
               </Link>
-
-              {/* Dashboard button */}
               <Link
                 href={dashboardHref}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
@@ -196,20 +193,19 @@ export function Navbar() {
                 Log In
               </Link>
               <Link href="/auth/register"
-                className="px-4 py-2 rounded-xl text-sm font-bold transition-all text-white"
-                style={{ background: 'var(--sky)', boxShadow: '0 4px 16px rgba(56,182,232,0.3)' }}>
+                className="px-4 py-2 rounded-xl text-sm font-bold transition-all text-black"
+                style={{ background: 'var(--green)', boxShadow: '0 4px 16px rgba(160,232,124,0.25)' }}>
                 Get Started
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile right side: icon shortcuts + hamburger */}
+        {/* Mobile right */}
         <div className="md:hidden flex items-center gap-1">
           {user && (
             <>
-              <Link href="/notifications" className="relative p-2 rounded-lg"
-                style={{ color: 'var(--text-muted)' }}>
+              <Link href="/notifications" className="relative p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
                 <Bell size={19} />
                 {unreadNotifs > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
@@ -218,12 +214,11 @@ export function Navbar() {
                   </span>
                 )}
               </Link>
-              <Link href="/messages" className="relative p-2 rounded-lg"
-                style={{ color: 'var(--text-muted)' }}>
+              <Link href="/messages" className="relative p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
                 <MessageSquare size={19} />
                 {unreadMsgs > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                    style={{ background: 'var(--sky)' }}>
+                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-black flex items-center justify-center"
+                    style={{ background: 'var(--green)' }}>
                     {unreadMsgs}
                   </span>
                 )}
@@ -247,8 +242,8 @@ export function Navbar() {
               <Link key={l.href} href={l.href}
                 className="py-2.5 px-3 rounded-xl text-sm font-medium transition-colors"
                 style={{
-                  color: isActive(l.href) ? 'var(--sky)' : 'var(--text-muted)',
-                  background: isActive(l.href) ? 'rgba(56,182,232,0.08)' : 'transparent',
+                  color:      isActive(l.href) ? 'var(--green)' : 'var(--text-muted)',
+                  background: isActive(l.href) ? 'rgba(160,232,124,0.08)' : 'transparent',
                 }}>
                 {l.label}
               </Link>
@@ -257,14 +252,14 @@ export function Navbar() {
             {user && (
               <>
                 <div className="my-1" style={{ borderTop: '1px solid var(--border)' }} />
-                {authedLinks.map(l => (
+                {roleLinks.map(l => (
                   <Link key={l.href} href={l.href}
                     className="py-2.5 px-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
                     style={{
-                      color: isActive(l.href) ? 'var(--sky)' : 'var(--text-muted)',
-                      background: isActive(l.href) ? 'rgba(56,182,232,0.08)' : 'transparent',
+                      color:      isActive(l.href) ? 'var(--green)' : 'var(--text-muted)',
+                      background: isActive(l.href) ? 'rgba(160,232,124,0.08)' : 'transparent',
                     }}>
-                    <l.icon size={15} />
+                    {'icon' in l && <l.icon size={15} />}
                     {l.label}
                   </Link>
                 ))}
@@ -287,8 +282,8 @@ export function Navbar() {
                   Log In
                 </Link>
                 <Link href="/auth/register"
-                  className="py-2.5 px-3 rounded-xl text-sm font-bold text-white text-center mt-1"
-                  style={{ background: 'var(--sky)' }}>
+                  className="py-2.5 px-3 rounded-xl text-sm font-bold text-black text-center mt-1"
+                  style={{ background: 'var(--green)' }}>
                   Get Started
                 </Link>
               </>
