@@ -5,7 +5,6 @@
 //   - Added "Videos" nav item (video/sample upload management)
 //   - Added "Messages" nav item with unread badge
 //   - Fixed: messages link was missing from dashboard nav entirely
-//   - Removed "Merch" nav item (physical goods not offered on Vuka)
 // ============================================================
 
 'use client';
@@ -32,6 +31,7 @@ const ARTIST_NAV = [
   { href: '/dashboard/videos',         label: 'Videos',      icon: Video },
   { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
   { href: '/dashboard/storefront',     label: 'Storefront',  icon: Store },
+  { href: '/dashboard/merch',          label: 'Merch',       icon: Package },
   { href: '/dashboard/purchases',      label: 'Sales',       icon: ShoppingBag },
   { href: '/dashboard/support',        label: 'Fan Support', icon: Heart },
   { href: '/dashboard/goals',          label: 'Goals',       icon: Target },

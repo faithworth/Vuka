@@ -56,9 +56,9 @@ export async function createTier(
 
   await prisma.$executeRawUnsafe(
     `INSERT INTO "CreatorSubscriptionTier"
-       (id, "artistId", name, price, currency, interval, description, perks, "isActive", "createdAt")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, true, $9::timestamptz)`,
-    id, artistId, data.name, price, currency, interval, desc, perksJson, now,
+       (id, "artistId", name, "priceMonthly", currency, description, perks, "isActive", "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, true, $8::timestamptz, $8::timestamptz)`,
+    id, artistId, data.name, price, currency, desc, perksJson, now,
   );
 
   return prisma.creatorSubscriptionTier.findUnique({ where: { id } });

@@ -9,19 +9,51 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { listServices } from '@/lib/marketplace';
 
 // GET — list marketplace services (public, with filters)
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const category = searchParams.get('category') || undefined;
-    const search   = searchParams.get('search')   || undefined;
-    const take     = parseInt(searchParams.get('take') || '20');
+    const category = searchParams.get('category') || null;
+    const search   = searchParams.get('search')   || null;
+    const take     = Math.min(parseInt(searchParams.get('take') || '20'), 100);
     const skip     = parseInt(searchParams.get('skip') || '0');
 
-    const services = await listServices({ category, search, take, skip });
-    return NextResponse.json({ services });
+    // Raw query avoids Prisma crashing on portfolioUrls stored as jsonb string
+    // instead of native TEXT[] (type mismatch in existing rows).
+    const services = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT s.id, s."artistId", s.title, s.description, s.category,
+              s.price, s."deliveryDays", s.packages, s.requirements,
+              s."isActive", s."createdAt",
+              s."totalOrders", s.rating, s."reviewCount",
+              a.id AS "artist_id", a.name AS "artist_name",
+              a.slug AS "artist_slug", a."photoUrl" AS "artist_photoUrl",
+              a."isVerified" AS "artist_isVerified"
+         FROM "MarketplaceService" s
+         JOIN "Artist" a ON a.id = s."artistId"
+        WHERE s."isActive" = true
+          ${category ? `AND s.category = '${category.replace(/'/g, "''")}'` : ''}
+          ${search   ? `AND (s.title ILIKE '%${search.replace(/'/g, "''")}%' OR s.description ILIKE '%${search.replace(/'/g, "''")}%')` : ''}
+        ORDER BY s."createdAt" DESC
+        LIMIT ${take} OFFSET ${skip}`,
+    );
+
+    // Shape artist sub-object to match what the frontend expects
+    const shaped = services.map((s) => ({
+      id: s.id, artistId: s.artistId, title: s.title,
+      description: s.description, category: s.category,
+      price: s.price, deliveryDays: s.deliveryDays,
+      packages: s.packages, requirements: s.requirements,
+      isActive: s.isActive, createdAt: s.createdAt,
+      totalOrders: s.totalOrders ?? 0, rating: s.rating ?? 0,
+      reviewCount: s.reviewCount ?? 0,
+      artist: {
+        id: s.artist_id, name: s.artist_name, slug: s.artist_slug,
+        photoUrl: s.artist_photoUrl, isVerified: s.artist_isVerified,
+      },
+    }));
+
+    return NextResponse.json({ services: shaped });
   } catch (err: any) {
     console.error('[marketplace/services] GET error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
@@ -81,8 +113,16 @@ export async function POST(req: NextRequest) {
       now,
     );
 
-    const service = await prisma.marketplaceService.findUnique({ where: { id } });
-    return NextResponse.json({ service }, { status: 201 });
+    // Use raw query — Prisma's findUnique crashes if portfolioUrls was stored
+    // as a jsonb string instead of a native TEXT[] (type mismatch in some rows).
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, "artistId", title, description, category, price, "deliveryDays",
+              packages, requirements, "isActive", "createdAt"
+       FROM "MarketplaceService" WHERE id = $1`,
+      id,
+    );
+    return NextResponse.json({ service: rows[0] ?? null }, { status: 201 });
+
   } catch (err: any) {
     console.error('[marketplace/services] POST error:', err?.message, err?.code);
     return NextResponse.json(
