@@ -16,13 +16,21 @@ function getPeriod(): string {
 // ── Subscription Tier Management ──────────────────────────────
 
 export async function getArtistTiers(artistId: string) {
-  return prisma.creatorSubscriptionTier.findMany({
-    where: { artistId, isActive: true },
-    include: {
-      _count: { select: { memberships: true } },
-    },
-    orderBy: { createdAt: 'asc' },
-  });
+  // Raw query — perks is jsonb in DB but Prisma schema says String[]; findMany crashes.
+  const rows = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT t.*, COUNT(m.id)::int AS "membershipCount"
+       FROM "CreatorSubscriptionTier" t
+       LEFT JOIN "CreatorMembership" m ON m."tierId" = t.id
+      WHERE t."artistId" = $1 AND t."isActive" = true
+      GROUP BY t.id
+      ORDER BY t."createdAt" ASC`,
+    artistId,
+  );
+  return rows.map(r => ({
+    ...r,
+    perks: Array.isArray(r.perks) ? r.perks : (typeof r.perks === 'string' ? JSON.parse(r.perks) : []),
+    _count: { memberships: r.membershipCount ?? 0 },
+  }));
 }
 
 export async function createTier(
@@ -56,12 +64,18 @@ export async function createTier(
 
   await prisma.$executeRawUnsafe(
     `INSERT INTO "CreatorSubscriptionTier"
-       (id, "artistId", name, price, currency, interval, description, perks, "isActive", "createdAt")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, true, $9::timestamptz)`,
-    id, artistId, data.name, price, currency, interval, desc, perksJson, now,
+       (id, "artistId", name, "priceMonthly", currency, description, perks, "isActive", "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, true, $8::timestamptz, $8::timestamptz)`,
+    id, artistId, data.name, price, currency, desc, perksJson, now,
   );
 
-  return prisma.creatorSubscriptionTier.findUnique({ where: { id } });
+  // Raw query — Prisma findUnique crashes reading perks (jsonb vs String[])
+  const rows = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, id,
+  );
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return { ...r, perks: Array.isArray(r.perks) ? r.perks : (typeof r.perks === 'string' ? JSON.parse(r.perks) : []) };
 }
 
 // ── Membership Lifecycle ──────────────────────────────────────
@@ -75,10 +89,11 @@ export async function createMembership(params: {
   fanName?: string;
   fanEmail?: string;
 }) {
-  const tier = await prisma.creatorSubscriptionTier.findUnique({
-    where: { id: params.tierId },
-  });
-  if (!tier) throw new Error('Tier not found');
+  const tierRows = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, params.tierId,
+  );
+  if (!tierRows[0]) throw new Error('Tier not found');
+  const tier = { ...tierRows[0], perks: Array.isArray(tierRows[0].perks) ? tierRows[0].perks : (typeof tierRows[0].perks === 'string' ? JSON.parse(tierRows[0].perks) : []) };
 
   // Fetch artist plan for accurate fee rate
   const artist = await prisma.artist.findUnique({
