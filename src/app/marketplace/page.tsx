@@ -2,13 +2,12 @@
 // src/app/marketplace/page.tsx
 // Public marketplace — fans and artists browse & order services (mixing, mastering, features, etc.)
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import {
-  Search, Loader2, Briefcase, DollarSign, Clock,
-  Star, ChevronRight, Music, Mic2, Video, Package,
-  Sliders, Filter, ShoppingCart,
+  Search, Loader2, Briefcase, Clock,
+  Star, Music, Mic2, Video, Package,
+  Sliders, ShoppingCart, X, AlertCircle,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -25,7 +24,6 @@ const CATEGORIES = [
 ];
 
 export default function MarketplacePage() {
-  const router = useRouter();
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [q, setQ]               = useState('');
@@ -34,6 +32,16 @@ export default function MarketplacePage() {
   const [page, setPage]         = useState(1);
   const [total, setTotal]       = useState(0);
   const [pages, setPages]       = useState(1);
+
+  // Checkout modal state
+  const [ordering, setOrdering]         = useState<any | null>(null);
+  const [selectedPkg, setSelectedPkg]   = useState<any | null>(null);
+  const [requirements, setRequirements] = useState('');
+  const [buyerName, setBuyerName]       = useState('');
+  const [buyerEmail, setBuyerEmail]     = useState('');
+  const [checkoutErr, setCheckoutErr]   = useState('');
+  const [paying, setPaying]             = useState(false);
+  const pfFormRef = useRef<HTMLFormElement>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -56,7 +64,60 @@ export default function MarketplacePage() {
   useEffect(() => { load(); }, [load]);
 
   function handleOrder(service: any) {
-    router.push(`/marketplace/${service.id}`);
+    const lowestPkg = service.packages?.reduce(
+      (min: any, p: any) => (!min || p.price < min.price ? p : min), null
+    );
+    setOrdering(service);
+    setSelectedPkg(lowestPkg || null);
+    setRequirements('');
+    setBuyerName('');
+    setBuyerEmail('');
+    setCheckoutErr('');
+  }
+
+  async function handleCheckout() {
+    if (!ordering) return;
+    if (!buyerName.trim() || !buyerEmail.trim()) {
+      setCheckoutErr('Your name and email are required.');
+      return;
+    }
+    if (!selectedPkg) {
+      setCheckoutErr('Select a package to continue.');
+      return;
+    }
+    setPaying(true);
+    setCheckoutErr('');
+    try {
+      const res = await fetch('/api/marketplace/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId:    ordering.id,
+          packageName:  selectedPkg.name,
+          amount:       selectedPkg.price,
+          requirements,
+          buyerName:    buyerName.trim(),
+          buyerEmail:   buyerEmail.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCheckoutErr(data.error || 'Could not start payment.'); setPaying(false); return; }
+
+      // Build and submit the PayFast form
+      const form = pfFormRef.current!;
+      form.innerHTML = '';
+      form.action  = data.actionUrl;
+      form.method  = 'POST';
+      Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
+        const inp = document.createElement('input');
+        inp.type  = 'hidden'; inp.name = k; inp.value = v;
+        form.appendChild(inp);
+      });
+      form.submit();
+    } catch {
+      setCheckoutErr('Network error. Please try again.');
+      setPaying(false);
+    }
   }
 
   return (
@@ -153,6 +214,111 @@ export default function MarketplacePage() {
           )}
         </div>
       </main>
+
+      {/* Hidden PayFast form — submitted programmatically */}
+      <form ref={pfFormRef} style={{ display: 'none' }} />
+
+      {/* Checkout modal */}
+      {ordering && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/60" onClick={() => { if (!paying) setOrdering(null); }} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl p-6 overflow-y-auto max-h-[90vh]"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Order Service</p>
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{ordering.title}</h2>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--green)' }}>{ordering.artist?.name}</p>
+                </div>
+                {!paying && (
+                  <button onClick={() => setOrdering(null)} style={{ color: 'var(--text-muted)' }}>
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+
+              {/* Package selector */}
+              {ordering.packages?.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Select package</p>
+                  <div className="space-y-2">
+                    {ordering.packages.map((pkg: any) => (
+                      <button key={pkg.name} onClick={() => setSelectedPkg(pkg)}
+                        className="w-full text-left p-3 rounded-xl transition-all"
+                        style={{
+                          background: selectedPkg?.name === pkg.name ? 'var(--surface2)' : 'transparent',
+                          border:     `1px solid ${selectedPkg?.name === pkg.name ? 'var(--green)' : 'var(--border)'}`,
+                        }}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{pkg.name}</span>
+                          <span className="text-sm font-black font-mono" style={{ color: 'var(--green)' }}>R{pkg.price}</span>
+                        </div>
+                        {pkg.description && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{pkg.description}</p>}
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{pkg.deliveryDays}d delivery</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Requirements */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  Project requirements <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <textarea
+                  value={requirements}
+                  onChange={e => setRequirements(e.target.value)}
+                  placeholder="Describe what you need, share links, references…"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl text-sm resize-none outline-none"
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+
+              {/* Buyer info */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>Your name *</label>
+                  <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
+                    placeholder="Full name"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>Email *</label>
+                  <input type="email" value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+                </div>
+              </div>
+
+              {checkoutErr && (
+                <div className="flex items-center gap-2 p-3 rounded-xl text-xs mb-4"
+                  style={{ background: 'rgba(232,64,64,0.1)', border: '1px solid rgba(232,64,64,0.3)', color: '#f87171' }}>
+                  <AlertCircle size={14} className="flex-shrink-0" />
+                  {checkoutErr}
+                </div>
+              )}
+
+              <button onClick={handleCheckout} disabled={paying}
+                className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                style={{ background: 'var(--green)', color: '#0a0a0a' }}>
+                {paying
+                  ? <><Loader2 size={15} className="animate-spin" /> Redirecting to payment…</>
+                  : <><ShoppingCart size={15} /> Pay R{selectedPkg?.price ?? 0} — Secure checkout</>
+                }
+              </button>
+              <p className="text-center text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                Powered by PayFast · Work begins after payment confirms
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
