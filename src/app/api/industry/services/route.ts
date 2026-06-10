@@ -44,18 +44,28 @@ export async function POST(req: NextRequest) {
     if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     if (!priceZAR || priceZAR <= 0) return NextResponse.json({ error: 'Price must be greater than 0' }, { status: 400 });
 
-    const service = await prisma.industryService.create({
-      data: {
-        industryUserId: iu.id,
-        title: title.trim(),
-        description: description?.trim() || '',
-        category: category || 'promotion',
-        priceZAR: parseFloat(priceZAR),
-        pricingModel: pricingModel || 'fixed',
-        deliveryDays: parseInt(deliveryDays) || 7,
-        isActive: true,
-      },
-    });
+    const id = crypto.randomUUID();
+    const now = new Date();
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "IndustryService"
+         (id, "industryUserId", title, description, category, "priceZAR", "pricingModel", "deliveryDays", "isActive", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9::timestamptz, $9::timestamptz)`,
+      id,
+      iu.id,
+      title.trim(),
+      description?.trim() || '',
+      category || 'promotion',
+      parseFloat(priceZAR),
+      pricingModel || 'fixed',
+      parseInt(deliveryDays) || 7,
+      now,
+    );
+
+    const service = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT * FROM "IndustryService" WHERE id = $1`,
+      id,
+    ).then(rows => rows[0]);
 
     return NextResponse.json({ service });
   } catch (err) {
