@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
-type MainTab = 'overview' | 'sales' | 'tips' | 'artists' | 'payouts';
+type MainTab = 'overview' | 'sales' | 'tips' | 'subscriptions' | 'artists' | 'payouts';
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: '#a0e87c', pending: '#e8c87c', refunded: '#e8a87c',
@@ -76,7 +76,8 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
       <div>
         <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>All-time Revenue</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Total Gross" value={formatCurrency(revenue.gross)} color="var(--green)" sub={`${revenue.salesCount} sales · ${revenue.tipsCount} tips`} />
+          <StatCard label="Total Gross" value={formatCurrency(revenue.gross)} color="var(--green)"
+            sub={`${revenue.salesCount} sales · ${revenue.tipsCount} tips · ${revenue.subsCount ?? 0} subs`} />
           <StatCard label="Vuka Keeps" value={formatCurrency(revenue.platformCut)} color="var(--gold)" />
           <StatCard label="Artists Get" value={formatCurrency(revenue.artistTotal)} color="#38b6e8" />
           <StatCard label="Paid Out" value={formatCurrency(payouts.paidAmount)} color="#a0a0a0" sub={`${payouts.paidCount} payouts`} />
@@ -85,9 +86,12 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
 
       <div>
         <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Last 30 Days</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <StatCard label="Gross (30d)" value={formatCurrency(revenue.monthGross)} color="var(--green)" sub={`${revenue.monthSalesCount} sales · ${revenue.monthTipsCount} tips`} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Gross (30d)" value={formatCurrency(revenue.monthGross)} color="var(--green)"
+            sub={`${revenue.monthSalesCount} sales · ${revenue.monthTipsCount} tips · ${revenue.monthSubsCount ?? 0} subs`} />
           <StatCard label="Vuka Keeps (30d)" value={formatCurrency(revenue.monthPlatform)} color="var(--gold)" />
+          <StatCard label="Plan Subscriptions" value={formatCurrency(revenue.subsTotal ?? 0)} color="#c084fc"
+            sub={`${revenue.subsCount ?? 0} total`} />
           <StatCard label="Pending Payouts" value={formatCurrency(payouts.pendingAmount)} color="#e8a87c" sub={`${payouts.pendingCount} requests`} />
         </div>
       </div>
@@ -373,6 +377,94 @@ function TipsTab() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Subscriptions tab ────────────────────────────────────────────────────────
+function SubscriptionsTab() {
+  const [data, setData]   = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage]   = useState(1);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/admin/finance?view=purchases&page=${page}&itemType=subscription`)
+      .then(r => r.json()).then(setData).finally(() => setLoading(false));
+  }, [page]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const PLAN_LABELS: Record<string, string> = {
+    pro:   'Pro — R249/mo',
+    label: 'Label — R999/mo',
+  };
+
+  return (
+    <div className="space-y-4">
+      {data && (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {data.total} confirmed plan payments · page {data.page}/{data.pages || 1}
+        </p>
+      )}
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" style={{ minWidth: 700 }}>
+            <thead>
+              <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                {['Date', 'Artist', 'Plan', 'Amount', 'Vuka Keeps', 'Ref'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center">
+                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                </td></tr>
+              ) : !data?.purchases?.length ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center" style={{ color: 'var(--text-muted)' }}>No plan subscriptions yet</td></tr>
+              ) : data.purchases.map((p: any) => (
+                <tr key={p.id} className="border-t hover:bg-white/[0.02]" style={{ borderColor: 'var(--border)' }}>
+                  <td className="px-4 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                    {new Date(p.createdAt).toLocaleDateString('en-ZA')}
+                  </td>
+                  <td className="px-4 py-3 font-medium whitespace-nowrap" style={{ color: 'var(--sky)' }}>
+                    {p.artist?.name || p.buyerName || '—'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: '#c084fc22', color: '#c084fc' }}>
+                      {PLAN_LABELS[p.licenseType] || p.licenseType || 'Platform Plan'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono font-bold whitespace-nowrap" style={{ color: 'var(--green)' }}>
+                    {formatCurrency(p.amount)}
+                  </td>
+                  <td className="px-4 py-3 font-mono whitespace-nowrap" style={{ color: 'var(--gold)' }}>
+                    {formatCurrency(p.platformFee)}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                    {(p.payfastPfPaymentId || '').slice(0, 14) || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {(data?.pages ?? 0) > 1 && (
+        <div className="flex gap-2 justify-center flex-wrap">
+          {Array.from({ length: data.pages }, (_: any, i: number) => (
+            <button key={i} onClick={() => setPage(i + 1)}
+              className="w-9 h-9 rounded-xl text-sm font-mono"
+              style={{
+                background: page === i + 1 ? 'var(--green)' : 'var(--surface)',
+                color:      page === i + 1 ? '#0a0a0a' : 'var(--text)',
+                border:     '1px solid var(--border)',
+              }}>{i + 1}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1085,11 +1177,12 @@ export default function AdminFinancePage() {
   }
 
   const TABS: { id: MainTab; label: string }[] = [
-    { id: 'overview',  label: 'Overview'   },
-    { id: 'sales',     label: 'All Sales'  },
-    { id: 'tips',      label: 'Tips'       },
-    { id: 'artists',   label: 'Per Artist' },
-    { id: 'payouts',   label: 'Payouts'    },
+    { id: 'overview',      label: 'Overview'       },
+    { id: 'sales',         label: 'All Sales'       },
+    { id: 'tips',          label: 'Tips'            },
+    { id: 'subscriptions', label: 'Subscriptions'   },
+    { id: 'artists',       label: 'Per Artist'      },
+    { id: 'payouts',       label: 'Payouts'         },
   ];
 
   return (
@@ -1120,7 +1213,8 @@ export default function AdminFinancePage() {
 
       {tab === 'overview' && <OverviewTab onArtistClick={goArtist} />}
       {tab === 'sales'    && <SalesTab />}
-      {tab === 'tips'     && <TipsTab />}
+      {tab === 'tips'          && <TipsTab />}
+      {tab === 'subscriptions' && <SubscriptionsTab />}
       {tab === 'artists'  && (
         artistDrillId
           ? <ArtistDetail artistId={artistDrillId} onBack={() => setArtistDrillId(null)} />

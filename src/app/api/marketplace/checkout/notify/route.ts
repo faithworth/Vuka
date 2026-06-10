@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
     await prisma.purchase.create({
       data: {
         itemType:           'marketplace',
+        artistId:           artistId,
         buyerEmail:         data.email_address || '',
         buyerName:          `${data.name_first || ''} ${data.name_last || ''}`.trim() || 'Client',
         amount:             amountGross,

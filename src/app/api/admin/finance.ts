@@ -2,8 +2,8 @@
  * GET /api/admin/finance?view=overview|purchases|tips|artist|payouts
  * Platform-wide financial data for the admin finance page.
  *
- * Purchase has NO artistId — artist is resolved through the
- * linked item (beat, release, video, sample, distributionRelease).
+ * Purchase.artistId is now a direct FK for subscription, membership, marketplace rows.
+ * Beat/release/video/sample rows resolve artist through their item relation.
  * SupportTxn has NO platformFee/netAmount stored — computed at query
  * time using the artist's actual plan rate via getEffectivePlan().
  *
@@ -16,43 +16,48 @@ import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { platformFee as calcFee, artistNet as calcNet, getEffectivePlan } from '@/lib/plans';
 
-// Helper: resolve the artist for a Purchase row by checking each item relation.
+// Helper: resolve the artist for a Purchase row.
+// Direct artistId FK covers subscription, membership, marketplace.
+// Item relations cover beat, release, video, sample.
 function resolveArtist(p: {
+  artist?: any;
   beat?: { artistId: string; artist?: any } | null;
   release?: { artistId: string; artist?: any } | null;
   video?: { artistId: string; artist?: any } | null;
   sample?: { artistId: string; artist?: any } | null;
-  distributionRelease?: { artistId: string; artist?: any } | null;
 }) {
   return (
+    p.artist ||
     p.beat?.artist ||
     p.release?.artist ||
     p.video?.artist ||
     p.sample?.artist ||
-    p.distributionRelease?.artist ||
     null
   );
 }
 
 function resolveArtistId(p: {
+  artistId?: string | null;
   beat?: { artistId: string } | null;
   release?: { artistId: string } | null;
   video?: { artistId: string } | null;
   sample?: { artistId: string } | null;
-  distributionRelease?: { artistId: string } | null;
 }) {
   return (
+    p.artistId ||
     p.beat?.artistId ||
     p.release?.artistId ||
     p.video?.artistId ||
     p.sample?.artistId ||
-    p.distributionRelease?.artistId ||
     null
   );
 }
 
-// Common include for Purchase → artist via item
+// Common include for Purchase → artist via item or direct artistId
 const PURCHASE_INCLUDE = {
+  artist: {                           // direct FK — populated for subscription, membership, marketplace
+    select: { id: true, name: true, photoUrl: true },
+  },
   beat: {
     select: {
       artistId: true, title: true,
@@ -72,12 +77,6 @@ const PURCHASE_INCLUDE = {
     },
   },
   sample: {
-    select: {
-      artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
-    },
-  },
-  distributionRelease: {
     select: {
       artistId: true, title: true,
       artist: { select: { id: true, name: true, photoUrl: true } },
@@ -188,11 +187,12 @@ export async function GET(req: NextRequest) {
           amount: true,
           platformFee: true,
           netAmount: true,
+          artistId: true,
+          artist:  { select: { id: true, name: true, photoUrl: true } },
           beat:    { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
           release: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
           video:   { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
           sample:  { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
-          distributionRelease: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
         },
       });
 
@@ -307,11 +307,13 @@ export async function GET(req: NextRequest) {
 
     // ─── PURCHASES (all sales / paginated) ────────────────────────────────────
     if (view === 'purchases') {
-      const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
-      const limit = 50;
-      const q     = searchParams.get('q') || '';
+      const page     = Math.max(1, parseInt(searchParams.get('page') || '1'));
+      const limit    = 50;
+      const q        = searchParams.get('q') || '';
+      const itemType = searchParams.get('itemType') || '';
 
       const where: any = { status: 'confirmed' };
+      if (itemType) where.itemType = itemType;
       if (q) {
         where.OR = [
           { buyerEmail: { contains: q, mode: 'insensitive' } },
@@ -380,11 +382,11 @@ export async function GET(req: NextRequest) {
         where: {
           status: 'confirmed',
           OR: [
-            { beat:               { is: { artistId } } },
-            { release:            { is: { artistId } } },
-            { video:              { is: { artistId } } },
-            { sample:             { is: { artistId } } },
-            { distributionRelease: { is: { artistId } } },
+            { artistId },                             // subscription, membership, marketplace
+            { beat:    { is: { artistId } } },
+            { release: { is: { artistId } } },
+            { video:   { is: { artistId } } },
+            { sample:  { is: { artistId } } },
           ],
         },
         include: PURCHASE_INCLUDE,

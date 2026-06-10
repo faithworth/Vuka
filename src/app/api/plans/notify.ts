@@ -96,18 +96,20 @@ export async function POST(req: NextRequest) {
     // Record as a Purchase so admin/finance overview includes subscription revenue
     await prisma.purchase.create({
       data: {
-        itemType:          'subscription',
-        buyerEmail:        data.custom_str3 || '',
-        buyerName:         `${data.name_first || ''} ${data.name_last || ''}`.trim() || 'Artist',
-        amount:            plan.priceZAR,
-        currency:          'ZAR',
-        platformFee:       plan.priceZAR, // 100% kept by Vuka — this is the platform fee itself
-        netAmount:         0,
-        status:            'confirmed',
+        itemType:           'subscription',
+        artistId:           artistId,
+        licenseType:        planSlug,  // store plan slug so finance UI can label it
+        buyerEmail:         data.custom_str3 || '',
+        buyerName:          `${data.name_first || ''} ${data.name_last || ''}`.trim() || 'Artist',
+        amount:             plan.priceZAR,
+        currency:           'ZAR',
+        platformFee:        plan.priceZAR,
+        netAmount:          0,
+        status:             'confirmed',
         payfastPfPaymentId: pfPaymentId,
-        downloadToken:     `plan-${pfPaymentId}`,
+        downloadToken:      `plan-${pfPaymentId}`,
       },
-    }).catch(() => {}); // non-blocking — plan activation already succeeded
+    }).catch(() => {});
 
     await auditLog.adminAction(
       'plan.activated',
