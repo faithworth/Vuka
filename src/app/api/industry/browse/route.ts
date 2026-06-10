@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       },
       include: {
         industryUser: {
-          include: { user: { select: { name: true, email: true } } },
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
       orderBy,

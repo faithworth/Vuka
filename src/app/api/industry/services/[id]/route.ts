@@ -23,18 +23,34 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!existing) return NextResponse.json({ error: 'Service not found' }, { status: 404 });
 
     const body = await req.json();
-    const updated = await prisma.industryService.update({
-      where: { id: params.id },
-      data: {
-        title: body.title?.trim() ?? existing.title,
-        description: body.description?.trim() ?? existing.description,
-        category: body.category ?? existing.category,
-        priceZAR: body.priceZAR != null ? parseFloat(body.priceZAR) : existing.priceZAR,
-        pricingModel: body.pricingModel ?? existing.pricingModel,
-        deliveryDays: body.deliveryDays != null ? parseInt(body.deliveryDays) : existing.deliveryDays,
-        isActive: body.isActive != null ? body.isActive : existing.isActive,
-      },
-    });
+    const now = new Date();
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE "IndustryService"
+       SET title        = $1,
+           description  = $2,
+           category     = $3,
+           "priceZAR"   = $4,
+           "pricingModel" = $5,
+           "deliveryDays" = $6,
+           "isActive"   = $7,
+           "updatedAt"  = $8
+       WHERE id = $9`,
+      body.title?.trim()       ?? existing.title,
+      body.description?.trim() ?? existing.description,
+      body.category            ?? existing.category,
+      body.priceZAR != null ? parseFloat(body.priceZAR) : existing.priceZAR,
+      body.pricingModel        ?? existing.pricingModel,
+      body.deliveryDays != null ? parseInt(body.deliveryDays) : existing.deliveryDays,
+      body.isActive != null ? body.isActive : existing.isActive,
+      now,
+      params.id,
+    );
+
+    const updated = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT * FROM "IndustryService" WHERE id = $1`,
+      params.id,
+    ).then(rows => rows[0]);
 
     return NextResponse.json({ service: updated });
   } catch (err) {

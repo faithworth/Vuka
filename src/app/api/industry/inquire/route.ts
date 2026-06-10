@@ -50,3 +50,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getServerUser();
+    if (!user || user.role !== 'industry') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { inquiryId, status } = await req.json();
+    if (!inquiryId || !['accepted', 'rejected', 'completed'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    const iu = await prisma.industryUser.findUnique({ where: { userId: user.id } });
+    if (!iu) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Confirm the inquiry belongs to one of this industry user's services
+    const inquiry = await prisma.serviceInquiry.findFirst({
+      where: {
+        id: inquiryId,
+        industryService: { industryUserId: iu.id },
+      },
+    });
+    if (!inquiry) return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 });
+
+    const updated = await prisma.serviceInquiry.update({
+      where: { id: inquiryId },
+      data: { status },
+    });
+
+    return NextResponse.json({ ok: true, inquiry: updated });
+  } catch (err) {
+    console.error('[industry/inquire PATCH]', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
