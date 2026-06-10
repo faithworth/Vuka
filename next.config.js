@@ -144,7 +144,10 @@ const nextConfig = {
   },
 
   // Prevent accidental exposure of server-only modules in client bundle
-  serverExternalPackages: ['@prisma/client', 'prisma'],
+  // (Next.js 14 key — renamed to serverExternalPackages in v15)
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  },
 
   // TypeScript / ESLint: surface errors in CI
   typescript: {

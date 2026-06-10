@@ -31,7 +31,6 @@ const ARTIST_NAV = [
   { href: '/dashboard/videos',         label: 'Videos',      icon: Video },
   { href: '/dashboard/memberships',    label: 'Memberships', icon: Users },
   { href: '/dashboard/storefront',     label: 'Storefront',  icon: Store },
-  { href: '/dashboard/merch',          label: 'Merch',       icon: Package },
   { href: '/dashboard/purchases',      label: 'Sales',       icon: ShoppingBag },
   { href: '/dashboard/support',        label: 'Fan Support', icon: Heart },
   { href: '/dashboard/goals',          label: 'Goals',       icon: Target },
