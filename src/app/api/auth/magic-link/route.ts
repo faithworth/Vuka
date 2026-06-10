@@ -6,7 +6,7 @@
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/superbase_server';
+import { createServiceClient } from '@/lib/supabase_server';
 import { sendMagicLink } from '@/lib/emails';
 
 export async function POST(req: NextRequest) {

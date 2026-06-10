@@ -250,7 +250,7 @@ async function banSupabaseUser(
   adminId: string
 ): Promise<void> {
   try {
-    const { createServiceClient } = await import('./superbase_server');
+    const { createServiceClient } = await import('./supabase_server');
     const supabaseAdmin = await createServiceClient();
 
     // Look up Supabase user by email

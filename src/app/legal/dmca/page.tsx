@@ -58,7 +58,7 @@ export default function DMCAPage() {
 
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text)' }}>URL of Infringing Content on Vuka *</label>
-              <input className="input" required value={form.itemUrl} onChange={e => setForm(p => ({ ...p, itemUrl: e.target.value }))} placeholder="https://vuka-distro.vercel.app/beat/..." />
+              <input className="input" required value={form.itemUrl} onChange={e => setForm(p => ({ ...p, itemUrl: e.target.value }))} placeholder="https://vuka.co.za/beat/..." />
             </div>
 
             <div>

@@ -58,7 +58,7 @@ const ENV_MANIFEST: EnvVar[] = [
   {
     key: 'NEXT_PUBLIC_APP_URL',
     required: true,
-    description: 'Full public URL (e.g. https://www.vuka.app)',
+    description: 'Full public URL (e.g. https://www.vuka.co.za)',
     validate: (v) => (v.startsWith('https://') ? null : 'Must start with https://'),
   },
   {
@@ -82,7 +82,7 @@ const ENV_MANIFEST: EnvVar[] = [
   {
     key: 'CLOUDFLARE_R2_PUBLIC_URL',
     required: true,
-    description: 'R2 public CDN base URL (e.g. https://cdn.vuka.app)',
+    description: 'R2 public CDN base URL (e.g. https://cdn.vuka.co.za)',
     validate: (v) => (v.startsWith('https://') ? null : 'Must be an https:// URL'),
   },
   {
@@ -94,7 +94,7 @@ const ENV_MANIFEST: EnvVar[] = [
 
   // ── Email ────────────────────────────────────────────────────────────────
   { key: 'RESEND_API_KEY', required: true,  description: 'Resend API key for transactional email' },
-  { key: 'EMAIL_FROM',     required: false, description: 'From address (default: noreply@mail.vuka.app)' },
+  { key: 'EMAIL_FROM',     required: false, description: 'From address (default: noreply@mail.vuka.co.za)' },
 
   // ── Payments — PayFast (ZA primary) ─────────────────────────────────────
   { key: 'PAYFAST_MERCHANT_ID',  required: true,  description: 'PayFast merchant ID' },

@@ -48,7 +48,7 @@ export function buildPayFastPaymentUrl(input: PayFastPaymentInput): string {
     merchant_key: MERCHANT_KEY,
     return_url: returnUrl,
     cancel_url: cancelUrl,
-    notify_url: `${APP_URL}/api/webhooks/payfast`,
+    notify_url: `${APP_URL}/api/checkout/payfast/notify`,
     name_first: buyerFirstName.slice(0, 100),
     name_last: buyerLastName.slice(0, 100),
     email_address: buyerEmail,

@@ -132,29 +132,27 @@ const nextConfig = {
 
   async redirects() {
     return [
-      // Canonical redirect: non-www → www (handled by Cloudflare in prod,
-      // but keep here as fallback)
+      // Canonical redirect: non-www → www
       {
         source: '/:path*',
-        has: [{ type: 'host', value: 'vuka.app' }],
-        destination: 'https://www.vuka.app/:path*',
+        has: [{ type: 'host', value: 'vuka.co.za' }],
+        destination: 'https://www.vuka.co.za/:path*',
         permanent: true,
       },
     ];
   },
 
   // Prevent accidental exposure of server-only modules in client bundle
-  // (Next.js 14 key — renamed to serverExternalPackages in v15)
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   },
 
-  // TypeScript / ESLint: surface errors in CI
+  // TypeScript / ESLint: errors must not be silenced — fix them, don't hide them
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
 
   // Phase 11: bundle analyser support — set ANALYZE=true locally

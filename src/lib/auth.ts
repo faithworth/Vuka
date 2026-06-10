@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from './superbase_server';
+import { createServerSupabaseClient } from './supabase_server';
 import prisma from './prisma';
 
 export async function getServerUser() {

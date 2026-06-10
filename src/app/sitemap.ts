@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://vuka-distro.vercel.app';
+  const base = 'https://www.vuka.co.za';
   return [
     { url: base, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${base}/store`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
