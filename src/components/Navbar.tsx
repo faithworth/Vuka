@@ -90,6 +90,7 @@ export function Navbar() {
     { href: '/store/releases', label: 'Releases' },
     { href: '/store/videos', label: 'Videos' },
     { href: '/store/samples', label: 'Samples' },
+    { href: '/marketplace', label: 'Marketplace' },
     { href: '/industry', label: 'Industry' },
   ];
 

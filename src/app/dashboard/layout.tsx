@@ -5,6 +5,7 @@
 //   - Added "Videos" nav item (video/sample upload management)
 //   - Added "Messages" nav item with unread badge
 //   - Fixed: messages link was missing from dashboard nav entirely
+//   - Removed "Merch" nav item (physical goods not offered on Vuka)
 // ============================================================
 
 'use client';

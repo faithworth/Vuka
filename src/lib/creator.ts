@@ -6,6 +6,12 @@
 
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
+import { platformFee as calcFee, artistNet as calcNet } from './plans';
+
+function getPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // ── Subscription Tier Management ──────────────────────────────
 
@@ -66,12 +72,19 @@ export async function createMembership(params: {
   artistId: string;
   billingInterval: 'monthly' | 'yearly';
   payfastToken?: string;
-  // stripeSubId removed — Stripe not used
+  fanName?: string;
+  fanEmail?: string;
 }) {
   const tier = await prisma.creatorSubscriptionTier.findUnique({
     where: { id: params.tierId },
   });
   if (!tier) throw new Error('Tier not found');
+
+  // Fetch artist plan for accurate fee rate
+  const artist = await prisma.artist.findUnique({
+    where: { id: params.artistId },
+    select: { planSlug: true, planExpiresAt: true },
+  });
 
   const now = new Date();
   const periodEnd = new Date(now);
@@ -81,23 +94,76 @@ export async function createMembership(params: {
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
-  const existing = await prisma.creatorMembership.findFirst({
-    where: { userId: params.userId, tierId: params.tierId },
-  });
-  if (existing) {
-    return prisma.creatorMembership.update({
-      where: { id: existing.id },
-      data: { status: 'active', expiresAt: periodEnd },
+  const amount = tier.price;
+  const fee    = calcFee(amount, artist?.planSlug, artist?.planExpiresAt);
+  const net    = calcNet(amount, artist?.planSlug, artist?.planExpiresAt);
+  const period = getPeriod();
+
+  return prisma.$transaction(async (tx) => {
+    // Upsert membership record
+    const existing = await tx.creatorMembership.findFirst({
+      where: { userId: params.userId, tierId: params.tierId },
     });
-  }
-  return prisma.creatorMembership.create({
-    data: {
-      userId:    params.userId,
-      tierId:    params.tierId,
-      artistId:  params.artistId,
-      status:    'active',
-      expiresAt: periodEnd,
-    },
+    const membership = existing
+      ? await tx.creatorMembership.update({
+          where: { id: existing.id },
+          data: { status: 'active', expiresAt: periodEnd },
+        })
+      : await tx.creatorMembership.create({
+          data: {
+            userId:    params.userId,
+            tierId:    params.tierId,
+            artistId:  params.artistId,
+            status:    'active',
+            expiresAt: periodEnd,
+          },
+        });
+
+    // Record as SupportTxn so it appears in Finance > Tips tab
+    const fan = await tx.user.findUnique({
+      where: { id: params.userId },
+      select: { email: true, name: true },
+    });
+    await tx.supportTxn.create({
+      data: {
+        fanUserId: params.userId,
+        fanEmail:  fan?.email  || params.fanEmail  || '',
+        fanName:   fan?.name   || params.fanName   || 'Fan',
+        artistId:  params.artistId,
+        amount,
+        currency:  tier.currency || 'ZAR',
+        tier:      tier.name,
+        message:   `Fan membership: ${tier.name} (${params.billingInterval})`,
+        status:    'confirmed',
+      },
+    });
+
+    // Queue net payout for artist
+    await tx.artistPayout.create({
+      data: {
+        artistId:  params.artistId,
+        amount:    net,
+        currency:  tier.currency || 'ZAR',
+        method:    'bank',
+        status:    'pending',
+        notes:     `Fan membership: ${tier.name} — Vuka kept R${fee.toFixed(2)}`,
+      },
+    });
+
+    // Platform RevenueRecord
+    await tx.revenueRecord.create({
+      data: {
+        artistId:    params.artistId,
+        type:        'membership',
+        amount,
+        platformFee: fee,
+        netAmount:   net,
+        period,
+        currency:    tier.currency || 'ZAR',
+      },
+    });
+
+    return membership;
   });
 }
 
@@ -113,6 +179,10 @@ export async function cancelMembership(userId: string, tierId: string) {
 export async function renewMembership(membershipId: string, amount: number) {
   const membership = await prisma.creatorMembership.findUnique({
     where: { id: membershipId },
+    include: {
+      tier: true,
+      artist: { select: { planSlug: true, planExpiresAt: true } },
+    },
   });
   if (!membership) throw new Error('Membership not found');
 
@@ -120,12 +190,42 @@ export async function renewMembership(membershipId: string, amount: number) {
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-  return prisma.creatorMembership.update({
-    where: { id: membershipId },
-    data: {
-      status: 'active',
-      expiresAt: periodEnd,
-    },
+  const fee    = calcFee(amount, membership.artist?.planSlug, membership.artist?.planExpiresAt);
+  const net    = calcNet(amount, membership.artist?.planSlug, membership.artist?.planExpiresAt);
+  const period = getPeriod();
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.creatorMembership.update({
+      where: { id: membershipId },
+      data: { status: 'active', expiresAt: periodEnd },
+    });
+
+    // Queue payout for renewal
+    await tx.artistPayout.create({
+      data: {
+        artistId:  membership.artistId,
+        amount:    net,
+        currency:  membership.tier?.currency || 'ZAR',
+        method:    'bank',
+        status:    'pending',
+        notes:     `Membership renewal: ${membership.tier?.name || 'tier'} — Vuka kept R${fee.toFixed(2)}`,
+      },
+    });
+
+    // Revenue record for renewal
+    await tx.revenueRecord.create({
+      data: {
+        artistId:    membership.artistId,
+        type:        'membership',
+        amount,
+        platformFee: fee,
+        netAmount:   net,
+        period,
+        currency:    membership.tier?.currency || 'ZAR',
+      },
+    });
+
+    return updated;
   });
 }
 

@@ -131,6 +131,21 @@ export async function POST(req: NextRequest) {
       itemName    = sample.title;
       artistEmail = sample.artist.user.email;
 
+    } else if (itemType === 'merch') {
+      const item = await prisma.merch.findUnique({
+        where: { id: itemId },
+        include: { artist: { include: { user: true } } },
+      });
+      if (!item || !item.isActive) {
+        return NextResponse.json({ error: 'Merch item not found or unavailable' }, { status: 404 });
+      }
+      if (item.stock <= 0) {
+        return NextResponse.json({ error: 'Out of stock' }, { status: 400 });
+      }
+      amount      = item.price;
+      itemName    = item.title;
+      artistEmail = item.artist.user.email;
+
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
     }
@@ -152,6 +167,7 @@ export async function POST(req: NextRequest) {
           distributionReleaseId:   itemType === 'release' && isDistrib ? itemId : null,
           videoId:                 itemType === 'video' ? itemId : null,
           sampleId:                itemType === 'sample' ? itemId : null,
+          merchId:                 itemType === 'merch' ? itemId : null,
           amount:                  0,
           currency,
           licenseType:             licenseType || '',
@@ -198,6 +214,7 @@ export async function POST(req: NextRequest) {
         distributionReleaseId: itemType === 'release' && isDistribPaid  ? itemId : null,
         videoId:               itemType === 'video' ? itemId : null,
         sampleId:              itemType === 'sample' ? itemId : null,
+        merchId:               itemType === 'merch' ? itemId : null,
         amount,
         currency,
         licenseType:           licenseType || '',
