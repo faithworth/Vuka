@@ -1,7 +1,15 @@
 // src/app/api/webhooks/payfast/route.ts
-// Handles ONLY IndustryServiceOrder payments (m_payment_id prefix: iso_<orderId>).
-// All other PayFast ITNs are handled by /api/checkout/payfast/notify.
-// payfast.service.ts notify_url now correctly points to /api/checkout/payfast/notify.
+//
+// PayFast ITN ROUTING REFERENCE — each handler is narrowly scoped by m_payment_id prefix:
+//   iso_<id>  → THIS FILE   — IndustryServiceOrder payments
+//   (bare id) → /api/checkout/payfast/notify    — Beat/release purchases
+//   sub_<id>  → /api/plans/notify               — Artist plan subscriptions
+//   mkt_<id>  → /api/marketplace/checkout/notify — Marketplace service orders
+//   sup_<id>  → /api/support/payfast-notify     — Tip / support payments
+//   mem_<id>  → /api/creator/memberships/notify — Fan memberships
+//
+// This file ONLY processes payments with m_payment_id starting with "iso_".
+// Any other payment ID received here is ignored and returns 200 OK.
 
 export const dynamic = 'force-dynamic';
 

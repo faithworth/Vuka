@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     'amapiano distribution', 'gqom beats', 'afrobeats distribution',
     'payfast music', 'boomplay distribution', 'audiomack distribution',
   ],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app'),
-  alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app' },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za'),
+  alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za' },
   robots: {
     index: true,
     follow: true,
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     title: 'Vuka — Release. Distribute. Earn. Own.',
     description:
       "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. PayFast payments.",
-    url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za',
     siteName: 'Vuka',
     type: 'website',
     locale: 'en_ZA',

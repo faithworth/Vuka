@@ -1101,17 +1101,21 @@ model ModerationAction {
 }
 
 model ContentFlag {
-  id          String   @id @default(cuid())
-  contentType String   // beat, release, post, comment, artist
+  id          String    @id @default(cuid())
+  contentType String    // beat, release, post, comment, artist
   contentId   String
-  flagType    String   // removed, dmca, explicit, spam, copyright, misleading
-  adminId     String   @default("")
-  reason      String   @default("")
-  flaggedBy   String   @default("")
-  isActive    Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  flagType    String    // removed, dmca, explicit, spam, copyright, misleading
+  adminId     String    @default("")
+  reason      String    @default("")
+  flaggedBy   String    @default("")
+  status      String    @default("open") // open, OPEN, UNDER_REVIEW, RESOLVED, DISMISSED
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  isActive    Boolean   @default(true)
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
 
+  @@index([status, createdAt])
   @@unique([contentType, contentId, flagType])
 }
 

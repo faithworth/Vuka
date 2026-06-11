@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.app';
+    const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
     const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
 
     let itemName     = 'your purchase';

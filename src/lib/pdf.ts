@@ -131,7 +131,7 @@ export async function generateLicensePDF({
 
   // Footer
   y = 50;
-  page.drawText('Vuka Music Commerce Platform — vuka.app', { x: left, y, size: 9, font: regular, color: muted });
+  page.drawText('Vuka Music Commerce Platform — vuka.co.za', { x: left, y, size: 9, font: regular, color: muted });
   page.drawText(`Generated ${date.toISOString()}`, { x: left, y: 35, size: 8, font: regular, color: rgb(0.3, 0.25, 0.45) });
 
   const bytes = await doc.save();

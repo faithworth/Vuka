@@ -33,6 +33,9 @@ const env = {
 if (isCI) {
   const migrationsToResolve = [
     '20250527_platform_settings_and_email',
+    // Phase 12 cleanup migrations — safe to re-resolve if already applied
+    '20260604_phase12_cleanup',
+    '20260604_role_repair',
   ];
   for (const name of migrationsToResolve) {
     try {

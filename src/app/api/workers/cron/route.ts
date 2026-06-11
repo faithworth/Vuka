@@ -17,7 +17,7 @@ import {
 import { retryFailedDeliveries } from '@/lib/distribution';
 
 const CRON_SECRET = process.env.CRON_SECRET;
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.app';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za';
 
 /**
  * GET /api/workers/cron?job=<name>
