@@ -76,6 +76,18 @@ const NEW_MIGRATIONS = [
   // 2026-06-09: DistributionRelease pricing — price/minPrice/payWhatYouWant missing from DB.
   // All dist. release sales were R0. Also adds Purchase.distributionReleaseId FK.
   '20260609_fix_distributionrelease_pricing',
+  // 2026-06-10: Add distributor column to DistributionRelease.
+  // Tracks which distribution partner handled the release (default: 'Vuka').
+  'add_distributor_column',
+  // 2026-06-10: IndustryServiceOrder table — artists pay industry professionals through Vuka.
+  // Adds openToOffers flag on Artist + industryOrderId on ArtistPayout for earnings tracking.
+  '20260610_industry_service_payments',
+  // 2026-06-10: Merch checkout columns + SupportTxn.payfastPaymentId.
+  // Safe to re-run — all IF NOT EXISTS.
+  '20260610_merch_checkout_membership_revenue',
+  // 2026-06-10: Purchase.artistId FK (for subscription/membership/marketplace rows)
+  // + CreatorMembership.billingInterval + SupportTxn.payfastPaymentId.
+  '20260610_purchase_artistid_membership_billing',
 ];
 
 export async function GET(req: NextRequest) {
