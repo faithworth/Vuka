@@ -710,6 +710,7 @@ model PayoutRequest {
   bankAccount     ArtistBankAccount? @relation(fields: [bankAccountId], references: [id])
   status          String   @default("pending") // pending, approved, paid, rejected
   adminNotes      String   @default("")
+  approvedAt      DateTime?
   processedAt     DateTime?
   createdAt       DateTime @default(now())
 
