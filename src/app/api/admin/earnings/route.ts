@@ -188,11 +188,11 @@ export async function POST(req: NextRequest) {
       // Audit log
       await prisma.adminLog?.create?.({
         data: {
-          adminId: user.id,
-          action: 'manual_credit',
+          actorId:    user.id,
+          action:     'manual_credit',
           targetType: 'artist',
-          targetId: artistId,
-          details: { amount, currency, period, notes, recordId: record.id },
+          targetId:   artistId,
+          notes:      `amount=${amount} currency=${currency} period=${period} record=${record.id}${notes ? ' notes=' + notes : ''}`,
         },
       }).catch(() => null); // Non-blocking
 
