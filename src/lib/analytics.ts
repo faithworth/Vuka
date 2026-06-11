@@ -3,7 +3,7 @@
  * Creator analytics, audience, revenue, stream, geography, engagement, conversion
  */
 
-import prisma from './prisma';
+import prisma, { queryRaw } from './prisma';
 import { incrementDailyRollup } from './social';
 
 // ── PAGE VIEW TRACKING ────────────────────────────────────────
@@ -413,50 +413,56 @@ export async function getPlatformAnalytics() {
  * Reads from AnalyticsEvent where platform is stored.
  */
 export async function getStreamingBreakdown(artistId: string, days = 30) {
-  const since = new Date(Date.now() - days * 86_400_000);
-
-  // Get plays grouped by platform from AnalyticsEvent
-  const events = await prisma.analyticsEvent.groupBy({
-    by: ['platform'],
-    where: {
-      userId: artistId,
-      eventType: 'play',
-      occurredAt: { gte: since },
-      platform: { not: null },
-    },
-    _count: { id: true },
-    orderBy: { _count: { id: 'desc' } },
-  }).catch(() => []);
-
-  const total = events.reduce((s, e) => s + e._count.id, 0) || 1;
-
-  return events.map((e) => ({
-    platform: e.platform ?? 'Unknown',
-    streams: e._count.id,
-    pct: parseFloat(((e._count.id / total) * 100).toFixed(1)),
-  }));
+  // AnalyticsEvent table not yet in schema — return empty breakdown gracefully.
+  // When the table is added, replace this with a proper groupBy query.
+  try {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const rows = await queryRaw<any>(
+      `SELECT platform, COUNT(id)::int AS cnt
+         FROM "AnalyticsEvent"
+        WHERE "userId" = $1
+          AND "eventType" = 'play'
+          AND "occurredAt" >= $2::timestamptz
+          AND platform IS NOT NULL
+        GROUP BY platform
+        ORDER BY cnt DESC`,
+      artistId, since,
+    );
+    const total = rows.reduce((s: number, e: any) => s + (e.cnt ?? 0), 0) || 1;
+    return rows.map((e: any) => ({
+      platform: e.platform ?? 'Unknown',
+      streams: e.cnt ?? 0,
+      pct: parseFloat((((e.cnt ?? 0) / total) * 100).toFixed(1)),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
  * Get artist-level time series for streams per day (from AnalyticsEvent).
  */
 export async function getStreamTimeSeries(artistId: string, days = 30) {
+  // AnalyticsEvent table not yet in schema — return zero-filled series gracefully.
   const since = new Date(Date.now() - days * 86_400_000);
-
-  const events = await prisma.analyticsEvent.findMany({
-    where: { userId: artistId, eventType: 'play', occurredAt: { gte: since } },
-    select: { occurredAt: true, platform: true },
-    orderBy: { occurredAt: 'asc' },
-  }).catch(() => []);
-
-  // Bucket by day
   const byDay: Record<string, number> = {};
-  events.forEach((e) => {
-    const day = e.occurredAt.toISOString().slice(0, 10);
-    byDay[day] = (byDay[day] ?? 0) + 1;
-  });
 
-  // Fill gaps
+  try {
+    const rows = await queryRaw<any>(
+      `SELECT DATE("occurredAt")::text AS day, COUNT(id)::int AS cnt
+         FROM "AnalyticsEvent"
+        WHERE "userId" = $1
+          AND "eventType" = 'play'
+          AND "occurredAt" >= $2::timestamptz
+        GROUP BY DATE("occurredAt")
+        ORDER BY day ASC`,
+      artistId, since.toISOString(),
+    );
+    rows.forEach((r: any) => { byDay[r.day] = r.cnt ?? 0; });
+  } catch {
+    // Table doesn't exist yet — byDay stays empty, series filled with zeros below
+  }
+
   const result: { date: string; streams: number }[] = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(since.getTime() + i * 86_400_000).toISOString().slice(0, 10);
