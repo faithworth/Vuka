@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [rows, countRows, planCountRows] = await Promise.all([
-      queryRaw(`
+      queryRaw<any>(`
         SELECT
           a.id, a.name, a.slug, a."planSlug", a."planExpiresAt", a."createdAt",
           u.id    AS "userId",
@@ -54,13 +54,13 @@ export async function GET(req: NextRequest) {
         ORDER BY a."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `, ...params),
-      queryRaw(`
+      queryRaw<any>(`
         SELECT COUNT(*)::int AS total
         FROM "Artist" a
         JOIN "User" u ON u.id = a."userId"
         ${where}
       `, ...params),
-      queryRaw(`
+      queryRaw<any>(`
         SELECT "planSlug", COUNT(*)::int AS cnt FROM "Artist" GROUP BY "planSlug"
       `),
     ]);
