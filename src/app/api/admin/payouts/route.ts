@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Can only approve pending requests' }, { status: 409 });
         await prisma.payoutRequest.update({
           where: { id: requestId },
-          data: { status: 'approved', adminNotes: notes || '' },
+          data: { status: 'approved', approvedAt: new Date(), adminNotes: notes || '' },
         });
         await auditLog.adminAction('payment.payout_approved', 'PayoutRequest', requestId, user.id, notes || '');
         // Phase 9: notify artist

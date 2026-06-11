@@ -91,6 +91,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-11: Add liveNotifiedAt to DistributionRelease.
   // Tracks whether the artist has been notified their release went live (cron notify_live job).
   '20260611_add_live_notified_at',
+  // 2026-06-11: Add approvedAt to PayoutRequest.
+  // Used by cron payout_process job to find stale approved payouts (>24h).
+  '20260611_add_payout_approved_at',
 ];
 
 export async function GET(req: NextRequest) {
