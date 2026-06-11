@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendPayoutRequested({
         to: user.email,
-        artistName: user.artist.name || user.displayName || 'Artist',
+        artistName: user.artist.name || user.name || 'Artist',
         amount: Number(amount),
         currency: currency || 'ZAR',
         payoutMethod: method === 'bank_transfer' ? 'Bank Transfer' : method === 'paypal' ? 'PayPal' : 'PayFast',
