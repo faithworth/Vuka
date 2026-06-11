@@ -556,6 +556,7 @@ model MarketplaceService {
   portfolioUrls String[]           @default([])
   requirements  String             @default("")
   isActive      Boolean            @default(true)
+  totalOrders   Int                @default(0)
   orders        MarketplaceOrder[]
   reviews       ServiceReview[]
   createdAt     DateTime           @default(now())
