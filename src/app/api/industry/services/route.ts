@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const id = crypto.randomUUID();
     const now = new Date();
 
-    await prisma.$executeRawUnsafe(
+    await executeRaw(
       `INSERT INTO "IndustryService"
          (id, "industryUserId", title, description, category, "priceZAR", "pricingModel", "deliveryDays", "isActive", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9::timestamptz, $9::timestamptz)`,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       now,
     );
 
-    const service = await prisma.$queryRawUnsafe<any[]>(
+    const service = await queryRaw(
       `SELECT * FROM "IndustryService" WHERE id = $1`,
       id,
     ).then(rows => rows[0]);

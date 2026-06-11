@@ -5,7 +5,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await req.json();
     const now = new Date();
 
-    await prisma.$executeRawUnsafe(
+    await executeRaw(
       `UPDATE "IndustryService"
        SET title        = $1,
            description  = $2,
@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       params.id,
     );
 
-    const updated = await prisma.$queryRawUnsafe<any[]>(
+    const updated = await queryRaw(
       `SELECT * FROM "IndustryService" WHERE id = $1`,
       params.id,
     ).then(rows => rows[0]);

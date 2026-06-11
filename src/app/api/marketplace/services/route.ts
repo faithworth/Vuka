@@ -8,7 +8,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
 // GET — list marketplace services (public, with filters)
 export async function GET(req: NextRequest) {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     // Raw query avoids Prisma crashing on portfolioUrls stored as jsonb string
     // instead of native TEXT[] (type mismatch in existing rows).
-    const services = await prisma.$queryRawUnsafe<any[]>(
+    const services = await queryRaw(
       `SELECT s.id, s."artistId", s.title, s.description, s.category,
               s.price, s."deliveryDays", s.packages, s.requirements,
               s."isActive", s."createdAt",
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     const id  = require('crypto').randomUUID().replace(/-/g, '').slice(0, 25);
     const now = new Date().toISOString();
 
-    await prisma.$executeRawUnsafe(
+    await executeRaw(
       `INSERT INTO "MarketplaceService"
          (id, "artistId", title, description, category, price, "deliveryDays", packages, "portfolioUrls", requirements, "isActive", "totalOrders", "rating", "reviewCount", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::text[], $10, true, 0, 0.0, 0, $11::timestamptz, $11::timestamptz)`,
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     // Use raw query — Prisma's findUnique crashes if portfolioUrls was stored
     // as a jsonb string instead of a native TEXT[] (type mismatch in some rows).
-    const rows = await prisma.$queryRawUnsafe<any[]>(
+    const rows = await queryRaw(
       `SELECT id, "artistId", title, description, category, price, "deliveryDays",
               packages, requirements, "isActive", "createdAt"
        FROM "MarketplaceService" WHERE id = $1`,

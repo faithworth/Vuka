@@ -14,14 +14,14 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { verifyPayFastITN, type PayFastITNPayload } from '@/lib/services/payfast.service';
 import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 
 const INDUSTRY_PLATFORM_FEE_PCT = 0.10; // 10 % charged to industry buyers (fixed — not plan-based)
 
 async function processIndustryServiceOrder(orderId: string, payfastPaymentId: string, amountGross: number) {
-  const order = await prisma.$queryRawUnsafe<any[]>(
+  const order = await queryRaw(
     `SELECT iso.*,
             iu."userId" AS "industryUserId_user",
             a."userId"  AS "artistUserId",
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (payload.payment_status === 'COMPLETE') {
       await processIndustryServiceOrder(orderId, payfastPaymentId, amountGross);
     } else {
-      await prisma.$executeRawUnsafe(
+      await executeRaw(
         `UPDATE "IndustryServiceOrder" SET status = 'failed', "updatedAt" = now() WHERE id = $1`,
         orderId,
       );

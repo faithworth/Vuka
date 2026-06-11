@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     // Raw query — works with any Prisma client version
     const [rows, countRows] = await Promise.all([
-      prisma.$queryRawUnsafe<any[]>(`
+      queryRaw(`
         SELECT
           u.id, u.name, u.email, u.role, u."createdAt", u."isSuspended",
           a.id          AS "artistId",
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         ORDER BY u."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `, ...params),
-      prisma.$queryRawUnsafe<any[]>(`
+      queryRaw(`
         SELECT COUNT(*)::int AS total FROM "User" u ${where}
       `, ...params),
     ]);

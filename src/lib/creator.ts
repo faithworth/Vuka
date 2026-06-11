@@ -4,7 +4,7 @@
 // exclusive content, analytics, revenue tracking.
 // ============================================================
 
-import prisma from './prisma';
+import prisma, { queryRaw, executeRaw } from './prisma';
 import { Prisma } from '@prisma/client';
 import { platformFee as calcFee, artistNet as calcNet } from './plans';
 
@@ -17,7 +17,7 @@ function getPeriod(): string {
 
 export async function getArtistTiers(artistId: string) {
   // Raw query — perks is jsonb in DB but Prisma schema says String[]; findMany crashes.
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await queryRaw(
     `SELECT t.*, COUNT(m.id)::int AS "membershipCount"
        FROM "CreatorSubscriptionTier" t
        LEFT JOIN "CreatorMembership" m ON m."tierId" = t.id
@@ -62,7 +62,7 @@ export async function createTier(
   const desc     = data.description || '';
   const perksJson = JSON.stringify(perksStrings);
 
-  await prisma.$executeRawUnsafe(
+  await executeRaw(
     `INSERT INTO "CreatorSubscriptionTier"
        (id, "artistId", name, "priceMonthly", currency, description, perks, "isActive", "createdAt", "updatedAt")
      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, true, $8::timestamptz, $8::timestamptz)`,
@@ -70,7 +70,7 @@ export async function createTier(
   );
 
   // Raw query — Prisma findUnique crashes reading perks (jsonb vs String[])
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await queryRaw(
     `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, id,
   );
   if (!rows[0]) return null;
@@ -89,7 +89,7 @@ export async function createMembership(params: {
   fanName?: string;
   fanEmail?: string;
 }) {
-  const tierRows = await prisma.$queryRawUnsafe<any[]>(
+  const tierRows = await queryRaw(
     `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, params.tierId,
   );
   if (!tierRows[0]) throw new Error('Tier not found');

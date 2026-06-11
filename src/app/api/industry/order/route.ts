@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { buildPayFastPaymentUrl } from '@/lib/services/payfast.service';
 
 // 10% platform fee charged to industry (deducted from what industry receives)
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     const { platformFee, netAmount } = calcFees(amount);
 
     // Create pending order
-    const order = await prisma.$queryRawUnsafe<any[]>(
+    const order = await queryRaw(
       `INSERT INTO "IndustryServiceOrder"
          (id, "serviceId", "artistId", "industryUserId", amount, "platformFee", "netAmount", currency, status, requirements, "createdAt", "updatedAt")
        VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, 'ZAR', 'pending', $7, now(), now())
@@ -97,7 +97,7 @@ export async function GET() {
       const iu = await prisma.industryUser.findUnique({ where: { userId: user.id } });
       if (!iu) return NextResponse.json({ orders: [] });
 
-      const orders = await prisma.$queryRawUnsafe<any[]>(
+      const orders = await queryRaw(
         `SELECT iso.*, 
                 s.title AS "serviceTitle", s.category, s."priceZAR",
                 a.name AS "artistName", a.slug AS "artistSlug", a."photoUrl" AS "artistPhoto"
@@ -115,7 +115,7 @@ export async function GET() {
     const artist = await prisma.artist.findUnique({ where: { userId: user.id } });
     if (!artist) return NextResponse.json({ orders: [] });
 
-    const orders = await prisma.$queryRawUnsafe<any[]>(
+    const orders = await queryRaw(
       `SELECT iso.*,
               s.title AS "serviceTitle", s.category, s."priceZAR",
               iu."companyName", iu.role AS "industryRole",

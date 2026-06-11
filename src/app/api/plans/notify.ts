@@ -8,8 +8,9 @@
  * The actual PayFast plan subscription ITN handler is at:
  *   src/app/api/plans/notify/route.ts
  *
- * This file is kept to prevent confusion from import errors and to document
- * the historical artefact. It exports nothing and does nothing.
+ * This file intentionally exports nothing and must not be removed — it exists
+ * to prevent import-resolution errors if any tooling mistakenly indexes it.
+ * Do NOT import from this file in any new code.
  *
  * PayFast ITN routing reference (by m_payment_id prefix):
  *   (bare purchase id) → /api/checkout/payfast/notify     — Beat/release purchases
@@ -17,6 +18,7 @@
  *   mkt_<id>           → /api/marketplace/checkout/notify  — Marketplace service orders
  *   sup_<id>           → /api/support/payfast-notify       — Tip/support payments
  *   iso_<id>           → /api/webhooks/payfast             — Industry service orders
+ *   mem_<id>           → /api/creator/memberships/notify   — Fan memberships
  */
 
 export {};

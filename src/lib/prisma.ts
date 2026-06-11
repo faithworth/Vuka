@@ -6,6 +6,10 @@ import { PrismaClient } from "@prisma/client";
  * - Singleton pattern (prevents connection storms in dev hot-reload)
  * - safeQuery() wrapper returns null instead of throwing on DB failure
  * - Circuit-breaker aware: detects ECIRCUITBREAKER and surfaces cleanly
+ * - queryRaw / executeRaw typed wrappers fix TS2347 when the generated
+ *   Prisma client declares PrismaClient as `any` (un-generated stubs).
+ *   All callers should use these helpers instead of calling
+ *   prisma.$queryRawUnsafe<T>() directly.
  */
 
 declare global {
@@ -25,6 +29,44 @@ export const prisma: PrismaClient =
 if (process.env.NODE_ENV !== "production") {
   global.__vukaPrisma = prisma;
 }
+
+// ── Typed raw-query helpers ───────────────────────────────────────────────────
+//
+// When `prisma generate` has not been run (e.g. during Vercel build before the
+// postinstall script executes) the generated client declares PrismaClient as
+// `any`.  TypeScript 4.9+ rejects generic type arguments on `any`-typed calls
+// (error TS2347: Untyped function calls may not accept type arguments).
+//
+// These helpers cast through `unknown` so the type parameter is explicit in
+// our code while avoiding the compiler error.
+
+/**
+ * Type-safe wrapper around $queryRawUnsafe.
+ * Returns rows typed as T[] (default: any[]).
+ */
+export async function queryRaw<T = Record<string, unknown>>(
+  sql: string,
+  ...values: unknown[]
+): Promise<T[]> {
+  return (prisma as unknown as {
+    $queryRawUnsafe: (sql: string, ...v: unknown[]) => Promise<T[]>;
+  }).$queryRawUnsafe(sql, ...values);
+}
+
+/**
+ * Type-safe wrapper around $executeRawUnsafe.
+ * Returns the number of affected rows.
+ */
+export async function executeRaw(
+  sql: string,
+  ...values: unknown[]
+): Promise<number> {
+  return (prisma as unknown as {
+    $executeRawUnsafe: (sql: string, ...v: unknown[]) => Promise<number>;
+  }).$executeRawUnsafe(sql, ...values);
+}
+
+// ── safeQuery ─────────────────────────────────────────────────────────────────
 
 /**
  * Wraps any Prisma query and returns null on failure instead of throwing.

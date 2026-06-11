@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { PLANS } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
-import prisma from '@/lib/prisma';
+import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [rows, countRows, planCountRows] = await Promise.all([
-      prisma.$queryRawUnsafe<any[]>(`
+      queryRaw(`
         SELECT
           a.id, a.name, a.slug, a."planSlug", a."planExpiresAt", a."createdAt",
           u.id    AS "userId",
@@ -54,13 +54,13 @@ export async function GET(req: NextRequest) {
         ORDER BY a."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `, ...params),
-      prisma.$queryRawUnsafe<any[]>(`
+      queryRaw(`
         SELECT COUNT(*)::int AS total
         FROM "Artist" a
         JOIN "User" u ON u.id = a."userId"
         ${where}
       `, ...params),
-      prisma.$queryRawUnsafe<any[]>(`
+      queryRaw(`
         SELECT "planSlug", COUNT(*)::int AS cnt FROM "Artist" GROUP BY "planSlug"
       `),
     ]);
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       const artistIds = rows.map(r => r.id);
       if (artistIds.length > 0) {
         const placeholders = artistIds.map((_: any, i: number) => `$${i + 1}`).join(',');
-        const subs = await prisma.$queryRawUnsafe<any[]>(`
+        const subs = await queryRaw(`
           SELECT * FROM "artist_plan_subscriptions"
           WHERE "artistId" IN (${placeholders})
           ORDER BY "createdAt" DESC

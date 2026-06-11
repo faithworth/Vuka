@@ -94,6 +94,18 @@ const NEW_MIGRATIONS = [
   // 2026-06-11: Add approvedAt to PayoutRequest.
   // Used by cron payout_process job to find stale approved payouts (>24h).
   '20260611_add_payout_approved_at',
+  // 2026-06-11: ContentFlag status fields — adds resolvedAt, resolvedBy, resolution columns.
+  // Confirmed missing via Vercel build logs (schema mismatch on content moderation routes).
+  '20260611_fix_content_flag_status_fields',
+  // 2026-06-11: DistributionRelease pricing fix — corrects price/minPrice/payWhatYouWant
+  // after the initial 20260609 migration was found to be incomplete on some deployments.
+  '20260611_fix_distribution_release_pricing',
+  // 2026-06-11: MarketplaceService.totalOrders default — ensures column is never NULL
+  // so order count queries return 0 instead of crashing with null arithmetic.
+  '20260611_fix_marketplace_service_total_orders',
+  // 2026-06-11: SupportTxn.payfastPaymentId — adds the column that links a tip/support
+  // transaction to its PayFast payment ID for reconciliation and audit.
+  '20260611_fix_supporttxn_payfast_id',
 ];
 
 export async function GET(req: NextRequest) {
