@@ -649,6 +649,7 @@ model DistributionRelease {
   payWhatYouWant   Boolean         @default(false)
   retryCount       Int             @default(0)
   lastRetryAt      DateTime?
+  liveNotifiedAt   DateTime?
   tracks           DistributionTrack[]
   dspDeliveries    DSPDelivery[]
   purchases        Purchase[]

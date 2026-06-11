@@ -88,6 +88,9 @@ const NEW_MIGRATIONS = [
   // 2026-06-10: Purchase.artistId FK (for subscription/membership/marketplace rows)
   // + CreatorMembership.billingInterval + SupportTxn.payfastPaymentId.
   '20260610_purchase_artistid_membership_billing',
+  // 2026-06-11: Add liveNotifiedAt to DistributionRelease.
+  // Tracks whether the artist has been notified their release went live (cron notify_live job).
+  '20260611_add_live_notified_at',
 ];
 
 export async function GET(req: NextRequest) {

@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
                 shareUrl: `${APP_URL()}/releases/${release.id}`,
                 releaseUrl: `${APP_URL()}/dashboard/releases/${release.id}`,
               });
-              await (prisma.distributionRelease as any)
+              await prisma.distributionRelease
                 .update({
                   where: { id: release.id },
                   data: { liveNotifiedAt: new Date() },

@@ -1,11 +1,22 @@
 /**
- * @deprecated This file is NOT served as a Next.js App Router route.
- * Next.js App Router requires route handlers to be in files named `route.ts`
- * inside a directory.
+ * ⚠️  THIS FILE IS NOT A ROUTE AND IS NEVER SERVED.
  *
- * The actual PayFast plan subscription handler is at:
+ * Next.js App Router only serves files named `route.ts` inside a directory.
+ * This file (notify.ts, not route.ts) will NEVER be matched by the router
+ * regardless of what URL is requested.
+ *
+ * The actual PayFast plan subscription ITN handler is at:
  *   src/app/api/plans/notify/route.ts
  *
- * This file exists only as a historical artefact and can be deleted once
- * you confirm no external code references it.
+ * This file is kept to prevent confusion from import errors and to document
+ * the historical artefact. It exports nothing and does nothing.
+ *
+ * PayFast ITN routing reference (by m_payment_id prefix):
+ *   (bare purchase id) → /api/checkout/payfast/notify     — Beat/release purchases
+ *   sub_<id>           → /api/plans/notify/route.ts        — Artist plan subscriptions
+ *   mkt_<id>           → /api/marketplace/checkout/notify  — Marketplace service orders
+ *   sup_<id>           → /api/support/payfast-notify       — Tip/support payments
+ *   iso_<id>           → /api/webhooks/payfast             — Industry service orders
  */
+
+export {};

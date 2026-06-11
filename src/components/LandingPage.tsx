@@ -17,7 +17,7 @@ export default function LandingPage() {
               "@context": "https://schema.org",
               "@type": "WebSite",
               "name": "Vuka",
-              "alternateName": ["Vuka Distro", "vuka-distro"],
+              "alternateName": ["Vuka Music", "Vuka Distro"],
               "url": "https://www.vuka.co.za",
               "description": "Africa's independent music platform. Buy beats and music directly from African artists.",
               "potentialAction": {
