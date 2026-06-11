@@ -304,9 +304,10 @@ model SupportTxn {
   message         String   @default("")
   tier            String   @default("Listener")
   isPublic        Boolean  @default(true)
-  stripePaymentId String?
-  status          String   @default("pending")
-  createdAt       DateTime @default(now())
+  stripePaymentId  String?
+  payfastPaymentId String?
+  status           String   @default("pending")
+  createdAt        DateTime @default(now())
 }
 
 model Goal {
