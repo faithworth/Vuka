@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     // Raw query — works with any Prisma client version
     const [rows, countRows] = await Promise.all([
-      queryRaw(`
+      queryRaw<any>(`
         SELECT
           u.id, u.name, u.email, u.role, u."createdAt", u."isSuspended",
           a.id          AS "artistId",
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         ORDER BY u."createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `, ...params),
-      queryRaw(`
+      queryRaw<any>(`
         SELECT COUNT(*)::int AS total FROM "User" u ${where}
       `, ...params),
     ]);
