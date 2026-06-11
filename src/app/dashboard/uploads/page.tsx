@@ -281,7 +281,7 @@ export default function UploadPage() {
   );
 
   const totalFiles = Object.values(progress).length;
-  const avgProgress = totalFiles > 0 ? Math.round(Object.values(progress).reduce((a, b) => a + b, 0) / totalFiles) : 0;
+  const avgProgress = totalFiles > 0 ? Math.round(Object.values(progress).reduce((a: number, b: number) => a + b, 0) / totalFiles) : 0;
 
   return (
     <div className="p-6 md:p-10 max-w-2xl">

@@ -37,7 +37,7 @@ export async function GET() {
     // Get latest subscription record — wrapped in try/catch because the
     // artist_plan_subscriptions table may not be migrated yet; a missing
     // table must never 500 this route.
-    let subscription = null;
+    let subscription: { status: string; currentPeriodEnd: Date | null; cancelledAt: Date | null } | null = null;
     try {
       subscription = await prisma.artistPlanSubscription.findFirst({
         where: { artistId: user.artist.id },

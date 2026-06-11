@@ -145,7 +145,7 @@ export default function SamplePage() {
             artworkUrl: sample.artworkUrl || '',
             price: sample.price,
             minPrice: sample.price,
-            payWhatYouWant: false,
+            payWhatWant: false,
             artistSharePct: sample.artist?.artistSharePct,
             artist: { name: sample.artist?.name || '' },
           }}

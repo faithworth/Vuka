@@ -22,7 +22,7 @@ import { requireAdmin } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   const adminCheck = await requireAdmin();
-  if (!adminCheck.ok) {
+  if (!adminCheck) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   // Log the broadcast first
   await prisma.broadcastLog.create({
     data: {
-      sentBy: adminCheck.userId,
+      sentBy: adminCheck.id,
       subject,
       title,
       body: msgBody,
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 // GET: list past broadcasts
 export async function GET(req: NextRequest) {
   const adminCheck = await requireAdmin();
-  if (!adminCheck.ok) {
+  if (!adminCheck) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

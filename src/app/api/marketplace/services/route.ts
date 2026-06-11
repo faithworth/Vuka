@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     if (!packages?.length) return NextResponse.json({ error: 'At least one package required' }, { status: 400 });
 
     // Validate + coerce packages structure (all fields must be proper types for Prisma)
-    const coercedPackages = [];
+    const coercedPackages: { name: string; price: number; deliveryDays: number; description: string }[] = [];
     for (const pkg of packages) {
       const price        = Number(pkg.price);
       const deliveryDays = parseInt(String(pkg.deliveryDays), 10);

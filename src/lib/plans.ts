@@ -13,6 +13,7 @@ export interface VukaPlan {
   platformFeePct:  number;   // what Vuka keeps (e.g. 15 = 15%)
   artistSharePct:  number;   // what artist keeps
   releasesPerMonth: number | null; // null = unlimited
+  releasesPerYear?: number | null; // optional — used in admin settings display
   features:        string[];
 }
 
