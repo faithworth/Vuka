@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       const artistIds = rows.map(r => r.id);
       if (artistIds.length > 0) {
         const placeholders = artistIds.map((_: any, i: number) => `$${i + 1}`).join(',');
-        const subs = await queryRaw(`
+        const subs = await queryRaw<any>(`
           SELECT * FROM "artist_plan_subscriptions"
           WHERE "artistId" IN (${placeholders})
           ORDER BY "createdAt" DESC
