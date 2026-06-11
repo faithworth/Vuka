@@ -477,11 +477,12 @@ export async function getStreamTimeSeries(artistId: string, days = 30) {
 export async function getConversionFunnel() {
   const [total, hasUpload, hasDistribution, hasEarnings] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { tracks: { some: {} } } }).catch(() => 0),
+    // 'has uploaded' = artist with at least one beat or release
+    prisma.artist.count({ where: { OR: [{ beats: { some: {} } }, { releases: { some: {} } }] } }).catch(() => 0),
     // Use Artist model as proxy for distribution
     prisma.artist.count().catch(() => 0),
     // Users with at least one RevenueRecord
-    prisma.revenueRecord?.count ? prisma.revenueRecord.count({ where: { netAmount: { gt: 0 } } }).catch(() => 0) : Promise.resolve(0),
+    prisma.revenueRecord.count({ where: { netAmount: { gt: 0 } } }).catch(() => 0),
   ]);
 
   return [
