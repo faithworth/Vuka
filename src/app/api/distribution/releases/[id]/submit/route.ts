@@ -78,7 +78,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
       await sendReleaseSubmitted({
         to: user.email,
-        artistName: user.displayName || release.artistName,
+        artistName: user.name || release.artistName,
         releaseTitle: release.title,
         releaseType: release.releaseType.toUpperCase(),
         trackCount: release.tracks.length,
