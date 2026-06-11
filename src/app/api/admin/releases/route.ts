@@ -84,7 +84,10 @@ export async function POST(req: NextRequest) {
     if (!releaseId || !action)
       return NextResponse.json({ error: 'releaseId and action required' }, { status: 400 });
 
-    const release = await prisma.distributionRelease.findUnique({ where: { id: releaseId } });
+    const release = await prisma.distributionRelease.findUnique({
+      where: { id: releaseId },
+      include: { artist: { include: { user: { select: { email: true } } } } },
+    });
     if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
 
     switch (action) {
