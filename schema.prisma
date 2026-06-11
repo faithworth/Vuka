@@ -250,7 +250,7 @@ model Purchase {
   user               User?        @relation(fields: [userId], references: [id])
   buyerEmail         String
   buyerName          String
-  itemType           String       // beat, release, video, sample, subscription, membership, marketplace
+  itemType           String       // beat, release, video, sample, distribution, subscription, membership, marketplace
   artistId           String?      // direct FK — populated for subscription, membership, marketplace
   artist             Artist?      @relation("PurchaseArtist", fields: [artistId], references: [id])
   beatId             String?
@@ -261,6 +261,8 @@ model Purchase {
   video              Video?       @relation(fields: [videoId], references: [id])
   sampleId           String?
   sample             Sample?      @relation(fields: [sampleId], references: [id])
+  distributionReleaseId String?
+  distributionRelease   DistributionRelease? @relation(fields: [distributionReleaseId], references: [id])
   subscriptionId     String?
   subscription       Subscription? @relation(fields: [subscriptionId], references: [id])
   merchId            String?
@@ -286,6 +288,7 @@ model Purchase {
   @@index([buyerEmail])
   @@index([downloadToken])
   @@index([artistId])
+  @@index([distributionReleaseId])
 }
 
 model SupportTxn {
@@ -643,6 +646,7 @@ model DistributionRelease {
   lastRetryAt      DateTime?
   tracks           DistributionTrack[]
   dspDeliveries    DSPDelivery[]
+  purchases        Purchase[]
   updatedAt        DateTime        @updatedAt
   createdAt        DateTime        @default(now())
 

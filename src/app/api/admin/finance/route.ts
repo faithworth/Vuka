@@ -18,6 +18,7 @@ const PLATFORM_RATE = 0.08; // 8 % Vuka cut
 
 // Helper: resolve the artist for a Purchase row by checking each item relation.
 function resolveArtist(p: {
+  artist?: any;
   beat?: { artistId: string; artist?: any } | null;
   release?: { artistId: string; artist?: any } | null;
   video?: { artistId: string; artist?: any } | null;
@@ -25,6 +26,7 @@ function resolveArtist(p: {
   distributionRelease?: { artistId: string; artist?: any } | null;
 }) {
   return (
+    p.artist ||
     p.beat?.artist ||
     p.release?.artist ||
     p.video?.artist ||
@@ -35,6 +37,7 @@ function resolveArtist(p: {
 }
 
 function resolveArtistId(p: {
+  artistId?: string | null;
   beat?: { artistId: string } | null;
   release?: { artistId: string } | null;
   video?: { artistId: string } | null;
@@ -42,6 +45,7 @@ function resolveArtistId(p: {
   distributionRelease?: { artistId: string } | null;
 }) {
   return (
+    p.artistId ||
     p.beat?.artistId ||
     p.release?.artistId ||
     p.video?.artistId ||
@@ -53,6 +57,9 @@ function resolveArtistId(p: {
 
 // Common include for Purchase → artist via item
 const PURCHASE_INCLUDE = {
+  artist: {                           // direct FK — subscription, membership, marketplace
+    select: { id: true, name: true, photoUrl: true, planSlug: true, planExpiresAt: true },
+  },
   beat: {
     select: {
       artistId: true, title: true,
@@ -347,10 +354,11 @@ export async function GET(req: NextRequest) {
         where: {
           status: 'confirmed',
           OR: [
-            { beat:               { is: { artistId } } },
-            { release:            { is: { artistId } } },
-            { video:              { is: { artistId } } },
-            { sample:             { is: { artistId } } },
+            { artistId },                              // subscription, membership, marketplace
+            { beat:                { is: { artistId } } },
+            { release:             { is: { artistId } } },
+            { video:               { is: { artistId } } },
+            { sample:              { is: { artistId } } },
             { distributionRelease: { is: { artistId } } },
           ],
         },
