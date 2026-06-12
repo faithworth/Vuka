@@ -223,10 +223,10 @@ export async function autoDispatchApprovedPayouts(): Promise<{
     where: {
       status: 'approved',
       // Only dispatch requests approved more than 30 min ago (gives admin time to cancel)
-      updatedAt: { lt: new Date(Date.now() - 30 * 60 * 1000) },
+      approvedAt: { lt: new Date(Date.now() - 30 * 60 * 1000) },
     },
     take: 20, // Cap per run to avoid overload
-    orderBy: { updatedAt: 'asc' },
+    orderBy: { approvedAt: 'asc' },
   });
 
   for (const request of approvedRequests) {
