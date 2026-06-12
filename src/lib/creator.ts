@@ -89,11 +89,26 @@ export async function createMembership(params: {
   fanName?: string;
   fanEmail?: string;
 }) {
-  const tierRows = await queryRaw(
+  interface TierRow {
+    id: string;
+    artistId: string;
+    name: string;
+    priceMonthly: number;
+    price?: number;
+    currency: string;
+    interval: string;
+    description: string;
+    perks: string[] | string;
+    isActive: boolean;
+    createdAt: Date;
+  }
+
+  const tierRows = await queryRaw<TierRow>(
     `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, params.tierId,
   );
   if (!tierRows[0]) throw new Error('Tier not found');
-  const tier = { ...tierRows[0], perks: Array.isArray(tierRows[0].perks) ? tierRows[0].perks : (typeof tierRows[0].perks === 'string' ? JSON.parse(tierRows[0].perks) : []) };
+  const tierRaw = tierRows[0];
+  const tier = { ...tierRaw, perks: Array.isArray(tierRaw.perks) ? tierRaw.perks : (typeof tierRaw.perks === 'string' ? JSON.parse(tierRaw.perks) : []) };
 
   // Fetch artist plan for accurate fee rate
   const artist = await prisma.artist.findUnique({
