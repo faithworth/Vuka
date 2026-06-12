@@ -2,7 +2,8 @@
 // Server component — wraps BlockRenderer with SEO meta injection
 import BlockRenderer from './BlockRenderer';
 
-type Block = { id: string; type: string; content: Record<string, unknown> | null; isVisible: boolean };
+// content mirrors Prisma's JsonValue: string | number | boolean | object | array | null
+type Block = { id: string; type: string; content: unknown; isVisible: boolean };
 
 type FeaturedArtist = {
   id: string; tagline: string; blurb: string;
