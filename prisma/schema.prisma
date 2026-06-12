@@ -62,7 +62,7 @@ model Artist {
   photoUrl         String               @default("")
   coverUrl         String               @default("")
   socialLinks      Json                 @default("{}")
-  payfastMerchant  String?
+  paystackRecipient String?  // bank account number for Paystack payout registration
   planSlug         String               @default("free")
   planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
   currency         String               @default("ZAR")
@@ -274,7 +274,7 @@ model Purchase {
   licenseType        String       @default("")
   licenseId          String       @unique @default(cuid())
   stripePaymentId    String?
-  payfastPfPaymentId String?
+  paystackReference  String?
   status             String       @default("pending") // pending, confirmed, refunded
   licenseUrl         String?
   receiptUrl         String?
@@ -306,9 +306,9 @@ model SupportTxn {
   message         String   @default("")
   tier            String   @default("Listener")
   isPublic        Boolean  @default(true)
-  stripePaymentId  String?
-  payfastPaymentId String?
-  status           String   @default("pending")
+  stripePaymentId    String?
+  paystackReference  String?
+  status             String   @default("pending")
   createdAt        DateTime @default(now())
 }
 
@@ -356,7 +356,7 @@ model ArtistPayout {
   amount        Float
   currency      String   @default("ZAR")
   status        String   @default("pending") // pending, processing, paid, failed
-  method        String   @default("bank")    // bank, payfast
+  method        String   @default("bank")    // bank, paystack, paypal, flutterwave
   reference     String   @default("")
   purchaseId    String?
   notes         String   @default("")
@@ -730,7 +730,7 @@ model ArtistBankAccount {
   branchCode          String        @default("")
   accountType         String        @default("bank")
   paypalEmail         String?
-  payfastMerchantId   String?
+  paystackAccountCode String?  // Paystack transfer recipient code
   isDefault           Boolean       @default(false)
   isVerified          Boolean       @default(false)
   payoutRequests      PayoutRequest[]
@@ -1195,7 +1195,7 @@ model BroadcastLog {
 }
 
 // ── ARTIST PLAN SUBSCRIPTIONS ────────────────────────────────
-// Tracks recurring billing for Pro/Label plans via PayFast.
+// Tracks recurring billing for Pro/Label plans via Paystack.
 
 model ArtistPlanSubscription {
   id                  String    @id @default(cuid())
@@ -1203,8 +1203,8 @@ model ArtistPlanSubscription {
   artist              Artist    @relation(fields: [artistId], references: [id])
   planSlug            String    // pro | label
   status              String    @default("active") // active | cancelled | expired | failed
-  payfastToken        String?   // PayFast recurring token (future use)
-  payfastPaymentId    String?   // last successful pf_payment_id
+  paystackReference  String?   // Paystack payment reference
+  paystackToken       String?   // reserved for future recurring billing
   amount              Float
   currency            String    @default("ZAR")
   billingInterval     String    @default("monthly")

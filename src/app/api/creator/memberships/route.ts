@@ -1,16 +1,15 @@
-// ============================================================
 // src/app/api/creator/memberships/route.ts
-// Fan membership: checkout (PayFast), cancel, list active memberships
-// ============================================================
+// Fan membership checkout via Paystack (replaces PayFast form-POST).
+// On charge.success → /api/creator/memberships/notify activates access.
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { buildPayFastForm } from '@/lib/payfast';
+import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { cancelMembership } from '@/lib/creator';
 
-// GET — list caller's active memberships (fan view)
+// GET — list caller's active memberships
 export async function GET() {
   try {
     const user = await requireAuth();
@@ -19,7 +18,7 @@ export async function GET() {
     const memberships = await prisma.creatorMembership.findMany({
       where: { userId: user.id, status: 'active' },
       include: {
-        tier: true,
+        tier:   true,
         artist: { select: { id: true, name: true, slug: true, photoUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -27,13 +26,12 @@ export async function GET() {
 
     return NextResponse.json({ memberships });
   } catch (err: any) {
-    console.error('[creator/memberships] GET error:', err?.message ?? err);
-    return NextResponse.json({ memberships: [] }, { status: 200 });
+    console.error('[creator/memberships] GET error:', err?.message);
+    return NextResponse.json({ memberships: [] });
   }
 }
 
-// POST — initiate PayFast checkout for a membership tier
-// On ITN confirmation → /api/creator/memberships/notify activates access
+// POST — initiate Paystack checkout for a membership tier
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
@@ -47,70 +45,52 @@ export async function POST(req: NextRequest) {
       where: { id: tierId },
       include: { artist: { include: { user: true } } },
     });
-    if (!tier || !tier.isActive) return NextResponse.json({ error: 'Tier not found or inactive' }, { status: 404 });
-    if (tier.artistId !== artistId) return NextResponse.json({ error: 'Tier/artist mismatch' }, { status: 400 });
+    if (!tier?.isActive)              return NextResponse.json({ error: 'Tier not found or inactive' }, { status: 404 });
+    if (tier.artistId !== artistId)   return NextResponse.json({ error: 'Tier/artist mismatch' }, { status: 400 });
     if (tier.artist.userId === user.id) return NextResponse.json({ error: 'Cannot subscribe to your own tier' }, { status: 400 });
 
-    // Check for existing active membership
-    const existing = await prisma.creatorMembership.findFirst({
-      where: { userId: user.id, tierId, status: 'active' },
-    });
+    const existing = await prisma.creatorMembership.findFirst({ where: { userId: user.id, tierId, status: 'active' } });
     if (existing) return NextResponse.json({ error: 'Already subscribed to this tier' }, { status: 409 });
 
-    const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const isSandbox   = process.env.PAYFAST_SANDBOX === 'true';
-    const merchantId  = isSandbox ? (process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100') : process.env.PAYFAST_MERCHANT_ID!;
-    const merchantKey = isSandbox ? (process.env.PAYFAST_SANDBOX_MERCHANT_KEY || '46f0cd694581a') : process.env.PAYFAST_MERCHANT_KEY!;
-    const passphrase  = process.env.PAYFAST_PASSPHRASE || '';
+    const interval = billingInterval || 'monthly';
+    const amount   = interval === 'yearly' ? tier.price * 12 * 0.9 : tier.price;
 
-    if (!merchantId || !merchantKey) {
-      return NextResponse.json({ error: 'Payment gateway not configured' }, { status: 500 });
-    }
-
-    // Create a pending membership record — activated by ITN
     const membership = await prisma.creatorMembership.create({
       data: {
         userId:          user.id,
         tierId,
         artistId:        tier.artistId,
         status:          'pending',
-        billingInterval: billingInterval || 'monthly',
-        expiresAt:       new Date(), // placeholder — set properly in notify
+        billingInterval: interval,
+        expiresAt:       new Date(),
       },
     });
 
-    const interval = billingInterval || 'monthly';
-    const amount   = interval === 'yearly' ? tier.price * 12 * 0.9 : tier.price; // 10% yearly discount
+    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const reference = generateReference('MEM');
 
-    const formData = buildPayFastForm(
-      {
-        merchant_id:   merchantId,
-        merchant_key:  merchantKey,
-        return_url:    `${appUrl}/artist/${tier.artist.slug}?membership=success`,
-        cancel_url:    `${appUrl}/artist/${tier.artist.slug}`,
-        notify_url:    `${appUrl}/api/creator/memberships/notify`,
-        name_first:    user.name?.split(' ')[0] || user.email.split('@')[0],
-        name_last:     user.name?.split(' ').slice(1).join(' ') || '',
-        email_address: user.email,
-        m_payment_id:  membership.id,
-        amount:        Number(amount).toFixed(2),
-        item_name:     `${tier.artist.name} — ${tier.name} membership`.substring(0, 100),
-        custom_str1:   membership.id,   // membershipId
-        custom_str2:   'membership',
-        custom_str3:   tier.artistId,
-        custom_str4:   interval,
-        custom_str5:   user.id,
+    const result = await initializeTransaction({
+      email:       user.email,
+      amountZAR:   Number(amount),
+      reference,
+      callbackUrl: `${appUrl}/artist/${tier.artist.slug}?membership=success`,
+      metadata: {
+        membershipId: membership.id,
+        tierId,
+        artistId:     tier.artistId,
+        interval,
+        userId:       user.id,
+        type:         'membership',
       },
-      passphrase,
-    );
+    });
 
-    return NextResponse.json({
-      formData,
-      actionUrl: isSandbox
-        ? 'https://sandbox.payfast.co.za/eng/process'
-        : 'https://www.payfast.co.za/eng/process',
-      method: 'payfast',
-    }, { status: 201 });
+    // Store reference so notify webhook can find the membership
+    await prisma.creatorMembership.update({
+      where: { id: membership.id },
+      data:  { paystackReference: reference } as any,
+    });
+
+    return NextResponse.json({ authorizationUrl: result.authorizationUrl, method: 'paystack' }, { status: 201 });
   } catch (err: any) {
     console.error('[creator/memberships] POST error:', err?.message);
     return NextResponse.json({ error: err?.message || 'Failed to initiate checkout' }, { status: 503 });
@@ -128,14 +108,14 @@ export async function DELETE(req: NextRequest) {
     if (!tierId) return NextResponse.json({ error: 'tierId required' }, { status: 400 });
 
     const membership = await prisma.creatorMembership.findFirst({
-      where: { userId: user.id, tierId },
+      where: { userId: user.id, tierId, status: 'active' },
     });
-    if (!membership) return NextResponse.json({ error: 'Membership not found' }, { status: 404 });
+    if (!membership) return NextResponse.json({ error: 'No active membership found' }, { status: 404 });
 
-    await cancelMembership(user.id, tierId);
-    return NextResponse.json({ ok: true, message: 'Membership cancelled. Access continues until end of billing period.' });
+    await cancelMembership(membership.id);
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error('[creator/memberships] DELETE error:', err?.message);
-    return NextResponse.json({ error: 'Cancel failed' }, { status: 503 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

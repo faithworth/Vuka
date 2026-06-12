@@ -1,12 +1,11 @@
 // src/app/api/marketplace/checkout/route.ts
-// Initiate PayFast payment for a marketplace service order.
-// Creates a MarketplaceOrder with status 'pending'.
-// On ITN confirmation → /api/marketplace/checkout/notify sets status to 'active'.
+// Initiate Paystack payment for a marketplace service order.
+// On charge.success → /api/marketplace/checkout/notify activates the order.
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { buildPayFastForm } from '@/lib/payfast';
+import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { requireAuth } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -21,27 +20,17 @@ export async function POST(req: NextRequest) {
       where: { id: serviceId },
       include: { artist: { include: { user: true } } },
     });
-    if (!service || !service.isActive) {
-      return NextResponse.json({ error: 'Service not available' }, { status: 404 });
-    }
+    if (!service?.isActive) return NextResponse.json({ error: 'Service not available' }, { status: 404 });
 
-    // Require authenticated buyer — uses server-side session cookies correctly
     const user = await requireAuth();
-    if (!user) {
-      return NextResponse.json({ error: 'You must be logged in to place an order' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'You must be logged in to place an order' }, { status: 401 });
 
-    // Block artists from ordering their own service
     const buyerArtist = await prisma.artist.findUnique({ where: { userId: user.id }, select: { id: true } });
-    if (buyerArtist?.id === service.artistId) {
-      return NextResponse.json({ error: 'Cannot order your own service' }, { status: 400 });
-    }
+    if (buyerArtist?.id === service.artistId) return NextResponse.json({ error: 'Cannot order your own service' }, { status: 400 });
 
     const deadline = new Date();
-    const deliveryDays = service.deliveryDays || 7;
-    deadline.setDate(deadline.getDate() + deliveryDays);
+    deadline.setDate(deadline.getDate() + (service.deliveryDays || 7));
 
-    // Create pending order
     const order = await prisma.marketplaceOrder.create({
       data: {
         serviceId,
@@ -55,44 +44,33 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const isSandbox   = process.env.PAYFAST_SANDBOX === 'true';
-    const merchantId  = isSandbox ? (process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100') : process.env.PAYFAST_MERCHANT_ID!;
-    const merchantKey = isSandbox ? (process.env.PAYFAST_SANDBOX_MERCHANT_KEY || '46f0cd694581a') : process.env.PAYFAST_MERCHANT_KEY!;
-    const passphrase  = process.env.PAYFAST_PASSPHRASE || '';
+    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const reference = generateReference('MKT');
 
-    if (!merchantId || !merchantKey) {
-      return NextResponse.json({ error: 'Payment gateway not configured' }, { status: 500 });
-    }
-
-    const formData = buildPayFastForm(
-      {
-        merchant_id:   merchantId,
-        merchant_key:  merchantKey,
-        return_url:    `${appUrl}/marketplace?order=success&id=${order.id}`,
-        cancel_url:    `${appUrl}/marketplace`,
-        notify_url:    `${appUrl}/api/marketplace/checkout/notify`,
-        name_first:    (buyerName || user.name || '').split(' ')[0] || 'Fan',
-        name_last:     (buyerName || user.name || '').split(' ').slice(1).join(' ') || '',
-        email_address: buyerEmail || user.email,
-        m_payment_id:  order.id,
-        amount:        Number(amount).toFixed(2),
-        item_name:     `${service.title} — ${packageName || 'Service'}`.substring(0, 100),
-        custom_str1:   order.id,        // orderId
-        custom_str2:   'marketplace',
-        custom_str3:   service.artistId,
-        custom_str4:   buyerEmail || user.email,
+    const result = await initializeTransaction({
+      email:       buyerEmail || user.email,
+      amountZAR:   Number(amount),
+      reference,
+      callbackUrl: `${appUrl}/marketplace?order=success&id=${order.id}`,
+      metadata: {
+        orderId:   order.id,
+        serviceId,
+        artistId:  service.artistId,
+        buyerEmail: buyerEmail || user.email,
+        type:      'marketplace',
       },
-      passphrase,
-    );
+    });
+
+    // Store reference on order for webhook lookup
+    await prisma.marketplaceOrder.update({
+      where: { id: order.id },
+      data:  { paystackReference: reference } as any,
+    });
 
     return NextResponse.json({
-      formData,
-      actionUrl: isSandbox
-        ? 'https://sandbox.payfast.co.za/eng/process'
-        : 'https://www.payfast.co.za/eng/process',
-      method: 'payfast',
-      orderId: order.id,
+      authorizationUrl: result.authorizationUrl,
+      method:           'paystack',
+      orderId:          order.id,
     });
   } catch (err: any) {
     console.error('[marketplace/checkout] error:', err?.message);
