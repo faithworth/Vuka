@@ -399,7 +399,7 @@ export async function updateStorefront(
     headline?: string;
     description?: string;
     theme?: string;
-    sections?: unknown;
+    sections?: Prisma.InputJsonValue;
     isPublic?: boolean;
   } = {};
 
