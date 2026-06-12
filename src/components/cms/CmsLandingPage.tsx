@@ -2,7 +2,7 @@
 // Server component — wraps BlockRenderer with SEO meta injection
 import BlockRenderer from './BlockRenderer';
 
-type Block = { id: string; type: string; content: Record<string, unknown>; isVisible: boolean };
+type Block = { id: string; type: string; content: Record<string, unknown> | null; isVisible: boolean };
 
 type FeaturedArtist = {
   id: string; tagline: string; blurb: string;

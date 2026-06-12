@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { ArrowRight, Music, Play } from 'lucide-react';
 
-type Block          = { id: string; type: string; content: Record<string, unknown>; isVisible: boolean };
+type Block          = { id: string; type: string; content: Record<string, unknown> | null; isVisible: boolean };
 type FeaturedArtist = {
   id: string; tagline: string; blurb: string;
   artist: {
@@ -349,7 +349,7 @@ export default function BlockRenderer({ blocks, featuredArtists }: Props) {
   return (
     <>
       {blocks.filter(b => b.isVisible).map(b => {
-        const c = b.content;
+        const c = (b.content ?? {}) as Record<string, unknown>;
         switch (b.type) {
           case 'hero':          return <HeroBlock         key={b.id} c={c} />;
           case 'text':          return <TextBlock         key={b.id} c={c} />;
