@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase';
 import {
   LayoutDashboard, Users, Music, Radio, DollarSign,
   Settings, Shield, Bell, LogOut, Menu, X, ChevronRight,
-  BarChart2, Flag, Loader2, Crown,
+  BarChart2, Flag, Loader2, Crown, FileEdit,
 } from 'lucide-react';
 
 const ADMIN_NAV = [
@@ -21,6 +21,7 @@ const ADMIN_NAV = [
   { href: '/admin/releases',     label: 'Releases',     icon: Music },
   { href: '/admin/distribution', label: 'Distribution', icon: Radio },
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },
+  { href: '/admin/cms',          label: 'CMS',          icon: FileEdit },
   { href: '/admin/settings',     label: 'Settings',     icon: Settings },
   { href: '/admin/security',     label: 'Security',     icon: Shield },
   { href: '/admin/db-repair',    label: 'DB Repair',    icon: Flag },

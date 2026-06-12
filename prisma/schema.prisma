@@ -46,6 +46,7 @@ model User {
   engagementEvents     EngagementEvent[]
   postComments         PostComment[]
   pageViews            PageView[]
+  cmsCollaborations    CmsCollaboration[]
 }
 
 model Artist {
@@ -103,6 +104,7 @@ model Artist {
   searchIndex           SearchIndex[]
   planSubscriptions     ArtistPlanSubscription[]
   directPurchases       Purchase[]           @relation("PurchaseArtist")
+  featuredArtist        FeaturedArtist?
   createdAt             DateTime             @default(now())
 }
 
@@ -1217,4 +1219,126 @@ model ArtistPlanSubscription {
   @@index([artistId])
   @@index([status])
   @@map("artist_plan_subscriptions")
+}
+
+// ── CMS SYSTEM ────────────────────────────────────────────────────────────────
+// In-house CMS: pages, content blocks, media library, revision history,
+// collaboration workflow, review comments, and featured artists.
+
+model CmsPage {
+  id            String             @id @default(cuid())
+  slug          String             @unique
+  title         String
+  description   String             @default("")
+  status        String             @default("draft") // draft | review | approved | published | archived
+  isSystem      Boolean            @default(false)   // system pages cannot be deleted
+  metaTitle     String             @default("")
+  metaDesc      String             @default("")
+  publishedAt   DateTime?
+  scheduledAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  createdById   String             @default("system")
+  updatedById   String             @default("system")
+
+  blocks        CmsBlock[]
+  revisions     CmsRevision[]
+  collaborators CmsCollaboration[]
+  comments      CmsComment[]
+
+  @@index([status])
+  @@map("cms_pages")
+}
+
+model CmsBlock {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String   @default("text")
+  label     String   @default("")
+  content   Json     @default("{}")
+  order     Int      @default(0)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, order])
+  @@map("cms_blocks")
+}
+
+model CmsRevision {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  blocks      Json     @default("[]")
+  summary     String   @default("")
+  createdAt   DateTime @default(now())
+  createdById String
+
+  @@index([pageId])
+  @@map("cms_revisions")
+}
+
+model FeaturedArtist {
+  id          String   @id @default(cuid())
+  artistId    String   @unique
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tagline     String   @default("")
+  blurb       String   @default("")
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  featuredAt  DateTime @default(now())
+  createdById String   @default("system")
+
+  @@index([order, isVisible])
+  @@map("featured_artists")
+}
+
+model CmsMedia {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String   @default("")
+  mimeType     String   @default("")
+  size         Int      @default(0)
+  r2Key        String   @unique
+  publicUrl    String   @default("")
+  alt          String   @default("")
+  caption      String   @default("")
+  width        Int?
+  height       Int?
+  folder       String   @default("cms")
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([uploadedById])
+  @@map("cms_media")
+}
+
+model CmsCollaboration {
+  id         String   @id @default(cuid())
+  pageId     String
+  page       CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canEdit    Boolean  @default(true)
+  canPublish Boolean  @default(false)
+  addedAt    DateTime @default(now())
+  addedById  String
+
+  @@unique([pageId, userId])
+  @@index([userId])
+  @@map("cms_collaborations")
+}
+
+model CmsComment {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  body        String
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  createdById String
+
+  @@index([pageId])
+  @@map("cms_comments")
 }

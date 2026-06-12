@@ -106,6 +106,10 @@ const NEW_MIGRATIONS = [
   // 2026-06-11: SupportTxn.payfastPaymentId — adds the column that links a tip/support
   // transaction to its PayFast payment ID for reconciliation and audit.
   '20260611_fix_supporttxn_payfast_id',
+  // 2026-06-12: CMS system — adds cms_pages, cms_blocks, cms_revisions, featured_artists,
+  // cms_media, cms_collaborations, cms_comments. Seeds landing page + 3 legal system pages.
+  // Required by /admin/cms, /api/cms/*, BlockRenderer, CmsLandingPage.
+  'phase10_cms_system',
 ];
 
 export async function GET(req: NextRequest) {
