@@ -109,7 +109,7 @@ export async function createMembership(params: {
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
-  const amount = tier.price;
+  const amount = tier.priceMonthly ?? tier.price;
   const fee    = calcFee(amount, artist?.planSlug, artist?.planExpiresAt);
   const net    = calcNet(amount, artist?.planSlug, artist?.planExpiresAt);
   const period = getPeriod();
