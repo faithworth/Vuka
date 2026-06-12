@@ -16,17 +16,18 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- ArtistPlanSubscription: payfastPaymentId → paystackReference
+-- artist_plan_subscriptions: payfastPaymentId → paystackReference
+-- NOTE: Prisma maps model ArtistPlanSubscription → table "artist_plan_subscriptions"
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ArtistPlanSubscription' AND column_name='payfastPaymentId') THEN
-    ALTER TABLE "ArtistPlanSubscription" RENAME COLUMN "payfastPaymentId" TO "paystackReference";
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artist_plan_subscriptions' AND column_name='payfastPaymentId') THEN
+    ALTER TABLE "artist_plan_subscriptions" RENAME COLUMN "payfastPaymentId" TO "paystackReference";
   END IF;
 END $$;
 
--- ArtistPlanSubscription: payfastToken → paystackToken
+-- artist_plan_subscriptions: payfastToken → paystackToken
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ArtistPlanSubscription' AND column_name='payfastToken') THEN
-    ALTER TABLE "ArtistPlanSubscription" RENAME COLUMN "payfastToken" TO "paystackToken";
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='artist_plan_subscriptions' AND column_name='payfastToken') THEN
+    ALTER TABLE "artist_plan_subscriptions" RENAME COLUMN "payfastToken" TO "paystackToken";
   END IF;
 END $$;
 
@@ -47,4 +48,4 @@ END $$;
 -- Indexes for fast webhook lookups by reference
 CREATE INDEX IF NOT EXISTS "Purchase_paystackReference_idx"       ON "Purchase"("paystackReference");
 CREATE INDEX IF NOT EXISTS "SupportTxn_paystackReference_idx"     ON "SupportTxn"("paystackReference");
-CREATE INDEX IF NOT EXISTS "ArtistPlanSub_paystackRef_idx"        ON "ArtistPlanSubscription"("paystackReference");
+CREATE INDEX IF NOT EXISTS "ArtistPlanSub_paystackRef_idx"        ON "artist_plan_subscriptions"("paystackReference");
