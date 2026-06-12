@@ -110,6 +110,11 @@ const NEW_MIGRATIONS = [
   // cms_media, cms_collaborations, cms_comments. Seeds landing page + 3 legal system pages.
   // Required by /admin/cms, /api/cms/*, BlockRenderer, CmsLandingPage.
   'phase10_cms_system',
+  // 2026-06-12: PayFast → Paystack column renames.
+  // Renames payfastPfPaymentId, payfastPaymentId, payfastToken, payfastMerchant,
+  // payfastMerchantId across Purchase, SupportTxn, ArtistPlanSubscription, Artist,
+  // ArtistBankAccount. Adds paystackReference indexes for webhook lookup performance.
+  '20260612_paystack_migration',
 ];
 
 export async function GET(req: NextRequest) {

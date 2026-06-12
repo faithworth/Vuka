@@ -1,7 +1,6 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- Vuka: PayFast → Paystack column migration
--- Safe idempotent renames — run once via Supabase SQL editor or prisma migrate deploy
--- ─────────────────────────────────────────────────────────────────────────────
+-- 20260612_paystack_migration
+-- Renames PayFast columns to Paystack equivalents.
+-- All idempotent — safe to re-run.
 
 -- Purchase: payfastPfPaymentId → paystackReference
 DO $$ BEGIN
@@ -45,7 +44,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- ── Indexes for fast webhook lookups ─────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS "Purchase_paystackReference_idx"         ON "Purchase"("paystackReference");
-CREATE INDEX IF NOT EXISTS "SupportTxn_paystackReference_idx"       ON "SupportTxn"("paystackReference");
-CREATE INDEX IF NOT EXISTS "ArtistPlanSub_paystackReference_idx"    ON "ArtistPlanSubscription"("paystackReference");
+-- Indexes for fast webhook lookups by reference
+CREATE INDEX IF NOT EXISTS "Purchase_paystackReference_idx"       ON "Purchase"("paystackReference");
+CREATE INDEX IF NOT EXISTS "SupportTxn_paystackReference_idx"     ON "SupportTxn"("paystackReference");
+CREATE INDEX IF NOT EXISTS "ArtistPlanSub_paystackRef_idx"        ON "ArtistPlanSubscription"("paystackReference");
