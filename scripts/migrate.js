@@ -27,8 +27,7 @@ const env = {
 };
 
 // In production/CI: resolve any previously-failed migrations before deploying.
-// This handles the case where a migration failed mid-way in a previous deploy
-// (e.g. 20250527_platform_settings_and_email failed due to wrong column order).
+// This handles the case where a migration failed mid-way in a previous deploy.
 // `migrate resolve --applied` marks it as successfully applied so deploy can continue.
 if (isCI) {
   const migrationsToResolve = [
@@ -36,6 +35,8 @@ if (isCI) {
     // Phase 12 cleanup migrations — safe to re-resolve if already applied
     '20260604_phase12_cleanup',
     '20260604_role_repair',
+    // Paystack migration previously failed due to wrong table name (now fixed)
+    '20260612_paystack_migration',
   ];
   for (const name of migrationsToResolve) {
     try {
