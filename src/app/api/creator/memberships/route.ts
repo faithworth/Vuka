@@ -112,7 +112,7 @@ export async function DELETE(req: NextRequest) {
     });
     if (!membership) return NextResponse.json({ error: 'No active membership found' }, { status: 404 });
 
-    await cancelMembership(membership.id);
+    await cancelMembership(user.id, tierId);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error('[creator/memberships] DELETE error:', err?.message);
