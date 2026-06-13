@@ -30,7 +30,7 @@ export default function PrivacyPage() {
           <p><strong style={{ color: 'var(--text)' }}>Purchase data:</strong> transaction amounts, item purchased, licence type, and download activity.</p>
           <p><strong style={{ color: 'var(--text)' }}>Content data:</strong> files you upload (beats, releases, artwork) stored in Cloudflare R2.</p>
           <p><strong style={{ color: 'var(--text)' }}>Usage data:</strong> pages visited, plays, and interactions — collected anonymously for platform improvements.</p>
-          <p>We do not collect payment card details. All payment processing is handled by PayFast.</p>
+          <p>We do not collect payment card details. All payment processing is handled by Paystack.</p>
         </Section>
 
         <Section title="2. How We Use Your Data">
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="3. Data Sharing">
-          <p>Your data is shared only with: (a) Supabase — authentication and session management; (b) Cloudflare R2 — file storage; (c) PayFast — payment processing; (d) Resend — transactional email delivery. All providers are contractually bound to process data only as instructed.</p>
+          <p>Your data is shared only with: (a) Supabase — authentication and session management; (b) Cloudflare R2 — file storage; (c) Paystack — payment processing; (d) Resend — transactional email delivery. All providers are contractually bound to process data only as instructed.</p>
           <p>Artist names and public profile information are visible to other users as part of the marketplace experience.</p>
         </Section>
 

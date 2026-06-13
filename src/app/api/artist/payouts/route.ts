@@ -35,14 +35,14 @@ export async function GET(req: NextRequest) {
     });
 
     const methods: { type: string; name: string; configured: boolean }[] = [];
-    if (artist.payfastMerchant) {
-      methods.push({ type: 'payfast', name: 'PayFast (Direct to Bank)', configured: true });
+    if (artist.paystackRecipient) {
+      methods.push({ type: 'paystack', name: 'Paystack (Direct to Bank)', configured: true });
     }
-    // Stripe Connect removed (Phase 12) — PayFast only
+    // Stripe Connect removed (Phase 12) — Paystack only
     if (false) {
     }
     if (methods.length === 0) {
-      methods.push({ type: 'payfast', name: 'PayFast (Direct to Bank)', configured: false });
+      methods.push({ type: 'paystack', name: 'Paystack (Direct to Bank)', configured: false });
     }
 
     return NextResponse.json({
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
       payoutRequests,
       balances: { pending, processed, failed, total: pending + processed },
       methods,
-      artistHasPayfastMerchant: !!artist.payfastMerchant,
+      artistHasPaystackRecipient: !!artist.paystackRecipient,
       artistHasStripeConnect: false, // Stripe removed
     });
   } catch (err) {

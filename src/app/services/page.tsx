@@ -4,7 +4,7 @@
 //   • Industry Professional services (management, promo, sync, legal…)
 //   • Artist marketplace services (mixing, mastering, features, beats…)
 //
-// Industry services: artist pays → Vuka charges 10% fee on industry (auto via PayFast)
+// Industry services: artist pays → Vuka charges 10% fee on industry (auto via Paystack)
 // Marketplace services: buyer pays → artist plan fee (5–15%) applies
 //
 // Both tabs are visible to everyone. Logged-in artists can buy/inquire/order.
@@ -159,7 +159,7 @@ export default function ServicesPage() {
       });
       const data = await res.json();
       if (res.ok && data.payUrl) {
-        // Redirect to PayFast — payment happens immediately
+        // Redirect to Paystack — payment happens immediately
         window.location.href = data.payUrl;
       } else {
         alert(data.error || 'Failed to initiate payment');
@@ -517,7 +517,7 @@ function IndustryCard({
                     {inquiring === svc.id ? <Loader2 size={12} className="animate-spin" /> : <MessageSquare size={12} />}
                     Inquire
                   </button>
-                  {/* Order (triggers PayFast payment) */}
+                  {/* Order (triggers Paystack payment) */}
                   <button onClick={() => onOrder(svc)} disabled={ordering === svc.id}
                     className="btn btn-primary flex-1 text-xs"
                     style={{ background: 'var(--gold)', color: '#0a0a0a' }}>

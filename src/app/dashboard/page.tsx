@@ -112,7 +112,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/settings" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <CreditCard size={28} style={{ color: 'var(--sky)' }} />
-              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Configure Payouts</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bank account / PayFast</p></div>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Configure Payouts</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bank account / Paystack</p></div>
             </Link>
             <button
               onClick={() => { if (stats?.artistSlug) navigator.clipboard.writeText(`${window.location.origin}/artist/${stats.artistSlug}`); }}

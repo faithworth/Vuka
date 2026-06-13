@@ -97,7 +97,7 @@ export default function AdminSettingsPage() {
               <div>
                 <h2 className="font-bold text-lg mb-1">Subscription Plans</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-                  Changes here update the database. New signups and PayFast billing use these plan definitions.
+                  Changes here update the database. New signups and Paystack billing use these plan definitions.
                 </p>
               </div>
               {(settings.plans || []).map((plan: any, i: number) => (
@@ -159,7 +159,7 @@ export default function AdminSettingsPage() {
               {[
                 { key: 'minPayoutAmount', label: 'Minimum Payout Amount (ZAR)', type: 'number' },
                 { key: 'payoutProcessingDays', label: 'Processing Days', type: 'number' },
-                { key: 'payfastPayoutEmail', label: 'PayFast Payout Email', type: 'email' },
+                { key: 'paystackPayoutEmail', label: 'Paystack Payout Email', type: 'email' },
               ].map(({ key, label, type }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{label}</label>

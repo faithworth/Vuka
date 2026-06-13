@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       payouts: {
         minPayoutAmount:       kv['min_payout_zar']          ?? 100,
         payoutProcessingDays:  kv['payout_processing_days']  ?? 3,
-        payfastPayoutEmail:    kv['payfast_payout_email']    ?? '',
+        paystackPayoutEmail:   kv['paystack_payout_email']   ?? '',
       },
     });
   } catch (err) {
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         const payoutKeyMap: Record<string, string> = {
           minPayoutAmount:      'min_payout_zar',
           payoutProcessingDays: 'payout_processing_days',
-          payfastPayoutEmail:   'payfast_payout_email',
+          paystackPayoutEmail:  'paystack_payout_email',
         };
         for (const [field, setting] of Object.entries(payoutKeyMap)) {
           if (field in data) {

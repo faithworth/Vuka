@@ -85,7 +85,7 @@ export async function createMembership(params: {
   tierId: string;
   artistId: string;
   billingInterval: 'monthly' | 'yearly';
-  payfastToken?: string;
+  paystackReference?: string;
   fanName?: string;
   fanEmail?: string;
 }) {

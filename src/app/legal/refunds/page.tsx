@@ -42,7 +42,7 @@ export default function RefundsPage() {
 
           <div>
             <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text)' }}>Chargebacks</h2>
-            <p>Filing a fraudulent chargeback for a digital good you received and downloaded constitutes fraud. We will contest all fraudulent chargebacks and may report repeat offenders to PayFast and relevant authorities.</p>
+            <p>Filing a fraudulent chargeback for a digital good you received and downloaded constitutes fraud. We will contest all fraudulent chargebacks and may report repeat offenders to Paystack and relevant authorities.</p>
           </div>
         </div>
 

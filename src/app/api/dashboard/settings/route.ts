@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
-    const { name, bio, city, country, genreTags, photoUrl, coverUrl, socialLinks, currency, payfastMerchant } = body;
+    const { name, bio, city, country, genreTags, photoUrl, coverUrl, socialLinks, currency, paystackRecipient } = body;
     const artist = await prisma.artist.update({
       where: { id: user.artist.id },
       data: {
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest) {
         socialLinks: socialLinks ? JSON.parse(JSON.stringify(socialLinks)) : undefined,
         currency: currency || undefined,
         // Allow saving empty string to clear, or a real value
-        ...(payfastMerchant !== undefined && { payfastMerchant: payfastMerchant.trim() || null }),
+        ...(paystackRecipient !== undefined && { paystackRecipient: paystackRecipient.trim() || null }),
       },
     });
     return NextResponse.json({ artist });

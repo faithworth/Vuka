@@ -1,7 +1,7 @@
 'use client';
 // src/app/dashboard/payouts/page.tsx
 // FIXED: Removed Stripe. Added Ozow, Yoco, SA Bank EFT.
-// FIXED: connected.payfast now reads directly from API (not crashed by Stripe import).
+// FIXED: connected.paystack now reads directly from API (not crashed by Stripe import).
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
@@ -147,7 +147,7 @@ export default function PayoutsPage() {
       {tab === 'overview' && (
         <div className="space-y-4">
 
-          {/* ── PayFast ── */}
+          {/* ── Paystack ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -155,49 +155,49 @@ export default function PayoutsPage() {
                   <Wallet size={18} style={{ color: '#00a05a' }} />
                 </div>
                 <div>
-                  <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>PayFast</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>South African payments · ZAR · PayShap, EFT, credit cards</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>Paystack</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>South African payments · ZAR · card, EFT, bank transfer</p>
                 </div>
               </div>
-              {connected.payfast
+              {connected.paystack
                 ? <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--green)', background: 'rgba(16,185,129,0.1)' }}>✓ Connected</span>
                 : <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--text-muted)', background: 'var(--surface2)' }}>Not connected</span>}
             </div>
             <div className="px-6 py-5" style={{ background: 'var(--surface2)', borderTop: '1px solid var(--border)' }}>
-              {connected.payfast ? (
+              {connected.paystack ? (
                 <>
                   <div className="flex items-center gap-2 mb-3 p-3 rounded-xl"
                     style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                     <CheckCircle size={14} style={{ color: 'var(--green)' }} />
                     <p className="text-sm font-semibold" style={{ color: 'var(--green)' }}>
-                      Merchant ID: {artist?.payfastMerchant}
+                      Bank account on file: {artist?.paystackRecipient}
                     </p>
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    PayFast pays your balance directly to your South African bank account.
-                    Payouts happen automatically based on your PayFast payout schedule (typically next business day).
+                    Paystack collects payments on your behalf. Payouts are processed to your
+                    SA bank account based on your payout requests below.
                   </p>
-                  <a href="https://www.payfast.co.za/dashboard" target="_blank" rel="noopener noreferrer"
+                  <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold"
                     style={{ color: '#00a05a' }}>
-                    View PayFast Dashboard <ExternalLink size={11} />
+                    View Paystack Dashboard <ExternalLink size={11} />
                   </a>
                 </>
               ) : (
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add your PayFast Merchant ID so SA buyers can pay you via PayShap, EFT, or credit card.
-                    PayFast pays your balance directly to your SA bank account.
+                    Add your bank account so SA buyers can pay you via card, EFT, or bank transfer through Paystack.
+                    Paystack collects payments on your behalf and you request payouts to this account.
                   </p>
                   <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
                     style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
-                    <ArrowUpRight size={14} /> Add PayFast Merchant ID in Settings
+                    <ArrowUpRight size={14} /> Add Bank Account in Settings
                   </a>
                   <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-                    Get your Merchant ID from your{' '}
-                    <a href="https://my.payfast.io/settings/developer-settings" target="_blank" rel="noopener noreferrer"
+                    Get your account details from your{' '}
+                    <a href="https://dashboard.paystack.com/#/settings/business" target="_blank" rel="noopener noreferrer"
                       className="underline" style={{ color: 'var(--sky)' }}>
-                      PayFast account settings
+                      Paystack account settings
                     </a>.
                   </p>
                 </>
@@ -399,7 +399,7 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'PayFast: once connected, payouts happen automatically to your SA bank account.',
+                'Paystack: once connected, request a payout and funds are sent to your SA bank account.',
                 'SA Bank EFT: save your bank details, then request a payout when your balance is ready.',
                 'Ozow and Yoco integrations are coming — they will appear here once live.',
                 'All amounts are in ZAR. International buyers pay via card and funds convert automatically.',

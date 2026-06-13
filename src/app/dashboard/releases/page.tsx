@@ -2,7 +2,7 @@
 // Added ISRC display per track and UPC display per release.
 // Previously the releases list showed "X tracks · Y plays" but NEVER showed ISRCs.
 // ISRCs are generated in the distribution system (DistributionTrack.isrc) and also
-// need to be auto-generated and stored on the regular Release tracks for PayFast royalty tracking.
+// need to be auto-generated and stored on the regular Release tracks for Paystack royalty tracking.
 //
 // This page now:
 // - Shows UPC on the release row

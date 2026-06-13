@@ -9,7 +9,7 @@
  *
  * autoDispatchApprovedPayouts:
  *   - Finds PayoutRequests with status 'approved'
- *   - Dispatches each via the payout processor (PayFast / Flutterwave / PayPal)
+ *   - Dispatches each via the payout processor (Paystack / Flutterwave / PayPal)
  *   - Runs Monday–Friday via cron
  */
 

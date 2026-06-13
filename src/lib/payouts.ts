@@ -95,7 +95,7 @@ export async function markPayoutPaid(requestId: string, reference: string) {
         amount:    req.amount,
         currency:  req.currency,
         status:    'paid',
-        method:    req.bankAccountId ? 'bank' : 'payfast',
+        method:    req.bankAccountId ? 'bank' : 'paystack',
         reference,
         notes:     `PayoutRequest ${requestId}`,
         processedAt: new Date(),
@@ -178,7 +178,7 @@ export async function addBankAccount(params: {
   branchCode?: string;
   accountType?: string;
   paypalEmail?: string;
-  payfastMerchantId?: string;
+  paystackAccountCode?: string;
   setAsDefault?: boolean;
 }) {
   const accountNumber = params.accountNumber || '';
@@ -195,16 +195,16 @@ export async function addBankAccount(params: {
 
   return prisma.artistBankAccount.create({
     data: {
-      artistId:          params.artistId,
-      bankName:          params.bankName      || '',
-      accountHolder:     params.accountHolder || '',
-      accountNumber:     accountNumber,
-      maskedNumber:      masked,
-      branchCode:        params.branchCode    || '',
-      accountType:       params.accountType   || 'bank',
-      paypalEmail:       params.paypalEmail,
-      payfastMerchantId: params.payfastMerchantId,
-      isDefault:         params.setAsDefault  || false,
+      artistId:            params.artistId,
+      bankName:            params.bankName      || '',
+      accountHolder:       params.accountHolder || '',
+      accountNumber:       accountNumber,
+      maskedNumber:        masked,
+      branchCode:          params.branchCode    || '',
+      accountType:         params.accountType   || 'bank',
+      paypalEmail:         params.paypalEmail,
+      paystackAccountCode: params.paystackAccountCode,
+      isDefault:           params.setAsDefault  || false,
     },
   });
 }

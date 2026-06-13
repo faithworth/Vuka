@@ -31,7 +31,7 @@ export const PLANS: VukaPlan[] = [
       'Beat store & licensing',
       'Fan memberships',
       'PDF license generation',
-      'PayFast + Flutterwave payments',
+      'Paystack + Flutterwave payments',
       'Basic analytics',
     ],
   },

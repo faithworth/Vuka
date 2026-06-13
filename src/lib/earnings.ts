@@ -406,9 +406,12 @@ export async function confirmEarningsIngestion(params: {
 }
 
 // ── 4. PAYOUT PROCESSORS ─────────────────────────────────────
-// PayFast Payouts API, Flutterwave Transfers, PayPal Payouts
+// Paystack Transfers API (primary/default), PayFast Payouts API (legacy),
+// Flutterwave Transfers, PayPal Payouts
 
-// PayFast Payout (ZA artists — bank transfer via PayFast Payouts)
+// PayFast Payout (ZA artists — bank transfer via PayFast Payouts) — retained for
+// accounts that still have a configured PAYFAST_API_KEY. Paystack is now the
+// default/primary payout processor (see processPaystackPayout below).
 export async function processPayFastPayout(params: {
   payoutRequestId: string;
   amount: number;
@@ -452,6 +455,82 @@ export async function processPayFastPayout(params: {
     return {
       success: false,
       error: err instanceof Error ? err.message : 'PayFast payout failed',
+    };
+  }
+}
+
+// Paystack Payout (ZA artists — Transfer Recipient + Transfer API)
+// Default/primary payout processor. Creates a transfer recipient for the
+// artist's bank account, then initiates a transfer for the payout amount.
+export async function processPaystackPayout(params: {
+  payoutRequestId: string;
+  amount: number;
+  currency: string;
+  accountNumber: string;
+  bankCode: string;
+  accountHolder: string;
+  reference: string;
+}): Promise<{ success: boolean; referenceId?: string; error?: string }> {
+  const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY ?? '';
+  if (!PAYSTACK_SECRET_KEY) {
+    return { success: false, error: 'PAYSTACK_SECRET_KEY not configured' };
+  }
+
+  try {
+    // Step 1: create (or re-use) a transfer recipient for this bank account
+    const recipientRes = await fetch('https://api.paystack.co/transferrecipient', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      },
+      body: JSON.stringify({
+        type:           'basa', // South African bank account
+        name:           params.accountHolder,
+        account_number: params.accountNumber,
+        bank_code:      params.bankCode,
+        currency:       params.currency || 'ZAR',
+      }),
+    });
+
+    if (!recipientRes.ok) {
+      const body = await recipientRes.text();
+      return { success: false, error: `Paystack recipient error ${recipientRes.status}: ${body}` };
+    }
+
+    const recipientData: { data?: { recipient_code?: string } } = await recipientRes.json();
+    const recipientCode = recipientData.data?.recipient_code;
+    if (!recipientCode) {
+      return { success: false, error: 'Paystack did not return a recipient_code' };
+    }
+
+    // Step 2: initiate the transfer
+    const transferRes = await fetch('https://api.paystack.co/transfer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      },
+      body: JSON.stringify({
+        source:    'balance',
+        amount:    Math.round(params.amount * 100), // kobo/cents
+        recipient: recipientCode,
+        reason:    'Vuka Music Royalties',
+        reference: params.reference,
+      }),
+    });
+
+    if (!transferRes.ok) {
+      const body = await transferRes.text();
+      return { success: false, error: `Paystack transfer error ${transferRes.status}: ${body}` };
+    }
+
+    const transferData: { data?: { transfer_code?: string; reference?: string } } = await transferRes.json();
+    return { success: true, referenceId: transferData.data?.transfer_code || transferData.data?.reference };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Paystack payout failed',
     };
   }
 }
@@ -592,7 +671,7 @@ export async function processPayPalPayout(params: {
 // ── 5. PAYOUT DISPATCHER ─────────────────────────────────────
 // Routes an approved PayoutRequest to the correct processor.
 
-export type PayoutMethod = 'payfast' | 'flutterwave' | 'paypal' | 'bank_transfer';
+export type PayoutMethod = 'paystack' | 'payfast' | 'flutterwave' | 'paypal' | 'bank_transfer';
 
 export async function dispatchPayout(payoutRequestId: string): Promise<{
   success: boolean;
@@ -644,10 +723,22 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
       reference,
       country: 'ZA',
     });
-  } else {
-    // PayFast or bank_transfer — default to PayFast Payouts API
+  } else if (method === 'payfast') {
+    // Explicit PayFast — only used for accounts still configured with PAYFAST_API_KEY
     const ba = request.bankAccount;
     result = await processPayFastPayout({
+      payoutRequestId,
+      amount: request.amount,
+      currency: request.currency,
+      accountNumber: ba?.accountNumber || '',
+      bankCode: ba?.branchCode || '',
+      accountHolder: ba?.accountHolder || '',
+      reference,
+    });
+  } else {
+    // paystack or bank_transfer — default to Paystack Transfers API
+    const ba = request.bankAccount;
+    result = await processPaystackPayout({
       payoutRequestId,
       amount: request.amount,
       currency: request.currency,

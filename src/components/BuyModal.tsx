@@ -1,8 +1,8 @@
 'use client';
 // src/components/BuyModal.tsx
-// Phase 12 — PayFast-only checkout (Stripe removed)
-// All purchases route to /api/checkout/payfast/create-session
-// PayFast handles ZAR card, instant EFT, SCode, Mobicred, Masterpass
+// Phase 12 — Paystack-only checkout (Stripe removed, PayFast replaced by Paystack)
+// All purchases route to /api/checkout/paystack/initialize
+// Paystack handles ZAR card, instant EFT, bank transfer, and mobile money
 
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
@@ -84,7 +84,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
     setError('');
 
     try {
-      const res = await fetch('/api/checkout/payfast/create-session', {
+      const res = await fetch('/api/checkout/paystack/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,19 +108,13 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
         return;
       }
 
-      // Paid item — submit PayFast form (auto-redirects user to PayFast)
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = data.actionUrl;
-      Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
-        const input = document.createElement('input');
-        input.type  = 'hidden';
-        input.name  = k;
-        input.value = v;
-        form.appendChild(input);
-      });
-      document.body.appendChild(form);
-      form.submit();
+      // Paid item — redirect user to Paystack's hosted checkout page
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+        return;
+      }
+
+      setError('Payment gateway not configured');
 
     } catch {
       setError('Something went wrong. Please try again.');
@@ -236,7 +230,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
           />
         </div>
 
-        {/* PayFast badge */}
+        {/* Paystack badge */}
         {price > 0 && (
           <div
             className="mb-4 px-3 py-2 rounded-lg flex items-center gap-2"
@@ -244,8 +238,8 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
           >
             <span style={{ fontSize: 18 }}>🇿🇦</span>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
-              Secure payment via <strong style={{ color: 'var(--color-text-primary)' }}>PayFast</strong> — 
-              card, instant EFT, SCode &amp; more accepted.
+              Secure payment via <strong style={{ color: 'var(--color-text-primary)' }}>Paystack</strong> — 
+              card, instant EFT, bank transfer &amp; more accepted.
             </p>
           </div>
         )}
@@ -302,7 +296,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
             ? 'Processing…'
             : price === 0
             ? 'Download Free →'
-            : `Buy via PayFast — ${formatCurrency(price)} →`}
+            : `Buy via Paystack — ${formatCurrency(price)} →`}
         </button>
       </div>
     </div>

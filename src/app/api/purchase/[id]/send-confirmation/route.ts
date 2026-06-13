@@ -2,7 +2,7 @@
  * POST /api/purchase/[id]/send-confirmation
  *
  * Called by the success page when it detects a purchase has become 'confirmed'.
- * Acts as a belt-and-suspenders fallback in case the PayFast ITN notify route
+  * Acts as a belt-and-suspenders fallback in case the Paystack webhook notify route
  * either timed out before reaching the email send, or the Resend call failed.
  *
  * Deduplication: uses `receiptUrl` field as a sent-sentinel.

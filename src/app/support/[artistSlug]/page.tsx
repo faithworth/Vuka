@@ -24,7 +24,6 @@ export default function SupportPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [payfastForm, setPayfastForm] = useState<{ formData: Record<string,string>; actionUrl: string } | null>(null);
 
   useEffect(() => {
     fetch(`/api/artist/${artistSlug}/profile`).then(r => r.json()).then(d => { setArtist(d); setLoading(false); }).catch(() => setLoading(false));
@@ -45,15 +44,8 @@ export default function SupportPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error'); return; }
-      if (false && data.url) { // Stripe removed — PayFast only
-        window.location.href = data.url;
-      } else if (data.method === 'payfast' && data.formData) {
-        setPayfastForm({ formData: data.formData, actionUrl: data.actionUrl });
-        // Auto-submit via hidden form
-        setTimeout(() => {
-          const form = document.getElementById('payfast-auto-form') as HTMLFormElement;
-          if (form) form.submit();
-        }, 100);
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
       } else {
         setError(data.error || 'Payment gateway not configured');
       }
@@ -134,15 +126,6 @@ export default function SupportPage() {
           </button>
         </div>
       </div>
-
-      {/* Hidden PayFast auto-submit form */}
-      {payfastForm && (
-        <form id="payfast-auto-form" method="POST" action={payfastForm.actionUrl} style={{ display: 'none' }}>
-          {Object.entries(payfastForm.formData).map(([k, v]) => (
-            <input key={k} type="hidden" name={k} value={v} />
-          ))}
-        </form>
-      )}
     </div>
   );
 }

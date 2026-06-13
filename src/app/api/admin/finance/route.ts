@@ -571,7 +571,7 @@ export async function POST(req: NextRequest) {
             amount:      request.amount,
             currency:    request.currency,
             status:      'paid',
-            method:      request.bankAccountId ? 'bank' : 'payfast',
+            method:      request.bankAccountId ? 'bank' : 'paystack',
             reference:   reference || '',
             notes:       notes || `PayoutRequest ${requestId}`,
             processedAt: new Date(),

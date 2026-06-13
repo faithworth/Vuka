@@ -47,9 +47,9 @@ export default function TermsPage() {
         </Section>
 
         <Section title="5. Payments & Fees">
-          <p>All prices are displayed in South African Rand (ZAR). Payments are processed via PayFast for domestic transactions. International payment options may be added in future.</p>
+          <p>All prices are displayed in South African Rand (ZAR). Payments are processed via Paystack for domestic transactions. International payment options may be added in future.</p>
           <p>Vuka charges a small platform fee on each transaction to cover operational costs. This fee is deducted before funds are disbursed to the artist. Artists can view net earnings in their Payouts dashboard.</p>
-          <p>Vuka does not store payment card information. All payment data is handled by PayFast in accordance with PCI DSS standards.</p>
+          <p>Vuka does not store payment card information. All payment data is handled by Paystack in accordance with PCI DSS standards.</p>
         </Section>
 
         <Section title="6. No Refund Policy">

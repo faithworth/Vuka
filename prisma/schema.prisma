@@ -504,12 +504,14 @@ model CreatorMembership {
   artist          Artist                  @relation(fields: [artistId], references: [id])
   tierId          String
   tier            CreatorSubscriptionTier @relation(fields: [tierId], references: [id])
-  status          String                  @default("active") // active, pending, cancelled, expired
-  billingInterval String                  @default("monthly") // monthly | yearly
-  expiresAt       DateTime?
-  createdAt       DateTime                @default(now())
+  status            String                  @default("active") // active, pending, cancelled, expired
+  billingInterval   String                  @default("monthly") // monthly | yearly
+  expiresAt         DateTime?
+  paystackReference String?
+  createdAt         DateTime                @default(now())
 
   @@index([artistId])
+  @@index([paystackReference])
 }
 
 model ExclusiveContent {
@@ -585,9 +587,12 @@ model MarketplaceOrder {
   requirements String             @default("")
   deliverables String[]
   deadline    DateTime?
+  paystackReference String?
   dispute     MarketplaceDispute?
   review      ServiceReview?
   createdAt   DateTime            @default(now())
+
+  @@index([paystackReference])
 }
 
 model MarketplaceDispute {

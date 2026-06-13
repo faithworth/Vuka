@@ -83,7 +83,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         tiers: [
           {
             name: 'Free', price: 'R0', period: 'forever', keep: '85%', highlight: false,
-            features: ['Up to 2 releases/month', 'Beat store & licensing', 'PayFast checkout'],
+            features: ['Up to 2 releases/month', 'Beat store & licensing', 'Paystack checkout'],
             cta: { label: 'Get Started Free', href: '/auth/register' },
           },
           {
@@ -112,7 +112,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         heading: 'Frequently Asked Questions',
         items: [
-          { q: 'How do I get paid?',          a: 'Payments are processed via PayFast. Money is sent to your SA bank account within 48 hours of a sale.' },
+          { q: 'How do I get paid?',          a: 'Payments are processed via Paystack. Money is sent to your SA bank account within 48 hours of a sale.' },
           { q: 'What is the platform fee?',   a: 'Free plan: 15%. Pro: 8%. Label: 5%. Fees are deducted automatically at checkout.' },
           { q: 'Can I sell internationally?', a: 'Yes — Vuka supports international buyers via card. Your earnings are converted to ZAR.' },
         ],

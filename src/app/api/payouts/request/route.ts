@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         artistName: user.artist.name || user.name || 'Artist',
         amount: Number(amount),
         currency: currency || 'ZAR',
-        payoutMethod: method === 'bank_transfer' ? 'Bank Transfer' : method === 'paypal' ? 'PayPal' : 'PayFast',
+        payoutMethod: method === 'bank_transfer' ? 'Bank Transfer' : method === 'paypal' ? 'PayPal' : 'Paystack',
         referenceNumber: request.id,
         payoutsUrl: `${APP_URL()}/dashboard/payouts`,
       });

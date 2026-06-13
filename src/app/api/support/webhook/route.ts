@@ -1,7 +1,7 @@
 /**
  * POST /api/support/webhook
  * Paystack webhook — confirms support/tip transactions.
- * Replaces /api/support/payfast-notify.
+  * Replaces the legacy /api/support/payfast-notify route.
  */
 
 export const dynamic = 'force-dynamic';

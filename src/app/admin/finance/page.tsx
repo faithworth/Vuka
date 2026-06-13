@@ -278,7 +278,7 @@ function SalesTab() {
                     <Pill label={p.status} />
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {(p.payfastPfPaymentId || p.stripePaymentId || '').slice(0, 14) || '—'}
+                    {(p.paystackReference || p.stripePaymentId || '').slice(0, 14) || '—'}
                   </td>
                 </tr>
               ))}
@@ -444,7 +444,7 @@ function SubscriptionsTab() {
                     {formatCurrency(p.platformFee)}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                    {(p.payfastPfPaymentId || '').slice(0, 14) || '—'}
+                    {(p.paystackReference || '').slice(0, 14) || '—'}
                   </td>
                 </tr>
               ))}
@@ -759,7 +759,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
                   <tr key={p.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
                     <td className="px-3 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString('en-ZA')}</td>
                     <td className="px-3 py-3 font-mono font-bold whitespace-nowrap" style={{ color: 'var(--green)' }}>{formatCurrency(p.amount)}</td>
-                    <td className="px-3 py-3 whitespace-nowrap capitalize" style={{ color: 'var(--text-muted)' }}>{p.bankAccount ? 'bank' : 'payfast'}</td>
+                    <td className="px-3 py-3 whitespace-nowrap capitalize" style={{ color: 'var(--text-muted)' }}>{p.bankAccount ? 'bank' : 'paystack'}</td>
                     <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
                       {p.bankAccount ? `${p.bankAccount.bankName} ····${p.bankAccount.maskedNumber?.slice(-4)}` : '—'}
                     </td>

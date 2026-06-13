@@ -71,7 +71,7 @@ const artistUpdate = z.object({
   coverUrl:    httpsUrl().optional().nullable(),
   currency:    z.enum(['ZAR', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS']).optional(),
   socialLinks: z.record(z.string().max(20), httpsUrl()).optional(),
-  payfastMerchant: z.string().max(20).trim().optional().nullable(),
+  paystackRecipient: z.string().max(20).trim().optional().nullable(),
 });
 
 // ── Beat upload ────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ const bankAccountAdd = z.object({
 const payoutRequest = z.object({
   amount:        money().min(100, 'Minimum payout is R100'),
   currency:      z.enum(['ZAR', 'USD']).default('ZAR'),
-  method:        z.enum(['payfast', 'bank_transfer', 'paypal']),
+  method:        z.enum(['payfast', 'paystack', 'bank_transfer', 'paypal']),
   bankAccountId: cuid().optional(),
   paypalEmail:   z.string().email().optional(),
 }).refine(

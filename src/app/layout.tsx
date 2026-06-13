@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     'south african music platform', 'african music distribution',
     'distribute music africa', 'independent music artist sa',
     'amapiano distribution', 'gqom beats', 'afrobeats distribution',
-    'payfast music', 'boomplay distribution', 'audiomack distribution',
+    'paystack music', 'boomplay distribution', 'audiomack distribution',
   ],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za'),
   alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za' },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Vuka — Release. Distribute. Earn. Own.',
     description:
-      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. PayFast payments.",
+      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. Paystack payments.",
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vuka.co.za',
     siteName: 'Vuka',
     type: 'website',

@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     // Store reference on order for webhook lookup
     await prisma.marketplaceOrder.update({
       where: { id: order.id },
-      data:  { paystackReference: reference } as any,
+      data:  { paystackReference: reference },
     });
 
     return NextResponse.json({

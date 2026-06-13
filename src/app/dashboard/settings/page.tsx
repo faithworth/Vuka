@@ -2,8 +2,8 @@
 // src/app/dashboard/settings/page.tsx
 // FIXED: Removed Stripe Connect (not available in SA without a US entity).
 // FIXED: Added SA Bank Account section using the existing /api/payouts/bank-accounts endpoint.
-// FIXED: Payfast section retains connected status badge.
-// FIXED: Added Plan Management section with PayFast upgrade flow.
+// FIXED: Paystack section retains connected status badge.
+// FIXED: Added Plan Management section with Paystack upgrade flow.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -82,22 +82,13 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planSlug }),
       });
-      const { payfastUrl, formFields, error } = await res.json();
+      const { authorizationUrl, error } = await res.json();
       if (error) { alert(error); return; }
 
-      // Submit redirect form to PayFast
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = payfastUrl;
-      Object.entries(formFields).forEach(([k, v]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = k;
-        input.value = String(v);
-        form.appendChild(input);
-      });
-      document.body.appendChild(form);
-      form.submit();
+      // Redirect to Paystack's hosted checkout page
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl;
+      }
     } catch {
       alert('Failed to start upgrade payment');
     }

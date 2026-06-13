@@ -1,10 +1,10 @@
 // FIX: src/app/api/dashboard/payouts/route.ts
 //
-// ROOT CAUSE of "Not connected" showing despite PayFast being configured:
+// ROOT CAUSE of "Not connected" showing despite Paystack being configured:
 // The route imported `stripe` at the top level. If STRIPE_SECRET_KEY is not
 // set (or Stripe throws during import), the entire module fails to load and
 // returns a 500 — which means `data` in the frontend becomes `{}`, so
-// `connected = {}` → both stripe AND payfast show "Not connected".
+// `connected = {}` → both stripe AND paystack show "Not connected".
 //
 // FIX: Wrap all Stripe calls in a try/catch and make them fully optional.
 // The `connected` object is now always returned correctly based on DB fields.
@@ -21,7 +21,7 @@ export async function GET() {
   try {
     const artist = await prisma.artist.findUnique({
       where: { id: user.artist.id },
-      select: { id: true, payfastMerchant: true, currency: true },
+      select: { id: true, paystackRecipient: true, currency: true },
     });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
@@ -51,15 +51,15 @@ export async function GET() {
     }).catch(() => []);
 
     // The connected object is built purely from DB — never from Stripe import
-    // This means even if Stripe env vars are missing, payfast always shows correctly
+    // This means even if Stripe env vars are missing, paystack always shows correctly
     return NextResponse.json({
       payouts,
       payoutRequests,
       bankAccounts,
       summary: { totalEarned, totalPaid, totalPending },
       connected: {
-        stripe:  false, // Stripe removed in Phase 12
-        payfast: !!artist.payfastMerchant,
+        stripe:   false, // Stripe removed in Phase 12
+        paystack: !!artist.paystackRecipient,
       },
     });
   } catch (err: unknown) {

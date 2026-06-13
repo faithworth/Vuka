@@ -2,7 +2,7 @@
 // src/app/marketplace/page.tsx
 // Public marketplace — fans and artists browse & order services (mixing, mastering, features, etc.)
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import {
   Search, Loader2, Briefcase, Clock,
@@ -41,7 +41,6 @@ export default function MarketplacePage() {
   const [buyerEmail, setBuyerEmail]     = useState('');
   const [checkoutErr, setCheckoutErr]   = useState('');
   const [paying, setPaying]             = useState(false);
-  const pfFormRef = useRef<HTMLFormElement>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -103,17 +102,13 @@ export default function MarketplacePage() {
       const data = await res.json();
       if (!res.ok) { setCheckoutErr(data.error || 'Could not start payment.'); setPaying(false); return; }
 
-      // Build and submit the PayFast form
-      const form = pfFormRef.current!;
-      form.innerHTML = '';
-      form.action  = data.actionUrl;
-      form.method  = 'POST';
-      Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
-        const inp = document.createElement('input');
-        inp.type  = 'hidden'; inp.name = k; inp.value = v;
-        form.appendChild(inp);
-      });
-      form.submit();
+      // Redirect to Paystack's hosted checkout page
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        setCheckoutErr('Payment gateway not configured');
+        setPaying(false);
+      }
     } catch {
       setCheckoutErr('Network error. Please try again.');
       setPaying(false);
@@ -215,9 +210,6 @@ export default function MarketplacePage() {
         </div>
       </main>
 
-      {/* Hidden PayFast form — submitted programmatically */}
-      <form ref={pfFormRef} style={{ display: 'none' }} />
-
       {/* Checkout modal */}
       {ordering && (
         <>
@@ -313,7 +305,7 @@ export default function MarketplacePage() {
                 }
               </button>
               <p className="text-center text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                Powered by PayFast · Work begins after payment confirms
+                Powered by Paystack · Work begins after payment confirms
               </p>
             </div>
           </div>

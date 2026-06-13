@@ -58,7 +58,7 @@ export default function LandingPage() {
             </p>
 
             <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              PayFast for South African buyers. Money goes directly to your bank. Start free — upgrade anytime for a lower platform fee.
+              Paystack for South African buyers. Money goes directly to your bank. Start free — upgrade anytime for a lower platform fee.
             </p>
 
             {/* Fee transparency notice */}
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 {
                   icon: DollarSign,
                   title: 'Dual Payments',
-                  desc: 'PayFast for South African buyers with instant EFT, card, and SCode support. Flutterwave for Pan-African payments. Both fully automated.',
+                  desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. Flutterwave for Pan-African payments. Both fully automated.',
                 },
                 {
                   icon: Zap,
@@ -162,7 +162,7 @@ export default function LandingPage() {
               {[
                 { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
                 { n: '02', t: 'Share your link', d: 'Get your personal store link — vuka.co.za/artist/you. Share it everywhere you already are.' },
-                { n: '03', t: 'Get paid 98%', d: 'PayFast and Flutterwave move money directly to your bank account. Vuka retains just 2% to keep the platform running.' },
+                { n: '03', t: 'Get paid 98%', d: 'Paystack and Flutterwave move money directly to your bank account. Vuka retains just 2% to keep the platform running.' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
@@ -216,7 +216,7 @@ export default function LandingPage() {
                 <div className="space-y-3 mb-8">
                   {[
                     'Browse and stream previews before you buy',
-                    'Secure checkout via PayFast or card',
+                    'Secure checkout via Paystack or card',
                     'Instant download links in your inbox',
                     'Follow artists and get notified of new drops',
                     'Tip artists and back their recording goals',
@@ -270,7 +270,7 @@ export default function LandingPage() {
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>85%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
-                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'PayFast + Flutterwave'].map(f => (
+                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'Paystack + Flutterwave'].map(f => (
                     <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                       <span style={{ color: 'var(--green)' }}>✓</span> {f}
                     </div>
@@ -322,7 +322,7 @@ export default function LandingPage() {
             </div>
 
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              All plans include PayFast + Flutterwave payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.
+              All plans include Paystack + Flutterwave payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.
             </p>
           </div>
         </section>

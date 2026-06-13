@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     // Store reference so notify webhook can find the membership
     await prisma.creatorMembership.update({
       where: { id: membership.id },
-      data:  { paystackReference: reference } as any,
+      data:  { paystackReference: reference },
     });
 
     return NextResponse.json({ authorizationUrl: result.authorizationUrl, method: 'paystack' }, { status: 201 });

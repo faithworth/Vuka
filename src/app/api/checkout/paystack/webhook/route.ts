@@ -1,6 +1,16 @@
 /**
  * POST /api/checkout/paystack/webhook
  *
+ * THE single Paystack webhook URL — register ONLY this URL in the Paystack
+ * Dashboard (Settings → API Keys & Webhooks). Paystack supports exactly one
+ * webhook URL per account, so this route dispatches by reference prefix:
+ *
+ *   VKB_  → beat/release/video/sample/merch purchase (handled below)
+ *   PLAN_ → artist plan subscription   → handlePlanEvent
+ *   MKT_  → marketplace service order  → handleMarketplaceEvent
+ *   MEM_  → fan creator membership     → handleMembershipEvent
+ *   ISO_  → industry service order     → handleIndustryOrderEvent
+ *
  * Replaces /api/checkout/payfast/notify.
  * Handles beat, release, video, sample, merch purchase confirmation.
  * Reference stored in purchase.paystackReference during initialize.
@@ -18,6 +28,7 @@ import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
+import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
   const traceId   = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -35,6 +46,27 @@ export async function POST(req: NextRequest) {
   if (event.event !== 'charge.success') return NextResponse.json({ ok: true });
 
   const reference = event.data?.reference ?? '';
+
+  // ── Single-webhook dispatch ────────────────────────────────────────────
+  // Paystack only supports ONE webhook URL per account. This route is that
+  // URL — dispatch to the right handler based on the reference prefix set
+  // by generateReference() in each checkout flow.
+  if (reference.startsWith('PLAN_')) {
+    await handlePlanEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('MKT_')) {
+    await handleMarketplaceEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('MEM_')) {
+    await handleMembershipEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('ISO_')) {
+    await handleIndustryOrderEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
 
   // Find purchase by stored reference
   const purchase = await prisma.purchase.findFirst({
@@ -155,6 +187,14 @@ export async function POST(req: NextRequest) {
       itemName = sample.title; artistEmail = sample.artist.user.email;
       artistName = sample.artist.name; artworkUrl = sample.artworkUrl || ''; artistId = sample.artist.id;
       await prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } });
+      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+    }
+  } else if (purchase.itemType === 'merch' && (purchase as any).merchId) {
+    const merch = await prisma.merch.findUnique({ where: { id: (purchase as any).merchId }, include: { artist: { include: { user: true } } } });
+    if (merch) {
+      itemName = merch.title; artistEmail = merch.artist.user.email;
+      artistName = merch.artist.name; artworkUrl = merch.imageUrl || ''; artistId = merch.artist.id;
+      await prisma.merch.update({ where: { id: merch.id }, data: { stock: { decrement: 1 } } }).catch(() => {});
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
   }

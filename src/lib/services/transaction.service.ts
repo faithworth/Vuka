@@ -19,7 +19,7 @@ export interface BeatPurchaseInput {
   amount: number; // gross paid by buyer (ZAR)
   currency?: string;
   licenseType?: string; // basic | exclusive | unlimited
-  payfastPaymentId?: string; // maps to payfastPfPaymentId in schema
+  paystackReference?: string; // maps to Purchase.paystackReference in schema
   downloadToken?: string;
 }
 
@@ -33,19 +33,19 @@ export interface ReleasePurchaseInput {
   releaseTitle: string;
   amount: number;
   currency?: string;
-  payfastPaymentId?: string;
+  paystackReference?: string;
   downloadToken?: string;
 }
 
 // ── Beat Purchase ─────────────────────────────────────────────
-// Called from the PayFast ITN webhook after payment is confirmed.
+// Called from the Paystack webhook after payment is confirmed.
 // UPDATES an existing pending Purchase rather than creating a duplicate.
 
 export async function processBeatPurchase(input: BeatPurchaseInput) {
   const {
     buyerUserId, buyerEmail, buyerName, artistId, artistUserId,
     beatId, beatTitle, amount, currency = 'ZAR',
-    licenseType = 'basic', payfastPaymentId, downloadToken,
+    licenseType = 'basic', paystackReference, downloadToken,
   } = input;
 
   // Resolve artist plan for correct fee rate (respects expiry)
@@ -67,7 +67,7 @@ export async function processBeatPurchase(input: BeatPurchaseInput) {
           where: { id: existing.id },
           data: {
             status:            'confirmed',
-            payfastPfPaymentId: payfastPaymentId ?? null,
+            paystackReference: paystackReference ?? null,
             platformFee,
             netAmount:         artistNet,
           },
@@ -82,7 +82,7 @@ export async function processBeatPurchase(input: BeatPurchaseInput) {
             amount,
             currency,
             licenseType,
-            payfastPfPaymentId: payfastPaymentId ?? null,
+            paystackReference: paystackReference ?? null,
             downloadToken:     downloadToken ?? undefined, // schema has @default(cuid())
             platformFee,
             netAmount:         artistNet,
@@ -125,7 +125,7 @@ export async function processReleasePurchase(input: ReleasePurchaseInput) {
   const {
     buyerUserId, buyerEmail, buyerName, artistId, artistUserId,
     releaseId, releaseTitle, amount, currency = 'ZAR',
-    payfastPaymentId, downloadToken,
+    paystackReference, downloadToken,
   } = input;
 
   const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true } });
@@ -143,7 +143,7 @@ export async function processReleasePurchase(input: ReleasePurchaseInput) {
           where: { id: existing.id },
           data: {
             status:            'confirmed',
-            payfastPfPaymentId: payfastPaymentId ?? null,
+            paystackReference: paystackReference ?? null,
             platformFee,
             netAmount:         artistNet,
           },
@@ -157,7 +157,7 @@ export async function processReleasePurchase(input: ReleasePurchaseInput) {
             releaseId,
             amount,
             currency,
-            payfastPfPaymentId: payfastPaymentId ?? null,
+            paystackReference: paystackReference ?? null,
             downloadToken:     downloadToken ?? undefined,
             platformFee,
             netAmount:         artistNet,
