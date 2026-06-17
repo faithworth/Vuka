@@ -18,7 +18,7 @@ import {
   Search, Loader2, Briefcase, Calendar, MessageSquare,
   CheckCircle, Send, ShoppingCart, Users, Star, Clock,
   Music, Mic2, Building2, ChevronRight, Zap, Shield,
-  DollarSign, ArrowRight,
+  DollarSign, ArrowRight, X, AlertCircle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 
@@ -86,6 +86,15 @@ export default function ServicesPage() {
   const [msgMap, setMsgMap]             = useState<Record<string, string>>({});
   const [showMsg, setShowMsg]           = useState<string | null>(null);
   const [doneMsgs, setDoneMsgs]         = useState<Record<string, string>>({});
+
+  // Marketplace checkout modal state
+  const [mktOrdering, setMktOrdering]           = useState<any | null>(null);
+  const [mktSelectedPkg, setMktSelectedPkg]     = useState<any | null>(null);
+  const [mktRequirements, setMktRequirements]   = useState('');
+  const [mktBuyerName, setMktBuyerName]         = useState('');
+  const [mktBuyerEmail, setMktBuyerEmail]       = useState('');
+  const [mktCheckoutErr, setMktCheckoutErr]     = useState('');
+  const [mktPaying, setMktPaying]               = useState(false);
 
   // Load auth
   useEffect(() => {
@@ -184,6 +193,36 @@ export default function ServicesPage() {
       if (res.ok) router.push('/messages');
     } catch {}
     setMessaging(null);
+  }
+
+  async function handleMktCheckout() {
+    if (!mktOrdering || !mktSelectedPkg) return;
+    if (!mktBuyerName.trim() || !mktBuyerEmail.trim()) {
+      setMktCheckoutErr('Please fill in your name and email.');
+      return;
+    }
+    setMktPaying(true);
+    setMktCheckoutErr('');
+    try {
+      const res = await fetch('/api/marketplace/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId: mktOrdering.id,
+          packageId: mktSelectedPkg.id,
+          buyerName: mktBuyerName,
+          buyerEmail: mktBuyerEmail,
+          requirements: mktRequirements,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setMktCheckoutErr(data.error || 'Checkout failed.'); setMktPaying(false); return; }
+      if (data.authorizationUrl) window.location.href = data.authorizationUrl;
+      else setMktCheckoutErr('No payment URL returned.');
+    } catch {
+      setMktCheckoutErr('Something went wrong. Please try again.');
+    }
+    setMktPaying(false);
   }
 
   const cats = tab === 'industry' ? INDUSTRY_CATS : MKTPLACE_CATS;
@@ -374,7 +413,7 @@ export default function ServicesPage() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredMkt.map(svc => (
                     <MarketplaceCard key={svc.id} service={svc}
-                      onOrder={() => router.push(`/marketplace/${svc.id}`)} />
+                      onOrder={() => { setMktOrdering(svc); setMktSelectedPkg(svc.packages?.[0] ?? null); setMktRequirements(''); setMktBuyerName(''); setMktBuyerEmail(''); setMktCheckoutErr(''); }} />
                   ))}
                 </div>
               )}
@@ -401,6 +440,84 @@ export default function ServicesPage() {
           )}
         </div>
       </main>
+
+      {/* ── Marketplace Checkout Modal ── */}
+      {mktOrdering && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.85)' }}
+          onClick={() => !mktPaying && setMktOrdering(null)}>
+          <div className="w-full max-w-lg rounded-2xl p-6 relative overflow-y-auto max-h-[90vh]"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+            <button onClick={() => setMktOrdering(null)} disabled={mktPaying}
+              className="absolute top-4 right-4 opacity-60 hover:opacity-100"><X size={18} /></button>
+            <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text)' }}>{mktOrdering.title}</h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>{mktOrdering.artist?.name}</p>
+
+            {/* Package selector */}
+            {mktOrdering.packages?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Select Package</p>
+                <div className="grid gap-2">
+                  {mktOrdering.packages.map((pkg: any) => (
+                    <button key={pkg.id} onClick={() => setMktSelectedPkg(pkg)}
+                      className="text-left p-3 rounded-xl border transition-all"
+                      style={{
+                        background: mktSelectedPkg?.id === pkg.id ? 'rgba(160,232,124,0.12)' : 'var(--bg)',
+                        borderColor: mktSelectedPkg?.id === pkg.id ? 'var(--green)' : 'var(--border)',
+                        color: 'var(--text)',
+                      }}>
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-sm">{pkg.name}</span>
+                        <span className="font-bold text-sm" style={{ color: 'var(--green)' }}>R{(pkg.priceZAR ?? 0).toLocaleString()}</span>
+                      </div>
+                      {pkg.description && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{pkg.description}</p>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Buyer details */}
+            <div className="grid gap-3 mb-4">
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Your Name</label>
+                <input value={mktBuyerName} onChange={e => setMktBuyerName(e.target.value)}
+                  placeholder="Full name" disabled={mktPaying}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Your Email</label>
+                <input value={mktBuyerEmail} onChange={e => setMktBuyerEmail(e.target.value)}
+                  placeholder="email@example.com" type="email" disabled={mktPaying}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Requirements <span className="opacity-50">(optional)</span></label>
+                <textarea value={mktRequirements} onChange={e => setMktRequirements(e.target.value)}
+                  placeholder="Describe what you need..." rows={3} disabled={mktPaying}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+              </div>
+            </div>
+
+            {mktCheckoutErr && (
+              <div className="flex items-center gap-2 text-sm mb-3 p-3 rounded-lg"
+                style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <AlertCircle size={14} />{mktCheckoutErr}
+              </div>
+            )}
+
+            <button onClick={handleMktCheckout} disabled={mktPaying || !mktSelectedPkg}
+              className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+              style={{ background: 'var(--green)', color: '#0a0a0a' }}>
+              {mktPaying ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Pay R{(mktSelectedPkg?.priceZAR ?? 0).toLocaleString()} <ArrowRight size={16} /></>}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

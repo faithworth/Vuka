@@ -5,7 +5,8 @@
 // FIXED: Paystack section retains connected status badge.
 // FIXED: Added Plan Management section with Paystack upgrade flow.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Loader2, CheckCircle2, Mic2, ExternalLink,
   QrCode, Download, Building2, Plus, Trash2, Wallet,
@@ -42,7 +43,8 @@ const SA_BANKS = [
   { name: 'Investec', branch: '580105' },
 ];
 
-export default function SettingsPage() {
+function SettingsContent() {
+  const searchParams = useSearchParams();
   const [artist, setArtist]             = useState<any>(null);
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
@@ -65,6 +67,8 @@ export default function SettingsPage() {
   const [planInfo, setPlanInfo]         = useState<any>(null);
   const [planLoading, setPlanLoading]   = useState(false);
   const [cancellingPlan, setCancellingPlan] = useState(false);
+  const [planActivating, setPlanActivating] = useState(false);
+  const [planActivateMsg, setPlanActivateMsg] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -73,6 +77,39 @@ export default function SettingsPage() {
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  // Auto-verify plan payment when Paystack redirects back with ?plan_activated=1&ref=PLAN_xxx
+  useEffect(() => {
+    const planActivated = searchParams.get('plan_activated');
+    const ref = searchParams.get('ref');
+    if (!planActivated || !ref) return;
+
+    setPlanActivating(true);
+    setPlanActivateMsg('Confirming your plan upgrade…');
+
+    fetch('/api/plans/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: ref }),
+    })
+      .then(r => r.json())
+      .then(async (data) => {
+        if (data.ok || data.alreadyActive) {
+          setPlanActivateMsg('✅ Plan activated! Refreshing…');
+          const updated = await fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null);
+          if (updated) setPlanInfo(updated);
+          // Clean up the URL params without a page reload
+          const url = new URL(window.location.href);
+          url.searchParams.delete('plan_activated');
+          url.searchParams.delete('ref');
+          window.history.replaceState({}, '', url.toString());
+        } else {
+          setPlanActivateMsg(`⚠️ Could not confirm plan: ${data.error || 'Unknown error'}`);
+        }
+      })
+      .catch(() => setPlanActivateMsg('⚠️ Failed to verify plan payment. Please contact support.'))
+      .finally(() => setPlanActivating(false));
+  }, [searchParams]);
 
   async function upgradePlan(planSlug: string) {
     setPlanLoading(true);
@@ -212,6 +249,19 @@ export default function SettingsPage() {
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
         Manage your profile, payments, and public store link.
       </p>
+
+      {/* ── Plan Activation Banner ── */}
+      {planActivateMsg && (
+        <div className="flex items-center gap-3 p-4 rounded-xl mb-6 text-sm font-medium"
+          style={{
+            background: planActivateMsg.startsWith('✅') ? 'rgba(160,232,124,0.12)' : planActivateMsg.startsWith('⚠️') ? 'rgba(239,68,68,0.1)' : 'rgba(96,165,250,0.1)',
+            border: `1px solid ${planActivateMsg.startsWith('✅') ? 'rgba(160,232,124,0.3)' : planActivateMsg.startsWith('⚠️') ? 'rgba(239,68,68,0.3)' : 'rgba(96,165,250,0.3)'}`,
+            color: 'var(--text)',
+          }}>
+          {planActivating && <span className="animate-spin inline-block">⏳</span>}
+          {planActivateMsg}
+        </div>
+      )}
 
       {/* ── Payment Setup ── */}
       <div className="rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -609,5 +659,17 @@ export default function SettingsPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--green)' }} />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }

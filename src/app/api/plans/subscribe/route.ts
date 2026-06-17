@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       email:       user.email,
       amountZAR:   plan.priceZAR,
       reference,
-      callbackUrl: `${appUrl}/dashboard?plan_activated=1`,
+      callbackUrl: `${appUrl}/dashboard/settings?plan_activated=1&ref=${reference}`,
       metadata: {
         artistId: user.artist.id,
         planSlug,

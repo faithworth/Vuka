@@ -15,6 +15,8 @@ export async function GET() {
       totalReleases,
       pendingReleases,
       pendingPayouts,
+      industryRevenueRaw,
+      industryOrderCount,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.purchase.count({ where: { status: 'confirmed' } }),
@@ -25,13 +27,30 @@ export async function GET() {
       prisma.distributionRelease.count(),
       prisma.distributionRelease.count({ where: { status: 'metadata_review' } }),
       prisma.payoutRequest.count({ where: { status: 'pending' } }),
+      // Industry service orders (separate table, no Purchase record)
+      prisma.$queryRaw<Array<{ total: number; fees: number }>>`
+        SELECT
+          COALESCE(SUM(amount), 0)::float         AS total,
+          COALESCE(SUM("platformFee"), 0)::float  AS fees
+        FROM "IndustryServiceOrder"
+        WHERE status IN ('paid', 'delivered', 'completed')
+      `,
+      prisma.$queryRaw<Array<{ cnt: number }>>`
+        SELECT COUNT(*)::int AS cnt
+        FROM "IndustryServiceOrder"
+        WHERE status IN ('paid', 'delivered', 'completed')
+      `,
     ]);
+
+    const industryRevenue     = Number((industryRevenueRaw as any)[0]?.total ?? 0);
+    const industryPlatformFee = Number((industryRevenueRaw as any)[0]?.fees  ?? 0);
+    const industryOrders      = Number((industryOrderCount  as any)[0]?.cnt  ?? 0);
 
     return NextResponse.json({
       totalUsers,
-      totalSales,
-      revenue:         revenueAgg._sum.amount      || 0,
-      platformEarnings: revenueAgg._sum.platformFee || 0,
+      totalSales:      totalSales + industryOrders,
+      revenue:         (revenueAgg._sum.amount      || 0) + industryRevenue,
+      platformEarnings: (revenueAgg._sum.platformFee || 0) + industryPlatformFee,
       totalReleases,
       pendingReleases,
       pendingPayouts,
