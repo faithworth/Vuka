@@ -62,6 +62,7 @@ model Artist {
   coverUrl         String               @default("")
   socialLinks      Json                 @default("{}")
   payfastMerchant  String?
+  paystackRecipient String?              // Paystack transfer recipient code
   planSlug         String               @default("free")
   planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
   currency         String               @default("ZAR")
