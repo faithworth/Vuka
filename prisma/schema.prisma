@@ -46,6 +46,7 @@ model User {
   engagementEvents     EngagementEvent[]
   postComments         PostComment[]
   pageViews            PageView[]
+  cmsCollaborations    CmsCollaboration[]
 }
 
 model Artist {
@@ -61,8 +62,7 @@ model Artist {
   photoUrl         String               @default("")
   coverUrl         String               @default("")
   socialLinks      Json                 @default("{}")
-  payfastMerchant  String?
-  paystackRecipient String?              // Paystack transfer recipient code
+  paystackRecipient String?  // bank account number for Paystack payout registration
   planSlug         String               @default("free")
   planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
   currency         String               @default("ZAR")
@@ -104,6 +104,7 @@ model Artist {
   searchIndex           SearchIndex[]
   planSubscriptions     ArtistPlanSubscription[]
   directPurchases       Purchase[]           @relation("PurchaseArtist")
+  featuredArtist        FeaturedArtist?
   createdAt             DateTime             @default(now())
 }
 
@@ -273,7 +274,7 @@ model Purchase {
   licenseType        String       @default("")
   licenseId          String       @unique @default(cuid())
   stripePaymentId    String?
-  payfastPfPaymentId String?
+  paystackReference  String?
   status             String       @default("pending") // pending, confirmed, refunded
   licenseUrl         String?
   receiptUrl         String?
@@ -305,9 +306,9 @@ model SupportTxn {
   message         String   @default("")
   tier            String   @default("Listener")
   isPublic        Boolean  @default(true)
-  stripePaymentId  String?
-  payfastPaymentId String?
-  status           String   @default("pending")
+  stripePaymentId    String?
+  paystackReference  String?
+  status             String   @default("pending")
   createdAt        DateTime @default(now())
 }
 
@@ -355,7 +356,7 @@ model ArtistPayout {
   amount        Float
   currency      String   @default("ZAR")
   status        String   @default("pending") // pending, processing, paid, failed
-  method        String   @default("bank")    // bank, payfast
+  method        String   @default("bank")    // bank, paystack, paypal, flutterwave
   reference     String   @default("")
   purchaseId    String?
   notes         String   @default("")
@@ -503,12 +504,14 @@ model CreatorMembership {
   artist          Artist                  @relation(fields: [artistId], references: [id])
   tierId          String
   tier            CreatorSubscriptionTier @relation(fields: [tierId], references: [id])
-  status          String                  @default("active") // active, pending, cancelled, expired
-  billingInterval String                  @default("monthly") // monthly | yearly
-  expiresAt       DateTime?
-  createdAt       DateTime                @default(now())
+  status            String                  @default("active") // active, pending, cancelled, expired
+  billingInterval   String                  @default("monthly") // monthly | yearly
+  expiresAt         DateTime?
+  paystackReference String?
+  createdAt         DateTime                @default(now())
 
   @@index([artistId])
+  @@index([paystackReference])
 }
 
 model ExclusiveContent {
@@ -584,9 +587,12 @@ model MarketplaceOrder {
   requirements String             @default("")
   deliverables String[]
   deadline    DateTime?
+  paystackReference String?
   dispute     MarketplaceDispute?
   review      ServiceReview?
   createdAt   DateTime            @default(now())
+
+  @@index([paystackReference])
 }
 
 model MarketplaceDispute {
@@ -729,7 +735,7 @@ model ArtistBankAccount {
   branchCode          String        @default("")
   accountType         String        @default("bank")
   paypalEmail         String?
-  payfastMerchantId   String?
+  paystackAccountCode String?  // Paystack transfer recipient code
   isDefault           Boolean       @default(false)
   isVerified          Boolean       @default(false)
   payoutRequests      PayoutRequest[]
@@ -1194,7 +1200,7 @@ model BroadcastLog {
 }
 
 // ── ARTIST PLAN SUBSCRIPTIONS ────────────────────────────────
-// Tracks recurring billing for Pro/Label plans via PayFast.
+// Tracks recurring billing for Pro/Label plans via Paystack.
 
 model ArtistPlanSubscription {
   id                  String    @id @default(cuid())
@@ -1202,8 +1208,8 @@ model ArtistPlanSubscription {
   artist              Artist    @relation(fields: [artistId], references: [id])
   planSlug            String    // pro | label
   status              String    @default("active") // active | cancelled | expired | failed
-  payfastToken        String?   // PayFast recurring token (future use)
-  payfastPaymentId    String?   // last successful pf_payment_id
+  paystackReference  String?   // Paystack payment reference
+  paystackToken       String?   // reserved for future recurring billing
   amount              Float
   currency            String    @default("ZAR")
   billingInterval     String    @default("monthly")
@@ -1220,9 +1226,129 @@ model ArtistPlanSubscription {
   @@map("artist_plan_subscriptions")
 }
 
+// ── CMS SYSTEM ────────────────────────────────────────────────────────────────
+// In-house CMS: pages, content blocks, media library, revision history,
+// collaboration workflow, review comments, and featured artists.
+
+model CmsPage {
+  id            String             @id @default(cuid())
+  slug          String             @unique
+  title         String
+  description   String             @default("")
+  status        String             @default("draft") // draft | review | approved | published | archived
+  isSystem      Boolean            @default(false)   // system pages cannot be deleted
+  metaTitle     String             @default("")
+  metaDesc      String             @default("")
+  publishedAt   DateTime?
+  scheduledAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  createdById   String             @default("system")
+  updatedById   String             @default("system")
+
+  blocks        CmsBlock[]
+  revisions     CmsRevision[]
+  collaborators CmsCollaboration[]
+  comments      CmsComment[]
+
+  @@index([status])
+  @@map("cms_pages")
+}
+
+model CmsBlock {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String   @default("text")
+  label     String   @default("")
+  content   Json     @default("{}")
+  order     Int      @default(0)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, order])
+  @@map("cms_blocks")
+}
+
+model CmsRevision {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  blocks      Json     @default("[]")
+  summary     String   @default("")
+  createdAt   DateTime @default(now())
+  createdById String
+
+  @@index([pageId])
+  @@map("cms_revisions")
+}
+
+model FeaturedArtist {
+  id          String   @id @default(cuid())
+  artistId    String   @unique
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tagline     String   @default("")
+  blurb       String   @default("")
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  featuredAt  DateTime @default(now())
+  createdById String   @default("system")
+
+  @@index([order, isVisible])
+  @@map("featured_artists")
+}
+
+model CmsMedia {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String   @default("")
+  mimeType     String   @default("")
+  size         Int      @default(0)
+  r2Key        String   @unique
+  publicUrl    String   @default("")
+  alt          String   @default("")
+  caption      String   @default("")
+  width        Int?
+  height       Int?
+  folder       String   @default("cms")
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([uploadedById])
+  @@map("cms_media")
+}
+
+model CmsCollaboration {
+  id         String   @id @default(cuid())
+  pageId     String
+  page       CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canEdit    Boolean  @default(true)
+  canPublish Boolean  @default(false)
+  addedAt    DateTime @default(now())
+  addedById  String
+
+  @@unique([pageId, userId])
+  @@index([userId])
+  @@map("cms_collaborations")
+}
+
+model CmsComment {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  body        String
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  createdById String
+
+  @@index([pageId])
+  @@map("cms_comments")
+}
+
 // ── SECURITY: 2FA · DEVICE SESSIONS · PASSWORD RESET ─────────
-// Raw SQL migrations — tables created via /api/admin/run-migration.
-// Uses $queryRaw / $executeRaw to avoid needing `prisma generate`.
 
 model UserTwoFactor {
   id          String    @id @default(cuid())
