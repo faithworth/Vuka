@@ -56,9 +56,35 @@ function LoginForm() {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const me = await res.json();
-        // Honour ?next= param (e.g. middleware redirected /admin → /auth/login?next=/admin)
-        // Only allow internal paths to prevent open redirect
+        // Honour ?next= param — only allow internal paths to prevent open redirect
         const destination = nextUrl && nextUrl.startsWith('/') ? nextUrl : resolveRedirect(me);
+
+        // Check if 2FA is required for this user
+        try {
+          const tfaRes = await fetch('/api/auth/2fa');
+          if (tfaRes.ok) {
+            const tfa = await tfaRes.json();
+            if (tfa.isEnabled) {
+              // Redirect to 2FA challenge — device registration happens there after verify
+              router.push(`/auth/2fa?next=${encodeURIComponent(destination)}`);
+              return;
+            }
+          }
+        } catch { /* 2FA check failure is non-fatal */ }
+
+        // No 2FA — register device session now
+        try {
+          const dr = await fetch('/api/auth/devices?action=register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          if (dr.ok) {
+            const { sessionId } = await dr.json() as { sessionId: string };
+            sessionStorage.setItem('vuka_session_id', sessionId);
+          }
+        } catch { /* device registration failure is non-fatal */ }
+
         router.push(destination);
         router.refresh();
         return;
@@ -134,10 +160,19 @@ function LoginForm() {
             </button>
           </form>
 
-          <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
-            Don't have an account?{' '}
-            <Link href="/auth/register" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">Sign up free</Link>
-          </p>
+          <div className="flex items-center justify-between mt-5">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Don't have an account?{' '}
+              <Link href="/auth/register" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">
+                Sign up free
+              </Link>
+            </p>
+            <Link href="/auth/forgot-password"
+              className="text-sm hover:underline flex-shrink-0"
+              style={{ color: 'var(--text-muted)' }}>
+              Forgot password?
+            </Link>
+          </div>
         </div>
       </div>
     </div>

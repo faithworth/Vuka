@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/utils';
 import { sendWelcomeArtist } from '@/lib/emails';
+import { registerDeviceSession, getIpFromHeaders } from '@/lib/security/deviceSessions';
+import { user2FAEnabled } from '@/lib/security/twoFactor';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -108,6 +110,42 @@ export async function GET(req: NextRequest) {
     }
   } catch (dbErr) {
     console.error('[auth/callback] DB error:', dbErr);
+  }
+
+  // Register device session for this OAuth login (non-blocking — don't fail auth if this errors)
+  if (data.user) {
+    const userAgent = req.headers.get('user-agent') ?? '';
+    const ipAddress = getIpFromHeaders(req.headers);
+    const sessionId = `oauth_${Date.now()}_${data.user.id.slice(-8)}`;
+
+    // Look up DB user for their ID
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: data.user.email! },
+        select: { id: true },
+      });
+
+      if (dbUser) {
+        // Register device in background
+        registerDeviceSession({
+          userId: dbUser.id,
+          sessionId,
+          userAgent,
+          ipAddress,
+          isCurrent: true,
+        }).catch(() => { /* non-blocking */ });
+
+        // If 2FA is enabled, intercept and redirect to challenge page
+        const has2FA = await user2FAEnabled(dbUser.id).catch(() => false);
+        if (has2FA) {
+          const mfaUrl = new URL(
+            `/auth/2fa?next=${encodeURIComponent(resolvedRedirect)}`,
+            req.url
+          );
+          return NextResponse.redirect(mfaUrl);
+        }
+      }
+    } catch { /* DB lookup failure is non-fatal for OAuth */ }
   }
 
   return NextResponse.redirect(new URL(resolvedRedirect, req.url));

@@ -2,11 +2,10 @@
 // src/app/dashboard/settings/page.tsx
 // FIXED: Removed Stripe Connect (not available in SA without a US entity).
 // FIXED: Added SA Bank Account section using the existing /api/payouts/bank-accounts endpoint.
-// FIXED: Paystack section retains connected status badge.
-// FIXED: Added Plan Management section with Paystack upgrade flow.
+// FIXED: Payfast section retains connected status badge.
+// FIXED: Added Plan Management section with PayFast upgrade flow.
 
-import { useEffect, useRef, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import {
   Loader2, CheckCircle2, Mic2, ExternalLink,
   QrCode, Download, Building2, Plus, Trash2, Wallet,
@@ -43,8 +42,7 @@ const SA_BANKS = [
   { name: 'Investec', branch: '580105' },
 ];
 
-function SettingsContent() {
-  const searchParams = useSearchParams();
+export default function SettingsPage() {
   const [artist, setArtist]             = useState<any>(null);
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
@@ -67,8 +65,6 @@ function SettingsContent() {
   const [planInfo, setPlanInfo]         = useState<any>(null);
   const [planLoading, setPlanLoading]   = useState(false);
   const [cancellingPlan, setCancellingPlan] = useState(false);
-  const [planActivating, setPlanActivating] = useState(false);
-  const [planActivateMsg, setPlanActivateMsg] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -78,39 +74,6 @@ function SettingsContent() {
     ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  // Auto-verify plan payment when Paystack redirects back with ?plan_activated=1&ref=PLAN_xxx
-  useEffect(() => {
-    const planActivated = searchParams.get('plan_activated');
-    const ref = searchParams.get('ref');
-    if (!planActivated || !ref) return;
-
-    setPlanActivating(true);
-    setPlanActivateMsg('Confirming your plan upgrade…');
-
-    fetch('/api/plans/verify-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: ref }),
-    })
-      .then(r => r.json())
-      .then(async (data) => {
-        if (data.ok || data.alreadyActive) {
-          setPlanActivateMsg('✅ Plan activated! Refreshing…');
-          const updated = await fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null);
-          if (updated) setPlanInfo(updated);
-          // Clean up the URL params without a page reload
-          const url = new URL(window.location.href);
-          url.searchParams.delete('plan_activated');
-          url.searchParams.delete('ref');
-          window.history.replaceState({}, '', url.toString());
-        } else {
-          setPlanActivateMsg(`⚠️ Could not confirm plan: ${data.error || 'Unknown error'}`);
-        }
-      })
-      .catch(() => setPlanActivateMsg('⚠️ Failed to verify plan payment. Please contact support.'))
-      .finally(() => setPlanActivating(false));
-  }, [searchParams]);
-
   async function upgradePlan(planSlug: string) {
     setPlanLoading(true);
     try {
@@ -119,13 +82,22 @@ function SettingsContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planSlug }),
       });
-      const { authorizationUrl, error } = await res.json();
+      const { payfastUrl, formFields, error } = await res.json();
       if (error) { alert(error); return; }
 
-      // Redirect to Paystack's hosted checkout page
-      if (authorizationUrl) {
-        window.location.href = authorizationUrl;
-      }
+      // Submit redirect form to PayFast
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payfastUrl;
+      Object.entries(formFields).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = String(v);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
     } catch {
       alert('Failed to start upgrade payment');
     }
@@ -249,19 +221,6 @@ function SettingsContent() {
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
         Manage your profile, payments, and public store link.
       </p>
-
-      {/* ── Plan Activation Banner ── */}
-      {planActivateMsg && (
-        <div className="flex items-center gap-3 p-4 rounded-xl mb-6 text-sm font-medium"
-          style={{
-            background: planActivateMsg.startsWith('✅') ? 'rgba(160,232,124,0.12)' : planActivateMsg.startsWith('⚠️') ? 'rgba(239,68,68,0.1)' : 'rgba(96,165,250,0.1)',
-            border: `1px solid ${planActivateMsg.startsWith('✅') ? 'rgba(160,232,124,0.3)' : planActivateMsg.startsWith('⚠️') ? 'rgba(239,68,68,0.3)' : 'rgba(96,165,250,0.3)'}`,
-            color: 'var(--text)',
-          }}>
-          {planActivating && <span className="animate-spin inline-block">⏳</span>}
-          {planActivateMsg}
-        </div>
-      )}
 
       {/* ── Payment Setup ── */}
       <div className="rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -623,6 +582,35 @@ function SettingsContent() {
         </div>
       </div>
 
+      {/* Account Security */}
+      <div className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ background: 'rgba(160,232,124,0.12)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sky)"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className="font-bold text-base" style={{ color: 'var(--text)' }}>Account Security</h2>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Two-factor authentication, active devices &amp; password
+              </p>
+            </div>
+          </div>
+          <a href="/settings/security"
+            className="btn btn-secondary text-sm gap-1.5 flex-shrink-0"
+            style={{ textDecoration: 'none' }}>
+            Manage
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
       {/* QR Code */}
       <div className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-1">
@@ -659,17 +647,5 @@ function SettingsContent() {
       </div>
 
     </div>
-  );
-}
-
-export default function SettingsPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--green)' }} />
-      </div>
-    }>
-      <SettingsContent />
-    </Suspense>
   );
 }

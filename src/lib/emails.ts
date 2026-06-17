@@ -992,3 +992,167 @@ export async function sendSupportArtistNotification({
 </body></html>`;
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 10 — SECURITY EMAILS
+// 2FA enable/disable · Password reset · Session alerts
+// ═══════════════════════════════════════════════════════════════
+
+export async function sendPasswordResetEmail({
+  to,
+  displayName,
+  resetUrl,
+}: {
+  to: string;
+  displayName: string;
+  resetUrl: string;
+}) {
+  const subject = 'Reset your Vuka password';
+  const html = layout(
+    card(
+      icon('🔐') +
+      heading('Password Reset Request') +
+      sub(`Hi ${displayName}, we received a request to reset your Vuka password.`) +
+      sub('This link expires in <strong>1 hour</strong>. If you did not request this, you can safely ignore it — your password will not change.') +
+      btn(resetUrl, 'Reset My Password', 'primary') +
+      `<p style="color:#555;font-size:11px;margin-top:16px;text-align:center;word-break:break-all;">${resetUrl}</p>`
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] sendPasswordResetEmail:', e);
+  }
+}
+
+export async function sendPasswordChangedEmail({
+  to,
+  displayName,
+  securityUrl,
+}: {
+  to: string;
+  displayName: string;
+  securityUrl: string;
+}) {
+  const subject = 'Your Vuka password was changed';
+  const html = layout(
+    card(
+      icon('🔑') +
+      heading('Password Changed') +
+      sub(`Hi ${displayName}, your Vuka password was successfully updated.`) +
+      sub('All other devices have been signed out. If you did not make this change, reset your password immediately.') +
+      btn(securityUrl, 'Review Account Security', 'danger')
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] sendPasswordChangedEmail:', e);
+  }
+}
+
+export async function send2FAEnabledEmail({
+  to,
+  displayName,
+  securityUrl,
+}: {
+  to: string;
+  displayName: string;
+  securityUrl: string;
+}) {
+  const subject = 'Two-factor authentication enabled — Vuka';
+  const html = layout(
+    card(
+      icon('✅') +
+      heading('2FA Enabled') +
+      sub(`Hi ${displayName}, two-factor authentication is now active on your account.`) +
+      sub('You will be asked for a 6-digit code from your authenticator app each time you sign in. Store your backup codes somewhere safe.') +
+      btn(securityUrl, 'View Security Settings', 'secondary')
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] send2FAEnabledEmail:', e);
+  }
+}
+
+export async function send2FADisabledEmail({
+  to,
+  displayName,
+  securityUrl,
+}: {
+  to: string;
+  displayName: string;
+  securityUrl: string;
+}) {
+  const subject = '⚠️ Two-factor authentication disabled — Vuka';
+  const html = layout(
+    card(
+      icon('⚠️') +
+      heading('2FA Disabled') +
+      sub(`Hi ${displayName}, two-factor authentication has been turned off on your Vuka account.`) +
+      sub('If you did not make this change, your account may be compromised. Secure it immediately.') +
+      btn(securityUrl, 'Secure My Account', 'danger')
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] send2FADisabledEmail:', e);
+  }
+}
+
+export async function sendSessionRevokedEmail({
+  to,
+  displayName,
+  deviceName,
+  securityUrl,
+}: {
+  to: string;
+  displayName: string;
+  deviceName: string;
+  securityUrl: string;
+}) {
+  const subject = 'A device was signed out of your Vuka account';
+  const html = layout(
+    card(
+      icon('🚪') +
+      heading('Device Signed Out') +
+      sub(`Hi ${displayName}, the device <strong style="color:#F0F0F0">${deviceName}</strong> was signed out of your Vuka account.`) +
+      sub('If you did not do this, review your account security immediately.') +
+      btn(securityUrl, 'Review Security', 'secondary')
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] sendSessionRevokedEmail:', e);
+  }
+}
+
+export async function sendAllSessionsRevokedEmail({
+  to,
+  displayName,
+  securityUrl,
+}: {
+  to: string;
+  displayName: string;
+  securityUrl: string;
+}) {
+  const subject = 'All devices signed out of your Vuka account';
+  const html = layout(
+    card(
+      icon('🔒') +
+      heading('All Devices Signed Out') +
+      sub(`Hi ${displayName}, all devices have been signed out of your Vuka account.`) +
+      sub('You will need to sign in again on all your devices. If you did not request this, contact support immediately.') +
+      btn(`${APP_URL()}/auth/login`, 'Sign In Again', 'primary')
+    )
+  );
+  try {
+    return getResend().emails.send({ from: FROM(), to, subject, html });
+  } catch (e) {
+    console.error('[email] sendAllSessionsRevokedEmail:', e);
+  }
+}

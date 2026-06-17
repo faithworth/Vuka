@@ -51,12 +51,20 @@ export default function AdminSettingsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black font-display">Platform Settings</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Edit all platform configuration — no code deploys needed</p>
         </div>
         <div className="flex items-center gap-3">
+          <a href="/settings/security"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+            style={{ background: 'rgba(160,232,124,0.1)', border: '1px solid rgba(160,232,124,0.25)', color: 'var(--green)', textDecoration: 'none' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            My Security
+          </a>
           {saved && (
             <span className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--green)' }}>
               <Check size={14} /> Saved
@@ -97,7 +105,7 @@ export default function AdminSettingsPage() {
               <div>
                 <h2 className="font-bold text-lg mb-1">Subscription Plans</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-                  Changes here update the database. New signups and Paystack billing use these plan definitions.
+                  Changes here update the database. New signups and PayFast billing use these plan definitions.
                 </p>
               </div>
               {(settings.plans || []).map((plan: any, i: number) => (
@@ -159,7 +167,7 @@ export default function AdminSettingsPage() {
               {[
                 { key: 'minPayoutAmount', label: 'Minimum Payout Amount (ZAR)', type: 'number' },
                 { key: 'payoutProcessingDays', label: 'Processing Days', type: 'number' },
-                { key: 'paystackPayoutEmail', label: 'Paystack Payout Email', type: 'email' },
+                { key: 'payfastPayoutEmail', label: 'PayFast Payout Email', type: 'email' },
               ].map(({ key, label, type }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{label}</label>

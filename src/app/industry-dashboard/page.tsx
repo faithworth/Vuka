@@ -765,6 +765,28 @@ export default function IndustryDashboardPage() {
                 Contact support <ChevronRight size={12} />
               </a>
             </div>
+
+            {/* Account Security */}
+            <div className="p-5 rounded-2xl flex items-center justify-between gap-4"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(160,232,124,0.1)' }}>
+                  <Shield size={16} style={{ color: 'var(--green)' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Account Security</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    2FA, active devices &amp; password
+                  </p>
+                </div>
+              </div>
+              <a href="/settings/security"
+                className="btn btn-secondary text-sm flex-shrink-0"
+                style={{ textDecoration: 'none' }}>
+                Manage
+              </a>
+            </div>
           </div>
         )}
       </main>

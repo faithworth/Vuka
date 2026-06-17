@@ -200,12 +200,22 @@ export default function FanDashboard() {
             </h1>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Your music, artists, and updates</p>
           </div>
-          <button onClick={logout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--surface)]"
-            style={{ color: 'var(--text-muted)' }}>
-            <LogOut size={15} />
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <a href="/settings/security"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--surface)]"
+              style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Security
+            </a>
+            <button onClick={logout}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--surface)]"
+              style={{ color: 'var(--text-muted)' }}>
+              <LogOut size={15} />
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Quick stats */}

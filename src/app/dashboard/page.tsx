@@ -112,7 +112,14 @@ export default function DashboardPage() {
             <Link href="/dashboard/settings" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <CreditCard size={28} style={{ color: 'var(--sky)' }} />
-              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Configure Payouts</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bank account / Paystack</p></div>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Configure Payouts</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bank account / PayFast</p></div>
+            </Link>
+            <Link href="/settings/security" className="flex items-center gap-4 p-6 rounded-2xl transition-colors"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <div><p className="font-bold" style={{ color: 'var(--text)' }}>Account Security</p><p className="text-sm" style={{ color: 'var(--text-muted)' }}>2FA, devices &amp; password</p></div>
             </Link>
             <button
               onClick={() => { if (stats?.artistSlug) navigator.clipboard.writeText(`${window.location.origin}/artist/${stats.artistSlug}`); }}
