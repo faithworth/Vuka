@@ -24,6 +24,22 @@ export const prisma: PrismaClient =
       process.env.NODE_ENV === "development"
         ? ["error", "warn"]
         : ["error"],
+    datasources: {
+      db: {
+        // In serverless environments (Vercel) each function invocation gets its
+        // own process, so we need a tiny pool.  Appending ?pgbouncer=true tells
+        // Prisma to use transaction-mode pooling (compatible with Supabase
+        // PgBouncer).  connection_limit=1 prevents pool saturation when many
+        // lambdas run concurrently; pool_timeout gives up fast rather than
+        // queuing indefinitely.
+        url: (() => {
+          const base = process.env.DATABASE_URL ?? "";
+          if (!base || base.includes("connection_limit=")) return base;
+          const sep = base.includes("?") ? "&" : "?";
+          return `${base}${sep}connection_limit=1&pool_timeout=10&pgbouncer=true`;
+        })(),
+      },
+    },
   });
 
 if (process.env.NODE_ENV !== "production") {

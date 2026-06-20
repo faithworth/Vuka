@@ -56,15 +56,13 @@ export async function GET() {
       prisma.$queryRaw<Array<{ total: number }>>`
         SELECT COALESCE(SUM(iso.amount), 0)::float AS total
         FROM "IndustryServiceOrder" iso
-        JOIN "IndustryService" s ON s.id = iso."serviceId"
-        WHERE s."artistId" = ${artistId}
+        WHERE iso."artistId" = ${artistId}
           AND iso.status IN ('paid', 'delivered', 'completed')
       `,
       prisma.$queryRaw<Array<{ total: number }>>`
         SELECT COALESCE(SUM(iso.amount), 0)::float AS total
         FROM "IndustryServiceOrder" iso
-        JOIN "IndustryService" s ON s.id = iso."serviceId"
-        WHERE s."artistId" = ${artistId}
+        WHERE iso."artistId" = ${artistId}
           AND iso.status IN ('paid', 'delivered', 'completed')
           AND iso."createdAt" >= ${monthStart}
       `,

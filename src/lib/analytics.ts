@@ -226,11 +226,11 @@ export async function getRevenueAnalytics(artistId: string, months = 12) {
   const sinceStr = since.toISOString().slice(0, 7);
 
   const [revenueRecords, topBeats, topReleases, conversionData] = await Promise.all([
-    // Monthly revenue records
+    // Monthly revenue records — wrapped so a missing column (pre-migration) returns []
     prisma.revenueRecord.findMany({
       where: { artistId, period: { gte: sinceStr } },
       orderBy: { period: 'asc' },
-    }),
+    }).catch(() => []),
 
     // Top-selling beats
     prisma.beat.findMany({
