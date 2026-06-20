@@ -34,6 +34,10 @@
     {
       "path": "/api/cron/expire-plans",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/referral-rewards",
+      "schedule": "0 2 * * *"
     }
   ],
   "headers": [

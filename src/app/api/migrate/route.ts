@@ -115,6 +115,14 @@ const NEW_MIGRATIONS = [
   // payfastMerchantId across Purchase, SupportTxn, ArtistPlanSubscription, Artist,
   // ArtistBankAccount. Adds paystackReference indexes for webhook lookup performance.
   '20260612_paystack_migration',
+  // 2026-06-19: Founding Artist Programme + auto-stepping fees.
+  // Adds referralCode, referredBy on User; isFoundingArtist, lifetimeGrossSales on Artist;
+  // ReferralReward table. Powers the referral dashboard + stepped Free-tier commission.
+  '20260619_founding_artist_autostepping_fees',
+  // 2026-06-20: Plaques, Crowdfunding Campaigns, Split Sheets.
+  // Adds artist_plaques, campaigns, campaign_tiers, campaign_backers,
+  // split_sheets, split_recipients, split_disbursements tables.
+  '20260620_plaques_campaigns_splits',
 ];
 
 export async function GET(req: NextRequest) {

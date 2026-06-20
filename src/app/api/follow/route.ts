@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { checkAndAwardPlaques } from '@/lib/plaques';
 
 // GET /api/follow?artistId=xxx  — check if following
 export async function GET(req: NextRequest) {
@@ -29,8 +30,12 @@ export async function POST(req: NextRequest) {
   if (existing) {
     await prisma.follow.delete({ where: { id: existing.id } });
     return NextResponse.json({ following: false });
-  } else {
-    await prisma.follow.create({ data: { userId: user.id, artistId } });
-    return NextResponse.json({ following: true });
   }
+
+  await prisma.follow.create({ data: { userId: user.id, artistId } });
+
+  // Check follower_count milestones — fire-and-forget, never blocks the response
+  checkAndAwardPlaques(artistId).catch(() => {});
+
+  return NextResponse.json({ following: true });
 }

@@ -4,7 +4,7 @@
  *
  * Purchase has NO artistId — artist is resolved through the
  * linked item (beat, release, video, sample, distributionRelease).
- * SupportTxn has NO platformFee/netAmount — computed at 8 % / 92 %.
+ * SupportTxn has NO platformFee/netAmount — computed per-artist plan rate.
  *
  * NOTE: All queries are sequential (no Promise.all) to stay within
  * the Prisma connection pool limit of 1 on serverless/hobby Postgres.
@@ -13,8 +13,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { platformFeeRate } from '@/lib/plans';
 
-const PLATFORM_RATE = 0.08; // 8 % Vuka cut
+// Default rate used ONLY for aggregate tip calculations in the overview,
+// where we don't load per-artist plan data. Per-artist views always use
+// the real plan rate via platformFeeRate(artist.planSlug, artist.planExpiresAt).
+const DEFAULT_TIP_RATE = 0.10;
 
 // Helper: resolve the artist for a Purchase row by checking each item relation.
 function resolveArtist(p: {
@@ -142,8 +146,8 @@ export async function GET(req: NextRequest) {
         { gross: 0, platform: 0, net: 0 },
       );
       const sumTips = allTips.reduce((a, t) => a + (t.amount || 0), 0);
-      const tipPlatform = sumTips * PLATFORM_RATE;
-      const tipNet = sumTips * (1 - PLATFORM_RATE);
+      const tipPlatform = sumTips * DEFAULT_TIP_RATE;
+      const tipNet = sumTips * (1 - DEFAULT_TIP_RATE);
 
       const sumMonthPurchases = monthPurchases.reduce(
         (a, p) => ({
@@ -240,8 +244,8 @@ export async function GET(req: NextRequest) {
           };
         }
         artistMap[artistId].grossTips   += t.amount || 0;
-        artistMap[artistId].artistOwes  += (t.amount || 0) * (1 - PLATFORM_RATE);
-        artistMap[artistId].platformCut += (t.amount || 0) * PLATFORM_RATE;
+        artistMap[artistId].artistOwes  += (t.amount || 0) * (1 - DEFAULT_TIP_RATE);
+        artistMap[artistId].platformCut += (t.amount || 0) * DEFAULT_TIP_RATE;
         artistMap[artistId].tipsCount   += 1;
       }
 
@@ -264,7 +268,7 @@ export async function GET(req: NextRequest) {
           salesCount:      allPurchases.length,
           tipsCount:       allTips.length,
           monthGross:      sumMonthPurchases.gross + sumMonthTips,
-          monthPlatform:   sumMonthPurchases.platform + sumMonthTips * PLATFORM_RATE,
+          monthPlatform:   sumMonthPurchases.platform + sumMonthTips * DEFAULT_TIP_RATE,
           monthSalesCount: monthPurchases.length,
           monthTipsCount:  monthTips.length,
         },
@@ -331,8 +335,8 @@ export async function GET(req: NextRequest) {
 
       const rows = tips.map((t) => ({
         ...t,
-        platformFee: t.amount * PLATFORM_RATE,
-        netAmount:   t.amount * (1 - PLATFORM_RATE),
+        platformFee: t.amount * DEFAULT_TIP_RATE,
+        netAmount:   t.amount * (1 - DEFAULT_TIP_RATE),
       }));
 
       return NextResponse.json({ tips: rows, total, page, pages: Math.ceil(total / limit) });
@@ -345,9 +349,16 @@ export async function GET(req: NextRequest) {
 
       const artist = await prisma.artist.findUnique({
         where:  { id: artistId },
-        select: { id: true, name: true, photoUrl: true, slug: true },
+        select: { id: true, name: true, photoUrl: true, slug: true, planSlug: true, planExpiresAt: true, lifetimeGrossSales: true },
       });
       if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
+
+      // Use the artist's real plan rate for tips — accurate per-artist view
+      const artistTipRate = platformFeeRate(
+        artist.planSlug,
+        artist.planExpiresAt,
+        (artist as any).lifetimeGrossSales ?? 0,
+      );
 
       // Use `is:` for nullable relation filters (Prisma requirement)
       const rawPurchases = await prisma.purchase.findMany({
@@ -399,17 +410,17 @@ export async function GET(req: NextRequest) {
 
       const tipsWithFees = tips.map((t) => ({
         ...t,
-        platformFee: t.amount * PLATFORM_RATE,
-        netAmount:   t.amount * (1 - PLATFORM_RATE),
+        platformFee: t.amount * artistTipRate,
+        netAmount:   t.amount * (1 - artistTipRate),
       }));
 
       const grossSales    = purchases.reduce((a, p) => a + (p.amount || 0), 0);
       const grossTips     = tips.reduce((a, t) => a + (t.amount || 0), 0);
       const salesPlatform = purchases.reduce((a, p) => a + (p.platformFee || 0), 0);
-      const tipsPlatform  = grossTips * PLATFORM_RATE;
+      const tipsPlatform  = grossTips * artistTipRate;
       const totalPlatform = salesPlatform + tipsPlatform;
       const salesNet      = purchases.reduce((a, p) => a + (p.netAmount || 0), 0);
-      const tipsNet       = grossTips * (1 - PLATFORM_RATE);
+      const tipsNet       = grossTips * (1 - artistTipRate);
       const totalEarned   = salesNet + tipsNet;
       const paidOut       = payoutRequests
         .filter((r) => r.status === 'paid')

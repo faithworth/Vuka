@@ -12,6 +12,7 @@ const registerSchema = z.object({
   slug:     z.string().max(60).optional(),
   company:  z.string().max(200).optional(),
   position: z.string().max(100).optional(),
+  ref:      z.string().max(30).optional(), // referral code from ?ref= param
 });
 
 export async function POST(req: NextRequest) {
@@ -33,8 +34,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, role: rawRole, slug: rawSlug, company, position } = parsed.data;
+    const { name, email, role: rawRole, slug: rawSlug, company, position, ref } = parsed.data;
     const validRole = rawRole;
+
+    // Validate referral code if provided (don't hard-fail — just ignore if invalid)
+    let validatedRef: string | undefined;
+    if (ref) {
+      const referrer = await prisma.user.findUnique({ where: { referralCode: ref } });
+      if (referrer) validatedRef = ref;
+    }
 
     let user = await prisma.user.findUnique({
       where: { email },
@@ -61,7 +69,7 @@ export async function POST(req: NextRequest) {
       // else: keep existing role, fall through to Artist/IndustryUser record checks
     } else {
       user = await prisma.user.create({
-        data: { name, email, role: validRole },
+        data: { name, email, role: validRole, referredBy: validatedRef ?? null },
         include: { artist: true, industryUser: true },
       });
     }

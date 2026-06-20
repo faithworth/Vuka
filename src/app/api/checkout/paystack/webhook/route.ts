@@ -28,6 +28,7 @@ import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
+import { checkAndAwardPlaques } from '@/lib/plaques';
 import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
@@ -134,6 +135,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // ── Auto-stepping fee: increment Artist.lifetimeGrossSales ──
+  // Resolved lazily below once we know the artistId. Moved to after artist resolution.
+  // Flag to trigger increment after artistId is known.
+  let pendingLifetimeSalesIncrement = purchase.amount;
+
   const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
   const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
 
@@ -203,6 +209,20 @@ export async function POST(req: NextRequest) {
     await prisma.artistPayout.create({
       data: { artistId, purchaseId: purchase.id, amount: netAmount, method: 'paystack', currency: purchase.currency, status: 'pending', reference, notes: `${purchase.itemType} sale via Paystack — ${itemName}` },
     });
+
+    // ── Auto-stepping fee: update lifetime gross sales counter ──
+    // This drives the Free-tier rate reduction in platformFeeRate().
+    if (pendingLifetimeSalesIncrement > 0) {
+      await prisma.artist.update({
+        where: { id: artistId },
+        data:  { lifetimeGrossSales: { increment: pendingLifetimeSalesIncrement } },
+      }).catch(e => logger.error('[paystack/webhook] lifetimeGrossSales increment failed', { error: String(e) }));
+
+      // ── Check for new plaques earned ──
+      checkAndAwardPlaques(artistId).catch(e =>
+        logger.error('[paystack/webhook] plaque check failed', { error: String(e) })
+      );
+    }
   }
 
   await auditLog.purchaseConfirmed(purchase.id, itemName, purchase.amount, purchase.currency, purchase.buyerEmail);

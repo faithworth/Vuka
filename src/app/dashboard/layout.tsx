@@ -16,7 +16,7 @@ import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight,
   MoreHorizontal, X, Send, Users, Store, Briefcase, Video,
-  MessageSquare, User,
+  MessageSquare, User, Share2, Trophy, Megaphone, GitFork,
 } from 'lucide-react';
 
 const ARTIST_NAV = [
@@ -35,6 +35,10 @@ const ARTIST_NAV = [
   { href: '/dashboard/support',        label: 'Fan Support', icon: Heart },
   { href: '/dashboard/goals',          label: 'Goals',       icon: Target },
   { href: '/dashboard/payouts',        label: 'Payouts',     icon: Wallet },
+  { href: '/dashboard/referrals',      label: 'Referrals',   icon: Share2 },
+  { href: '/dashboard/plaques',         label: 'Plaques',     icon: Trophy },
+  { href: '/dashboard/campaigns',       label: 'Campaigns',   icon: Megaphone },
+  { href: '/dashboard/splits',          label: 'Split Sheets', icon: GitFork },
   { href: '/dashboard/profile',        label: 'Profile',     icon: User },
   { href: '/dashboard/settings',       label: 'Settings',    icon: Settings },
 ];

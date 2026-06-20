@@ -23,8 +23,8 @@ export const PLANS: VukaPlan[] = [
     name:            'Free',
     priceZAR:        0,
     billingPeriod:   'FREE',
-    platformFeePct:  15,
-    artistSharePct:  85,
+    platformFeePct:  10,   // Starting rate — auto-steps DOWN to 9% then 8.5% as lifetime sales grow. See FREE_TIER_STEPS.
+    artistSharePct:  90,   // Starting share — improves automatically. Use platformFeeRate(slug, expiry, lifetimeGross) everywhere.
     releasesPerMonth: 2,
     features: [
       'Up to 2 releases per month',
@@ -33,6 +33,7 @@ export const PLANS: VukaPlan[] = [
       'PDF license generation',
       'Paystack + Flutterwave payments',
       'Basic analytics',
+      'Fee reduces automatically as you sell more — no subscription needed',
     ],
   },
   {
@@ -93,20 +94,87 @@ export function getEffectivePlan(
   return getPlan(slug);
 }
 
-/** Fee rate as a decimal (e.g. 0.15) for a given plan slug */
-export function platformFeeRate(planSlug: string | null | undefined, expiresAt?: Date | null): number {
-  return getEffectivePlan(planSlug, expiresAt).platformFeePct / 100;
+// ─── Auto-stepping fee thresholds (Free tier only) ───────────────────────────
+// Free artists pay a reducing rate as their lifetime gross sales grow.
+// Paid plans have flat rates — they never use these thresholds.
+//
+//  R0        – R2,000   lifetime gross → 10% (same as Zishapp, so day-one parity)
+//  R2,001    – R10,000  lifetime gross → 9%
+//  R10,001+             lifetime gross → 8.5% (permanent Free-tier floor)
+//
+// Tracked on Artist.lifetimeGrossSales (updated on every confirmed purchase).
+// No opt-in, no subscription required — it just improves automatically.
+
+export const FREE_TIER_STEPS = [
+  { upTo: 2_000,  feePct: 10   },   // R0     → R2,000
+  { upTo: 10_000, feePct: 9    },   // R2,001 → R10,000
+  { upTo: Infinity, feePct: 8.5 }, // R10,001+
+] as const;
+
+/**
+ * Resolve the auto-stepped fee rate for a Free-tier artist.
+ * Pass lifetimeGrossSales from Artist.lifetimeGrossSales.
+ * Returns a decimal (e.g. 0.10, 0.09, 0.085).
+ */
+export function freeTierFeeRate(lifetimeGrossSales: number): number {
+  for (const step of FREE_TIER_STEPS) {
+    if (lifetimeGrossSales <= step.upTo) return step.feePct / 100;
+  }
+  return 0.085; // safety fallback
+}
+
+/**
+ * Human-readable label for the artist's current fee rate.
+ * e.g. "10%" for a new Free artist, "8%" for a Pro artist.
+ */
+export function feeRateLabel(
+  planSlug: string | null | undefined,
+  expiresAt: Date | null | undefined,
+  lifetimeGrossSales = 0,
+): string {
+  const plan = getEffectivePlan(planSlug, expiresAt);
+  if (plan.slug === 'free') {
+    const pct = freeTierFeeRate(lifetimeGrossSales) * 100;
+    // Format without trailing zero: 8.5% not 8.50%
+    return `${pct % 1 === 0 ? pct.toFixed(0) : pct}%`;
+  }
+  return `${plan.platformFeePct}%`;
+}
+
+/**
+ * Fee rate as a decimal (e.g. 0.15) for a given plan slug.
+ * For Free-tier artists, pass lifetimeGrossSales to get the stepped rate.
+ * For all paid plans, lifetimeGrossSales is ignored.
+ */
+export function platformFeeRate(
+  planSlug: string | null | undefined,
+  expiresAt?: Date | null,
+  lifetimeGrossSales = 0,
+): number {
+  const plan = getEffectivePlan(planSlug, expiresAt);
+  if (plan.slug === 'free') return freeTierFeeRate(lifetimeGrossSales);
+  return plan.platformFeePct / 100;
 }
 
 /** Artist net after platform fee */
-export function artistNet(grossAmount: number, planSlug: string | null | undefined, expiresAt?: Date | null): number {
-  const fee = Math.round(grossAmount * platformFeeRate(planSlug, expiresAt) * 100) / 100;
+export function artistNet(
+  grossAmount: number,
+  planSlug: string | null | undefined,
+  expiresAt?: Date | null,
+  lifetimeGrossSales = 0,
+): number {
+  const fee = Math.round(grossAmount * platformFeeRate(planSlug, expiresAt, lifetimeGrossSales) * 100) / 100;
   return Math.round((grossAmount - fee) * 100) / 100;
 }
 
 /** Platform fee amount */
-export function platformFee(grossAmount: number, planSlug: string | null | undefined, expiresAt?: Date | null): number {
-  return Math.round(grossAmount * platformFeeRate(planSlug, expiresAt) * 100) / 100;
+export function platformFee(
+  grossAmount: number,
+  planSlug: string | null | undefined,
+  expiresAt?: Date | null,
+  lifetimeGrossSales = 0,
+): number {
+  return Math.round(grossAmount * platformFeeRate(planSlug, expiresAt, lifetimeGrossSales) * 100) / 100;
 }
 
 /**

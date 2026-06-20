@@ -17,6 +17,11 @@ export default function PayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab]       = useState<'overview' | 'history'>('overview');
 
+  // Payout request
+  const [requestingPayout, setRequestingPayout] = useState(false);
+  const [payoutError, setPayoutError]           = useState('');
+  const [payoutSuccess, setPayoutSuccess]       = useState('');
+
   // Bank account form
   const [showBankForm, setShowBankForm] = useState(false);
   const [bankSaving, setBankSaving]     = useState(false);
@@ -69,6 +74,34 @@ export default function PayoutsPage() {
       await load();
     } catch {}
     setBankSaving(false);
+  }
+
+  async function requestPayout() {
+    setRequestingPayout(true);
+    setPayoutError('');
+    setPayoutSuccess('');
+    try {
+      const defaultBank = bankAccounts.find((a: any) => a.isDefault) || bankAccounts[0];
+      const res = await fetch('/api/payouts/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: summary.totalPending,
+          bankAccountId: defaultBank?.id,
+          currency: 'ZAR',
+        }),
+      });
+      if (res.ok) {
+        setPayoutSuccess('Payout request submitted! We\'ll process it within 1–3 business days.');
+        await load();
+      } else {
+        const d = await res.json();
+        setPayoutError(d.error || 'Failed to submit payout request.');
+      }
+    } catch {
+      setPayoutError('Network error — please try again.');
+    }
+    setRequestingPayout(false);
   }
 
   if (loading) return (
@@ -205,7 +238,8 @@ export default function PayoutsPage() {
             </div>
           </div>
 
-          {/* ── Ozow ── */}
+          {/* ── Ozow — hidden until integration is live ── */}
+          {false && (
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -233,8 +267,10 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
+          )}
 
-          {/* ── Yoco ── */}
+          {/* ── Yoco — hidden until integration is live ── */}
+          {false && (
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -262,6 +298,7 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
+          )}
 
           {/* ── SA Bank EFT / Manual Payout ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
@@ -416,6 +453,41 @@ export default function PayoutsPage() {
       {/* ── HISTORY TAB ── */}
       {tab === 'history' && (
         <div className="space-y-4">
+
+          {/* ── Request Payout button ── */}
+          {(summary.totalPending > 0 || summary.totalEarned > 0) && (
+            <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>Ready to withdraw</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Processed within 1–3 business days after approval.
+                  </p>
+                </div>
+                <button
+                  onClick={requestPayout}
+                  disabled={requestingPayout || summary.totalPending <= 0}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50"
+                  style={{ background: summary.totalPending > 0 ? 'linear-gradient(135deg,#d4a000,#b38600)' : 'var(--surface2)' }}>
+                  {requestingPayout
+                    ? <><Loader2 size={14} className="animate-spin" /> Submitting…</>
+                    : <><ArrowUpRight size={14} /> Request Payout {summary.totalPending > 0 ? `· ${formatCurrency(summary.totalPending)}` : ''}</>}
+                </button>
+              </div>
+              {payoutSuccess && (
+                <div className="mt-3 flex items-center gap-2 text-sm p-3 rounded-xl"
+                  style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
+                  <CheckCircle size={14} /> {payoutSuccess}
+                </div>
+              )}
+              {payoutError && (
+                <div className="mt-3 text-sm p-3 rounded-xl"
+                  style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171' }}>
+                  {payoutError}
+                </div>
+              )}
+            </div>
+          )}
           {/* Payout requests */}
           {payoutRequests.length > 0 && (
             <div>

@@ -26,7 +26,7 @@ export default function TermsPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: January 2025 · Governing law: Republic of South Africa</p>
 
         <Section title="1. About Vuka">
-          <p>Vuka ("we", "us", "the platform") is a digital music marketplace operated by Faithworth, Republic of South Africa. These Terms govern your use of vuka.co.za and all related services.</p>
+          <p>Vuka ("we", "us", "the platform") is a digital music marketplace operated by Vuka Music Platform (Pty) Ltd (Registration pending, CIPC), Republic of South Africa. These Terms govern your use of vuka.co.za and all related services.</p>
           <p>By creating an account or making a purchase, you confirm you are at least 18 years old and agree to these Terms in full.</p>
         </Section>
 
@@ -48,7 +48,7 @@ export default function TermsPage() {
 
         <Section title="5. Payments & Fees">
           <p>All prices are displayed in South African Rand (ZAR). Payments are processed via Paystack for domestic transactions. International payment options may be added in future.</p>
-          <p>Vuka charges a small platform fee on each transaction to cover operational costs. This fee is deducted before funds are disbursed to the artist. Artists can view net earnings in their Payouts dashboard.</p>
+          <p>Vuka charges a platform fee on each transaction. Free accounts start at 10% and reduce automatically as lifetime sales grow — to 9% at R2,000 lifetime gross, and to 8.5% permanently above R10,000. Pro plan (R249/month) is charged at a flat 8%. Label plan (R999/month) is charged at a flat 5%. No additional fees are charged on crowdfunding or event sales. The applicable fee is deducted before funds are disbursed; artists can view net earnings in their Payouts dashboard.</p>
           <p>Vuka does not store payment card information. All payment data is handled by Paystack in accordance with PCI DSS standards.</p>
         </Section>
 

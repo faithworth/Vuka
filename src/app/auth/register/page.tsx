@@ -23,6 +23,7 @@ function RegisterForm() {
   const rawRole = searchParams.get('role') || 'artist';
   const validRoles: Role[] = ['fan', 'artist', 'industry'];
   const defaultRole: Role = validRoles.includes(rawRole as Role) ? (rawRole as Role) : 'artist';
+  const refCode = searchParams.get('ref') || '';  // referral code from ?ref=
 
   const [name, setName]           = useState('');
   const [email, setEmail]         = useState('');
@@ -71,6 +72,7 @@ function RegisterForm() {
         role,
         slug: slugify(name),
         ...(isIndustry && { company, position }),
+        ...(refCode && { ref: refCode }),
       }),
     });
 

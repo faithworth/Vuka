@@ -29,6 +29,11 @@ model User {
   suspendedAt     DateTime?
   suspendedReason String               @default("")
   createdAt       DateTime             @default(now())
+  // ── Founding Artist referral programme ──
+  referralCode    String?              @unique  // this user's shareable code (auto-generated on first access)
+  referredBy      String?                       // the code used when this user signed up
+  referralRewards ReferralReward[]
+  // ── Relations ──
   artist          Artist?
   industryUser    IndustryUser?
   purchases       Purchase[]
@@ -69,6 +74,10 @@ model Artist {
   isPublic         Boolean              @default(true)
   isVerified       Boolean              @default(false)
   totalPlays       Int                  @default(0)
+  // ── Founding Artist Programme ──
+  isFoundingArtist   Boolean            @default(false) // permanent badge, granted manually to first 5 completing referral goal
+  // ── Auto-stepping fee ──
+  lifetimeGrossSales Float              @default(0)     // running total of all confirmed gross sales; used by platformFeeRate()
   beats            Beat[]
   releases         Release[]
   videos           Video[]
@@ -105,6 +114,10 @@ model Artist {
   planSubscriptions     ArtistPlanSubscription[]
   directPurchases       Purchase[]           @relation("PurchaseArtist")
   featuredArtist        FeaturedArtist?
+  // ── New feature relations ──
+  plaques               ArtistPlaque[]
+  campaigns             Campaign[]
+  splitSheets           SplitSheet[]
   createdAt             DateTime             @default(now())
 }
 
@@ -1404,4 +1417,157 @@ model TwoFactorChallenge {
 
   @@index([userId])
   @@map("two_factor_challenges")
+}
+
+// ── FOUNDING ARTIST PROGRAMME ────────────────────────────────────────────────
+
+model ReferralReward {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardType  String   @default("pro_3months") // extendable: future reward types go here
+  grantedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("referral_rewards")
+}
+
+// ── PLAQUES / ACHIEVEMENTS ────────────────────────────────────────────────────
+// Multi-dimensional milestones across sales, streams, membership revenue, followers.
+// Each earned plaque is stored permanently. Shareable image URL generated on earn.
+
+model ArtistPlaque {
+  id           String   @id @default(cuid())
+  artistId     String
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tier         String   // first_sale, bronze, silver, gold, platinum, diamond, multi_platinum
+  dimension    String   // sales_units, streams, follower_count, membership_revenue
+  milestone    Float    // the numeric threshold achieved
+  shareableUrl String   @default("")  // generated OG image for social sharing
+  earnedAt     DateTime @default(now())
+
+  @@unique([artistId, tier, dimension])
+  @@index([artistId])
+  @@map("artist_plaques")
+}
+
+// ── CROWDFUNDING CAMPAIGNS ────────────────────────────────────────────────────
+// Extends the existing Goal model into full campaigns with backer tiers,
+// rewards, all-or-nothing refund logic, and no extra platform fee.
+
+model Campaign {
+  id             String          @id @default(cuid())
+  artistId       String
+  artist         Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  title          String
+  description    String          @default("")
+  coverUrl       String          @default("")
+  targetAmount   Float
+  currentAmount  Float           @default(0)
+  currency       String          @default("ZAR")
+  deadline       DateTime
+  campaignType   String          @default("flexible") // flexible | all_or_nothing
+  status         String          @default("draft")    // draft, active, funded, failed, cancelled
+  slug           String          @unique
+  backerCount    Int             @default(0)
+  tiers          CampaignTier[]
+  backers        CampaignBacker[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([artistId, status])
+  @@map("campaigns")
+}
+
+model CampaignTier {
+  id           String           @id @default(cuid())
+  campaignId   String
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  title        String
+  description  String           @default("")
+  amount       Float            // minimum pledge for this tier
+  perks        String[]         // list of reward perks
+  maxBackers   Int?             // null = unlimited
+  backerCount  Int              @default(0)
+  backers      CampaignBacker[]
+  createdAt    DateTime         @default(now())
+
+  @@index([campaignId])
+  @@map("campaign_tiers")
+}
+
+model CampaignBacker {
+  id                  String        @id @default(cuid())
+  campaignId          String
+  campaign            Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  tierId              String?
+  tier                CampaignTier? @relation(fields: [tierId], references: [id])
+  userId              String?
+  backerName          String
+  backerEmail         String
+  amount              Float
+  currency            String        @default("ZAR")
+  paystackReference   String?
+  status              String        @default("pending") // pending, confirmed, refunded
+  anonymous           Boolean       @default(false)
+  message             String        @default("")
+  createdAt           DateTime      @default(now())
+
+  @@index([campaignId, status])
+  @@index([backerEmail])
+  @@map("campaign_backers")
+}
+
+// ── SPLIT SHEETS ──────────────────────────────────────────────────────────────
+// Revenue-sharing agreements between collaborators.
+// Splits auto-apply at checkout via the earnings resolver.
+
+model SplitSheet {
+  id          String          @id @default(cuid())
+  artistId    String          // the owning artist (creator of the sheet)
+  artist      Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  itemType    String          // beat | release | track
+  itemId      String          // the beat/release/track this sheet covers
+  title       String          // human label e.g. "Fully Charged Split"
+  isLocked    Boolean         @default(false) // locked after first sale — no more edits
+  splits      SplitRecipient[]
+  disbursements SplitDisbursement[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([itemType, itemId])  // one sheet per content item
+  @@index([artistId])
+  @@map("split_sheets")
+}
+
+model SplitRecipient {
+  id            String     @id @default(cuid())
+  splitSheetId  String
+  splitSheet    SplitSheet @relation(fields: [splitSheetId], references: [id], onDelete: Cascade)
+  name          String                     // display name
+  email         String                     // for payout routing
+  artistId      String?                    // if they're a Vuka artist — auto-links wallet
+  role          String     @default("")    // e.g. "Producer", "Feature", "Co-writer"
+  percentage    Float                      // must sum to 100 across all recipients
+  paystackRecipientCode String @default("") // populated when first payout runs
+  createdAt     DateTime   @default(now())
+
+  @@index([splitSheetId])
+  @@map("split_recipients")
+}
+
+model SplitDisbursement {
+  id           String     @id @default(cuid())
+  splitSheetId String
+  splitSheet   SplitSheet @relation(fields: [splitSheetId], references: [id], onDelete: Cascade)
+  purchaseId   String?    // which purchase triggered this disbursement
+  totalGross   Float      // gross before platform fee
+  platformFee  Float
+  totalNet     Float      // distributed across recipients
+  status       String     @default("pending") // pending, processing, completed, failed
+  processedAt  DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([splitSheetId])
+  @@map("split_disbursements")
 }
