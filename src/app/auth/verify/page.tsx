@@ -21,12 +21,17 @@ function VerifyContent() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         // Ensure DB record exists (covers edge case where email-link verify happens)
+        const userName =
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          session.user.email?.split('@')[0] ||
+          'User';
         try {
           await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+              name: userName,
               email: session.user.email,
               role,
             }),
