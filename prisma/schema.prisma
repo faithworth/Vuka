@@ -1536,8 +1536,8 @@ model SplitSheet {
   id          String          @id @default(cuid())
   artistId    String          // the owning artist (creator of the sheet)
   artist      Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  itemType    String          // beat | release | track
-  itemId      String          // the beat/release/track this sheet covers
+  itemType    String          // beat | release | video | sample | merch
+  itemId      String          // the beat/release/video/sample/merch this sheet covers
   title       String          // human label e.g. "Fully Charged Split"
   isLocked    Boolean         @default(false) // locked after first sale — no more edits
   splits      SplitRecipient[]

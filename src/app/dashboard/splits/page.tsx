@@ -14,7 +14,10 @@ interface SplitSheet {
   _count: { disbursements: number };
 }
 
-const ITEM_TYPES = ['beat', 'release', 'track'];
+// Every item type a fan can directly purchase — matches the columns on
+// the Purchase model (beatId / releaseId / videoId / sampleId / merchId).
+// 'release' covers both catalog releases and distribution-only releases.
+const ITEM_TYPES = ['beat', 'release', 'video', 'sample', 'merch'];
 
 const emptyRecipient = (): Recipient => ({ name: '', email: '', role: '', percentage: '' });
 

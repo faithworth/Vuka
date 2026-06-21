@@ -6,6 +6,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
+// Every item type a fan can directly purchase — matches the columns on the
+// Purchase model (beatId / releaseId / videoId / sampleId / merchId).
+const ALLOWED_ITEM_TYPES = ['beat', 'release', 'video', 'sample', 'merch'] as const;
+
+// Confirms itemId both exists and is owned by the requesting artist, so an
+// artist can't point a split sheet at someone else's content. 'release'
+// checks Release first, then falls back to DistributionRelease since
+// distribution-only releases share the 'release' itemType.
+async function itemBelongsToArtist(itemType: string, itemId: string, artistId: string): Promise<boolean> {
+  switch (itemType) {
+    case 'beat': {
+      const beat = await prisma.beat.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      return beat?.artistId === artistId;
+    }
+    case 'release': {
+      const release = await prisma.release.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      if (release) return release.artistId === artistId;
+      const distRelease = await prisma.distributionRelease.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      return distRelease?.artistId === artistId;
+    }
+    case 'video': {
+      const video = await prisma.video.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      return video?.artistId === artistId;
+    }
+    case 'sample': {
+      const sample = await prisma.sample.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      return sample?.artistId === artistId;
+    }
+    case 'merch': {
+      const merch = await prisma.merch.findUnique({ where: { id: itemId }, select: { artistId: true } });
+      return merch?.artistId === artistId;
+    }
+    default:
+      return false;
+  }
+}
+
 export async function GET() {
   try {
     const user = await requireArtist();
@@ -33,9 +70,18 @@ export async function POST(req: NextRequest) {
     const { title, itemType, itemId, splits } = body;
 
     if (!title?.trim())  return NextResponse.json({ error: 'Title required' }, { status: 400 });
-    if (!itemType)       return NextResponse.json({ error: 'itemType required (beat|release|track)' }, { status: 400 });
+    if (!ALLOWED_ITEM_TYPES.includes(itemType)) {
+      return NextResponse.json({ error: `itemType must be one of: ${ALLOWED_ITEM_TYPES.join(', ')}` }, { status: 400 });
+    }
     if (!itemId)         return NextResponse.json({ error: 'itemId required' }, { status: 400 });
     if (!splits?.length) return NextResponse.json({ error: 'At least one recipient required' }, { status: 400 });
+
+    // Verify the artist actually owns this item before letting them attach
+    // a split sheet (and therefore future payouts) to it.
+    const owns = await itemBelongsToArtist(itemType, itemId, user.artist.id);
+    if (!owns) {
+      return NextResponse.json({ error: 'Item not found or not owned by you' }, { status: 404 });
+    }
 
     // Validate percentages sum to 100
     const total = splits.reduce((s: number, r: any) => s + (parseFloat(r.percentage) || 0), 0);
