@@ -52,6 +52,11 @@ model User {
   postComments         PostComment[]
   pageViews            PageView[]
   cmsCollaborations    CmsCollaboration[]
+  label                Label?               @relation("LabelOwner")
+  labelTeam            LabelTeamMember[]
+  fanReferralsMade     FanReferral[]        @relation("FanReferrer")
+  fanReferralsReceived FanReferral[]        @relation("FanReferee")
+  awardVotes           AwardVote[]
 }
 
 model Artist {
@@ -118,6 +123,11 @@ model Artist {
   plaques               ArtistPlaque[]
   campaigns             Campaign[]
   splitSheets           SplitSheet[]
+  events                Event[]
+  nominations           AwardNomination[]
+  labelRoster           LabelArtist[]
+  onboarding            ArtistOnboarding?
+  fanReferrals          FanReferral[]
   createdAt             DateTime             @default(now())
 }
 
@@ -1570,4 +1580,220 @@ model SplitDisbursement {
 
   @@index([splitSheetId])
   @@map("split_disbursements")
+}
+
+// ── EVENTS & TICKETING ────────────────────────────────────────────────────────
+
+model Event {
+  id           String           @id @default(cuid())
+  artistId     String
+  artist       Artist           @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  title        String
+  description  String           @default("")
+  venue        String           @default("")
+  city         String           @default("")
+  province     String           @default("")
+  startDate    DateTime
+  endDate      DateTime?
+  coverUrl     String           @default("")
+  status       String           @default("draft")   // draft, published, cancelled, completed
+  slug         String           @unique
+  tickets      EventTicket[]
+  purchases    TicketPurchase[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([artistId, status])
+  @@map("events")
+}
+
+model EventTicket {
+  id          String           @id @default(cuid())
+  eventId     String
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  description String           @default("")
+  price       Float
+  currency    String           @default("ZAR")
+  quantity    Int?
+  sold        Int              @default(0)
+  purchases   TicketPurchase[]
+  createdAt   DateTime         @default(now())
+
+  @@index([eventId])
+  @@map("event_tickets")
+}
+
+model TicketPurchase {
+  id                String      @id @default(cuid())
+  eventId           String
+  event             Event       @relation(fields: [eventId], references: [id])
+  ticketId          String
+  ticket            EventTicket @relation(fields: [ticketId], references: [id])
+  userId            String?
+  buyerName         String
+  buyerEmail        String
+  quantity          Int         @default(1)
+  unitPrice         Float
+  totalAmount       Float
+  currency          String      @default("ZAR")
+  paystackReference String?
+  status            String      @default("pending") // pending, confirmed, cancelled, refunded
+  qrToken           String      @unique @default(cuid())
+  createdAt         DateTime    @default(now())
+
+  @@index([eventId, status])
+  @@index([buyerEmail])
+  @@map("ticket_purchases")
+}
+
+// ── AWARDS & FAN VOTING ───────────────────────────────────────────────────────
+
+model Award {
+  id          String          @id @default(cuid())
+  title       String
+  year        Int
+  description String          @default("")
+  coverUrl    String          @default("")
+  status      String          @default("nominations_open") // nominations_open, voting_open, closed, announced
+  categories  AwardCategory[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("awards")
+}
+
+model AwardCategory {
+  id          String            @id @default(cuid())
+  awardId     String
+  award       Award             @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  name        String
+  description String            @default("")
+  nominations AwardNomination[]
+  createdAt   DateTime          @default(now())
+
+  @@index([awardId])
+  @@map("award_categories")
+}
+
+model AwardNomination {
+  id             String        @id @default(cuid())
+  categoryId     String
+  category       AwardCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  artistId       String
+  artist         Artist        @relation(fields: [artistId], references: [id])
+  releaseId      String?
+  voteCount      Int           @default(0)
+  analyticsScore Float         @default(0)
+  finalScore     Float         @default(0)
+  isWinner       Boolean       @default(false)
+  votes          AwardVote[]
+  createdAt      DateTime      @default(now())
+
+  @@unique([categoryId, artistId])
+  @@index([categoryId])
+  @@map("award_nominations")
+}
+
+model AwardVote {
+  id             String          @id @default(cuid())
+  nominationId   String
+  nomination     AwardNomination @relation(fields: [nominationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  createdAt      DateTime        @default(now())
+
+  @@unique([nominationId, userId])
+  @@index([nominationId])
+  @@map("award_votes")
+}
+
+// ── LABEL / ROSTER ────────────────────────────────────────────────────────────
+
+model Label {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  logoUrl     String            @default("")
+  description String            @default("")
+  website     String            @default("")
+  ownerId     String            @unique
+  owner       User              @relation("LabelOwner", fields: [ownerId], references: [id])
+  roster      LabelArtist[]
+  teamMembers LabelTeamMember[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("labels")
+}
+
+model LabelArtist {
+  id           String   @id @default(cuid())
+  labelId      String
+  label        Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  artistId     String
+  artist       Artist   @relation(fields: [artistId], references: [id])
+  revenueShare Float    @default(80)    // % the artist keeps; label keeps the rest after Vuka fee
+  status       String   @default("pending") // pending, active, inactive
+  inviteToken  String   @unique @default(cuid())
+  joinedAt     DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([labelId, artistId])
+  @@index([labelId])
+  @@map("label_artists")
+}
+
+model LabelTeamMember {
+  id        String   @id @default(cuid())
+  labelId   String
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("manager") // admin, manager, accountant
+  createdAt DateTime @default(now())
+
+  @@unique([labelId, userId])
+  @@index([labelId])
+  @@map("label_team_members")
+}
+
+// ── FAN REFERRAL (MEMBERSHIPS) ────────────────────────────────────────────────
+// A fan who brings in another fan who buys a membership earns a reward.
+// Separate from the artist founding-artist referral system.
+
+model FanReferral {
+  id          String   @id @default(cuid())
+  referrerId  String
+  referrer    User     @relation("FanReferrer", fields: [referrerId], references: [id])
+  refereeId   String
+  referee     User     @relation("FanReferee", fields: [refereeId], references: [id])
+  artistId    String?
+  artist      Artist?  @relation(fields: [artistId], references: [id])
+  purchaseId  String?
+  rewardType  String   @default("account_credit")
+  rewardValue Float    @default(0)
+  rewarded    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([referrerId, refereeId])
+  @@map("fan_referrals")
+}
+
+// ── ARTIST ONBOARDING ─────────────────────────────────────────────────────────
+
+model ArtistOnboarding {
+  id              String   @id @default(cuid())
+  artistId        String   @unique
+  artist          Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  hasProfile      Boolean  @default(false)
+  hasRelease      Boolean  @default(false)
+  hasBankAccount  Boolean  @default(false)
+  hasSocials      Boolean  @default(false)
+  dismissedAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("artist_onboarding")
 }

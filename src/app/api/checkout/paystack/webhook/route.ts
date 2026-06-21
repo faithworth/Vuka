@@ -29,6 +29,7 @@ import { logger } from '@/lib/logger';
 import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { checkAndAwardPlaques } from '@/lib/plaques';
+import { disburseSplitSheet } from '@/lib/splits';
 import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
@@ -222,6 +223,21 @@ export async function POST(req: NextRequest) {
       checkAndAwardPlaques(artistId).catch(e =>
         logger.error('[paystack/webhook] plaque check failed', { error: String(e) })
       );
+
+      // ── Auto-disburse split sheet if one exists for this item ──
+      if (purchase.itemType && purchase.itemId) {
+        disburseSplitSheet({
+          itemType:   purchase.itemType,
+          itemId:     purchase.itemId,
+          purchaseId: purchase.id,
+          grossAmount: purchase.amount,
+          artistPlanSlug: undefined,
+          artistPlanExpiry: undefined,
+          lifetimeGrossSales: pendingLifetimeSalesIncrement,
+        }).catch(e =>
+          logger.error('[paystack/webhook] split disburse failed', { error: String(e) })
+        );
+      }
     }
   }
 

@@ -123,14 +123,11 @@ const NEW_MIGRATIONS = [
   // Adds artist_plaques, campaigns, campaign_tiers, campaign_backers,
   // split_sheets, split_recipients, split_disbursements tables.
   '20260620_plaques_campaigns_splits',
-  // 2026-06-20b: Fix referral_rewards table name.
-  // Previous migration created table as "ReferralReward" but Prisma schema
-  // maps it to "referral_rewards" via @@map — renames to match.
-  '20260620b_fix_referral_rewards_table_name',
-  // 2026-06-20c: Fix RevenueRecord schema mismatch.
-  // Adds missing columns: type, amount, netAmount, platformFee, purchaseId.
-  // Schema was redesigned from aggregated to per-transaction model with no migration.
-  '20260620c_fix_revenue_record_schema',
+  // 2026-06-21: Events, Awards, Labels, Fan Referrals, Artist Onboarding.
+  // Adds events, event_tickets, ticket_purchases, awards, award_categories,
+  // award_nominations, award_votes, labels, label_artists, label_team_members,
+  // fan_referrals, artist_onboarding tables.
+  '20260621_events_awards_labels_onboarding',
 ];
 
 export async function GET(req: NextRequest) {

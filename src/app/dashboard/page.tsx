@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TrendingUp, Calendar, ShoppingBag, Play, Upload, CreditCard, Link2, Crown, Zap, Star, ArrowRight } from 'lucide-react';
+import { TrendingUp, Calendar, ShoppingBag, Play, Upload, CreditCard, Link2, Crown, Zap, Star, ArrowRight, CheckCircle, Circle, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -17,25 +17,36 @@ const PLAN_ICONS: Record<string, any> = {
 };
 
 export default function DashboardPage() {
-  const [stats, setStats]   = useState<any>(null);
-  const [plan, setPlan]     = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats,      setStats]      = useState<any>(null);
+  const [plan,       setPlan]       = useState<any>(null);
+  const [onboarding, setOnboarding] = useState<any>(null);
+  const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/dashboard/stats').then(r => r.json()).catch(() => ({})),
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    ]).then(([s, p]) => {
+      fetch('/api/dashboard/onboarding').then(r => r.json()).catch(() => null),
+    ]).then(([s, p, ob]) => {
       setStats(s);
       setPlan(p);
+      setOnboarding(ob);
+
       setLoading(false);
     });
   }, []);
 
-  const planColor  = PLAN_COLORS[plan?.planSlug ?? 'free'];
-  const PlanIcon   = PLAN_ICONS[plan?.planSlug ?? 'free'] ?? Zap;
-  const artistPct  = plan?.artistSharePct ?? 85;
-  const platformPct = plan?.platformFeePct ?? 15;
+  const planColor   = PLAN_COLORS[plan?.planSlug ?? 'free'];
+  const PlanIcon    = PLAN_ICONS[plan?.planSlug ?? 'free'] ?? Zap;
+  const artistPct   = plan?.artistSharePct  ?? 90;
+  const platformPct = plan?.platformFeePct  ?? 10;
+
+  async function dismissOnboarding() {
+    await fetch('/api/dashboard/onboarding', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'dismiss' }) });
+    setOnboarding((ob: any) => ob ? { ...ob, dismissed: true } : ob);
+  }
+
+  const showOnboarding = onboarding && !onboarding.dismissed && !onboarding.completed && onboarding.doneCount < onboarding.total;
 
   return (
     <div className="p-6 md:p-10">
@@ -43,6 +54,38 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>Dashboard</h1>
         <p style={{ color: 'var(--text-muted)' }}>What You've Earned</p>
       </div>
+
+      {/* Onboarding checklist */}
+      {!loading && showOnboarding && (
+        <div className="mb-6 p-5 rounded-2xl" style={{ background:'rgba(212,160,0,0.07)', border:'1px solid rgba(212,160,0,0.25)' }}>
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="font-bold text-sm" style={{ color:'var(--gold)' }}>🚀 Get set up — {onboarding.doneCount}/{onboarding.total} done</p>
+              <p className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>Complete these steps to start earning on Vuka.</p>
+            </div>
+            <button onClick={dismissOnboarding} className="p-1.5 rounded-lg" style={{ color:'var(--text-muted)' }}><X size={14}/></button>
+          </div>
+          <div className="w-full h-1.5 rounded-full mb-4 overflow-hidden" style={{ background:'var(--surface2)' }}>
+            <div className="h-full rounded-full transition-all" style={{ width:`${(onboarding.doneCount/onboarding.total)*100}%`, background:'linear-gradient(90deg,#d4a000,#f59e0b)' }}/>
+          </div>
+          <div className="space-y-2">
+            {onboarding.steps.map((step: any) => (
+              <Link key={step.key} href={step.done ? '#' : step.href}
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: step.done ? 'rgba(16,185,129,0.06)' : 'var(--surface)', border:`1px solid ${step.done ? 'rgba(16,185,129,0.2)' : 'var(--border)'}` }}>
+                {step.done
+                  ? <CheckCircle size={16} style={{ color:'var(--green)', flexShrink:0 }}/>
+                  : <Circle size={16} style={{ color:'var(--text-muted)', flexShrink:0 }}/>}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: step.done ? 'var(--text-muted)' : 'var(--text)', textDecoration: step.done ? 'line-through' : 'none' }}>{step.label}</p>
+                  {!step.done && <p className="text-xs" style={{ color:'var(--text-muted)' }}>{step.desc}</p>}
+                </div>
+                {!step.done && <ArrowRight size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
