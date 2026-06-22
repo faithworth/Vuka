@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { BeatCard } from '@/components/BeatCard';
+import { ReleaseCard } from '@/components/ReleaseCard';
 import { BuyModal } from '@/components/BuyModal';
 import { Search, Grid, List, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
@@ -16,13 +16,13 @@ type Beat = {
 type Release = {
   id: string; slug: string; title: string; releaseType: string; price: number;
   minPrice: number; payWhatWant: boolean; artworkUrl: string; plays: number; description: string;
+  tracks?: { id: string; previewUrl?: string | null }[];
   artist: { name: string; slug: string };
 };
 
 const GENRES = ['Afrobeats','Amapiano','Hip Hop','Trap','Gqom','R&B','Gospel','Kwaito','Drill','Pop'];
 
 export default function StoreClient({ initialBeats, initialReleases }: { initialBeats: Beat[]; initialReleases: Release[] }) {
-  const router = useRouter();
   const [beats, setBeats] = useState<Beat[]>(initialBeats);
   const [releases, setReleases] = useState<Release[]>(initialReleases);
   const [search, setSearch] = useState('');
@@ -135,20 +135,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
             {type==='all' && <h2 className="text-lg font-bold mb-4" style={{ color:'var(--text)' }}>Releases</h2>}
             <div className={view==='grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-3'}>
               {releases.map(release => (
-                <div key={release.id} className="card p-4 cursor-pointer hover:scale-[1.02] transition-transform"
-                  onClick={() => router.push(`/release/${release.slug}`)}>
-                  <div className="aspect-square rounded-xl mb-3 overflow-hidden flex items-center justify-center text-4xl"
-                    style={{ background: 'var(--surface2)' }}>
-                    {release.artworkUrl ? <img src={release.artworkUrl} className="w-full h-full object-cover" alt={release.title} /> : '🎵'}
-                  </div>
-                  <div className="badge badge-sky mb-2">{release.releaseType}</div>
-                  <div className="font-semibold text-sm truncate mb-1" style={{ color:'var(--text)' }}>{release.title}</div>
-                  <Link href={`/artist/${release.artist.slug}`} onClick={e => e.stopPropagation()}
-                    className="text-xs hover:underline" style={{ color:'var(--text-muted)' }}>{release.artist.name}</Link>
-                  <div className="mt-3 font-black" style={{ color:'var(--gold)' }}>
-                    {release.price === 0 ? 'Free' : `R${release.price}`}
-                  </div>
-                </div>
+                <ReleaseCard key={release.id} release={release} />
               ))}
             </div>
           </div>

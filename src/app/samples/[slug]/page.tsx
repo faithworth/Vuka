@@ -1,35 +1,24 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
-import { Play, Pause, ShoppingCart, Music, Tag, Package } from 'lucide-react';
+import { ShoppingCart, Music, Tag, Package } from 'lucide-react';
 import Link from 'next/link';
+import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
 export default function SamplePage() {
   const { slug } = useParams<{ slug: string }>();
   const [sample, setSample] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [buyOpen, setBuyOpen] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const { isTrackPlaying } = usePlayer();
 
   useEffect(() => {
     fetch(`/api/store/samples?slug=${slug}`)
       .then(r => r.json())
       .then(d => { setSample(d.sample || null); setLoading(false); });
   }, [slug]);
-
-  function togglePreview() {
-    if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(false);
-    } else {
-      audioRef.current.play();
-      setPlaying(true);
-    }
-  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
@@ -43,32 +32,40 @@ export default function SamplePage() {
     </div>
   );
 
+  const isPlaying = isTrackPlaying(sample.id);
+  const track: PreviewTrack = {
+    id: sample.id,
+    title: sample.title,
+    artist: sample.artist?.name || '',
+    artworkUrl: sample.artworkUrl,
+    previewUrl: sample.previewUrl,
+    href: `/samples/${slug}`,
+    type: 'sample',
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
 
-          {/* Artwork */}
+          {/* Artwork + preview button */}
           <div className="md:w-64 flex-shrink-0">
-            <div className="aspect-square rounded-2xl overflow-hidden flex items-center justify-center text-6xl"
+            <div className="aspect-square rounded-2xl overflow-hidden relative flex items-center justify-center text-6xl"
               style={{ background: 'var(--surface2)' }}>
               {sample.artworkUrl
                 ? <img src={sample.artworkUrl} className="w-full h-full object-cover" alt={sample.title} />
                 : '🎹'}
+              {sample.previewUrl && (
+                <div className="absolute bottom-3 left-3">
+                  <PreviewPlayButton track={track} size={52} />
+                </div>
+              )}
             </div>
-
-            {/* Preview player */}
             {sample.previewUrl && (
-              <button onClick={togglePreview}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-                {playing ? <Pause size={16} /> : <Play size={16} />}
-                {playing ? 'Pause Preview' : 'Play Preview'}
-              </button>
-            )}
-            {sample.previewUrl && (
-              <audio ref={audioRef} src={sample.previewUrl} onEnded={() => setPlaying(false)} />
+              <p className="text-center text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                {PREVIEW_SECONDS}s preview · watermarked
+              </p>
             )}
           </div>
 
@@ -78,7 +75,8 @@ export default function SamplePage() {
               Sample Pack
             </div>
             <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>{sample.title}</h1>
-            <Link href={`/artist/${sample.artist?.slug}`} className="text-lg hover:underline mb-4 block" style={{ color: 'var(--sky)' }}>
+            <Link href={`/artist/${sample.artist?.slug}`} className="text-lg hover:underline mb-4 block"
+              style={{ color: 'var(--sky)' }}>
               {sample.artist?.name}
             </Link>
 
@@ -125,7 +123,6 @@ export default function SamplePage() {
               </div>
             )}
 
-            {/* Buy */}
             <button onClick={() => setBuyOpen(true)}
               className="flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-white text-lg"
               style={{ background: 'var(--sky)' }}>

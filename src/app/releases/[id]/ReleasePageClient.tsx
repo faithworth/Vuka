@@ -4,15 +4,16 @@
 // Waveform mini-players, DSP "Listen On" buttons, share tools.
 // ============================================================
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency } from '@/lib/utils';
 import {
-  Play, Pause, ShoppingCart, Calendar, Music,
+  ShoppingCart, Calendar, Music,
   Share2, Twitter, Link2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
 const DSP_LINKS = [
   { name: 'Spotify',     slug: 'spotify',       color: '#1db954', icon: '🎵' },
@@ -27,26 +28,8 @@ const DSP_LINKS = [
 
 export default function ReleasePageClient({ release }: { release: any }) {
   const [buyOpen, setBuyOpen]       = useState(false);
-  const [playingId, setPlayingId]   = useState<string | null>(null);
   const [copied, setCopied]         = useState(false);
-  const playedRef = useRef<Set<string>>(new Set());
-
-  function handlePlay(trackId: string) {
-    if (playingId === trackId) {
-      setPlayingId(null);
-      return;
-    }
-    setPlayingId(trackId);
-    // Fire play event once per release per page load
-    if (!playedRef.current.has(release.id)) {
-      playedRef.current.add(release.id);
-      fetch('/api/play', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: release.id, itemType: 'release' }),
-      }).catch(() => {});
-    }
-  }
+  const { isTrackPlaying, elapsed } = usePlayer();
 
   function shareTwitter() {
     const url   = `${window.location.origin}/releases/${release.slug || release.id}`;
@@ -199,61 +182,66 @@ export default function ReleasePageClient({ release }: { release: any }) {
         {/* Track list with mini waveform players */}
         {release.tracks?.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-xl font-black mb-4" style={{ color: 'var(--text)' }}>Tracklist</h2>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h2 className="text-xl font-black" style={{ color: 'var(--text)' }}>Tracklist</h2>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{PREVIEW_SECONDS}s previews · for purchase, not streaming</span>
+            </div>
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-              {release.tracks.map((track: any, i: number) => (
-                <div key={track.id}
-                  className="flex items-center gap-4 p-4 border-b last:border-0 transition-colors hover:opacity-90"
-                  style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              {release.tracks.map((track: any, i: number) => {
+                const playing = isTrackPlaying(track.id);
+                const previewTrack: PreviewTrack = {
+                  id: track.id,
+                  title: track.title,
+                  artist: release.artist?.name || '',
+                  artworkUrl: release.artworkUrl,
+                  previewUrl: track.previewUrl,
+                  href: `/releases/${release.slug || release.id}`,
+                  type: 'release',
+                  analyticsId: release.id,
+                };
+                return (
+                  <div key={track.id}
+                    className="flex items-center gap-4 p-4 border-b last:border-0 transition-colors hover:opacity-90"
+                    style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
 
-                  {/* Track number / play button */}
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: playingId === track.id ? 'var(--sky)' : 'var(--surface2)' }}>
+                    {/* Track number / play button */}
                     {track.previewUrl ? (
-                      <button onClick={() => handlePlay(track.id)} className="w-full h-full flex items-center justify-center"
-                        style={{ color: playingId === track.id ? 'white' : 'var(--text-muted)' }}>
-                        {playingId === track.id ? <Pause size={14} /> : <Play size={14} />}
-                      </button>
+                      <PreviewPlayButton track={previewTrack} size={36} ring={playing} />
                     ) : (
-                      <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                        {track.trackNumber || i + 1}
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface2)' }}>
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                          {track.trackNumber || i + 1}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Track info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>
+                        {track.title}
+                      </div>
+                      {track.duration > 0 && (
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {Math.floor(track.duration / 60)}:{String(track.duration % 60).padStart(2, '0')}
+                        </div>
+                      )}
+                      {/* Featured artists */}
+                      {track.featuredArtists?.length > 0 && (
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          ft. {track.featuredArtists.join(', ')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Playing indicator */}
+                    {playing && (
+                      <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--sky)' }}>
+                        0:{String(Math.floor(elapsed)).padStart(2, '0')} / 0:{PREVIEW_SECONDS}
                       </span>
                     )}
                   </div>
-
-                  {/* Track info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>
-                      {track.title}
-                    </div>
-                    {track.duration > 0 && (
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        {Math.floor(track.duration / 60)}:{String(track.duration % 60).padStart(2, '0')}
-                      </div>
-                    )}
-                    {/* Featured artists */}
-                    {track.featuredArtists?.length > 0 && (
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        ft. {track.featuredArtists.join(', ')}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Playing indicator */}
-                  {playingId === track.id && (
-                    <div className="flex items-end gap-0.5 h-5 flex-shrink-0">
-                      {[0, 1, 2].map(j => (
-                        <div key={j} className="w-1 rounded-full waveform-bar-playing"
-                          style={{
-                            height: 8 + j * 4,
-                            background: 'var(--sky)',
-                            animationDelay: `${j * 0.15}s`,
-                          }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -306,16 +294,6 @@ export default function ReleasePageClient({ release }: { release: any }) {
       {/* Buy modal */}
       {buyOpen && (
         <BuyModal release={release} onClose={() => setBuyOpen(false)} />
-      )}
-
-      {/* Hidden audio player */}
-      {playingId && (
-        <audio
-          key={playingId}
-          src={release.tracks?.find((t: any) => t.id === playingId)?.previewUrl}
-          autoPlay
-          onEnded={() => setPlayingId(null)}
-        />
       )}
     </div>
   );

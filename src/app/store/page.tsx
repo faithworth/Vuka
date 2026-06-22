@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { BeatCard } from '@/components/BeatCard';
+import { ReleaseCard } from '@/components/ReleaseCard';
 import { BuyModal } from '@/components/BuyModal';
 import { Heart } from 'lucide-react';
 
@@ -199,44 +200,6 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
       </div>
       {buyBeat && <BuyModal beat={buyBeat} onClose={() => setBuyBeat(null)} />}
     </div>
-  );
-}
-
-function ReleaseCard({ release, wishlisted, onWishlist }: {
-  release: any;
-  wishlisted: boolean;
-  onWishlist: (e: React.MouseEvent) => void;
-}) {
-  // Distribution releases use /releases/[id]; store releases use /release/[slug]
-  const href = release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`;
-
-  return (
-    <a href={href}
-      className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <div className="aspect-square overflow-hidden relative">
-        {release.artworkUrl
-          ? <img src={release.artworkUrl} alt={release.title} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
-        {/* Wishlist button */}
-        <button
-          onClick={onWishlist}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-          style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
-          title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-        >
-          <Heart size={14} className={wishlisted ? 'fill-black' : 'text-white'} />
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{release.releaseType}</div>
-        <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist.name}</p>
-        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
-          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
-        </p>
-      </div>
-    </a>
   );
 }
 

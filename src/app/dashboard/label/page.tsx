@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import { getEffectivePlan } from '@/lib/plans';
+import Link from 'next/link';
 
 interface RosterArtist { id: string; name: string; slug: string; photoUrl?: string; revenueShare: number; status: string; joinedAt: string | null }
 interface LabelData { id: string; name: string; slug: string; logoUrl: string; description: string; website: string; roster: RosterArtist[] }
@@ -27,9 +29,15 @@ export default function LabelPage() {
   const [revenueShare,  setShare]   = useState('80');
   const [inviteLink,    setInvLink] = useState('');
 
+  const [planError, setPlanError] = useState(false);
+
   async function load() {
     setLoading(true);
-    try { const r = await fetch('/api/label'); if (r.ok) { const d = await r.json(); setLabel(d.label); } } catch {}
+    try {
+      const r = await fetch('/api/label');
+      if (r.status === 403) { setPlanError(true); setLoading(false); return; }
+      if (r.ok) { const d = await r.json(); setLabel(d.label); }
+    } catch {}
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -65,6 +73,32 @@ export default function LabelPage() {
     await navigator.clipboard.writeText(link);
     setCopied(link); setTimeout(() => setCopied(null), 2000);
   }
+
+  // ── Upgrade wall — shown to artists not on the label plan ──
+  if (planError) return (
+    <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+          style={{ background: 'rgba(232,200,124,0.12)', border: '1px solid rgba(232,200,124,0.25)' }}>
+          <Lock size={28} style={{ color: 'var(--gold)' }} />
+        </div>
+        <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--text)' }}>Label Plan Required</h2>
+        <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          The Label feature lets you manage multiple artists, set revenue splits, and issue invite links — all under one roof.
+          It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Label plan</strong> (R999/mo, 5% platform fee).
+        </p>
+        <Link href="/pricing"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black"
+          style={{ background: 'var(--gold)' }}>
+          Upgrade to Label →
+        </Link>
+        <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Already on the Label plan?{' '}
+          <button onClick={load} className="underline" style={{ color: 'var(--sky)' }}>Refresh</button>
+        </p>
+      </div>
+    </div>
+  );
 
   if (loading) return <div className="p-10 flex items-center gap-3" style={{ color:'var(--text-muted)' }}><Loader2 size={18} className="animate-spin"/>Loading label…</div>;
 

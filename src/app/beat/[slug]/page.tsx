@@ -4,14 +4,14 @@ import { useParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency, generateWaveformFallback } from '@/lib/utils';
+import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
 export default function BeatDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [beat, setBeat] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showBuy, setShowBuy] = useState(false);
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const { isTrackPlaying, elapsed } = usePlayer();
 
   useEffect(() => {
     fetch(`/api/store/beats?slug=${slug}`)
@@ -23,23 +23,6 @@ export default function BeatDetailPage() {
       })
       .catch(() => setLoading(false));
   }, [slug]);
-
-  const togglePlay = () => {
-    if (!beat?.previewUrl) return;
-    if (!audio) {
-      const a = new Audio(beat.previewUrl);
-      a.addEventListener('ended', () => setIsPlaying(false));
-      a.play();
-      setAudio(a);
-      setIsPlaying(true);
-    } else if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play();
-      setIsPlaying(true);
-    }
-  };
 
   if (loading) return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -59,6 +42,16 @@ export default function BeatDetailPage() {
   );
 
   const waveform = beat.waveformData?.length ? beat.waveformData : generateWaveformFallback(42, 60);
+  const isPlaying = isTrackPlaying(beat.id);
+  const track: PreviewTrack = {
+    id: beat.id,
+    title: beat.title,
+    artist: beat.artist?.name || '',
+    artworkUrl: beat.artworkUrl,
+    previewUrl: beat.previewUrl,
+    href: `/beat/${beat.slug}`,
+    type: 'beat',
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -67,10 +60,13 @@ export default function BeatDetailPage() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Artwork */}
           <div className="md:w-72 flex-shrink-0">
-            <div className="aspect-square rounded-2xl overflow-hidden" style={{ background: 'var(--surface)' }}>
+            <div className="aspect-square rounded-2xl overflow-hidden relative" style={{ background: 'var(--surface)' }}>
               {beat.artworkUrl
                 ? <img src={beat.artworkUrl} alt={beat.title} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center text-7xl">🎵</div>}
+              <div className="absolute bottom-3 left-3">
+                <PreviewPlayButton track={track} size={56} />
+              </div>
             </div>
           </div>
           {/* Info */}
@@ -93,14 +89,12 @@ export default function BeatDetailPage() {
                   <div key={i} className="flex-1 rounded-sm transition-colors" style={{ height: `${h * 100}%`, background: isPlaying ? 'var(--sky)' : 'var(--border)' }} />
                 ))}
               </div>
-              <button
-                onClick={togglePlay}
-                className="mt-3 flex items-center gap-2 px-6 py-2 rounded-xl font-medium"
-                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-              >
-                {isPlaying ? '⏸ Pause Preview' : '▶ Play Preview'}
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Watermarked</span>
-              </button>
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                  {isPlaying ? `${Math.floor(elapsed)}s` : '0s'} / {PREVIEW_SECONDS}s preview
+                </span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Watermarked · for purchase, not streaming</span>
+              </div>
             </div>
 
             {/* License pricing */}
@@ -151,3 +145,4 @@ function Tag({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

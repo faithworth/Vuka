@@ -38,6 +38,8 @@ export async function GET() {
             photoUrl: true,
             paystackRecipient: true,
             isVerified: true,
+            planSlug: true,
+            planExpiresAt: true,
           },
         },
         industryUser: {
@@ -72,6 +74,8 @@ export async function GET() {
               photoUrl: true,
               paystackRecipient: true,
               isVerified: true,
+              planSlug: true,
+              planExpiresAt: true,
             },
           },
           industryUser: {
