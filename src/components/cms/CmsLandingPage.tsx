@@ -1,6 +1,7 @@
 // src/components/cms/CmsLandingPage.tsx
 // Server component — wraps BlockRenderer with SEO meta injection
 import BlockRenderer from './BlockRenderer';
+import Footer from '@/components/Footer';
 
 // content mirrors Prisma's JsonValue: string | number | boolean | object | array | null
 type Block = { id: string; type: string; content: unknown; isVisible: boolean };
@@ -48,6 +49,7 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
         }}
       />
       <BlockRenderer blocks={page.blocks} featuredArtists={featuredArtists} />
+      <Footer />
     </>
   );
 }

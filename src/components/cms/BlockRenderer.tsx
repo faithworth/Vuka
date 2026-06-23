@@ -4,6 +4,104 @@
 import Link from 'next/link';
 import { ArrowRight, Music, Play } from 'lucide-react';
 
+// ── Steps ("How It Works") ──────────────────────────────────
+function StepsBlock({ c }: { c: Record<string, unknown> }) {
+  const items = c.items as Array<{ n: string; title: string; desc: string }> | undefined;
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-4xl mx-auto">
+        {Boolean(c.heading) && (
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>{String(c.heading)}</h2>
+          </div>
+        )}
+        <div className="grid md:grid-cols-3 gap-10">
+          {items?.map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
+              <h3 className="font-semibold text-lg mb-3" style={{ color: 'var(--text)' }}>{s.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Callout (e.g. "Industry Portal") ────────────────────────
+function CalloutBlock({ c }: { c: Record<string, unknown> }) {
+  const cta = c.cta as { label: string; href: string } | undefined;
+  return (
+    <section className="py-16 px-4" style={{ background: 'var(--surface)' }}>
+      <div className="max-w-4xl mx-auto">
+        <div className="p-8 rounded-2xl flex flex-col md:flex-row gap-8 items-center" style={{
+          background: 'linear-gradient(135deg, rgba(56,182,232,0.08), rgba(201,162,39,0.06))',
+          border: '1px solid var(--border)',
+        }}>
+          <div className="flex-1">
+            {Boolean(c.eyebrow) && <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--gold)' }}>{String(c.eyebrow)}</p>}
+            {Boolean(c.heading) && <h3 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--text)' }}>{String(c.heading)}</h3>}
+            {Boolean(c.body) && <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{String(c.body)}</p>}
+          </div>
+          {cta && (
+            <div className="flex-shrink-0 flex flex-col gap-3">
+              <Link href={cta.href} className="btn text-sm font-semibold px-6 py-3" style={{ background: 'var(--sky)', color: 'white', borderRadius: 12 }}>
+                {cta.label} <ArrowRight size={16} />
+              </Link>
+              {Boolean(c.note) && <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>{String(c.note)}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Split Content (e.g. "For Fans") ─────────────────────────
+function SplitContentBlock({ c }: { c: Record<string, unknown> }) {
+  const checklist = c.checklist as string[] | undefined;
+  const cards = c.cards as Array<{ icon: string; title: string; desc: string }> | undefined;
+  const cta = c.cta as { label: string; href: string } | undefined;
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            {Boolean(c.eyebrow) && <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>{String(c.eyebrow)}</p>}
+            {Boolean(c.heading) && <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: 'var(--text)' }}>{String(c.heading)}</h2>}
+            {Boolean(c.body) && <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>{String(c.body)}</p>}
+            {checklist && (
+              <div className="space-y-3 mb-8">
+                {checklist.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(42,157,92,0.12)' }}>
+                      <span style={{ color: 'var(--green)', fontSize: 10 }}>✓</span>
+                    </div>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
+            {cta && <Link href={cta.href} className="btn btn-secondary inline-flex">{cta.label} <ArrowRight size={16} /></Link>}
+          </div>
+          {cards && (
+            <div className="grid grid-cols-2 gap-4">
+              {cards.map((card, i) => (
+                <div key={i} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="mb-3 text-xl" style={{ color: 'var(--sky)' }}>{card.icon}</div>
+                  <h4 className="font-semibold text-sm mb-1.5" style={{ color: 'var(--text)' }}>{card.title}</h4>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{card.desc}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // content mirrors Prisma's JsonValue: string | number | boolean | object | array | null
 type Block          = { id: string; type: string; content: unknown; isVisible: boolean };
 type FeaturedArtist = {
@@ -20,7 +118,7 @@ interface Props { blocks: Block[]; featuredArtists?: FeaturedArtist[] }
 function HeroBlock({ c }: { c: Record<string, unknown> }) {
   const p  = c.cta_primary   as { label: string; href: string } | undefined;
   const s  = c.cta_secondary as { label: string; href: string } | undefined;
-  const stats = c.stats as Array<{ value: string; label: string }> | undefined;
+  const stats = c.stats as Array<{ value: string; label: string; sub?: string }> | undefined;
   const headline = String(c.headline ?? '').replace(/\\n/g, '\n');
   return (
     <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden pt-16 pb-8">
@@ -42,7 +140,15 @@ function HeroBlock({ c }: { c: Record<string, unknown> }) {
               : <span key={i}>{line}{i < arr.length - 1 ? <br /> : ''}</span>
           )}
         </h1>
-        {Boolean(c.subheadline) && <p className="text-base sm:text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>{String(c.subheadline)}</p>}
+        {Boolean(c.subheadline) && <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>{String(c.subheadline)}</p>}
+        {Boolean(c.subline) && <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>{String(c.subline)}</p>}
+        {Boolean(c.notice) && (
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-8"
+            style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--text-muted)' }}>
+            <span style={{ color: 'var(--gold)' }}>✦</span>
+            {String(c.notice)}
+          </div>
+        )}
         {(p || s) && (
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-2">
             {p && <Link href={p.href} className="btn btn-primary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">{p.label} <ArrowRight size={16} /></Link>}
@@ -55,6 +161,7 @@ function HeroBlock({ c }: { c: Record<string, unknown> }) {
               <div key={i} className="text-center">
                 <div className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>{st.value}</div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{st.label}</div>
+                {st.sub && <div className="text-xs mt-0.5" style={{ color: 'var(--gold)', fontSize: 10 }}>{st.sub}</div>}
               </div>
             ))}
           </div>
@@ -341,6 +448,104 @@ function TestimonialsBlock({ c }: { c: Record<string, unknown> }) {
   );
 }
 
+// ── Steps (e.g. "How It Works") ────────────────────────────────
+function StepsBlock({ c }: { c: Record<string, unknown> }) {
+  const items = c.items as Array<{ n: string; title: string; desc: string }> | undefined;
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-4xl mx-auto">
+        {Boolean(c.heading) && (
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>{String(c.heading)}</h2>
+          </div>
+        )}
+        <div className="grid md:grid-cols-3 gap-10">
+          {items?.map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
+              <h3 className="font-semibold text-lg mb-3" style={{ color: 'var(--text)' }}>{s.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Callout (e.g. "Industry Portal") ────────────────────────────
+function CalloutBlock({ c }: { c: Record<string, unknown> }) {
+  const cta = c.cta as { label: string; href: string } | undefined;
+  return (
+    <section className="py-16 px-4" style={{ background: 'var(--surface)' }}>
+      <div className="max-w-4xl mx-auto">
+        <div className="p-8 rounded-2xl flex flex-col md:flex-row gap-8 items-center" style={{
+          background: 'linear-gradient(135deg, rgba(56,182,232,0.08), rgba(201,162,39,0.06))',
+          border: '1px solid var(--border)',
+        }}>
+          <div className="flex-1">
+            {Boolean(c.eyebrow) && <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--gold)' }}>{String(c.eyebrow)}</p>}
+            {Boolean(c.heading) && <h3 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--text)' }}>{String(c.heading)}</h3>}
+            {Boolean(c.body) && <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{String(c.body)}</p>}
+          </div>
+          {cta && (
+            <div className="flex-shrink-0 flex flex-col gap-3">
+              <Link href={cta.href} className="btn text-sm font-semibold px-6 py-3" style={{ background: 'var(--sky)', color: 'white', borderRadius: 12 }}>
+                {cta.label} <ArrowRight size={16} />
+              </Link>
+              {Boolean(c.note) && <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>{String(c.note)}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Split Content (e.g. "For Fans") ──────────────────────────────
+function SplitContentBlock({ c }: { c: Record<string, unknown> }) {
+  const checklist = c.checklist as string[] | undefined;
+  const cards = c.cards as Array<{ icon: string; title: string; desc: string }> | undefined;
+  const cta = c.cta as { label: string; href: string } | undefined;
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            {Boolean(c.eyebrow) && <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>{String(c.eyebrow)}</p>}
+            {Boolean(c.heading) && <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: 'var(--text)' }}>{String(c.heading)}</h2>}
+            {Boolean(c.body) && <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>{String(c.body)}</p>}
+            {checklist && checklist.length > 0 && (
+              <div className="space-y-3 mb-8">
+                {checklist.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(42,157,92,0.12)' }}>
+                      <span style={{ color: 'var(--green)', fontSize: 10 }}>✓</span>
+                    </div>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
+            {cta && <Link href={cta.href} className="btn btn-secondary inline-flex">{cta.label} <ArrowRight size={16} /></Link>}
+          </div>
+          {cards && cards.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              {cards.map((card, i) => (
+                <div key={i} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="text-xl mb-3" style={{ color: 'var(--sky)' }}>{card.icon}</div>
+                  <h4 className="font-semibold text-sm mb-1.5" style={{ color: 'var(--text)' }}>{card.title}</h4>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{card.desc}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Spacer / HTML ─────────────────────────────────────────────
 function SpacerBlock({ c }: { c: Record<string, unknown> }) { return <div style={{ height: `${Number(c.height ?? 64)}px` }} />; }
 function HtmlBlock  ({ c }: { c: Record<string, unknown> }) { return <div dangerouslySetInnerHTML={{ __html: String(c.code ?? '') }} />; }
@@ -367,6 +572,9 @@ export default function BlockRenderer({ blocks, featuredArtists }: Props) {
           case 'faq':           return <FaqBlock          key={b.id} c={c} />;
           case 'banner':        return <BannerBlock       key={b.id} c={c} />;
           case 'testimonials':  return <TestimonialsBlock key={b.id} c={c} />;
+          case 'steps':         return <StepsBlock        key={b.id} c={c} />;
+          case 'callout':       return <CalloutBlock      key={b.id} c={c} />;
+          case 'split_content': return <SplitContentBlock key={b.id} c={c} />;
           case 'spacer':        return <SpacerBlock       key={b.id} c={c} />;
           case 'html':          return <HtmlBlock         key={b.id} c={c} />;
           default:              return null;

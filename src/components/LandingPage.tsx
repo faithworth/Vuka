@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function LandingPage() {
   return (
@@ -65,7 +66,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-8"
               style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.3)', color: 'var(--text-muted)' }}>
               <span style={{ color: 'var(--gold)' }}>✦</span>
-              Free plan: 15% platform fee. Pro plan: 8%. Label plan: 5%. No hidden charges.
+              Free plan: 10% platform fee, auto-reduces to 8.5% as you sell more. Pro plan: 8%. Label plan: 5%. No hidden charges.
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-2">
@@ -79,8 +80,8 @@ export default function LandingPage() {
 
             <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
               {[
-                { n: '85%', l: 'Artist keeps (Free)', sub: 'up to 95% on paid plans' },
-                { n: '15%', l: 'Platform Fee', sub: 'Free plan — covers hosting & payments' },
+                { n: '90%', l: 'Artist keeps (Free)', sub: 'up to 95% on paid plans' },
+                { n: '10%', l: 'Platform Fee', sub: 'Free plan — drops to 8.5% as you sell more' },
                 { n: 'ZAR', l: 'Paid in Rands' },
               ].map(s => (
                 <div key={s.n} className="text-center">
@@ -267,10 +268,10 @@ export default function LandingPage() {
                 <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Free</div>
                 <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R0</div>
                 <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>forever</div>
-                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>85%</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>90%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
-                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'Paystack + Flutterwave'].map(f => (
+                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'Paystack + Flutterwave', 'Fee drops to 8.5% automatically as you sell more'].map(f => (
                     <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                       <span style={{ color: 'var(--green)' }}>✓</span> {f}
                     </div>
@@ -328,26 +329,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── FOOTER ── */}
-        <footer className="py-10 px-4" style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <div className="max-w-6xl mx-auto flex flex-col items-center gap-6 md:flex-row md:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>African music. Your money. Your terms.</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm flex-wrap justify-center" style={{ color: 'var(--text-muted)' }}>
-              <Link href="/store" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Store</Link>
-              <Link href="/industry" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Industry</Link>
-              <Link href="/legal/terms" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Terms</Link>
-              <Link href="/legal/privacy" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Privacy</Link>
-              <Link href="/legal/dmca" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>DMCA</Link>
-              <Link href="/auth/login" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Log In</Link>
-              <Link href="/auth/register" className="transition-colors hover:text-[var(--sky)]" style={{ color: 'var(--text-muted)' }}>Sign Up</Link>
-            </div>
-            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-              © 2025 Vuka · Made in South Africa
-            </p>
-          </div>
-        </footer>
+        <Footer />
 
       </main>
     </>
