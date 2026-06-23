@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { ArrowRight, Music, Play } from 'lucide-react';
 
+// content mirrors Prisma's JsonValue: string | number | boolean | object | array | null
 type Block          = { id: string; type: string; content: unknown; isVisible: boolean };
 type FeaturedArtist = {
   id: string; tagline: string; blurb: string;
@@ -17,8 +18,8 @@ interface Props { blocks: Block[]; featuredArtists?: FeaturedArtist[] }
 
 // ── Hero ─────────────────────────────────────────────────────
 function HeroBlock({ c }: { c: Record<string, unknown> }) {
-  const p  = c.cta_primary   as { label: string; href: string } | undefined;
-  const s  = c.cta_secondary as { label: string; href: string } | undefined;
+  const p     = c.cta_primary   as { label: string; href: string } | undefined;
+  const s     = c.cta_secondary as { label: string; href: string } | undefined;
   const stats = c.stats as Array<{ value: string; label: string; sub?: string }> | undefined;
   const headline = String(c.headline ?? '').replace(/\\n/g, '\n');
   return (
@@ -178,13 +179,13 @@ function FeaturesGridBlock({ c }: { c: Record<string, unknown> }) {
 
 // ── Pricing ───────────────────────────────────────────────────
 function PricingBlock({ c }: { c: Record<string, unknown> }) {
-  const tiers = c.tiers as Array<{ name: string; price: string; period: string; keep: string; highlight?: boolean; features: string[]; cta: { label: string; href: string } }> | undefined;
+  const tiers = c.tiers as Array<{ name: string; price: string; period: string; keep: string; highlight?: boolean; features: string[]; cta: { label: string; href: string }; note?: string }> | undefined;
   return (
     <section className="py-24 px-4" style={{ background: 'var(--surface)' }}>
       <div className="max-w-5xl mx-auto text-center">
         {Boolean(c.heading) && <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>{String(c.heading)}</h2>}
         {Boolean(c.subheading) && <p className="mb-12" style={{ color: 'var(--text-muted)' }}>{String(c.subheading)}</p>}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
           {tiers?.map((tier, i) => (
             <div key={i} className="p-8 rounded-2xl text-left flex flex-col relative"
               style={{ background: 'var(--bg)', border: tier.highlight ? '2px solid var(--sky)' : '1px solid var(--border)', boxShadow: tier.highlight ? '0 0 30px rgba(56,182,232,0.1)' : 'none' }}>
@@ -205,6 +206,7 @@ function PricingBlock({ c }: { c: Record<string, unknown> }) {
             </div>
           ))}
         </div>
+        {Boolean(c.footnote) && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{String(c.footnote)}</p>}
       </div>
     </section>
   );
@@ -349,7 +351,7 @@ function TestimonialsBlock({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-// ── Steps (e.g. "How It Works") ────────────────────────────────
+// ── Steps ("How It Works") ────────────────────────────────────
 function StepsBlock({ c }: { c: Record<string, unknown> }) {
   const items = c.items as Array<{ n: string; title: string; desc: string }> | undefined;
   return (
@@ -374,7 +376,7 @@ function StepsBlock({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-// ── Callout (e.g. "Industry Portal") ────────────────────────────
+// ── Callout (e.g. "Industry Portal") ─────────────────────────
 function CalloutBlock({ c }: { c: Record<string, unknown> }) {
   const cta = c.cta as { label: string; href: string } | undefined;
   return (
@@ -403,11 +405,11 @@ function CalloutBlock({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-// ── Split Content (e.g. "For Fans") ──────────────────────────────
+// ── Split Content (e.g. "For Fans") ──────────────────────────
 function SplitContentBlock({ c }: { c: Record<string, unknown> }) {
   const checklist = c.checklist as string[] | undefined;
-  const cards = c.cards as Array<{ icon: string; title: string; desc: string }> | undefined;
-  const cta = c.cta as { label: string; href: string } | undefined;
+  const cards     = c.cards as Array<{ icon: string; title: string; desc: string }> | undefined;
+  const cta       = c.cta as { label: string; href: string } | undefined;
   return (
     <section className="py-24 px-4">
       <div className="max-w-6xl mx-auto">
