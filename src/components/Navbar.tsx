@@ -122,21 +122,25 @@ export function Navbar() {
 
   // Public links — kept intact, all shown in mobile drawer
   const publicLinks = [
-    { href: '/store',          label: 'Store' },
-    { href: '/store/beats',    label: 'Beats' },
-    { href: '/store/releases', label: 'Releases' },
-    { href: '/store/videos',   label: 'Videos' },
-    { href: '/store/samples',  label: 'Samples' },
-    { href: '/services',       label: 'Services' },
-    { href: '/industry',       label: 'For Industry' },
+    { href: '/store',              label: 'Store'       },
+    { href: '/store/beats',        label: 'Beats'       },
+    { href: '/store/releases',     label: 'Releases'    },
+    { href: '/store/videos',       label: 'Videos'      },
+    { href: '/store/samples',      label: 'Samples'     },
+    { href: '/store/merch',        label: 'Merch'       },
+    { href: '/store/memberships',  label: 'Memberships' },
+    { href: '/services',           label: 'Services'    },
+    { href: '/industry',           label: 'For Industry'},
   ];
 
   // Store sub-links for desktop dropdown
   const storeDropLinks = [
-    { href: '/store/beats',    label: 'Beats' },
-    { href: '/store/releases', label: 'Releases' },
-    { href: '/store/videos',   label: 'Videos' },
-    { href: '/store/samples',  label: 'Samples' },
+    { href: '/store/beats',        label: 'Beats'       },
+    { href: '/store/releases',     label: 'Releases'    },
+    { href: '/store/videos',       label: 'Videos'      },
+    { href: '/store/samples',      label: 'Samples'     },
+    { href: '/store/merch',        label: 'Merch'       },
+    { href: '/store/memberships',  label: 'Memberships' },
   ];
 
   // Role-specific extra links
@@ -151,8 +155,10 @@ export function Navbar() {
   const isActive = (href: string) =>
     pathname === href || (href !== '/' && pathname.startsWith(href));
 
-  const storeActive = ['/store','/store/beats','/store/releases','/store/videos','/store/samples']
-    .some(h => isActive(h));
+  const storeActive = [
+    '/store', '/store/beats', '/store/releases',
+    '/store/videos', '/store/samples', '/store/merch', '/store/memberships',
+  ].some(h => isActive(h));
 
   // ── Shared styles ────────────────────────────────────────────────────────
   const navBg: React.CSSProperties = {
