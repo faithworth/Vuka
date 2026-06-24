@@ -6,6 +6,7 @@ import {
   Loader2, Video, Package, ShoppingBag, Users, Check, Zap,
 } from 'lucide-react';
 import { BeatCard } from '@/components/BeatCard';
+import { ReleaseCard } from '@/components/ReleaseCard';
 
 interface Post {
   id: string;
@@ -35,20 +36,18 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
   const hasMemberships = (artist.subscriptionTiers?.length ?? 0) > 0;
 
   const defaultTab: Tab =
-    artist.beats?.length > 0        ? 'beats'      :
-    allReleases.length > 0          ? 'releases'   :
-    artist.videos?.length > 0       ? 'videos'     :
-    artist.samples?.length > 0      ? 'samples'    :
-    hasMerch                        ? 'merch'      :
-    hasMemberships                  ? 'membership' : 'posts';
+    artist.beats?.length > 0   ? 'beats'      :
+    allReleases.length > 0     ? 'releases'   :
+    artist.videos?.length > 0  ? 'videos'     :
+    artist.samples?.length > 0 ? 'samples'    :
+    hasMerch                   ? 'merch'      :
+    hasMemberships             ? 'membership' : 'posts';
 
-  const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
-  const [posts, setPosts]         = useState<Post[]>([]);
-  const [postsLoading, setPostsLoading]   = useState(false);
-  const [postsFetched, setPostsFetched]   = useState(false);
-
-  // Membership subscribe state
-  const [subscribing, setSubscribing]         = useState<string | null>(null);
+  const [activeTab, setActiveTab]     = useState<Tab>(defaultTab);
+  const [posts, setPosts]             = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsFetched, setPostsFetched] = useState(false);
+  const [subscribing, setSubscribing]   = useState<string | null>(null);
   const [subscribeError, setSubscribeError]   = useState('');
   const [subscribeSuccess, setSubscribeSuccess] = useState('');
 
@@ -63,8 +62,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
   }, [activeTab, postsFetched, artist.slug]);
 
   async function handleSubscribe(tier: any) {
-    setSubscribeError('');
-    setSubscribeSuccess('');
+    setSubscribeError(''); setSubscribeSuccess('');
     setSubscribing(tier.id);
     try {
       const res = await fetch('/api/creator/memberships', {
@@ -74,10 +72,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        if (res.status === 401) {
-          window.location.href = `/auth/login?next=/artist/${artist.slug}`;
-          return;
-        }
+        if (res.status === 401) { window.location.href = `/auth/login?next=/artist/${artist.slug}`; return; }
         setSubscribeError(data.error || 'Subscription failed. Please try again.');
       } else if (data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
@@ -100,13 +95,13 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
   }
 
   const tabs: { key: Tab; label: string; icon: any; count: number; show: boolean }[] = [
-    { key: 'beats',      label: 'Beats',      icon: Music,       count: artist.beats?.length || 0,    show: true },
-    { key: 'releases',   label: 'Releases',   icon: Disc,        count: allReleases.length,            show: true },
-    { key: 'videos',     label: 'Videos',     icon: Video,       count: artist.videos?.length || 0,   show: true },
-    { key: 'samples',    label: 'Samples',    icon: Package,     count: artist.samples?.length || 0,  show: true },
-    { key: 'merch',      label: 'Merch',      icon: ShoppingBag, count: artist.merch?.length || 0,    show: hasMerch },
-    { key: 'membership', label: 'Membership', icon: Users,       count: artist.subscriptionTiers?.length || 0, show: hasMemberships },
-    { key: 'posts',      label: 'Posts',      icon: Send,        count: 0,                             show: true },
+    { key: 'beats',      label: 'Beats',      icon: Music,       count: artist.beats?.length || 0,              show: true },
+    { key: 'releases',   label: 'Releases',   icon: Disc,        count: allReleases.length,                    show: true },
+    { key: 'videos',     label: 'Videos',     icon: Video,       count: artist.videos?.length || 0,             show: true },
+    { key: 'samples',    label: 'Samples',    icon: Package,     count: artist.samples?.length || 0,            show: true },
+    { key: 'merch',      label: 'Merch',      icon: ShoppingBag, count: artist.merch?.length || 0,              show: hasMerch },
+    { key: 'membership', label: 'Membership', icon: Users,       count: artist.subscriptionTiers?.length || 0,  show: hasMemberships },
+    { key: 'posts',      label: 'Posts',      icon: Send,        count: 0,                                      show: true },
   ].filter(t => t.show);
 
   return (
@@ -127,7 +122,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         ))}
       </div>
 
-      {/* ── Beats ─────────────────────────────────────────────── */}
+      {/* ── Beats ───────────────────────────────────────────── */}
       {activeTab === 'beats' && (
         <section className="mb-12">
           {!artist.beats?.length ? (
@@ -142,7 +137,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* ── Releases ──────────────────────────────────────────── */}
+      {/* ── Releases ────────────────────────────────────────── */}
       {activeTab === 'releases' && (
         <section className="mb-12">
           {!allReleases.length ? (
@@ -150,49 +145,19 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {artist.releases?.map((r: any) => (
-                <a key={r.id} href={`/release/${r.slug}`}
-                  className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="aspect-square overflow-hidden">
-                    {r.artworkUrl
-                      ? <img src={r.artworkUrl} alt={r.title} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
-                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>
-                      {r.releaseType} · R{r.price}
-                    </p>
-                  </div>
-                </a>
+                <ReleaseCard key={r.id}
+                  release={{ ...r, artist: { name: artist.name, slug: artist.slug } }} />
               ))}
               {artist.distributionReleases?.map((r: any) => (
-                <a key={r.id} href={`/releases/${r.id}`}
-                  className="rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform block relative"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="aspect-square overflow-hidden">
-                    {r.artworkUrl
-                      ? <img src={r.artworkUrl} alt={r.title} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: 'var(--surface2)' }}>🎵</div>}
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{r.title}</p>
-                    <p className="text-sm capitalize" style={{ color: 'var(--text-muted)' }}>
-                      {r.releaseType} · {r.tracks?.length ?? 0} {r.tracks?.length === 1 ? 'track' : 'tracks'}
-                    </p>
-                  </div>
-                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold"
-                    style={{ background: 'rgba(160,232,124,0.15)', color: 'var(--green)', border: '1px solid rgba(160,232,124,0.25)' }}>
-                    On Vuka
-                  </div>
-                </a>
+                <ReleaseCard key={r.id}
+                  release={{ ...r, _isDistrib: true, artist: { name: artist.name, slug: artist.slug } }} />
               ))}
             </div>
           )}
         </section>
       )}
 
-      {/* ── Videos ────────────────────────────────────────────── */}
+      {/* ── Videos ──────────────────────────────────────────── */}
       {activeTab === 'videos' && (
         <section className="mb-12">
           {!artist.videos?.length ? (
@@ -226,7 +191,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* ── Samples ───────────────────────────────────────────── */}
+      {/* ── Samples ─────────────────────────────────────────── */}
       {activeTab === 'samples' && (
         <section className="mb-12">
           {!artist.samples?.length ? (
@@ -255,7 +220,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* ── Merch ─────────────────────────────────────────────── */}
+      {/* ── Merch ───────────────────────────────────────────── */}
       {activeTab === 'merch' && (
         <section className="mb-12">
           {!artist.merch?.length ? (
@@ -275,14 +240,10 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                     <p className="font-bold truncate" style={{ color: 'var(--text)' }}>{m.title}</p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-sm font-bold" style={{ color: 'var(--sky)' }}>R{m.price}</p>
-                      {m.stock <= 0 && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Out of stock</span>
-                      )}
+                      {m.stock <= 0 && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Out of stock</span>}
                     </div>
                     {m.sizes?.length > 0 && (
-                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        {m.sizes.join(' · ')}
-                      </p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{m.sizes.join(' · ')}</p>
                     )}
                   </div>
                 </a>
@@ -292,13 +253,11 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* ── Membership ────────────────────────────────────────── */}
+      {/* ── Membership ──────────────────────────────────────── */}
       {activeTab === 'membership' && (
         <section className="mb-12 max-w-2xl">
           <div className="mb-6">
-            <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>
-              Support {artist.name}
-            </h2>
+            <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Support {artist.name}</h2>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Choose a membership tier and get exclusive access directly from the artist
             </p>
@@ -323,10 +282,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
             <div className="space-y-4">
               {artist.subscriptionTiers.map((tier: any, i: number) => (
                 <div key={tier.id} className="rounded-2xl p-6"
-                  style={{
-                    background: 'var(--surface)',
-                    border: `2px solid ${i === 0 ? 'var(--sky)' : 'var(--border)'}`,
-                  }}>
+                  style={{ background: 'var(--surface)', border: `2px solid ${i === 0 ? 'var(--sky)' : 'var(--border)'}` }}>
                   {i === 0 && (
                     <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full mb-3"
                       style={{ background: 'rgba(56,182,232,0.15)', color: 'var(--sky)' }}>
@@ -361,16 +317,12 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                         R{tier.price}
                       </div>
                       <div className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>per month</div>
-                      <button
-                        onClick={() => handleSubscribe(tier)}
-                        disabled={subscribing === tier.id}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-opacity disabled:opacity-60"
-                        style={{ background: i === 0 ? 'var(--sky)' : 'var(--surface2)', color: i === 0 ? 'white' : 'var(--text)' }}>
-                        {subscribing === tier.id ? (
-                          <><Loader2 size={13} className="animate-spin" /> Redirecting…</>
-                        ) : (
-                          <><Users size={13} /> Join</>
-                        )}
+                      <button onClick={() => handleSubscribe(tier)} disabled={subscribing === tier.id}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-opacity disabled:opacity-60"
+                        style={{ background: i === 0 ? 'var(--sky)' : 'var(--surface2)', color: i === 0 ? 'white' : 'var(--text)', border: i !== 0 ? '1px solid var(--border)' : 'none' }}>
+                        {subscribing === tier.id
+                          ? <><Loader2 size={13} className="animate-spin" /> Redirecting…</>
+                          : <><Users size={13} /> Join</>}
                       </button>
                     </div>
                   </div>
@@ -381,7 +333,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         </section>
       )}
 
-      {/* ── Posts ─────────────────────────────────────────────── */}
+      {/* ── Posts ───────────────────────────────────────────── */}
       {activeTab === 'posts' && (
         <section className="mb-12 max-w-2xl">
           {postsLoading ? (
@@ -398,9 +350,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
             <div className="space-y-4">
               {posts.map(post => (
                 <article key={post.id} className="card p-5">
-                  <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'var(--text)' }}>
-                    {post.body}
-                  </p>
+                  <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'var(--text)' }}>{post.body}</p>
                   {post.mediaUrls?.length > 0 && (
                     <div className={`grid gap-2 mb-3 ${post.mediaUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                       {post.mediaUrls.map((url, i) => (
@@ -418,15 +368,9 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                   )}
                   <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                     <div className="flex items-center gap-5">
-                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <Heart size={13} /> {post.likeCount}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <MessageCircle size={13} /> {post.commentCount}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <Repeat2 size={13} /> {post.repostCount}
-                      </span>
+                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}><Heart size={13} /> {post.likeCount}</span>
+                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}><MessageCircle size={13} /> {post.commentCount}</span>
+                      <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}><Repeat2 size={13} /> {post.repostCount}</span>
                     </div>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{timeAgo(post.publishedAt)}</span>
                   </div>

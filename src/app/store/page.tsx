@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { BeatCard } from '@/components/BeatCard';
+import { ReleaseCard } from '@/components/ReleaseCard';
 import { BuyModal } from '@/components/BuyModal';
-import { Heart, Package, ShoppingCart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 
 const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House'];
 const MOODS  = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic'];
@@ -34,8 +35,8 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
     defaultFilter === 'sample'  ? 'samples'  :
     defaultFilter === 'merch'   ? 'merch'    : 'all'
   );
-  const [buyItem,  setBuyItem]  = useState<any>(null);
-  const [buyType,  setBuyType]  = useState<'beat' | 'merch'>('beat');
+  const [buyBeat,  setBuyBeat]  = useState<any>(null);
+  const [buyMerch, setBuyMerch] = useState<any>(null);
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
   const searchTimer = useRef<NodeJS.Timeout>();
 
@@ -193,10 +194,10 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         ) : (
           <div className={`grid gap-4 ${tab === 'videos' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
             {tab === 'merch'
-              ? merch.map((item: any) => <MerchCard key={item.id} item={item} onBuy={() => { setBuyItem(item); setBuyType('merch'); }} />)
+              ? merch.map((item: any) => <MerchCard key={item.id} item={item} onBuy={() => setBuyMerch(item)} />)
               : items.map((item: any) => (
                   item.basicPrice !== undefined ? (
-                    <BeatCard key={item.id} beat={item} onBuy={(b) => { setBuyItem(b); setBuyType('beat'); }}
+                    <BeatCard key={item.id} beat={item} onBuy={setBuyBeat}
                       wishlisted={wishlist.has(item.id)}
                       onWishlist={(e) => toggleWishlist(item.id, 'beat', e)} />
                   ) : item.videoUrl !== undefined ? (
@@ -204,7 +205,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
                   ) : item.sampleUrl !== undefined || item.fileUrl !== undefined ? (
                     <SampleCard key={item.id} sample={item} />
                   ) : item.imageUrl !== undefined && item.stock !== undefined ? (
-                    <MerchCard key={item.id} item={item} onBuy={() => { setBuyItem(item); setBuyType('merch'); }} />
+                    <MerchCard key={item.id} item={item} onBuy={() => setBuyMerch(item)} />
                   ) : (
                     <ReleaseCard key={item.id} release={item}
                       wishlisted={wishlist.has(item.id)}
@@ -216,29 +217,25 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         )}
       </div>
 
-      {buyItem && buyType === 'beat' && (
-        <BuyModal beat={buyItem} onClose={() => setBuyItem(null)} />
-      )}
-      {buyItem && buyType === 'merch' && (
+      {buyBeat && <BuyModal beat={buyBeat} onClose={() => setBuyBeat(null)} />}
+      {buyMerch && (
         <BuyModal
           itemType="merch"
           release={{
-            id: buyItem.id,
-            title: buyItem.title,
-            artworkUrl: buyItem.imageUrl || '',
-            price: buyItem.price,
-            minPrice: buyItem.price,
+            id: buyMerch.id,
+            title: buyMerch.title,
+            artworkUrl: buyMerch.imageUrl || '',
+            price: buyMerch.price,
+            minPrice: buyMerch.price,
             payWhatWant: false,
-            artist: { name: buyItem.artist?.name || '' },
+            artist: { name: buyMerch.artist?.name || '' },
           }}
-          onClose={() => setBuyItem(null)}
+          onClose={() => setBuyMerch(null)}
         />
       )}
     </div>
   );
 }
-
-// ── Card components ────────────────────────────────────────────────────────
 
 function MerchCard({ item, onBuy }: { item: any; onBuy: () => void }) {
   return (
@@ -255,9 +252,6 @@ function MerchCard({ item, onBuy }: { item: any; onBuy: () => void }) {
           <h3 className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{item.title}</h3>
         </a>
         <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{item.artist?.name}</p>
-        {item.stock <= 0 && (
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Out of stock</p>
-        )}
         <div className="flex items-center justify-between mt-2">
           <span className="font-bold text-sm" style={{ color: 'var(--sky)' }}>R{item.price}</span>
           {item.stock > 0 ? (
@@ -276,33 +270,6 @@ function MerchCard({ item, onBuy }: { item: any; onBuy: () => void }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function ReleaseCard({ release, wishlisted, onWishlist }: { release: any; wishlisted: boolean; onWishlist: (e: React.MouseEvent) => void }) {
-  const href = release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`;
-  return (
-    <a href={href} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <div className="aspect-square overflow-hidden relative">
-        {release.artworkUrl
-          ? <img src={release.artworkUrl} alt={release.title} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
-        <button onClick={onWishlist}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-          style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}>
-          <Heart size={14} className={wishlisted ? 'fill-black' : 'text-white'} />
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{release.releaseType}</div>
-        <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist?.name}</p>
-        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
-          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
-        </p>
-      </div>
-    </a>
   );
 }
 
@@ -340,7 +307,7 @@ function SampleCard({ sample }: { sample: any }) {
       </div>
       <div className="p-4">
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{sample.title}</h3>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{sample.artist?.name}</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{sample.artist?.name}{sample.bpm ? ` · ${sample.bpm} BPM` : ''}</p>
         <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>R{sample.price}</p>
       </div>
     </a>

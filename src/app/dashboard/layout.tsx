@@ -1,51 +1,138 @@
+// ============================================================
+// src/app/dashboard/layout.tsx
+// ============================================================
+// REDESIGN: 23 flat nav items → Overview + 5 categories
+// (Create, Engage, Grow, Money, Account). Desktop shows them as
+// collapsible sections; mobile shows them as a small set of
+// category buttons that drill down into a focused sheet.
+//
+// PLAN-GATING: The "Label" item inside Grow is only shown
+// to artists on the 'label' plan (getEffectivePlan checks
+// planSlug + planExpiresAt so expired label plans are hidden).
+// ============================================================
+
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
+import { getEffectivePlan } from '@/lib/plans';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
-  Wallet, Settings, LogOut, Music2, ChevronRight,
-  MoreHorizontal, X, Send, Users, Store, Briefcase, Video,
-  MessageSquare, User, Share2, Trophy, Megaphone, GitFork, Package,
+  Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
+  X, Send, Users, Store, Briefcase, Video, Package,
+  MessageSquare, User, Share2, Trophy, Megaphone, GitFork, Calendar,
+  Building2, TrendingUp, Sparkles, type LucideIcon,
 } from 'lucide-react';
 
-const ARTIST_NAV = [
-  { href: '/dashboard',                label: 'Overview',     icon: BarChart2,  exact: true },
-  { href: '/dashboard/beats',          label: 'Beats',        icon: Music },
-  { href: '/dashboard/releases',       label: 'Releases',     icon: Disc },
-  { href: '/dashboard/releases/new',   label: 'Upload',       icon: Upload,     highlight: true },
-  { href: '/dashboard/analytics',      label: 'Analytics',    icon: BarChart2 },
-  { href: '/dashboard/earnings',       label: 'Earnings',     icon: Wallet },
-  { href: '/dashboard/social',         label: 'Posts',        icon: Send },
-  { href: '/dashboard/services',       label: 'Services',     icon: Briefcase },
-  { href: '/dashboard/videos',         label: 'Videos',       icon: Video },
-  { href: '/dashboard/merch',          label: 'Merch',        icon: Package },
-  { href: '/dashboard/memberships',    label: 'Memberships',  icon: Users },
-  { href: '/dashboard/storefront',     label: 'Storefront',   icon: Store },
-  { href: '/dashboard/purchases',      label: 'Sales',        icon: ShoppingBag },
-  { href: '/dashboard/support',        label: 'Fan Support',  icon: Heart },
-  { href: '/dashboard/goals',          label: 'Goals',        icon: Target },
-  { href: '/dashboard/payouts',        label: 'Payouts',      icon: Wallet },
-  { href: '/dashboard/referrals',      label: 'Referrals',    icon: Share2 },
-  { href: '/dashboard/plaques',        label: 'Plaques',      icon: Trophy },
-  { href: '/dashboard/campaigns',      label: 'Campaigns',    icon: Megaphone },
-  { href: '/dashboard/splits',         label: 'Split Sheets', icon: GitFork },
-  { href: '/dashboard/profile',        label: 'Profile',      icon: User },
-  { href: '/dashboard/settings',       label: 'Settings',     icon: Settings },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  highlight?: boolean;
+  /** If true, only show this item when the effective plan is 'label' */
+  labelPlanOnly?: boolean;
+}
+interface NavGroup { key: string; label: string; icon: LucideIcon; items: NavItem[] }
+
+const OVERVIEW: NavItem = { href: '/dashboard', label: 'Overview', icon: BarChart2, exact: true };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'create', label: 'Create', icon: Sparkles,
+    items: [
+      { href: '/dashboard/beats',        label: 'Beats',    icon: Music },
+      { href: '/dashboard/releases',     label: 'Releases', icon: Disc },
+      { href: '/dashboard/releases/new', label: 'Upload',   icon: Upload, highlight: true },
+      { href: '/dashboard/videos',       label: 'Videos',   icon: Video },
+      { href: '/dashboard/merch',         label: 'Merch',    icon: Package },
+      { href: '/dashboard/services',     label: 'Services', icon: Briefcase },
+    ],
+  },
+  {
+    key: 'engage', label: 'Engage', icon: Users,
+    items: [
+      { href: '/dashboard/social',       label: 'Posts',       icon: Send },
+      { href: '/dashboard/support',      label: 'Fan Support', icon: Heart },
+      { href: '/dashboard/memberships',  label: 'Memberships', icon: Users },
+      { href: '/dashboard/storefront',   label: 'Storefront',  icon: Store },
+    ],
+  },
+  {
+    key: 'grow', label: 'Grow', icon: TrendingUp,
+    items: [
+      { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart2 },
+      { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },
+      { href: '/dashboard/referrals', label: 'Referrals', icon: Share2 },
+      { href: '/dashboard/goals',     label: 'Goals',     icon: Target },
+      { href: '/dashboard/plaques',   label: 'Plaques',   icon: Trophy },
+      { href: '/dashboard/events',    label: 'Events',    icon: Calendar },
+      {
+        href: '/dashboard/label',
+        label: 'Label',
+        icon: Building2,
+        labelPlanOnly: true,   // ← only shown when effectivePlan.slug === 'label'
+      },
+    ],
+  },
+  {
+    key: 'money', label: 'Money', icon: Wallet,
+    items: [
+      { href: '/dashboard/earnings',  label: 'Earnings',     icon: Wallet },
+      { href: '/dashboard/purchases', label: 'Sales',        icon: ShoppingBag },
+      { href: '/dashboard/payouts',   label: 'Payouts',      icon: Wallet },
+      { href: '/dashboard/splits',    label: 'Split Sheets', icon: GitFork },
+    ],
+  },
+  {
+    key: 'account', label: 'Account', icon: Settings,
+    items: [
+      { href: '/dashboard/profile',  label: 'Profile',  icon: User },
+      { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
-const MOBILE_PRIMARY = ARTIST_NAV.slice(0, 4);
-const MOBILE_MORE    = ARTIST_NAV.slice(4);
+function isActive(pathname: string, href: string, exact?: boolean) {
+  if (exact) return pathname === href;
+  return pathname.startsWith(href);
+}
+
+function groupForPath(pathname: string, visibleGroups: NavGroup[]): string | null {
+  for (const g of visibleGroups) {
+    if (g.items.some(i => isActive(pathname, i.href, i.exact))) return g.key;
+  }
+  return null;
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const [checking, setChecking]   = useState(true);
-  const [userEmail, setUserEmail] = useState('');
+  const path     = pathname || '';
+
+  const [checking, setChecking]     = useState(true);
+  const [userEmail, setUserEmail]   = useState('');
   const [artistName, setArtistName] = useState('');
-  const [moreOpen, setMoreOpen]   = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
+  // Plan state — resolved via getEffectivePlan once /api/auth/me returns
+  const [planSlug, setPlanSlug]         = useState<string>('free');
+  const [planExpiresAt, setPlanExpiresAt] = useState<Date | null>(null);
+
+  // Desktop: which category sections are expanded
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  // Mobile: which category sheet is open
+  const [mobileGroup, setMobileGroup] = useState<string | null>(null);
+
+  // Build the set of visible nav items after plan is known
+  const isLabelPlan = getEffectivePlan(planSlug, planExpiresAt).slug === 'label';
+
+  const visibleGroups: NavGroup[] = NAV_GROUPS.map(g => ({
+    ...g,
+    items: g.items.filter(i => !i.labelPlanOnly || isLabelPlan),
+  }));
+
+  const activeGroupKey = groupForPath(path, visibleGroups);
 
   useEffect(() => {
     const supabase = createClient();
@@ -57,15 +144,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (res.ok) {
           const me = await res.json();
           if (['admin', 'owner', 'super_admin'].includes(me.role)) {
-            router.replace('/admin'); return;
+            router.replace('/admin');
+            return;
           }
           if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
+            // Store plan info from the artist payload
+            if (me.artist?.planSlug) setPlanSlug(me.artist.planSlug);
+            if (me.artist?.planExpiresAt) setPlanExpiresAt(new Date(me.artist.planExpiresAt));
             try {
-              const [, msgsRes] = await Promise.all([
-                fetch('/api/dashboard/settings'),
-                fetch('/api/messages/conversations'),
-              ]);
+              const msgsRes = await fetch('/api/messages/conversations');
               if (msgsRes.ok) {
                 const md = await msgsRes.json();
                 const convs: any[] = md.conversations || [];
@@ -73,7 +161,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }
             } catch {}
           } else {
-            router.replace('/fan'); return;
+            router.replace('/fan');
+            return;
           }
         }
       } catch {}
@@ -81,17 +170,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   }, [router]);
 
-  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  // Auto-open the section containing the active route
+  useEffect(() => {
+    const g = groupForPath(path, visibleGroups);
+    if (g) setOpenGroups(prev => (prev.has(g) ? prev : new Set(prev).add(g)));
+  }, [path, isLabelPlan]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close mobile sheet on navigation
+  useEffect(() => { setMobileGroup(null); }, [pathname]);
+
+  function toggleGroup(key: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
 
   async function logout() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/');
-  }
-
-  function isActive(href: string, exact?: boolean) {
-    if (exact) return pathname === href;
-    return pathname.startsWith(href);
   }
 
   if (checking) return (
@@ -107,56 +206,101 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
 
       {/* ── Desktop Sidebar ─────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-60 min-h-screen flex-shrink-0"
+      <aside className="hidden md:flex flex-col w-64 min-h-screen flex-shrink-0"
         style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}>
 
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'var(--sky)' }}>
-              <Music2 size={13} className="text-white" />
+              <Music2 size={13} className="text-black" />
             </div>
             <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka</span>
           </Link>
           {artistName && (
-            <p className="text-xs mt-2 truncate" style={{ color: 'var(--text-muted)' }}>Artist Dashboard</p>
+            <p className="text-xs mt-2 truncate" style={{ color: 'var(--text-muted)' }}>
+              {artistName}
+            </p>
+          )}
+          {/* Plan badge */}
+          {planSlug !== 'free' && (
+            <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+              style={{
+                background: planSlug === 'label' ? 'rgba(232,200,124,0.15)' : 'rgba(56,182,232,0.12)',
+                color: planSlug === 'label' ? 'var(--gold)' : 'var(--sky)',
+                border: `1px solid ${planSlug === 'label' ? 'rgba(232,200,124,0.25)' : 'rgba(56,182,232,0.2)'}`,
+              }}>
+              {planSlug}
+            </span>
           )}
         </div>
 
-        {/* Messages quick link */}
-        <div className="px-3 pt-3">
-          <Link href="/messages"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all"
-            style={{
-              background: pathname === '/messages' ? 'var(--surface2)' : 'transparent',
-              color: pathname === '/messages' ? 'var(--text)' : 'var(--text-muted)',
-            }}>
-            <MessageSquare size={16} className="flex-shrink-0" />
-            <span className="flex-1">Messages</span>
-            {unreadMsgs > 0 && (
-              <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white"
-                style={{ background: 'var(--sky)', minWidth: 18, textAlign: 'center' }}>
-                {unreadMsgs}
-              </span>
-            )}
-          </Link>
-        </div>
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+          {/* Overview — always visible, top level */}
+          <SideLink href={OVERVIEW.href} label={OVERVIEW.label} Icon={OVERVIEW.icon}
+            active={isActive(path, OVERVIEW.href, true)} />
 
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-          {ARTIST_NAV.map(n => {
-            const active = isActive(n.href, n.exact);
+          {/* Messages — always visible, top level */}
+          <SideLink href="/messages" label="Messages" Icon={MessageSquare}
+            active={path === '/messages'} badge={unreadMsgs || undefined} />
+
+          <Divider />
+
+          {/* Categorised groups */}
+          {visibleGroups.map(group => {
+            const expanded = openGroups.has(group.key);
+            const groupActive = activeGroupKey === group.key;
             return (
-              <Link key={n.href} href={n.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all group"
-                style={{
-                  background: active ? 'var(--surface2)' : n.highlight && !active ? 'rgba(56,182,232,0.08)' : 'transparent',
-                  color: active ? 'var(--text)' : n.highlight ? 'var(--sky)' : 'var(--text-muted)',
-                  border: n.highlight && !active ? '1px solid rgba(56,182,232,0.2)' : '1px solid transparent',
-                }}>
-                <n.icon size={16} className="flex-shrink-0" />
-                <span className="flex-1">{n.label}</span>
-                {active && <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />}
-              </Link>
+              <div key={group.key}>
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold text-sm transition-all"
+                  style={{ color: groupActive ? 'var(--sky)' : 'var(--text)' }}
+                >
+                  <group.icon size={16} className="flex-shrink-0" />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      color: 'var(--text-muted)',
+                      transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {expanded && (
+                  <div className="ml-3 pl-3 space-y-0.5 mb-1"
+                    style={{ borderLeft: '1px solid var(--border)' }}>
+                    {group.items.map(item => {
+                      const active = isActive(path, item.href, item.exact);
+                      return (
+                        <Link key={item.href} href={item.href}
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-all"
+                          style={{
+                            background: active
+                              ? 'var(--surface2)'
+                              : item.highlight && !active
+                                ? 'rgba(160,232,124,0.08)'
+                                : 'transparent',
+                            color: active
+                              ? 'var(--text)'
+                              : item.highlight
+                                ? 'var(--sky)'
+                                : 'var(--text-muted)',
+                            border: item.highlight && !active
+                              ? '1px solid rgba(160,232,124,0.2)'
+                              : '1px solid transparent',
+                          }}>
+                          <item.icon size={15} className="flex-shrink-0" />
+                          <span className="flex-1">{item.label}</span>
+                          {active && <ChevronRight size={13} style={{ color: 'var(--text-muted)' }} />}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -164,102 +308,183 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="px-3 py-2 mb-1">
             <p className="text-xs font-medium truncate" style={{ color: 'var(--text)' }}>{userEmail}</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Artist</p>
           </div>
           <button onClick={logout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm w-full transition-colors hover:bg-[var(--surface2)]"
             style={{ color: 'var(--text-muted)' }}>
-            <LogOut size={15} /> Sign out
+            <LogOut size={15} />
+            Sign out
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content ────────────────────────────────────── */}
+      {/* ── Main Content ─────────────────────────────────────── */}
       <main className="flex-1 min-w-0 pb-24 md:pb-0">
         {children}
       </main>
 
-      {/* ── Mobile Bottom Nav ───────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 flex z-50 px-1"
+      {/* ── Mobile Bottom Nav ────────────────────────────────── */}
+      {/* Overview + Create / Engage / Grow / Money + More (Account + Messages) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 flex z-50"
         style={{
           background: 'var(--surface)',
           borderTop: '1px solid var(--border)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
-        {MOBILE_PRIMARY.map(n => {
-          const active = isActive(n.href, n.exact);
+
+        <MobileTab href={OVERVIEW.href} label="Overview" Icon={OVERVIEW.icon}
+          active={isActive(path, OVERVIEW.href, true)} onClick={() => setMobileGroup(null)} />
+
+        {visibleGroups.filter(g => g.key !== 'account').map(group => {
+          const groupActive = activeGroupKey === group.key || mobileGroup === group.key;
           return (
-            <Link key={n.href} href={n.href}
-              className="flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors min-h-[56px] justify-center"
-              style={{ color: active ? 'var(--sky)' : 'var(--text-muted)' }}>
-              <n.icon size={22} />
-              <span className="text-[10px] font-medium">{n.label.split(' ')[0]}</span>
-            </Link>
+            <button key={group.key}
+              onClick={() => setMobileGroup(v => v === group.key ? null : group.key)}
+              className="flex-1 flex flex-col items-center py-3 gap-0.5 min-h-[56px] justify-center relative"
+              style={{ color: groupActive ? 'var(--sky)' : 'var(--text-muted)' }}>
+              <group.icon size={20} />
+              <span className="text-[10px] font-medium">{group.label}</span>
+              {activeGroupKey === group.key && (
+                <span className="absolute top-1.5 w-1 h-1 rounded-full" style={{ background: 'var(--sky)' }} />
+              )}
+            </button>
           );
         })}
-        <button onClick={() => setMoreOpen(v => !v)}
-          className="flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors min-h-[56px] justify-center"
-          style={{ color: moreOpen ? 'var(--sky)' : 'var(--text-muted)' }}>
-          <MoreHorizontal size={22} />
+
+        <button
+          onClick={() => setMobileGroup(v => v === 'more' ? null : 'more')}
+          className="flex-1 flex flex-col items-center py-3 gap-0.5 min-h-[56px] justify-center relative"
+          style={{ color: mobileGroup === 'more' || activeGroupKey === 'account' || path === '/messages' ? 'var(--sky)' : 'var(--text-muted)' }}>
+          <Settings size={20} />
           <span className="text-[10px] font-medium">More</span>
+          {unreadMsgs > 0 && (
+            <span className="absolute top-1 right-5 text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center text-black"
+              style={{ background: 'var(--sky)' }}>
+              {unreadMsgs > 9 ? '9+' : unreadMsgs}
+            </span>
+          )}
         </button>
       </nav>
 
-      {/* ── Mobile "More" Drawer ─────────────────────────────── */}
-      {moreOpen && (
+      {/* ── Mobile Category Sheet ────────────────────────────── */}
+      {mobileGroup && (
         <>
-          <div className="md:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setMoreOpen(false)} />
+          <div className="md:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setMobileGroup(null)} />
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl"
-            style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
+            style={{
+              background: 'var(--surface)',
+              borderTop: '1px solid var(--border)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+            }}>
 
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>Dashboard</p>
-              <button onClick={() => setMoreOpen(false)} style={{ color: 'var(--text-muted)' }}>
+            <div className="flex items-center justify-between px-5 py-4"
+              style={{ borderBottom: '1px solid var(--border)' }}>
+              <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>
+                {mobileGroup === 'more'
+                  ? 'More'
+                  : visibleGroups.find(g => g.key === mobileGroup)?.label}
+              </p>
+              <button onClick={() => setMobileGroup(null)} style={{ color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="px-3 pt-2">
-              <Link href="/messages"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm"
-                style={{ color: 'var(--text-muted)' }}>
-                <MessageSquare size={18} />
-                <span className="flex-1">Messages</span>
-                {unreadMsgs > 0 && (
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: 'var(--sky)' }}>
-                    {unreadMsgs}
-                  </span>
-                )}
-              </Link>
-            </div>
-
-            <div className="p-3 space-y-0.5 overflow-y-auto max-h-[60vh]">
-              {MOBILE_MORE.map(n => {
-                const active = isActive(n.href, n.exact);
-                return (
-                  <Link key={n.href} href={n.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all"
-                    style={{
-                      background: active ? 'var(--surface2)' : 'transparent',
-                      color: active ? 'var(--text)' : 'var(--text-muted)',
-                    }}>
-                    <n.icon size={18} />
-                    <span>{n.label}</span>
-                    {active && <ChevronRight size={14} className="ml-auto" style={{ color: 'var(--text-muted)' }} />}
-                  </Link>
-                );
-              })}
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
-                <button onClick={logout}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm w-full"
-                  style={{ color: 'var(--text-muted)' }}>
-                  <LogOut size={18} /> <span>Sign out</span>
-                </button>
-              </div>
+            <div className="p-3 space-y-0.5 max-h-[60vh] overflow-y-auto">
+              {mobileGroup === 'more' ? (
+                <>
+                  <SheetLink href="/messages" label="Messages" Icon={MessageSquare}
+                    active={path === '/messages'} badge={unreadMsgs || undefined} />
+                  {visibleGroups.find(g => g.key === 'account')!.items.map(item => (
+                    <SheetLink key={item.href} href={item.href} label={item.label}
+                      Icon={item.icon} active={isActive(path, item.href, item.exact)} />
+                  ))}
+                  <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+                    <button onClick={logout}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm w-full"
+                      style={{ color: 'var(--text-muted)' }}>
+                      <LogOut size={18} /><span>Sign out</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                visibleGroups.find(g => g.key === mobileGroup)?.items.map(item => (
+                  <SheetLink key={item.href} href={item.href} label={item.label}
+                    Icon={item.icon} active={isActive(path, item.href, item.exact)}
+                    highlight={item.highlight} />
+                ))
+              )}
             </div>
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── Small reusable sub-components to keep the JSX above readable ──
+
+function SideLink({ href, label, Icon, active, badge }: {
+  href: string; label: string; Icon: LucideIcon; active: boolean; badge?: number;
+}) {
+  return (
+    <Link href={href}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all"
+      style={{
+        background: active ? 'var(--surface2)' : 'transparent',
+        color: active ? 'var(--text)' : 'var(--text-muted)',
+      }}>
+      <Icon size={16} className="flex-shrink-0" />
+      <span className="flex-1">{label}</span>
+      {badge ? (
+        <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-black"
+          style={{ background: 'var(--sky)', minWidth: 18, textAlign: 'center' }}>
+          {badge}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function MobileTab({ href, label, Icon, active, onClick }: {
+  href: string; label: string; Icon: LucideIcon; active: boolean; onClick?: () => void;
+}) {
+  return (
+    <Link href={href} onClick={onClick}
+      className="flex-1 flex flex-col items-center py-3 gap-0.5 min-h-[56px] justify-center"
+      style={{ color: active ? 'var(--sky)' : 'var(--text-muted)' }}>
+      <Icon size={20} />
+      <span className="text-[10px] font-medium">{label}</span>
+    </Link>
+  );
+}
+
+function SheetLink({ href, label, Icon, active, badge, highlight }: {
+  href: string; label: string; Icon: LucideIcon; active: boolean; badge?: number; highlight?: boolean;
+}) {
+  return (
+    <Link href={href}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all"
+      style={{
+        background: active ? 'var(--surface2)' : highlight && !active ? 'rgba(160,232,124,0.08)' : 'transparent',
+        color: active ? 'var(--text)' : highlight ? 'var(--sky)' : 'var(--text-muted)',
+      }}>
+      <Icon size={18} />
+      <span className="flex-1">{label}</span>
+      {badge ? (
+        <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-black"
+          style={{ background: 'var(--sky)' }}>
+          {badge}
+        </span>
+      ) : null}
+      {active && <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />}
+    </Link>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="py-2 px-1">
+      <div style={{ borderTop: '1px solid var(--border)' }} />
     </div>
   );
 }
