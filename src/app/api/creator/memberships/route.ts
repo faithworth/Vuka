@@ -18,8 +18,11 @@ export async function GET() {
     const memberships = await prisma.creatorMembership.findMany({
       where: { userId: user.id, status: 'active' },
       include: {
-        tier:   true,
-        artist: { select: { id: true, name: true, slug: true, photoUrl: true } },
+        tier: {
+          include: {
+            artist: { select: { id: true, name: true, slug: true, photoUrl: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

@@ -92,6 +92,7 @@ export async function GET() {
               artist:   { select: { name: true, slug: true } },
             },
           },
+          artist: { select: { name: true, slug: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 200,

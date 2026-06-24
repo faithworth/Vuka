@@ -22,6 +22,7 @@ interface Purchase {
   video?: { title: string; slug: string; artist: { name: string; slug: string } };
   sample?: { title: string; slug: string; artist: { name: string; slug: string } };
   merch?: { title: string; slug: string; artist: { name: string; slug: string } };
+  artist?: { name: string; slug: string };
 }
 
 interface FollowedArtist {
@@ -74,7 +75,9 @@ function itemLabel(p: Purchase): { title: string; href: string | null; type: str
   if (p.video)   return { title: p.video.title,   href: `/videos/${p.video.slug}`,    type: 'Video' };
   if (p.sample)  return { title: p.sample.title,  href: `/samples/${p.sample.slug}`,  type: 'Sample' };
   if (p.merch)   return { title: p.merch.title,   href: `/merch/${p.merch.slug}`,     type: 'Merch' };
-  return { title: 'Unknown', href: null, type: p.itemType };
+  if (p.itemType === 'membership' && p.artist)
+    return { title: `${p.artist.name} Membership`, href: `/artist/${p.artist.slug}?tab=membership`, type: 'Membership' };
+  return { title: p.itemType || 'Unknown', href: null, type: p.itemType };
 }
 
 function itemArtist(p: Purchase): string {
