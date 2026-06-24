@@ -24,8 +24,9 @@ interface ArtistTabsProps {
   artist: any;
 }
 
+type Tab = 'beats' | 'releases' | 'videos' | 'samples' | 'merch' | 'membership' | 'posts';
+
 export default function ArtistTabs({ artist }: ArtistTabsProps) {
-  type Tab = 'beats' | 'releases' | 'videos' | 'samples' | 'merch' | 'membership' | 'posts';
 
   const allReleases = [
     ...(artist.releases ?? []),
