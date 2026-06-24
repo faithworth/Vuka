@@ -482,7 +482,7 @@ export default function FanDashboard() {
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                         R{m.tier?.price}/mo · {m.billingInterval} · {m.status}
-                        {m.expiresAt && ` · Expires ${timeAgo(m.expiresAt)}`}
+                        {m.expiresAt && new Date(m.expiresAt) > new Date() && ` · Expires ${new Date(m.expiresAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                       </p>
                       {m.tier?.perks?.length > 0 && (
                         <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
