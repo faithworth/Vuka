@@ -1,11 +1,11 @@
 // src/app/api/store/memberships/route.ts
 // Public listing of active membership tiers across all artists.
-// Mirrors the shape and conventions of /api/store/beats, /api/store/merch, etc.
 
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma                        from '@/lib/prisma';
+import { coerceStringArray }         from '@/lib/coerce-array';
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     const limit      = 24;
 
     // ── Artist filter ──────────────────────────────────────────────────────────
-    // Supports either ?artistSlug= (from public profile pages) or ?artistId=
     let resolvedArtistId: string | undefined;
 
     if (artistId) {
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
     const orderBy =
       sort === 'price_desc' ? { price: 'desc' as const } :
       sort === 'newest'     ? { createdAt: 'desc' as const } :
-      { price: 'asc' as const };   // default: cheapest first
+      { price: 'asc' as const };
 
     // ── Query ──────────────────────────────────────────────────────────────────
     const [tiers, total] = await Promise.all([
@@ -71,8 +70,17 @@ export async function GET(req: NextRequest) {
       prisma.creatorSubscriptionTier.count({ where }),
     ]);
 
+    // Defensive coercion: normalise genreTags until the text[] migration lands.
+    // coerceStringArray is a no-op once the column is a native Postgres array.
+    const normalisedTiers = tiers.map(tier => ({
+      ...tier,
+      artist: tier.artist
+        ? { ...tier.artist, genreTags: coerceStringArray(tier.artist.genreTags) }
+        : tier.artist,
+    }));
+
     return NextResponse.json({
-      tiers,
+      tiers: normalisedTiers,
       total,
       page,
       pages: Math.ceil(total / limit),

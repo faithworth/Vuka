@@ -1,4 +1,6 @@
-import { getEffectivePlan } from '@/lib/plans';
+// src/app/api/artist/[slug]/route.ts
+import { getEffectivePlan }  from '@/lib/plans';
+import { coerceStringArray } from '@/lib/coerce-array';
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,7 +32,6 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
           orderBy: { createdAt: 'desc' },
           take: 50,
         },
-        // Merch — active items with stock only
         merch: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
@@ -49,7 +50,6 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
 
     if (!artist) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Fetch live distribution releases and attach them
     const distributionReleases = await prisma.distributionRelease.findMany({
       where: { artistId: artist.id, status: 'live' },
       include: { tracks: { orderBy: { trackNumber: 'asc' } } },
@@ -78,17 +78,12 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       })),
     }));
 
-    // Fetch active membership tiers — fetched separately to avoid coupling
-    // to Artist include field name which varies by Prisma version
     const subscriptionTiers = await prisma.creatorSubscriptionTier.findMany({
       where: { artistId: artist.id, isActive: true },
       orderBy: { price: 'asc' },
-      include: {
-        _count: { select: { memberships: true } },
-      },
+      include: { _count: { select: { memberships: true } } },
     }).catch(() => []);
 
-    // Fetch storefront so tagline, bioLong, accentColor show on the public profile
     const storefrontRaw = await prisma.creatorStorefront.findUnique({
       where: { artistId: artist.id },
     }).catch(() => null);
@@ -120,10 +115,16 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
 
     return NextResponse.json({
       ...artist,
+      // Defensive coercion until 20260624_fix_string_array_column_types migration lands
+      genreTags:            coerceStringArray((artist as any).genreTags),
+      beats:                (artist.beats ?? []).map(b => ({ ...b, tags: coerceStringArray((b as any).tags) })),
+      videos:               (artist.videos ?? []).map(v => ({ ...v, tags: coerceStringArray((v as any).tags) })),
+      samples:              (artist.samples ?? []).map(s => ({ ...s, tags: coerceStringArray((s as any).tags) })),
+      merch:                (artist.merch ?? []).map(m => ({ ...m, sizes: coerceStringArray((m as any).sizes) })),
+      subscriptionTiers:    subscriptionTiers.map(t => ({ ...t, perks: coerceStringArray((t as any).perks) })),
       distributionReleases: normalisedDistribReleases,
-      subscriptionTiers,
       storefront,
-      socialLinks: (artist as any).socialLinks || storefront?.socialLinks || {},
+      socialLinks:     (artist as any).socialLinks || storefront?.socialLinks || {},
       artistSharePct:  effectivePlan.artistSharePct,
       platformFeePct:  effectivePlan.platformFeePct,
     });
