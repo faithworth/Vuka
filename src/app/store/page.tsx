@@ -2,39 +2,43 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { BeatCard } from '@/components/BeatCard';
-import { ReleaseCard } from '@/components/ReleaseCard';
 import { BuyModal } from '@/components/BuyModal';
-import { Heart } from 'lucide-react';
+import { Heart, Package, ShoppingCart } from 'lucide-react';
 
 const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House'];
-const MOODS = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic'];
-const SORTS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'plays', label: 'Most Played' },
-  { value: 'price_asc', label: 'Price ↑' },
+const MOODS  = ['Dark', 'Happy', 'Aggressive', 'Chill', 'Romantic', 'Epic'];
+const SORTS  = [
+  { value: 'newest',     label: 'Newest' },
+  { value: 'plays',      label: 'Most Played' },
+  { value: 'price_asc',  label: 'Price ↑' },
   { value: 'price_desc', label: 'Price ↓' },
 ];
 
 export default function StorePage({ defaultFilter }: { defaultFilter?: string }) {
-  const [beats, setBeats] = useState<any[]>([]);
+  const [beats,    setBeats]    = useState<any[]>([]);
   const [releases, setReleases] = useState<any[]>([]);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [samples, setSamples] = useState<any[]>([]);
-  const [artists, setArtists] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dbError, setDbError] = useState(false);
-  const [q, setQ] = useState('');
-  const [genre, setGenre] = useState('');
-  const [mood, setMood] = useState('');
-  const [sort, setSort] = useState('newest');
-  const [tab, setTab] = useState<'all' | 'beats' | 'releases' | 'videos' | 'samples'>(
-    defaultFilter === 'beat' ? 'beats' : defaultFilter === 'release' ? 'releases' : defaultFilter === 'video' ? 'videos' : defaultFilter === 'sample' ? 'samples' : 'all'
+  const [videos,   setVideos]   = useState<any[]>([]);
+  const [samples,  setSamples]  = useState<any[]>([]);
+  const [merch,    setMerch]    = useState<any[]>([]);
+  const [artists,  setArtists]  = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [dbError,  setDbError]  = useState(false);
+  const [q,        setQ]        = useState('');
+  const [genre,    setGenre]    = useState('');
+  const [mood,     setMood]     = useState('');
+  const [sort,     setSort]     = useState('newest');
+  const [tab, setTab] = useState<'all' | 'beats' | 'releases' | 'videos' | 'samples' | 'merch'>(
+    defaultFilter === 'beat'    ? 'beats'    :
+    defaultFilter === 'release' ? 'releases' :
+    defaultFilter === 'video'   ? 'videos'   :
+    defaultFilter === 'sample'  ? 'samples'  :
+    defaultFilter === 'merch'   ? 'merch'    : 'all'
   );
-  const [buyBeat, setBuyBeat] = useState<any>(null);
+  const [buyItem,  setBuyItem]  = useState<any>(null);
+  const [buyType,  setBuyType]  = useState<'beat' | 'merch'>('beat');
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
   const searchTimer = useRef<NodeJS.Timeout>();
 
-  // Load wishlist state on mount
   useEffect(() => {
     fetch('/api/wishlist').then(r => r.ok ? r.json() : null).then(d => {
       if (d?.items) setWishlist(new Set(d.items.map((i: any) => i.itemId)));
@@ -50,12 +54,14 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
         fetch(`/api/store/releases?q=${q}&sort=${sort}`).then(r => r.json()),
         fetch(`/api/store/videos?q=${q}&sort=${sort}`).then(r => r.json()),
         fetch(`/api/store/samples?q=${q}&sort=${sort}`).then(r => r.json()),
+        fetch(`/api/store/merch?q=${q}&sort=${sort}`).then(r => r.json()),
         q.length >= 2 ? fetch(`/api/store/artists?q=${q}`).then(r => r.json()) : Promise.resolve({ artists: [] }),
-      ]).then(([b, r, v, s, a]) => {
+      ]).then(([b, r, v, s, m, a]) => {
         setBeats(b.beats || []);
         setReleases(r.releases || []);
         setVideos(v.videos || []);
         setSamples(s.samples || []);
+        setMerch(m.merch || []);
         setArtists(a.artists || []);
         if (b.dbError || r.dbError) setDbError(true);
         setLoading(false);
@@ -64,8 +70,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
   }, [q, genre, mood, sort]);
 
   async function toggleWishlist(itemId: string, itemType: 'beat' | 'release', e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     const res = await fetch('/api/wishlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,11 +87,22 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
     }
   }
 
-  const items = tab === 'beats' ? beats
-    : tab === 'releases' ? releases
-    : tab === 'videos' ? videos
-    : tab === 'samples' ? samples
-    : [...beats, ...releases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const items =
+    tab === 'beats'    ? beats    :
+    tab === 'releases' ? releases :
+    tab === 'videos'   ? videos   :
+    tab === 'samples'  ? samples  :
+    tab === 'merch'    ? merch    :
+    [...beats, ...releases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const TABS: { value: typeof tab; label: string; count: number }[] = [
+    { value: 'all',      label: 'All',      count: beats.length + releases.length },
+    { value: 'beats',    label: 'Beats',    count: beats.length },
+    { value: 'releases', label: 'Releases', count: releases.length },
+    { value: 'videos',   label: 'Videos',   count: videos.length },
+    { value: 'samples',  label: 'Samples',  count: samples.length },
+    { value: 'merch',    label: 'Merch',    count: merch.length },
+  ];
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -107,13 +123,10 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
 
         {/* Search + filters */}
         <div className="flex flex-col gap-3 mb-8">
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Search beats, releases, artists…"
+          <input value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Search beats, releases, merch, artists…"
             className="w-full px-4 py-3 rounded-xl"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
-          />
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none' }}>
             <select value={genre} onChange={e => setGenre(e.target.value)} className="px-3 py-2.5 rounded-xl flex-shrink-0 text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
               <option value="">All Genres</option>
@@ -129,7 +142,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
           </div>
         </div>
 
-        {/* Artist search results — shown when searching */}
+        {/* Artist search results */}
         {q.length >= 2 && artists.length > 0 && (
           <div className="mb-8">
             <h2 className="text-sm font-bold mb-3 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Artists</h2>
@@ -138,16 +151,13 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
                 <a key={artist.id} href={`/artist/${artist.slug}`}
                   className="flex flex-col items-center p-4 rounded-2xl text-center transition-all hover:scale-[1.02]"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden mb-3 flex items-center justify-center"
-                    style={{ background: 'var(--surface2)' }}>
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden mb-3 flex items-center justify-center" style={{ background: 'var(--surface2)' }}>
                     {artist.photoUrl
                       ? <img src={artist.photoUrl} alt={artist.name} className="w-full h-full object-cover" />
                       : <span className="text-2xl">🎤</span>}
                   </div>
                   <p className="font-bold text-sm truncate w-full" style={{ color: 'var(--text)' }}>{artist.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {artist.city || artist.country}
-                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{artist.city || artist.country}</p>
                   <p className="text-xs mt-1" style={{ color: 'var(--sky)' }}>
                     {artist._count.beats} beats · {artist._count.releases} releases
                   </p>
@@ -159,54 +169,146 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
 
         {/* Tab switcher */}
         <div className="flex gap-2 mb-8 flex-wrap">
-          {(['all', 'beats', 'releases', 'videos', 'samples'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} className="px-5 py-2 rounded-lg font-medium capitalize transition-colors"
-              style={{ background: tab === t ? 'var(--sky)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t ? 'white' : 'var(--text-muted)' }}>
-              {t}
+          {TABS.map(t => (
+            <button key={t.value} onClick={() => setTab(t.value)}
+              className="px-5 py-2 rounded-lg font-medium transition-colors"
+              style={{ background: tab === t.value ? 'var(--sky)' : 'var(--surface)', border: '1px solid var(--border)', color: tab === t.value ? 'white' : 'var(--text-muted)' }}>
+              {t.label}
+              {t.count > 0 && <span className="ml-1.5 text-xs opacity-70">({t.count})</span>}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className={`grid gap-4 ${tab === 'videos' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
             {[...Array(8)].map((_, i) => (
               <div key={i} className="aspect-square rounded-2xl animate-pulse" style={{ background: 'var(--surface)' }} />
             ))}
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-24">
-            <p className="text-4xl mb-4">🎵</p>
+            <p className="text-4xl mb-4">{tab === 'merch' ? '👕' : '🎵'}</p>
             <p style={{ color: 'var(--text-muted)' }}>Nothing matching that — try something else</p>
           </div>
         ) : (
           <div className={`grid gap-4 ${tab === 'videos' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
-            {items.map((item: any) => (
-              item.basicPrice !== undefined ? (
-                <BeatCard key={item.id} beat={item} onBuy={setBuyBeat}
-                  wishlisted={wishlist.has(item.id)}
-                  onWishlist={(e) => toggleWishlist(item.id, 'beat', e)} />
-              ) : item.videoUrl !== undefined ? (
-                <VideoCard key={item.id} video={item} />
-              ) : item.sampleUrl !== undefined || item.fileUrl !== undefined ? (
-                <SampleCard key={item.id} sample={item} />
-              ) : (
-                <ReleaseCard key={item.id} release={item}
-                  wishlisted={wishlist.has(item.id)}
-                  onWishlist={(e) => toggleWishlist(item.id, 'release', e)} />
-              )
-            ))}
+            {tab === 'merch'
+              ? merch.map((item: any) => <MerchCard key={item.id} item={item} onBuy={() => { setBuyItem(item); setBuyType('merch'); }} />)
+              : items.map((item: any) => (
+                  item.basicPrice !== undefined ? (
+                    <BeatCard key={item.id} beat={item} onBuy={(b) => { setBuyItem(b); setBuyType('beat'); }}
+                      wishlisted={wishlist.has(item.id)}
+                      onWishlist={(e) => toggleWishlist(item.id, 'beat', e)} />
+                  ) : item.videoUrl !== undefined ? (
+                    <VideoCard key={item.id} video={item} />
+                  ) : item.sampleUrl !== undefined || item.fileUrl !== undefined ? (
+                    <SampleCard key={item.id} sample={item} />
+                  ) : item.imageUrl !== undefined && item.stock !== undefined ? (
+                    <MerchCard key={item.id} item={item} onBuy={() => { setBuyItem(item); setBuyType('merch'); }} />
+                  ) : (
+                    <ReleaseCard key={item.id} release={item}
+                      wishlisted={wishlist.has(item.id)}
+                      onWishlist={(e) => toggleWishlist(item.id, 'release', e)} />
+                  )
+                ))
+            }
           </div>
         )}
       </div>
-      {buyBeat && <BuyModal beat={buyBeat} onClose={() => setBuyBeat(null)} />}
+
+      {buyItem && buyType === 'beat' && (
+        <BuyModal beat={buyItem} onClose={() => setBuyItem(null)} />
+      )}
+      {buyItem && buyType === 'merch' && (
+        <BuyModal
+          itemType="merch"
+          release={{
+            id: buyItem.id,
+            title: buyItem.title,
+            artworkUrl: buyItem.imageUrl || '',
+            price: buyItem.price,
+            minPrice: buyItem.price,
+            payWhatWant: false,
+            artist: { name: buyItem.artist?.name || '' },
+          }}
+          onClose={() => setBuyItem(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Card components ────────────────────────────────────────────────────────
+
+function MerchCard({ item, onBuy }: { item: any; onBuy: () => void }) {
+  return (
+    <div className="group block rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <a href={`/merch/${item.slug}`} className="block">
+        <div className="aspect-square overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface2)' }}>
+          {item.imageUrl
+            ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            : <span className="text-5xl">👕</span>}
+        </div>
+      </a>
+      <div className="p-3">
+        <a href={`/merch/${item.slug}`} className="hover:underline">
+          <h3 className="font-bold text-sm truncate" style={{ color: 'var(--text)' }}>{item.title}</h3>
+        </a>
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{item.artist?.name}</p>
+        {item.stock <= 0 && (
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Out of stock</p>
+        )}
+        <div className="flex items-center justify-between mt-2">
+          <span className="font-bold text-sm" style={{ color: 'var(--sky)' }}>R{item.price}</span>
+          {item.stock > 0 ? (
+            <button onClick={onBuy}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg text-white"
+              style={{ background: 'var(--sky)' }}>
+              <ShoppingCart size={11} /> Buy
+            </button>
+          ) : (
+            <a href={`/merch/${item.slug}`}
+              className="text-xs px-2.5 py-1 rounded-lg"
+              style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+              View
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReleaseCard({ release, wishlisted, onWishlist }: { release: any; wishlisted: boolean; onWishlist: (e: React.MouseEvent) => void }) {
+  const href = release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`;
+  return (
+    <a href={href} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] relative"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div className="aspect-square overflow-hidden relative">
+        {release.artworkUrl
+          ? <img src={release.artworkUrl} alt={release.title} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: 'var(--surface2)' }}>🎶</div>}
+        <button onClick={onWishlist}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+          style={{ background: wishlisted ? 'var(--gold)' : 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}>
+          <Heart size={14} className={wishlisted ? 'fill-black' : 'text-white'} />
+        </button>
+      </div>
+      <div className="p-4">
+        <div className="inline-block text-xs px-2 py-0.5 rounded mb-2 uppercase font-bold" style={{ background: 'var(--surface2)', color: 'var(--sky)' }}>{release.releaseType}</div>
+        <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{release.title}</h3>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{release.artist?.name}</p>
+        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
+          {release.payWhatWant ? `From R${release.minPrice}` : `R${release.price}`}
+        </p>
+      </div>
+    </a>
   );
 }
 
 function VideoCard({ video }: { video: any }) {
   return (
-    <a href={`/videos/${video.slug}`}
-      className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+    <a href={`/videos/${video.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="aspect-video overflow-hidden relative" style={{ background: 'var(--surface2)' }}>
         {video.thumbnailUrl
@@ -221,9 +323,7 @@ function VideoCard({ video }: { video: any }) {
       <div className="p-4">
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{video.title}</h3>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{video.artist?.name}</p>
-        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>
-          {video.price > 0 ? `R${video.price}` : 'Free'}
-        </p>
+        <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>{video.price > 0 ? `R${video.price}` : 'Free'}</p>
       </div>
     </a>
   );
@@ -231,8 +331,7 @@ function VideoCard({ video }: { video: any }) {
 
 function SampleCard({ sample }: { sample: any }) {
   return (
-    <a href={`/samples/${sample.slug}`}
-      className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+    <a href={`/samples/${sample.slug}`} className="group block rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="aspect-square overflow-hidden relative">
         {sample.artworkUrl
@@ -241,9 +340,7 @@ function SampleCard({ sample }: { sample: any }) {
       </div>
       <div className="p-4">
         <h3 className="font-bold truncate" style={{ color: 'var(--text)' }}>{sample.title}</h3>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          {sample.artist?.name}{sample.bpm ? ` · ${sample.bpm} BPM` : ''}
-        </p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{sample.artist?.name}</p>
         <p className="font-bold mt-2" style={{ color: 'var(--sky)' }}>R{sample.price}</p>
       </div>
     </a>

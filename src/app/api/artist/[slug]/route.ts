@@ -30,6 +30,12 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
           orderBy: { createdAt: 'desc' },
           take: 50,
         },
+        // Merch — active items with stock only
+        merch: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
         supportReceived: {
           where: { status: 'confirmed', isPublic: true },
           orderBy: { createdAt: 'desc' },
@@ -72,6 +78,16 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       })),
     }));
 
+    // Fetch active membership tiers — fetched separately to avoid coupling
+    // to Artist include field name which varies by Prisma version
+    const subscriptionTiers = await prisma.creatorSubscriptionTier.findMany({
+      where: { artistId: artist.id, isActive: true },
+      orderBy: { price: 'asc' },
+      include: {
+        _count: { select: { memberships: true } },
+      },
+    }).catch(() => []);
+
     // Fetch storefront so tagline, bioLong, accentColor show on the public profile
     const storefrontRaw = await prisma.creatorStorefront.findUnique({
       where: { artistId: artist.id },
@@ -105,6 +121,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     return NextResponse.json({
       ...artist,
       distributionReleases: normalisedDistribReleases,
+      subscriptionTiers,
       storefront,
       socialLinks: (artist as any).socialLinks || storefront?.socialLinks || {},
       artistSharePct:  effectivePlan.artistSharePct,

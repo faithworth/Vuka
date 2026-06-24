@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase';
 import {
   ShoppingBag, Heart, Download, Music2, Loader2, ExternalLink,
   LogOut, UserCheck, Rss, Bell, Users, CheckCheck,
-  MessageCircle, Star, Music, Disc,
+  MessageCircle, Star, Package, XCircle, AlertCircle,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
@@ -15,66 +15,48 @@ interface Purchase {
   createdAt: string;
   amount: number;
   currency: string;
+  itemType: string;
   downloadToken?: string;
-  beat?: { title: string; artist: { name: string; slug: string } };
-  release?: { title: string; artist: { name: string; slug: string } };
+  beat?: { title: string; slug: string; artist: { name: string; slug: string } };
+  release?: { title: string; slug: string; artist: { name: string; slug: string } };
+  video?: { title: string; slug: string; artist: { name: string; slug: string } };
+  sample?: { title: string; slug: string; artist: { name: string; slug: string } };
+  merch?: { title: string; slug: string; artist: { name: string; slug: string } };
 }
 
 interface FollowedArtist {
-  id: string;
-  name: string;
-  slug: string;
-  photoUrl: string;
-  city: string;
-  country: string;
-  genreTags: string[];
-  beats: { id: string }[];
-  releases: { id: string }[];
+  id: string; name: string; slug: string; photoUrl: string;
+  city: string; country: string; genreTags: string[];
+  beats: { id: string }[]; releases: { id: string }[];
 }
 
 interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  isRead: boolean;
-  createdAt: string;
-  linkType: string;
-  linkId: string;
+  id: string; type: string; title: string; body: string;
+  isRead: boolean; createdAt: string; linkType: string; linkId: string;
 }
 
 interface Membership {
   id: string;
-  tier: { name: string; price: number; artist: { name: string; slug: string } };
+  tierId: string;
   status: string;
-  renewsAt?: string;
+  billingInterval: string;
+  expiresAt?: string;
+  tier: { id: string; name: string; price: number; perks: string[]; artist: { name: string; slug: string; photoUrl?: string } };
 }
 
 type Tab = 'library' | 'following' | 'feed' | 'notifications' | 'memberships' | 'wishlist';
 
-// Map notification type → icon + colour
 const NOTIF_ICON: Record<string, any> = {
-  new_sale:           ShoppingBag,
-  new_follower:       Users,
-  new_comment:        MessageCircle,
-  new_like:           Heart,
-  new_message:        MessageCircle,
-  new_post:           Music2,
-  milestone_followers: Star,
-  milestone_sales:    Star,
+  new_sale: ShoppingBag, new_follower: Users, new_comment: MessageCircle,
+  new_like: Heart, new_message: MessageCircle, new_post: Music2,
+  milestone_followers: Star, milestone_sales: Star,
 };
 const NOTIF_COLOR: Record<string, string> = {
-  new_sale:            'var(--green)',
-  new_follower:        'var(--sky)',
-  new_comment:         'var(--gold)',
-  new_like:            '#e74c3c',
-  new_message:         'var(--sky)',
-  new_post:            'var(--sky)',
-  milestone_followers: 'var(--gold)',
-  milestone_sales:     'var(--gold)',
+  new_sale: 'var(--green)', new_follower: 'var(--sky)', new_comment: 'var(--gold)',
+  new_like: '#e74c3c', new_message: 'var(--sky)', new_post: 'var(--sky)',
+  milestone_followers: 'var(--gold)', milestone_sales: 'var(--gold)',
 };
 
-// Resolve where a notification should navigate to
 function notifHref(n: Notification): string {
   switch (n.linkType) {
     case 'post':    return '/feed';
@@ -82,42 +64,55 @@ function notifHref(n: Notification): string {
     case 'beat':    return `/beat/${n.linkId}`;
     case 'release': return `/release/${n.linkId}`;
     case 'message': return '/messages';
-    case 'sale':    return '/fan';
     default:        return '/fan';
   }
 }
 
+function itemLabel(p: Purchase): { title: string; href: string | null; type: string } {
+  if (p.beat)    return { title: p.beat.title,    href: `/beat/${p.beat.slug}`,       type: 'Beat' };
+  if (p.release) return { title: p.release.title, href: `/release/${p.release.slug}`, type: 'Release' };
+  if (p.video)   return { title: p.video.title,   href: `/videos/${p.video.slug}`,    type: 'Video' };
+  if (p.sample)  return { title: p.sample.title,  href: `/samples/${p.sample.slug}`,  type: 'Sample' };
+  if (p.merch)   return { title: p.merch.title,   href: `/merch/${p.merch.slug}`,     type: 'Merch' };
+  return { title: 'Unknown', href: null, type: p.itemType };
+}
+
+function itemArtist(p: Purchase): string {
+  return p.beat?.artist?.name || p.release?.artist?.name || p.video?.artist?.name ||
+         p.sample?.artist?.name || p.merch?.artist?.name || '';
+}
+
 export default function FanDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [userName, setUserName] = useState('');
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [follows, setFollows] = useState<FollowedArtist[]>([]);
+  const [user, setUser]             = useState<any>(null);
+  const [userName, setUserName]     = useState('');
+  const [purchases, setPurchases]   = useState<Purchase[]>([]);
+  const [follows, setFollows]       = useState<FollowedArtist[]>([]);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>('library');
+  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab]   = useState<Tab>('library');
   const [markingAll, setMarkingAll] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.replace('/auth/login'); return; }
       setUser(data.user);
-
       try {
         const meRes = await fetch('/api/auth/me');
         if (meRes.ok) {
           const me = await meRes.json();
           setUserName(me.name || data.user.email || '');
-          if (me.role === 'admin' || me.role === 'owner' || me.role === 'super_admin') { router.replace('/admin'); return; }
+          if (['admin', 'owner', 'super_admin'].includes(me.role)) { router.replace('/admin'); return; }
           if (me.isIndustry || me.role === 'industry') { router.replace('/industry-dashboard'); return; }
           if (me.isArtist || me.role === 'artist' || me.role === 'producer' || me.role === 'verified_artist') { router.replace('/dashboard'); return; }
         }
       } catch {}
 
-      // Heal first (links past purchases to account by email), then load all data in parallel
       await fetch('/api/auth/heal-purchases', { method: 'POST' }).catch(() => {});
 
       await Promise.all([
@@ -147,7 +142,6 @@ export default function FanDashboard() {
   }
 
   async function handleNotifClick(n: Notification) {
-    // Mark as read silently
     if (!n.isRead) {
       try {
         await fetch('/api/social/notifications', {
@@ -159,6 +153,23 @@ export default function FanDashboard() {
       } catch {}
     }
     router.push(notifHref(n));
+  }
+
+  async function handleCancelMembership(membership: Membership) {
+    setCancellingId(membership.id);
+    setCancelError('');
+    try {
+      const res = await fetch(`/api/creator/memberships?tierId=${membership.tierId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        setCancelError(data.error || 'Cancellation failed');
+      } else {
+        setMemberships(prev => prev.filter(m => m.id !== membership.id));
+      }
+    } catch {
+      setCancelError('Network error. Please try again.');
+    }
+    setCancellingId(null);
   }
 
   function timeAgo(dateStr: string) {
@@ -179,12 +190,12 @@ export default function FanDashboard() {
   );
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: 'library', label: '🎵 Library' },
-    { key: 'following', label: '❤️ Following' },
-    { key: 'feed', label: '📡 Feed' },
+    { key: 'library',       label: '🎵 Library' },
+    { key: 'following',     label: '❤️ Following' },
+    { key: 'feed',          label: '📡 Feed' },
     { key: 'notifications', label: '🔔 Alerts', badge: unreadCount },
-    { key: 'memberships', label: '👥 Members' },
-    { key: 'wishlist', label: '🔖 Wishlist' },
+    { key: 'memberships',   label: '👥 Members' },
+    { key: 'wishlist',      label: '🔖 Wishlist' },
   ];
 
   return (
@@ -212,8 +223,7 @@ export default function FanDashboard() {
             <button onClick={logout}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--surface)]"
               style={{ color: 'var(--text-muted)' }}>
-              <LogOut size={15} />
-              Sign out
+              <LogOut size={15} /> Sign out
             </button>
           </div>
         </div>
@@ -221,17 +231,14 @@ export default function FanDashboard() {
         {/* Quick stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
-            { icon: ShoppingBag, label: 'Purchases', value: purchases.length, color: 'var(--sky)', tab: 'library' as Tab },
-            { icon: UserCheck, label: 'Following', value: follows.length, color: 'var(--red)', tab: 'following' as Tab },
-            { icon: Bell, label: 'Unread', value: unreadCount, color: '#e74c3c', tab: 'notifications' as Tab },
-            { icon: Users, label: 'Memberships', value: memberships.length, color: 'var(--gold)', tab: 'memberships' as Tab },
+            { icon: ShoppingBag, label: 'Purchases',  value: purchases.length,   color: 'var(--sky)',  tab: 'library' as Tab },
+            { icon: UserCheck,   label: 'Following',  value: follows.length,     color: 'var(--red)',  tab: 'following' as Tab },
+            { icon: Bell,        label: 'Unread',     value: unreadCount,        color: '#e74c3c',     tab: 'notifications' as Tab },
+            { icon: Users,       label: 'Memberships',value: memberships.length, color: 'var(--gold)', tab: 'memberships' as Tab },
           ].map(s => (
             <button key={s.label} onClick={() => setActiveTab(s.tab)}
               className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all text-left"
-              style={{
-                background: 'var(--surface)',
-                border: `1px solid ${activeTab === s.tab ? 'var(--sky)' : 'var(--border)'}`,
-              }}>
+              style={{ background: 'var(--surface)', border: `1px solid ${activeTab === s.tab ? 'var(--sky)' : 'var(--border)'}` }}>
               <s.icon size={18} style={{ color: s.color }} />
               <div>
                 <div className="text-lg font-bold" style={{ color: 'var(--text)' }}>{s.value}</div>
@@ -262,11 +269,11 @@ export default function FanDashboard() {
           ))}
         </div>
 
-        {/* ── LIBRARY TAB ─────────────────────────────────────── */}
+        {/* ── LIBRARY ─────────────────────────────────────────── */}
         {activeTab === 'library' && (
           <section>
             <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Your Purchases</h2>
-            {purchases.length === 0 ? (
+            {!purchases.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Music2 size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>No purchases yet</h3>
@@ -276,31 +283,42 @@ export default function FanDashboard() {
             ) : (
               <div className="space-y-3">
                 {purchases.map(p => {
-                  const item = p.beat || p.release;
-                  const type = p.beat ? 'Beat' : 'Release';
+                  const { title, href, type } = itemLabel(p);
+                  const artist = itemArtist(p);
+                  const isMerch = type === 'Merch';
                   return (
                     <div key={p.id} className="card p-4 flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(56,182,232,0.1)' }}>
-                        <ShoppingBag size={18} style={{ color: 'var(--sky)' }} />
+                        style={{ background: isMerch ? 'rgba(160,232,124,0.1)' : 'rgba(56,182,232,0.1)' }}>
+                        {isMerch
+                          ? <Package size={18} style={{ color: 'var(--green)' }} />
+                          : <ShoppingBag size={18} style={{ color: 'var(--sky)' }} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>
-                          {item?.title || 'Unknown'}
-                        </p>
+                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>{title}</p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {type} · {item?.artist?.name} · {timeAgo(p.createdAt)}
+                          {type} · {artist} · {timeAgo(p.createdAt)}
                         </p>
+                        {isMerch && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            Physical item — check your email for shipping details
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="font-bold text-sm" style={{ color: 'var(--sky)' }}>
-                          R{p.amount}
-                        </span>
-                        {p.downloadToken && (
+                        <span className="font-bold text-sm" style={{ color: 'var(--sky)' }}>R{p.amount}</span>
+                        {p.downloadToken && !isMerch && (
                           <Link href={`/download/${p.downloadToken}`}
                             className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                             style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
                             <Download size={12} /> Download
+                          </Link>
+                        )}
+                        {href && isMerch && (
+                          <Link href={href}
+                            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                            View
                           </Link>
                         )}
                       </div>
@@ -312,11 +330,11 @@ export default function FanDashboard() {
           </section>
         )}
 
-        {/* ── FOLLOWING TAB ───────────────────────────────────── */}
+        {/* ── FOLLOWING ───────────────────────────────────────── */}
         {activeTab === 'following' && (
           <section>
             <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Artists You Follow</h2>
-            {follows.length === 0 ? (
+            {!follows.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <UserCheck size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Not following anyone yet</h3>
@@ -327,20 +345,13 @@ export default function FanDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {follows.map(a => (
                   <Link key={a.id} href={`/artist/${a.slug}`} className="card p-4 flex items-center gap-4">
-                    {a.photoUrl ? (
-                      <img src={a.photoUrl} alt={a.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
-                        style={{ background: 'var(--sky)' }}>
-                        {a.name[0]}
-                      </div>
-                    )}
+                    {a.photoUrl
+                      ? <img src={a.photoUrl} alt={a.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                      : <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white" style={{ background: 'var(--sky)' }}>{a.name[0]}</div>}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>{a.name}</p>
                       {a.genreTags?.length > 0 && (
-                        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                          {a.genreTags.slice(0, 2).join(' · ')}
-                        </p>
+                        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{a.genreTags.slice(0, 2).join(' · ')}</p>
                       )}
                     </div>
                     <ExternalLink size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -351,7 +362,7 @@ export default function FanDashboard() {
           </section>
         )}
 
-        {/* ── FEED TAB ────────────────────────────────────────── */}
+        {/* ── FEED ────────────────────────────────────────────── */}
         {activeTab === 'feed' && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -360,7 +371,7 @@ export default function FanDashboard() {
                 <Rss size={13} /> Open full feed
               </Link>
             </div>
-            {follows.length === 0 ? (
+            {!follows.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Rss size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Follow artists to see their posts</h3>
@@ -371,15 +382,13 @@ export default function FanDashboard() {
               <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Rss size={32} className="mx-auto mb-3" style={{ color: 'var(--sky)' }} />
                 <p className="font-semibold mb-2" style={{ color: 'var(--text)' }}>See all posts in the full feed</p>
-                <Link href="/feed" className="btn btn-primary gap-2">
-                  <Rss size={14} /> Open Feed
-                </Link>
+                <Link href="/feed" className="btn btn-primary gap-2"><Rss size={14} /> Open Feed</Link>
               </div>
             )}
           </section>
         )}
 
-        {/* ── NOTIFICATIONS TAB ───────────────────────────────── */}
+        {/* ── NOTIFICATIONS ───────────────────────────────────── */}
         {activeTab === 'notifications' && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -390,16 +399,14 @@ export default function FanDashboard() {
                 <button onClick={markAllRead} disabled={markingAll}
                   className="flex items-center gap-1.5 text-sm font-medium disabled:opacity-50"
                   style={{ color: 'var(--sky)' }}>
-                  {markingAll ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />}
-                  Mark all read
+                  {markingAll ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />} Mark all read
                 </button>
               )}
             </div>
-            {notifications.length === 0 ? (
+            {!notifications.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Bell size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <p className="font-semibold" style={{ color: 'var(--text)' }}>No notifications yet</p>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>You'll be notified about new releases and messages</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -407,12 +414,9 @@ export default function FanDashboard() {
                   const Icon = NOTIF_ICON[n.type] || Bell;
                   const color = NOTIF_COLOR[n.type] || 'var(--sky)';
                   return (
-                    <button
-                      key={n.id}
-                      onClick={() => handleNotifClick(n)}
+                    <button key={n.id} onClick={() => handleNotifClick(n)}
                       className="w-full text-left card p-4 flex gap-3 items-start transition-opacity hover:opacity-90 cursor-pointer"
-                      style={{ opacity: n.isRead ? 0.65 : 1 }}
-                    >
+                      style={{ opacity: n.isRead ? 0.65 : 1 }}>
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ background: `${color}1a` }}>
                         <Icon size={16} style={{ color }} />
@@ -438,39 +442,71 @@ export default function FanDashboard() {
           </section>
         )}
 
-        {/* ── MEMBERSHIPS TAB ─────────────────────────────────── */}
+        {/* ── MEMBERSHIPS ─────────────────────────────────────── */}
         {activeTab === 'memberships' && (
           <section>
             <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Active Memberships</h2>
-            {memberships.length === 0 ? (
+
+            {cancelError && (
+              <div className="mb-4 p-3 rounded-xl flex items-center gap-2 text-sm"
+                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--gold)' }}>
+                <AlertCircle size={14} /> {cancelError}
+              </div>
+            )}
+
+            {!memberships.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Users size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <p className="font-semibold mb-2" style={{ color: 'var(--text)' }}>No active memberships</p>
-                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Support artists by subscribing to their membership tiers</p>
+                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+                  Support artists by subscribing to their membership tiers — visit any artist profile to join
+                </p>
                 <Link href="/discover" className="btn btn-primary">Discover Artists</Link>
               </div>
             ) : (
               <div className="space-y-3">
                 {memberships.map(m => (
-                  <div key={m.id} className="card p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(56,182,232,0.1)' }}>
-                      <Users size={18} style={{ color: 'var(--sky)' }} />
-                    </div>
+                  <div key={m.id} className="card p-4 flex items-start gap-4">
+                    {m.tier?.artist?.photoUrl ? (
+                      <img src={m.tier.artist.photoUrl} alt={m.tier.artist.name}
+                        className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
+                        style={{ background: 'var(--sky)' }}>
+                        {m.tier?.artist?.name?.[0] || '?'}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
                         {m.tier?.name} — {m.tier?.artist?.name}
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        R{m.tier?.price}/mo · {m.status}
-                        {m.renewsAt && ` · Renews ${timeAgo(m.renewsAt)}`}
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        R{m.tier?.price}/mo · {m.billingInterval} · {m.status}
+                        {m.expiresAt && ` · Expires ${timeAgo(m.expiresAt)}`}
                       </p>
+                      {m.tier?.perks?.length > 0 && (
+                        <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                          {m.tier.perks.slice(0, 2).join(' · ')}{m.tier.perks.length > 2 ? ' …' : ''}
+                        </p>
+                      )}
                     </div>
-                    <Link href={`/artist/${m.tier?.artist?.slug}`}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg"
-                      style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
-                      View Artist
-                    </Link>
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      <Link href={`/artist/${m.tier?.artist?.slug}`}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg text-center"
+                        style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
+                        View Artist
+                      </Link>
+                      <button
+                        onClick={() => handleCancelMembership(m)}
+                        disabled={cancellingId === m.id}
+                        className="flex items-center justify-center gap-1 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                        {cancellingId === m.id
+                          ? <Loader2 size={11} className="animate-spin" />
+                          : <XCircle size={11} />}
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -478,50 +514,48 @@ export default function FanDashboard() {
           </section>
         )}
 
-        {/* ── WISHLIST TAB ────────────────────────────────────── */}
+        {/* ── WISHLIST ─────────────────────────────────────────── */}
         {activeTab === 'wishlist' && (
           <section>
             <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Wishlist</h2>
-            {wishlistItems.length === 0 ? (
+            {!wishlistItems.length ? (
               <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <Heart size={40} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <p className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Your wishlist is empty</p>
-                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Save beats and releases to buy later</p>
+                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Save beats, releases, and merch to buy later</p>
                 <Link href="/store" className="btn btn-primary">Browse Store</Link>
               </div>
             ) : (
               <div className="space-y-3">
-                {wishlistItems.map((item: any) => (
-                  <div key={item.id} className="card p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'var(--surface2)' }}>
-                      {item.beat?.artworkUrl || item.release?.artworkUrl
-                        ? <img src={item.beat?.artworkUrl || item.release?.artworkUrl} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><Heart size={16} style={{ color: 'var(--text-muted)' }} /></div>}
+                {wishlistItems.map((item: any) => {
+                  const title = item.beat?.title || item.release?.title || item.merch?.title || 'Unknown';
+                  const artwork = item.beat?.artworkUrl || item.release?.artworkUrl || item.merch?.imageUrl;
+                  const artistName = item.beat?.artist?.name || item.release?.artist?.name || item.merch?.artist?.name;
+                  const type = item.beat ? 'Beat' : item.release ? 'Release' : item.merch ? 'Merch' : 'Item';
+                  const href = item.beat ? `/beat/${item.beat.slug}` : item.release ? `/release/${item.release.slug}` : item.merch ? `/merch/${item.merch.slug}` : null;
+                  return (
+                    <div key={item.id} className="card p-4 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'var(--surface2)' }}>
+                        {artwork
+                          ? <img src={artwork} alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center">
+                              {type === 'Merch' ? <Package size={16} style={{ color: 'var(--text-muted)' }} /> : <Heart size={16} style={{ color: 'var(--text-muted)' }} />}
+                            </div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>{title}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{type}{artistName ? ` · ${artistName}` : ''}</p>
+                      </div>
+                      {href && (
+                        <Link href={href}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg flex-shrink-0"
+                          style={{ background: 'var(--sky)', color: 'white' }}>
+                          View
+                        </Link>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>
-                        {item.beat?.title || item.release?.title || 'Unknown'}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {item.beat ? 'Beat' : 'Release'} · {item.beat?.artist?.name || item.release?.artist?.name}
-                      </p>
-                    </div>
-                    {item.beat && (
-                      <Link href={`/beat/${item.beat.slug}`}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg flex-shrink-0"
-                        style={{ background: 'var(--sky)', color: 'white' }}>
-                        View
-                      </Link>
-                    )}
-                    {item.release && (
-                      <Link href={`/release/${item.release.slug}`}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg flex-shrink-0"
-                        style={{ background: 'var(--sky)', color: 'white' }}>
-                        View
-                      </Link>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
