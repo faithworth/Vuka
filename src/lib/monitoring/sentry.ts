@@ -1,116 +1,170 @@
 /**
- * VUKA — Sentry Error Tracking
- * Phase 11 — Infrastructure & Deployment
+ * VUKA — Internal Error Monitoring
  *
- * Lightweight server-side Sentry integration using the HTTP API directly.
- * For production, also install @sentry/nextjs and configure sentry.server.config.ts.
+ * Drop-in replacement for Sentry. Exports the identical interface
+ * (captureException, captureMessage) so every import across the codebase
+ * continues to work without any changes.
  *
- * Usage:
- *   import { captureException, captureMessage } from '@/lib/monitoring/sentry';
- *   captureException(error, { userId, releaseId });
+ * What this does right now:
+ *   - Structured JSON error logging to stdout (Vercel captures this)
+ *   - Full stack traces preserved
+ *   - Context / tags attached to every event
+ *   - Critical errors posted to a Slack/Discord webhook if configured
+ *   - Zero external SDK dependencies — no account needed
+ *
+ * When you're ready for Sentry later:
+ *   1. npm install @sentry/nextjs
+ *   2. Add SENTRY_DSN to your env
+ *   3. Replace this file with the real SDK calls
+ *   4. Every import site already uses the right interface — nothing else changes
+ *
+ * Optional env vars:
+ *   ERROR_WEBHOOK_URL — Slack/Discord incoming webhook URL for critical errors
+ *   LOG_LEVEL         — 'error' | 'warn' | 'info' | 'debug' (default: 'info')
+ *   LOG_SERVICE       — Service name tag included in every log line
  */
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
+type Severity = 'error' | 'warning' | 'info' | 'debug';
 
-interface SentryContext {
-  userId?: string;
+export interface ErrorContext {
+  userId?:    string;
   releaseId?: string;
-  action?: string;
-  [key: string]: unknown;
+  beatId?:    string;
+  action?:    string;
+  traceId?:   string;
+  [key: string]:  unknown;
 }
 
-function parseDSN(dsn: string): { endpoint: string; publicKey: string; projectId: string } | null {
-  try {
-    const url = new URL(dsn);
-    const publicKey = url.username;
-    const projectId = url.pathname.replace('/', '');
-    const host = url.host;
-    return {
-      endpoint: `https://${host}/api/${projectId}/store/`,
-      publicKey,
-      projectId,
+// ── Log level gate ─────────────────────────────────────────────────────────
+
+const LEVEL_RANK: Record<Severity, number> = {
+  error:   0,
+  warning: 1,
+  info:    2,
+  debug:   3,
+};
+
+function currentLevelRank(): number {
+  const raw = (process.env.LOG_LEVEL ?? 'info').toLowerCase() as Severity;
+  return LEVEL_RANK[raw] ?? LEVEL_RANK.info;
+}
+
+function shouldLog(level: Severity): boolean {
+  return LEVEL_RANK[level] <= currentLevelRank();
+}
+
+// ── Structured log writer ──────────────────────────────────────────────────
+
+function writeLog(
+  level:    Severity,
+  message:  string,
+  error?:   Error,
+  context?: ErrorContext,
+): void {
+  if (!shouldLog(level)) return;
+
+  const entry: Record<string, unknown> = {
+    ts:      new Date().toISOString(),
+    level,
+    service: process.env.LOG_SERVICE ?? 'vuka',
+    env:     process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',
+    commit:  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
+    message,
+  };
+
+  if (error) {
+    entry.error = {
+      name:    error.name,
+      message: error.message,
+      stack:   error.stack,
     };
-  } catch {
-    return null;
+  }
+
+  if (context && Object.keys(context).length > 0) {
+    entry.context = context;
+  }
+
+  // Vercel captures stdout as structured logs
+  const line = JSON.stringify(entry);
+  if (level === 'error' || level === 'warning') {
+    process.stderr.write(line + '\n');
+  } else {
+    process.stdout.write(line + '\n');
   }
 }
 
-function buildEvent(
-  level: 'error' | 'warning' | 'info',
-  message: string,
-  error?: Error,
-  context?: SentryContext,
-) {
-  return {
-    timestamp: new Date().toISOString(),
-    level,
-    platform: 'node',
-    sdk: { name: 'vuka.sentry.server', version: '1.0.0' },
-    server_name: process.env.VERCEL_URL ?? 'localhost',
-    environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',
-    release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
-    message: { formatted: message },
-    ...(error ? {
-      exception: {
-        values: [{
-          type: error.name,
-          value: error.message,
-          stacktrace: {
-            frames: (error.stack ?? '')
-              .split('\n')
-              .slice(1)
-              .map((line) => ({ filename: line.trim() })),
-          },
-        }],
-      },
-    } : {}),
-    contexts: {
-      runtime: { name: 'node', version: process.version },
-      ...(context ? { vuka: context } : {}),
-    },
-    user: context?.userId ? { id: context.userId } : undefined,
-    tags: {
-      ...(context?.action ? { action: String(context.action) } : {}),
-      ...(context?.releaseId ? { releaseId: String(context.releaseId) } : {}),
-    },
-  };
-}
+// ── Optional webhook alert (Slack / Discord) ───────────────────────────────
+// Only fires on 'error' level — not on warnings or info.
+// Set ERROR_WEBHOOK_URL to a Slack incoming webhook or Discord webhook URL.
 
-async function sendToSentry(
-  level: 'error' | 'warning' | 'info',
-  message: string,
-  error?: Error,
-  context?: SentryContext,
-): Promise<void> {
-  if (!SENTRY_DSN) return;
+function postWebhookAlert(message: string, error?: Error, context?: ErrorContext): void {
+  const webhookUrl = process.env.ERROR_WEBHOOK_URL;
+  if (!webhookUrl) return;
 
-  const parsed = parseDSN(SENTRY_DSN);
-  if (!parsed) return;
+  const env    = process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'dev';
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local';
 
-  const event = buildEvent(level, message, error, context);
+  // Works for both Slack and Discord (Discord accepts Slack-compatible payloads)
+  const isDiscord = webhookUrl.includes('discord.com');
 
-  fetch(parsed.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${parsed.publicKey}, sentry_client=vuka/1.0`,
-    },
-    body: JSON.stringify(event),
+  const text = [
+    `🚨 *Vuka Error* [${env}] [${commit}]`,
+    `> ${message}`,
+    ...(error?.stack ? [`\`\`\`${error.stack.slice(0, 800)}\`\`\``] : []),
+    ...(context?.action  ? [`Action: \`${context.action}\``]  : []),
+    ...(context?.userId  ? [`User: \`${context.userId}\``]    : []),
+    ...(context?.traceId ? [`Trace: \`${context.traceId}\``]  : []),
+  ].join('\n');
+
+  const body = isDiscord
+    ? JSON.stringify({ content: text })
+    : JSON.stringify({ text });
+
+  fetch(webhookUrl, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
   }).catch(() => {
-    // Never let Sentry failures break the app
+    // Never let the alert mechanism crash the app
   });
 }
 
-export function captureException(error: unknown, context?: SentryContext): void {
-  const err = error instanceof Error ? error : new Error(String(error));
+// ── Public API — identical to @sentry/nextjs interface ─────────────────────
+
+/**
+ * Capture an exception and log it.
+ * Drop-in for Sentry.captureException().
+ */
+export function captureException(error: unknown, context?: ErrorContext): void {
+  const err     = error instanceof Error ? error : new Error(String(error));
   const message = `${err.name}: ${err.message}`;
-  sendToSentry('error', message, err, context);
+
+  writeLog('error', message, err, context);
+  postWebhookAlert(message, err, context);
 }
 
+/**
+ * Capture a message at a given severity level.
+ * Drop-in for Sentry.captureMessage().
+ */
 export function captureMessage(
   message: string,
-  level: 'error' | 'warning' | 'info' = 'info',
-  context?: SentryContext,
+  level:   Severity = 'info',
+  context?: ErrorContext,
 ): void {
-  sendToSentry(level, message, undefined, context);
+  writeLog(level, message, undefined, context);
+  if (level === 'error') postWebhookAlert(message, undefined, context);
 }
+
+// ── Convenience re-exports used across the codebase ───────────────────────
+
+export const monitoring = {
+  captureException,
+  captureMessage,
+  info:  (msg: string, ctx?: ErrorContext) => captureMessage(msg, 'info',    ctx),
+  warn:  (msg: string, ctx?: ErrorContext) => captureMessage(msg, 'warning', ctx),
+  error: (msg: string, ctx?: ErrorContext) => captureMessage(msg, 'error',   ctx),
+  debug: (msg: string, ctx?: ErrorContext) => captureMessage(msg, 'debug',   ctx),
+} as const;
+
+export default monitoring;

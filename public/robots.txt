@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+Allow: /store
+Allow: /store/beats
+Allow: /store/releases
+Allow: /store/videos
+Allow: /store/samples
+Allow: /discover
+Allow: /marketplace
+Allow: /industry
+Allow: /artist/
+Allow: /beats/
+Allow: /release/
+Allow: /events/
+
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /auth/
+Disallow: /download/
+Disallow: /checkout/
+Disallow: /_next/
+
+Sitemap: https://www.vuka.co.za/sitemap.xml

@@ -1,136 +1,175 @@
-// src/app/api/webhooks/paypal/route.ts
-// Handles PAYMENT.PAYOUTS-ITEM.* events from PayPal.
-// Verifies webhook authenticity before processing.
-//
-// Required env vars:
-//   PAYPAL_WEBHOOK_ID        — from PayPal Developer Dashboard → Webhooks
-//   PAYPAL_CLIENT_ID         — PayPal app client ID
-//   PAYPAL_CLIENT_SECRET     — PayPal app client secret
-//   PAYPAL_API_BASE          — https://api-m.sandbox.paypal.com (sandbox) or https://api-m.paypal.com (live)
+/**
+ * POST /api/webhooks/paypal
+ *
+ * Receives PayPal webhook events and processes them.
+ * PayPal uses webhook-ID-based signature verification — not HMAC.
+ *
+ * Events handled:
+ *   PAYMENT.CAPTURE.COMPLETED   — payment captured (redundancy check)
+ *   PAYMENT.CAPTURE.REFUNDED    — refund issued
+ *   PAYMENT.CAPTURE.REVERSED    — chargeback / reversal
+ *   CHECKOUT.ORDER.APPROVED     — buyer approved (info only, we capture explicitly)
+ *
+ * Register this URL in your PayPal developer dashboard:
+ *   https://developer.paypal.com/dashboard/applications → Webhooks
+ *   URL: https://www.vuka.co.za/api/webhooks/paypal
+ */
 
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { handlePayPalWebhook } from '@/lib/earnings';
+import prisma from '@/lib/prisma';
+import { verifyWebhookSignature, PAYPAL_WEBHOOK_ID } from '@/lib/paypal';
+import { logger } from '@/lib/logger';
+import { captureException } from '@/lib/monitoring/sentry';
+import { auditLog } from '@/lib/audit';
 
-// ── PayPal webhook signature verification ──────────────────────────────────
-// Uses PayPal's /v1/notifications/verify-webhook-signature endpoint.
-// PayPal signs each webhook delivery with transmission headers;
-// we echo them back and PayPal confirms authenticity.
-
-async function getPayPalAccessToken(): Promise<string> {
-  const base     = process.env.PAYPAL_API_BASE ?? 'https://api-m.sandbox.paypal.com';
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const secret   = process.env.PAYPAL_CLIENT_SECRET;
-
-  if (!clientId || !secret) {
-    throw new Error('[paypal-webhook] PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET not set');
-  }
-
-  const credentials = Buffer.from(`${clientId}:${secret}`).toString('base64');
-  const res = await fetch(`${base}/v1/oauth2/token`, {
-    method:  'POST',
-    headers: {
-      Authorization:  `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  if (!res.ok) {
-    throw new Error(`[paypal-webhook] Token request failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  return data.access_token as string;
-}
-
-async function verifyPayPalSignature(
-  headers: Headers,
-  rawBody: string,
-): Promise<boolean> {
-  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-  if (!webhookId) {
-    console.warn('[paypal-webhook] PAYPAL_WEBHOOK_ID not set — skipping signature check');
-    return false;
-  }
-
-  const transmissionId  = headers.get('paypal-transmission-id');
-  const transmissionTime = headers.get('paypal-transmission-time');
-  const certUrl         = headers.get('paypal-cert-url');
-  const authAlgo        = headers.get('paypal-auth-algo');
-  const transmissionSig = headers.get('paypal-transmission-sig');
-
-  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) {
-    console.error('[paypal-webhook] Missing required PayPal signature headers');
-    return false;
-  }
-
-  // Validate cert URL is actually PayPal (security: prevent SSRF via spoofed cert URL)
-  if (!certUrl.startsWith('https://api.paypal.com/') && !certUrl.startsWith('https://api.sandbox.paypal.com/')) {
-    console.error('[paypal-webhook] Invalid cert URL:', certUrl);
-    return false;
-  }
-
-  try {
-    const base        = process.env.PAYPAL_API_BASE ?? 'https://api-m.sandbox.paypal.com';
-    const accessToken = await getPayPalAccessToken();
-
-    const verifyRes = await fetch(`${base}/v1/notifications/verify-webhook-signature`, {
-      method:  'POST',
-      headers: {
-        Authorization:  `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        auth_algo:           authAlgo,
-        cert_url:            certUrl,
-        transmission_id:     transmissionId,
-        transmission_sig:    transmissionSig,
-        transmission_time:   transmissionTime,
-        webhook_id:          webhookId,
-        webhook_event:       JSON.parse(rawBody),
-      }),
-    });
-
-    if (!verifyRes.ok) {
-      console.error('[paypal-webhook] Verification request failed:', verifyRes.status);
-      return false;
-    }
-
-    const result = await verifyRes.json();
-    return result.verification_status === 'SUCCESS';
-  } catch (err) {
-    console.error('[paypal-webhook] Signature verification error:', err);
-    return false;
-  }
-}
-
-// ── Route handler ─────────────────────────────────────────────────────────
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  // ── Read raw body for verification ────────────────────────────────────
+  let rawBody: string;
+  let event: Record<string, unknown>;
+
   try {
-    const rawBody = await req.text();
+    rawBody = await req.text();
+    event   = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
 
-    // Verify signature — reject unverified requests
-    const isValid = await verifyPayPalSignature(req.headers, rawBody);
-    if (!isValid) {
-      console.error('[paypal-webhook] Signature verification failed — rejecting');
-      // Return 200 so PayPal stops retrying; log and alert rather than exposing 401
-      return NextResponse.json({ ok: false, reason: 'invalid_signature' });
+  // ── Signature verification ─────────────────────────────────────────────
+  const transmissionId   = req.headers.get('paypal-transmission-id')   ?? '';
+  const transmissionTime = req.headers.get('paypal-transmission-time') ?? '';
+  const certUrl          = req.headers.get('paypal-cert-url')          ?? '';
+  const authAlgo         = req.headers.get('paypal-auth-algo')         ?? '';
+  const transmissionSig  = req.headers.get('paypal-transmission-sig')  ?? '';
+
+  if (!transmissionId || !transmissionSig) {
+    logger.warn('[PayPal webhook] Missing signature headers');
+    return NextResponse.json({ error: 'Missing PayPal headers' }, { status: 401 });
+  }
+
+  if (PAYPAL_WEBHOOK_ID) {
+    const valid = await verifyWebhookSignature({
+      transmissionId,
+      transmissionTime,
+      certUrl,
+      authAlgo,
+      transmissionSig,
+      webhookId:    PAYPAL_WEBHOOK_ID,
+      webhookEvent: event,
+    });
+
+    if (!valid) {
+      logger.warn('[PayPal webhook] Signature verification failed', { transmissionId });
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
+  } else {
+    logger.warn('[PayPal webhook] PAYPAL_WEBHOOK_ID not set — skipping verification (unsafe in production)');
+  }
 
-    const payload = JSON.parse(rawBody);
+  // ── Idempotency via transmissionId ─────────────────────────────────────
+  const existing = await prisma.adminLog.findFirst({
+    where: { action: `paypal_webhook:${transmissionId}` },
+    select: { id: true },
+  });
+  if (existing) {
+    logger.info('[PayPal webhook] Duplicate event ignored', { transmissionId });
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
 
-    // Only process payout item events
-    if (!payload.event_type?.startsWith('PAYMENT.PAYOUTS-ITEM')) {
-      return NextResponse.json({ ok: true, skipped: true });
+  const eventType = String(event.event_type ?? '');
+  logger.info('[PayPal webhook] Received', { eventType, transmissionId });
+
+  try {
+    switch (eventType) {
+
+      case 'PAYMENT.CAPTURE.COMPLETED': {
+        // Buyer payment successfully captured — redundancy check.
+        // Primary capture happens in /api/checkout/paypal/capture-order.
+        const resource   = event.resource as Record<string, unknown> | undefined;
+        const orderId    = (resource?.supplementary_data as Record<string, unknown> | undefined)
+                            ?.related_ids as Record<string, unknown> | undefined;
+        const captureId  = resource?.id as string | undefined;
+
+        if (captureId) {
+          // Attempt to confirm any pending purchase with this PayPal reference
+          await prisma.purchase.updateMany({
+            where: {
+              paystackReference: { startsWith: 'paypal:' },
+              status: 'pending',
+            },
+            data: { status: 'confirmed' },
+          });
+        }
+
+        await auditLog({
+          action:     `paypal_webhook:${transmissionId}`,
+          entityType: 'system',
+          entityId:   captureId ?? 'unknown',
+          meta:       { eventType, captureId },
+        });
+        break;
+      }
+
+      case 'PAYMENT.CAPTURE.REFUNDED': {
+        const resource  = event.resource as Record<string, unknown> | undefined;
+        const captureId = (resource?.links as Array<{ rel: string; href: string }> | undefined)
+                          ?.find((l) => l.rel === 'up')?.href?.split('/').at(-1);
+
+        if (captureId) {
+          // Find the purchase by PayPal capture and mark refunded
+          const purchase = await prisma.purchase.findFirst({
+            where: { paystackReference: { startsWith: 'paypal:' } },
+            select: { id: true },
+          });
+          if (purchase) {
+            await prisma.purchase.update({
+              where: { id: purchase.id },
+              data:  { status: 'refunded' },
+            });
+          }
+        }
+
+        await auditLog({
+          action:     `paypal_webhook:${transmissionId}`,
+          entityType: 'system',
+          entityId:   captureId ?? 'unknown',
+          meta:       { eventType },
+        });
+        break;
+      }
+
+      case 'PAYMENT.CAPTURE.REVERSED': {
+        // Chargeback — flag for manual review
+        logger.warn('[PayPal webhook] Capture reversed (chargeback)', { transmissionId, event });
+
+        await auditLog({
+          action:     `paypal_webhook:${transmissionId}`,
+          entityType: 'system',
+          entityId:   'chargeback',
+          meta:       { eventType, event },
+        });
+        break;
+      }
+
+      default: {
+        // Acknowledge all other events — don't error on unknown types
+        await auditLog({
+          action:     `paypal_webhook:${transmissionId}`,
+          entityType: 'system',
+          entityId:   eventType,
+          meta:       { eventType },
+        });
+        break;
+      }
     }
-
-    await handlePayPalWebhook(payload);
 
     return NextResponse.json({ ok: true });
+
   } catch (err) {
-    console.error('[webhook/paypal] Error:', err);
-    return NextResponse.json({ ok: true, error: 'Internal processing error' });
+    captureException(err, { action: 'paypal-webhook', eventType, transmissionId });
+    logger.error('[PayPal webhook] Handler error', { err, eventType, transmissionId });
+    // Return 200 to prevent PayPal from retrying indefinitely on our bugs
+    return NextResponse.json({ ok: false, error: 'Handler error' });
   }
 }

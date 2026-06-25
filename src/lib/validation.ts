@@ -1,26 +1,26 @@
 /**
- * VUKA — Shared Zod Validation Schemas (Phase 8)
+ * VUKA — Shared Zod Validation Schemas
  *
- * Single source of truth for all input validation schemas.
- * Import into route handlers — never trust raw req.json() without parsing.
+ * Single source of truth for all input validation.
+ * Import `schemas` and call `.safeParse(await req.json())` in every route handler.
+ * Never trust raw req.json() without validation.
  *
  * Usage:
- *   import { schemas } from '@/lib/validation';
+ *   import { schemas, validationError } from '@/lib/validation';
  *   const parsed = schemas.beat.upload.safeParse(await req.json());
  *   if (!parsed.success) return validationError(parsed.error);
  */
 
 import { z } from 'zod';
+import { NextResponse } from 'next/server';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Primitive helpers ─────────────────────────────────────────────────────
 
-/** Sanitise a plain text field — trim whitespace, max length */
+/** Trimmed string with max length */
 const safeText = (max: number) =>
-  z.string()
-    .max(max)
-    .trim();
+  z.string().max(max).trim();
 
-/** CUID-shaped ID (26 chars, starts with c) */
+/** CUID-shaped ID */
 const cuid = () =>
   z.string().regex(/^c[a-z0-9]{24,}$/, 'Invalid ID format');
 
@@ -28,26 +28,24 @@ const cuid = () =>
 const isoDate = () =>
   z.string().datetime({ message: 'Must be a valid ISO-8601 datetime' });
 
-/** URL — must start with https */
+/** HTTPS URL */
 const httpsUrl = () =>
-  z.string()
-    .url()
-    .refine((u) => u.startsWith('https://'), 'URL must use HTTPS');
+  z.string().url().refine((u) => u.startsWith('https://'), 'URL must use HTTPS');
 
-/** Positive decimal amount (up to 2 decimal places) */
+/** Positive monetary amount — max 2 decimal places */
 const money = () =>
   z.number()
     .positive('Amount must be positive')
     .multipleOf(0.01, 'Maximum 2 decimal places');
 
-// ── Auth ───────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────
 
 const authRegister = z.object({
-  email:       z.string().email().max(254).trim().toLowerCase(),
-  name:        safeText(100).min(2, 'Name too short'),
-  password:    z.string().min(10, 'Password must be at least 10 characters').max(128),
-  role:        z.enum(['artist', 'fan', 'industry']).default('artist'),
-  inviteCode:  z.string().max(64).optional(),
+  email:      z.string().email().max(254).trim().toLowerCase(),
+  name:       safeText(100).min(2, 'Name must be at least 2 characters'),
+  password:   z.string().min(10, 'Password must be at least 10 characters').max(128),
+  role:       z.enum(['artist', 'fan', 'industry']).default('artist'),
+  inviteCode: z.string().max(64).optional(),
 });
 
 const authLogin = z.object({
@@ -59,82 +57,89 @@ const magicLinkRequest = z.object({
   email: z.string().email().max(254).trim().toLowerCase(),
 });
 
-// ── Artist profile ─────────────────────────────────────────────────────────
+// ── Artist profile ────────────────────────────────────────────────────────
 
 const artistUpdate = z.object({
-  name:        safeText(100).min(2).optional(),
-  bio:         safeText(1000).optional(),
-  city:        safeText(100).optional(),
-  country:     z.string().length(2).toUpperCase().optional(),
-  genreTags:   z.array(safeText(50)).max(10).optional(),
-  photoUrl:    httpsUrl().optional().nullable(),
-  coverUrl:    httpsUrl().optional().nullable(),
-  currency:    z.enum(['ZAR', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS']).optional(),
-  socialLinks: z.record(z.string().max(20), httpsUrl()).optional(),
+  name:              safeText(100).min(2).optional(),
+  bio:               safeText(1000).optional(),
+  city:              safeText(100).optional(),
+  country:           z.string().length(2).toUpperCase().optional(),
+  genreTags:         z.array(safeText(50)).max(10).optional(),
+  photoUrl:          httpsUrl().optional().nullable(),
+  coverUrl:          httpsUrl().optional().nullable(),
+  currency:          z.enum(['ZAR', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS']).optional(),
+  socialLinks:       z.record(z.string().max(20), httpsUrl()).optional(),
+  paypalEmail:       z.string().email().max(254).optional().nullable(),
   paystackRecipient: z.string().max(20).trim().optional().nullable(),
 });
 
-// ── Beat upload ────────────────────────────────────────────────────────────
+// ── Beat upload ───────────────────────────────────────────────────────────
 
-const VALID_GENRES = [
+export const VALID_GENRES = [
   'Amapiano', 'Gqom', 'Afrobeats', 'Hip-Hop', 'R&B', 'Pop',
-  'Drill', 'Gospel', 'Jazz', 'Electronic', 'House', 'Kwaito',
-  'Neo-Soul', 'Afro-Soul', 'Other',
+  'Trap', 'Drill', 'Dancehall', 'Reggae', 'Soul', 'Jazz',
+  'Electronic', 'House', 'Deep House', 'Gospel', 'Kwaito',
+  'Maskandi', 'Mbaqanga', 'Neo-Soul', 'Afro-Soul', 'Other',
 ] as const;
 
 const beatUpload = z.object({
-  title:         safeText(200).min(1, 'Title required'),
-  bpm:           z.number().int().min(40).max(300).optional(),
-  key:           safeText(10).optional(),
-  genre:         z.enum(VALID_GENRES).optional(),
-  tags:          z.array(safeText(50)).max(20).default([]),
-  isExplicit:    z.boolean().default(false),
-  isExclusive:   z.boolean().default(false),
-  audioFileKey:  z.string().max(500).min(1, 'Audio file key required'),
-  imageFileKey:  z.string().max(500).optional(),
-  price:         money().min(0, 'Price cannot be negative').optional(),
-  licenseType:   z.enum(['basic', 'premium', 'exclusive', 'free']).default('basic'),
+  title:        safeText(200).min(1, 'Title required'),
+  price:        z.number().min(0, 'Price cannot be negative'),
+  bpm:          z.number().int().min(40).max(300).optional(),
+  key:          z.string().max(10).optional(),
+  mood:         safeText(50).optional(),
+  tags:         z.array(safeText(50)).max(15).default([]),
+  genres:       z.array(z.enum(VALID_GENRES)).min(1).max(3),
+  audioFileKey: z.string().max(500).min(1, 'Audio file is required'),
+  coverUrl:     httpsUrl().optional(),
+  isExclusive:  z.boolean().default(false),
+  description:  safeText(2000).optional(),
 });
 
-const beatUpdate = beatUpload.partial().omit({ audioFileKey: true });
-
-// ── Release ────────────────────────────────────────────────────────────────
+// ── Release (selling music directly — no distribution) ───────────────────
+//
+// Artists upload their music and sell it on Vuka. We are not a distributor.
+// No ISRC, no UPC, no DSP delivery — just rights, credits, and a price.
 
 const releaseCreate = z.object({
-  title:          safeText(200).min(1, 'Title required'),
-  type:           z.enum(['single', 'ep', 'album', 'mixtape']),
-  genres:         z.array(z.enum(VALID_GENRES)).min(1).max(3),
-  releaseDate:    isoDate().optional(),
-  isExplicit:     z.boolean().default(false),
-  territories:    z.array(z.string().length(2).toUpperCase()).default(['WW']),
-  label:          safeText(100).optional(),
-  copyrightYear:  z.number().int().min(1900).max(new Date().getFullYear() + 2).optional(),
-  copyrightHolder: safeText(200).optional(),
-  upc:            z.string().regex(/^\d{12,13}$/).optional(),
-  primaryLanguage: z.string().length(2).default('en'),
+  title:            safeText(200).min(1, 'Title required'),
+  type:             z.enum(['single', 'ep', 'album', 'mixtape']),
+  genres:           z.array(z.enum(VALID_GENRES)).min(1).max(3),
+  releaseDate:      isoDate().optional(),
+  isExplicit:       z.boolean().default(false),
+  price:            z.number().min(0).optional(),
+  primaryLanguage:  z.string().length(2).default('en'),
+  // Rights declaration — who owns/wrote/produced this
+  copyrightHolder:  safeText(200).optional(),
+  copyrightYear:    z.number().int().min(1900).max(new Date().getFullYear() + 2).optional(),
+  // Artist confirms ownership before submitting
+  rightsConfirmed:  z.boolean().refine((v) => v === true, {
+    message: 'You must confirm that you own or control the rights to this content.',
+  }),
 });
 
 const trackCreate = z.object({
-  releaseId:      cuid(),
-  title:          safeText(200).min(1),
-  trackNumber:    z.number().int().min(1).max(200),
-  isrc:           z.string()
-    .regex(/^[A-Z]{2}-?[A-Z0-9]{3}-?\d{2}-?\d{5}$/, 'Invalid ISRC format')
-    .optional(),
-  isExplicit:     z.boolean().default(false),
-  composers:      z.array(safeText(100)).max(20).default([]),
-  producers:      z.array(safeText(100)).max(20).default([]),
+  releaseId:       cuid(),
+  title:           safeText(200).min(1),
+  trackNumber:     z.number().int().min(1).max(200),
+  isExplicit:      z.boolean().default(false),
+  composers:       z.array(safeText(100)).max(20).default([]),
+  producers:       z.array(safeText(100)).max(20).default([]),
   featuredArtists: z.array(safeText(100)).max(10).default([]),
-  audioFileKey:   z.string().max(500).min(1, 'Audio file required'),
+  audioFileKey:    z.string().max(500).min(1, 'Audio file is required'),
 });
 
-// ── Payout ─────────────────────────────────────────────────────────────────
+// ── Payout ────────────────────────────────────────────────────────────────
+//
+// SA artists: bank transfer (via Paystack manual payout) or Paystack
+// International artists: PayPal
 
 const bankAccountAdd = z.object({
   accountHolder: safeText(100).min(2, 'Account holder name required'),
   bankName:      safeText(60).min(2, 'Bank name required'),
   branchCode:    z.string().max(10).trim().default(''),
-  accountNumber: z.string()
+  accountNumber: z
+    .string()
     .min(6, 'Account number too short')
     .max(20, 'Account number too long')
     .regex(/^\d+$/, 'Account number must be digits only')
@@ -146,18 +151,18 @@ const bankAccountAdd = z.object({
 const payoutRequest = z.object({
   amount:        money().min(100, 'Minimum payout is R100'),
   currency:      z.enum(['ZAR', 'USD']).default('ZAR'),
-  method:        z.enum(['payfast', 'paystack', 'bank_transfer', 'paypal']),
+  method:        z.enum(['bank_transfer', 'paystack', 'paypal']),
   bankAccountId: cuid().optional(),
-  paypalEmail:   z.string().email().optional(),
+  paypalEmail:   z.string().email().max(254).optional(),
 }).refine(
   (d) => d.method !== 'bank_transfer' || !!d.bankAccountId,
-  { message: 'bankAccountId is required for bank transfer', path: ['bankAccountId'] }
+  { message: 'bankAccountId is required for bank transfers', path: ['bankAccountId'] }
 ).refine(
   (d) => d.method !== 'paypal' || !!d.paypalEmail,
   { message: 'paypalEmail is required for PayPal payouts', path: ['paypalEmail'] }
 );
 
-// ── Admin actions ──────────────────────────────────────────────────────────
+// ── Admin actions ─────────────────────────────────────────────────────────
 
 const adminPayoutAction = z.object({
   requestId: cuid(),
@@ -178,134 +183,161 @@ const adminReleaseAction = z.object({
   reason:    safeText(1000).optional(),
 });
 
-const adminEarningsUpload = z.object({
-  platform:       safeText(100).min(1, 'Platform name required'),
-  reportingPeriod: z.string().regex(/^\d{4}-\d{2}$/, 'Format: YYYY-MM'),
-  rows:           z.array(z.object({
-    isrc:         z.string().max(20),
-    streams:      z.number().int().min(0),
-    grossAmount:  money(),
-    currency:     z.string().length(3).toUpperCase(),
-  })).min(1).max(10_000),
-});
-
-// ── Social ─────────────────────────────────────────────────────────────────
+// ── Social ────────────────────────────────────────────────────────────────
 
 const postCreate = z.object({
-  body:      safeText(2000).min(1, 'Post body required'),
-  mediaUrls: z.array(httpsUrl()).max(4).default([]),
-  linkType:  z.enum(['beat', 'release', 'external']).optional(),
+  body:       safeText(2000).min(1, 'Post body required'),
+  mediaUrls:  z.array(httpsUrl()).max(4).default([]),
+  linkType:   z.enum(['beat', 'release', 'external']).optional(),
   linkItemId: cuid().optional(),
-  linkUrl:   httpsUrl().optional(),
+  linkUrl:    httpsUrl().optional(),
 });
 
 const commentCreate = z.object({
-  postId:  cuid(),
-  body:    safeText(500).min(1, 'Comment cannot be empty'),
+  postId:   cuid(),
+  body:     safeText(500).min(1, 'Comment cannot be empty'),
   parentId: cuid().optional(),
 });
 
 const reportCreate = z.object({
   entityType: z.enum(['beat', 'release', 'post', 'comment', 'user', 'message']),
   entityId:   cuid(),
-  reason:     z.enum([
-    'spam', 'harassment', 'copyright', 'explicit', 'misinformation', 'other'
-  ]),
+  reason:     z.enum(['spam', 'harassment', 'copyright', 'explicit', 'misinformation', 'other']),
   details:    safeText(1000).optional(),
 });
 
-// ── Messaging ──────────────────────────────────────────────────────────────
+// ── Messaging ─────────────────────────────────────────────────────────────
 
 const messageSend = z.object({
-  recipientId: cuid(),
-  body:        safeText(2000).min(1, 'Message body required'),
+  recipientId:   cuid(),
+  body:          safeText(2000).min(1, 'Message body required'),
   attachmentUrl: httpsUrl().optional(),
 });
 
-// ── Search / Discovery ─────────────────────────────────────────────────────
+// ── Search / Discovery ────────────────────────────────────────────────────
 
 const searchQuery = z.object({
-  q:       z.string().max(200).trim().min(1),
-  type:    z.enum(['beats', 'artists', 'releases', 'all']).default('all'),
-  genre:   z.enum(VALID_GENRES).optional(),
-  page:    z.coerce.number().int().min(1).max(500).default(1),
-  limit:   z.coerce.number().int().min(1).max(50).default(20),
-  sort:    z.enum(['relevance', 'newest', 'popular', 'price_asc', 'price_desc']).default('relevance'),
-  minBpm:  z.coerce.number().int().min(40).max(300).optional(),
-  maxBpm:  z.coerce.number().int().min(40).max(300).optional(),
+  q:        z.string().max(200).trim().min(1),
+  type:     z.enum(['beats', 'artists', 'releases', 'all']).default('all'),
+  genre:    z.enum(VALID_GENRES).optional(),
+  page:     z.coerce.number().int().min(1).max(500).default(1),
+  limit:    z.coerce.number().int().min(1).max(50).default(20),
+  sort:     z.enum(['relevance', 'newest', 'popular', 'price_asc', 'price_desc']).default('relevance'),
+  minBpm:   z.coerce.number().int().min(40).max(300).optional(),
+  maxBpm:   z.coerce.number().int().min(40).max(300).optional(),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
+  country:  z.string().length(2).toUpperCase().optional(),
 });
 
-// ── DMCA ───────────────────────────────────────────────────────────────────
+// ── Checkout ──────────────────────────────────────────────────────────────
 
-const dmcaSubmit = z.object({
-  contentType:   z.enum(['beat', 'release', 'post']),
-  contentId:     cuid(),
-  claimantName:  safeText(200).min(2),
-  claimantEmail: z.string().email().max(254).trim().toLowerCase(),
-  originalWorkUrl: httpsUrl().optional(),
-  description:   safeText(5000).min(20, 'Please describe the infringement in detail'),
-  goodFaith:     z.literal(true, { errorMap: () => ({ message: 'Good faith statement required' }) }),
-  accurateInfo:  z.literal(true, { errorMap: () => ({ message: 'Accuracy statement required' }) }),
+const paystackInitialize = z.object({
+  itemType:   z.enum(['beat', 'release', 'video', 'sample', 'subscription', 'membership']),
+  itemId:     z.string().min(1),
+  buyerName:  safeText(200).min(1),
+  buyerEmail: z.string().email().max(254).trim().toLowerCase(),
+  licenseType: z.enum(['standard', 'exclusive', 'sync']).default('standard').optional(),
 });
 
-// ── Export ─────────────────────────────────────────────────────────────────
+const paypalCreateOrder = z.object({
+  itemType:   z.enum(['beat', 'release', 'video', 'sample']),
+  itemId:     z.string().min(1),
+  buyerEmail: z.string().email().optional(),
+});
+
+const paypalCaptureOrder = z.object({
+  orderId:    z.string().min(1),
+  itemType:   z.enum(['beat', 'release', 'video', 'sample']),
+  itemId:     z.string().min(1),
+  buyerName:  safeText(200).min(1),
+  buyerEmail: z.string().email().max(254).trim().toLowerCase(),
+});
+
+// ── Membership ────────────────────────────────────────────────────────────
+
+const membershipTierCreate = z.object({
+  name:        safeText(100).min(1, 'Tier name required'),
+  description: safeText(1000).optional(),
+  priceZAR:    money().min(10, 'Minimum tier price is R10'),
+  perks:       z.array(safeText(200)).max(10).default([]),
+  isActive:    z.boolean().default(true),
+});
+
+// ── Services / Marketplace ────────────────────────────────────────────────
+
+const serviceCreate = z.object({
+  title:       safeText(200).min(1, 'Service title required'),
+  description: safeText(2000).min(10, 'Description required'),
+  category:    z.enum(['mixing', 'mastering', 'production', 'songwriting', 'vocal_recording', 'artwork', 'music_video', 'consultation', 'other']),
+  priceZAR:    money().min(50, 'Minimum service price is R50'),
+  deliveryDays: z.number().int().min(1).max(90),
+  revisions:   z.number().int().min(0).max(10).default(2),
+});
+
+// ── Named schema export ───────────────────────────────────────────────────
 
 export const schemas = {
   auth: {
-    register:       authRegister,
-    login:          authLogin,
-    magicLink:      magicLinkRequest,
+    register:        authRegister,
+    login:           authLogin,
+    magicLinkRequest,
   },
   artist: {
-    update:         artistUpdate,
+    update: artistUpdate,
   },
   beat: {
-    upload:         beatUpload,
-    update:         beatUpdate,
+    upload: beatUpload,
   },
   release: {
-    create:         releaseCreate,
-    track:          trackCreate,
+    create:      releaseCreate,
+    trackCreate,
   },
   payout: {
-    bankAccount:    bankAccountAdd,
-    request:        payoutRequest,
+    bankAccountAdd,
+    request:  payoutRequest,
   },
   admin: {
     payoutAction:   adminPayoutAction,
     userAction:     adminUserAction,
     releaseAction:  adminReleaseAction,
-    earningsUpload: adminEarningsUpload,
   },
   social: {
-    post:           postCreate,
-    comment:        commentCreate,
-    report:         reportCreate,
+    postCreate,
+    commentCreate,
+    reportCreate,
   },
   messaging: {
-    send:           messageSend,
+    messageSend,
   },
-  search:           searchQuery,
-  dmca:             dmcaSubmit,
+  search: {
+    query: searchQuery,
+  },
+  checkout: {
+    paystackInitialize,
+    paypalCreateOrder,
+    paypalCaptureOrder,
+  },
+  membership: {
+    tierCreate: membershipTierCreate,
+  },
+  service: {
+    create: serviceCreate,
+  },
 } as const;
 
-// ── Response helper ────────────────────────────────────────────────────────
-
-import { NextResponse } from 'next/server';
-import type { ZodError } from 'zod';
+// ── Response helper ───────────────────────────────────────────────────────
 
 /**
- * Standardised 400 response from a Zod parse failure.
- * Returns the first error message so the client can surface it directly.
+ * Returns a 400 JSON response with structured Zod error details.
+ * Use this in every route handler after a failed safeParse.
  */
-export function validationError(err: ZodError): NextResponse {
-  const first = err.errors[0];
-  const field = first?.path.join('.') || 'input';
-  const message = first?.message ?? 'Validation failed';
+export function validationError(error: z.ZodError): Response {
   return NextResponse.json(
-    { error: message, field, details: err.errors },
+    {
+      error:   'Validation failed',
+      details: error.flatten(),
+    },
     { status: 400 }
   );
 }
