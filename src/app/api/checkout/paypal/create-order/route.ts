@@ -1,22 +1,16 @@
 /**
  * POST /api/checkout/paypal/create-order
  *
- * Creates a PayPal order for international buyers purchasing beats, releases,
- * videos, or samples. Returns the PayPal order ID and approve URL.
- *
- * Body:
- *   itemType    — 'beat' | 'release' | 'video' | 'sample'
- *   itemId      — cuid of the item
- *   buyerEmail? — pre-fill PayPal login
- *
- * The client redirects the buyer to approveUrl, then calls /capture-order
- * once PayPal redirects back.
+ * Creates a PayPal order for international buyers.
+ * Uses live ZAR→USD FX rate from @/lib/fx (open.er-api.com with fallback).
+ * Stores the rate used on the response so the client can display it.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import paypal, { isPayPalConfigured, getApproveUrl, zarToUsd } from '@/lib/paypal';
+import paypal, { isPayPalConfigured, getApproveUrl } from '@/lib/paypal';
+import { getZarToUsdRate, zarToUsd } from '@/lib/fx';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
@@ -31,7 +25,6 @@ export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
   const ip      = getClientIp(req);
 
-  // ── PayPal availability guard ──────────────────────────────────────────
   if (!isPayPalConfigured()) {
     return NextResponse.json(
       { error: 'PayPal payments are not available at this time.' },
@@ -39,16 +32,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Rate limit ─────────────────────────────────────────────────────────
   const limited = await rateLimit(ip, RATE_LIMITS.checkout_init, ip);
   if (limited) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please slow down.' },
-      { status: 429 }
-    );
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
   }
 
-  // ── Parse & validate body ──────────────────────────────────────────────
   let body: unknown;
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
@@ -64,50 +52,29 @@ export async function POST(req: NextRequest) {
   const { itemType, itemId, buyerEmail } = parsed.data;
 
   // ── Resolve item & price ───────────────────────────────────────────────
-  let itemTitle   = '';
-  let priceZAR    = 0;
-  let artistName  = '';
+  let itemTitle  = '';
+  let priceZAR   = 0;
+  let artistName = '';
 
   try {
+    const select = { title: true, price: true, artist: { select: { name: true } } };
+
     if (itemType === 'beat') {
-      const beat = await prisma.beat.findUnique({
-        where: { id: itemId, isPublished: true },
-        select: { title: true, price: true, artist: { select: { name: true } } },
-      });
-      if (!beat) return NextResponse.json({ error: 'Beat not found' }, { status: 404 });
-      itemTitle  = beat.title;
-      priceZAR   = beat.price;
-      artistName = beat.artist?.name ?? '';
-
+      const r = await prisma.beat.findUnique({ where: { id: itemId, isPublished: true }, select });
+      if (!r) return NextResponse.json({ error: 'Beat not found' }, { status: 404 });
+      itemTitle = r.title; priceZAR = r.price; artistName = r.artist?.name ?? '';
     } else if (itemType === 'release') {
-      const release = await prisma.release.findUnique({
-        where: { id: itemId },
-        select: { title: true, price: true, artist: { select: { name: true } } },
-      });
-      if (!release) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
-      itemTitle  = release.title;
-      priceZAR   = release.price ?? 0;
-      artistName = release.artist?.name ?? '';
-
+      const r = await prisma.release.findUnique({ where: { id: itemId }, select });
+      if (!r) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
+      itemTitle = r.title; priceZAR = r.price ?? 0; artistName = r.artist?.name ?? '';
     } else if (itemType === 'video') {
-      const video = await prisma.video.findUnique({
-        where: { id: itemId },
-        select: { title: true, price: true, artist: { select: { name: true } } },
-      });
-      if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-      itemTitle  = video.title;
-      priceZAR   = video.price ?? 0;
-      artistName = video.artist?.name ?? '';
-
+      const r = await prisma.video.findUnique({ where: { id: itemId }, select });
+      if (!r) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+      itemTitle = r.title; priceZAR = r.price ?? 0; artistName = r.artist?.name ?? '';
     } else if (itemType === 'sample') {
-      const sample = await prisma.sample.findUnique({
-        where: { id: itemId },
-        select: { title: true, price: true, artist: { select: { name: true } } },
-      });
-      if (!sample) return NextResponse.json({ error: 'Sample not found' }, { status: 404 });
-      itemTitle  = sample.title;
-      priceZAR   = sample.price ?? 0;
-      artistName = sample.artist?.name ?? '';
+      const r = await prisma.sample.findUnique({ where: { id: itemId }, select });
+      if (!r) return NextResponse.json({ error: 'Sample not found' }, { status: 404 });
+      itemTitle = r.title; priceZAR = r.price ?? 0; artistName = r.artist?.name ?? '';
     }
   } catch (err) {
     logger.error('[PayPal create-order] DB lookup failed', { err, traceId });
@@ -121,20 +88,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Convert ZAR → USD ─────────────────────────────────────────────────
-  const amountUSD = zarToUsd(priceZAR);
+  // ── Live FX rate ───────────────────────────────────────────────────────
+  const fx          = await getZarToUsdRate();
+  const amountUSD   = zarToUsd(priceZAR, fx.zarToUsdRate);
+
   if (amountUSD < 0.01) {
-    return NextResponse.json({ error: 'Amount too small for PayPal' }, { status: 400 });
+    return NextResponse.json({ error: 'Amount too small for PayPal ($0.01 minimum)' }, { status: 400 });
   }
 
-  // ── Build idempotency key ──────────────────────────────────────────────
   const idempotencyKey = `vuka-order-${itemType}-${itemId}-${Date.now()}`;
+  const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vuka.co.za';
 
-  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vuka.co.za';
-  const returnUrl  = `${appUrl}/checkout/paypal/return?itemType=${itemType}&itemId=${itemId}`;
-  const cancelUrl  = `${appUrl}/checkout/paypal/cancel`;
-
-  // ── Create PayPal order ────────────────────────────────────────────────
   try {
     const order = await paypal.orders.create(
       {
@@ -144,8 +108,8 @@ export async function POST(req: NextRequest) {
           description: `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} — Vuka Music`,
           amountUSD,
         }],
-        returnUrl,
-        cancelUrl,
+        returnUrl:  `${appUrl}/checkout/paypal/return?itemType=${itemType}&itemId=${itemId}`,
+        cancelUrl:  `${appUrl}/checkout/paypal/cancel`,
         reference:  idempotencyKey,
         buyerEmail,
       },
@@ -155,12 +119,8 @@ export async function POST(req: NextRequest) {
     const approveUrl = getApproveUrl(order);
 
     logger.info('[PayPal] Order created', {
-      orderId:  order.id,
-      amountUSD,
-      priceZAR,
-      itemType,
-      itemId,
-      traceId,
+      orderId: order.id, amountUSD, priceZAR, fxRate: fx.zarToUsdRate,
+      fxSource: fx.source, itemType, itemId, traceId,
     });
 
     return NextResponse.json({
@@ -168,6 +128,8 @@ export async function POST(req: NextRequest) {
       approveUrl,
       amountUSD,
       priceZAR,
+      fxRate:     fx.zarToUsdRate,
+      fxSource:   fx.source,
       currency:   'USD',
     });
 
