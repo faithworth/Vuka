@@ -18,7 +18,8 @@ import crypto from 'crypto';
 const schema = z.object({
   itemType:   z.enum(['beat', 'release', 'video', 'sample']),
   itemId:     z.string().min(1),
-  buyerEmail: z.string().email().optional(),
+  buyerEmail:  z.string().email().optional(),
+  licenseType: z.enum(['basic', 'premium', 'exclusive']).optional().default('basic'),
 });
 
 export async function POST(req: NextRequest) {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { itemType, itemId, buyerEmail } = parsed.data;
+  const { itemType, itemId, buyerEmail, licenseType } = parsed.data;
 
   // ── Resolve item & price ───────────────────────────────────────────────
   let itemTitle  = '';
@@ -60,9 +61,14 @@ export async function POST(req: NextRequest) {
     const select = { title: true, price: true, artist: { select: { name: true } } };
 
     if (itemType === 'beat') {
-      const r = await prisma.beat.findUnique({ where: { id: itemId, isPublished: true }, select });
+      const r = await prisma.beat.findUnique({
+        where: { id: itemId, isActive: true },
+        select: { title: true, basicPrice: true, premiumPrice: true, exclPrice: true, isExclusive: true, artist: { select: { name: true } } },
+      });
       if (!r) return NextResponse.json({ error: 'Beat not found' }, { status: 404 });
-      itemTitle = r.title; priceZAR = r.price; artistName = r.artist?.name ?? '';
+      if (r.isExclusive) return NextResponse.json({ error: 'Beat already sold exclusively' }, { status: 400 });
+      const beatPriceMap: Record<string, number> = { basic: r.basicPrice, premium: r.premiumPrice, exclusive: r.exclPrice };
+      itemTitle = r.title; priceZAR = beatPriceMap[licenseType] ?? r.basicPrice; artistName = r.artist?.name ?? '';
     } else if (itemType === 'release') {
       const r = await prisma.release.findUnique({ where: { id: itemId }, select });
       if (!r) return NextResponse.json({ error: 'Release not found' }, { status: 404 });

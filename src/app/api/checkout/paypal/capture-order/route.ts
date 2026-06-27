@@ -26,7 +26,8 @@ const schema = z.object({
   itemType:   z.enum(['beat', 'release', 'video', 'sample']),
   itemId:     z.string().min(1),
   buyerName:  z.string().min(1).max(200).trim(),
-  buyerEmail: z.string().email().max(254).trim().toLowerCase(),
+  buyerEmail:  z.string().email().max(254).trim().toLowerCase(),
+  licenseType: z.enum(['basic', 'premium', 'exclusive']).optional().default('basic'),
 });
 
 export async function POST(req: NextRequest) {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { orderId, itemType, itemId, buyerName, buyerEmail } = parsed.data;
+  const { orderId, itemType, itemId, buyerName, buyerEmail, licenseType } = parsed.data;
 
   // ── Idempotency ────────────────────────────────────────────────────────
   const existing = await prisma.purchase.findFirst({
@@ -81,7 +82,8 @@ export async function POST(req: NextRequest) {
     if (itemType === 'beat') {
       const r = await prisma.beat.findUnique({ where: { id: itemId }, include: { artist: { select: artistSelect } } });
       if (!r) return NextResponse.json({ error: 'Beat not found' }, { status: 404 });
-      itemTitle = r.title; priceZAR = r.price;
+      const beatPriceMap: Record<string, number> = { basic: r.basicPrice, premium: r.premiumPrice, exclusive: r.exclPrice };
+      itemTitle = r.title; priceZAR = beatPriceMap[licenseType] ?? r.basicPrice;
       artistId = r.artist?.id ?? ''; artistPlan = r.artist?.planSlug ?? 'free';
       artistExpiry = r.artist?.planExpiresAt ?? null; artistLifetime = r.artist?.lifetimeGrossSales ?? 0;
     } else if (itemType === 'release') {
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
           paystackReference: `paypal:${orderId}`,
           status:            'confirmed',
           downloadToken,
-          licenseType:       'standard',
+          licenseType:       itemType === 'beat' ? licenseType : 'standard',
           platformFee:       vukaPlatformFeeZAR,
           artistEarnings:    artistNetZAR,
           paymentProvider:   'paypal',
