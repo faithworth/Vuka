@@ -20,7 +20,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import paypal, { isPayPalConfigured } from '@/lib/paypal';
-import { auditLog } from '@/lib/audit';
+import { audit } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { captureException } from '@/lib/monitoring/sentry';
 import crypto from 'crypto';
@@ -159,10 +159,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  await auditLog({
-    action:     'paypal_payout_sent',
-    entityType: 'payoutRequest',
-    entityId:   requestId,
+  await audit({
+    action:     'payment.payout_processed',
+    targetType: 'payoutRequest',
+    targetId:   requestId,
     meta:       { batchId, amountUSD, amountZAR, paypalEmail, traceId },
   });
 
