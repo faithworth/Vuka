@@ -1,26 +1,25 @@
 'use client';
 // ============================================================
-// VUKA — Edit Distribution Release Audio
+// VUKA — Edit Release
 // /dashboard/releases/[id]/edit
-// Lets artists re-upload audio for each track on an existing
-// distribution release. Calls PATCH /api/distribution/releases/[id]/tracks
-// with { trackId, audioUrl } to update fileUrl in the DB.
+// Re-upload audio per track, edit basic metadata, and control
+// whether the release is published. Backed by /api/releases/[id]
+// (the direct-sales Release model — Vuka has no DSP distribution).
 // ============================================================
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Music, Upload, Loader2, CheckCircle,
-  AlertCircle, Save,
+  ArrowLeft, Upload, Loader2, CheckCircle,
+  AlertCircle, Save, Eye, EyeOff, Trash2,
 } from 'lucide-react';
 
 interface TrackState {
   id: string;
   title: string;
   trackNumber: number;
-  fileUrl: string;
-  // upload state
+  fullUrl: string;
   uploading: boolean;
   uploaded: boolean;
   uploadProgress: number;
@@ -62,22 +61,22 @@ export default function EditReleasePage() {
   const [tracks, setTracks]   = useState<TrackState[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState('');
+  const [togglingActive, setTogglingActive] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Load release + tracks
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      fetch(`/api/distribution/releases/${id}`).then(r => r.ok ? r.json() : Promise.reject(r)),
-      fetch(`/api/distribution/releases/${id}/tracks`).then(r => r.ok ? r.json() : Promise.reject(r)),
-    ])
-      .then(([rel, trk]) => {
-        setRelease(rel.release ?? rel);
-        const raw: any[] = trk.tracks ?? [];
-        setTracks(raw.map(t => ({
+    fetch(`/api/releases/${id}`)
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(({ release: rel }) => {
+        setRelease(rel);
+        setTracks((rel.tracks || []).map((t: any) => ({
           id:           t.id,
           title:        t.title,
           trackNumber:  t.trackNumber,
-          fileUrl:      t.fileUrl ?? '',
+          fullUrl:      t.fullUrl ?? '',
           uploading:    false,
           uploaded:     false,
           uploadProgress: 0,
@@ -117,16 +116,19 @@ export default function EditReleasePage() {
     if (!track?.newAudioUrl) return;
     updateTrack(trackId, { saving: true, error: '' });
     try {
-      const res = await fetch(`/api/distribution/releases/${id}/tracks`, {
+      const res = await fetch(`/api/releases/upload`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId, audioUrl: track.newAudioUrl }),
+        body: JSON.stringify({
+          releaseId: id,
+          trackUpdates: { [trackId]: { previewUrl: track.newAudioUrl, fullUrl: track.newAudioUrl } },
+        }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || 'Save failed');
       }
-      updateTrack(trackId, { saving: false, saved: true, fileUrl: track.newAudioUrl });
+      updateTrack(trackId, { saving: false, saved: true, fullUrl: track.newAudioUrl });
     } catch (e: any) {
       updateTrack(trackId, { saving: false, error: e.message || 'Save failed' });
     }
@@ -135,6 +137,46 @@ export default function EditReleasePage() {
   async function saveAll() {
     const pending = tracks.filter(t => t.newAudioUrl && !t.saved);
     await Promise.all(pending.map(t => saveTrack(t.id)));
+  }
+
+  async function togglePublished() {
+    if (!release) return;
+    setTogglingActive(true);
+    try {
+      const res = await fetch(`/api/dashboard/releases`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ releaseId: id, isActive: !release.isActive }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Could not update release');
+      }
+      const { release: updated } = await res.json();
+      setRelease(updated);
+    } catch (e: any) {
+      setPageError(e.message || 'Could not update release');
+    } finally {
+      setTogglingActive(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!release) return;
+    if (!confirm(`Delete "${release.title}" permanently? This can't be undone.`)) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const res = await fetch(`/api/dashboard/releases?releaseId=${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Delete failed');
+      }
+      router.push('/dashboard/releases');
+    } catch (e: any) {
+      setDeleteError(e.message || 'Delete failed');
+      setDeleting(false);
+    }
   }
 
   const anyPending = tracks.some(t => t.newAudioUrl && !t.saved);
@@ -174,26 +216,59 @@ export default function EditReleasePage() {
         </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-black truncate" style={{ color: 'var(--text)' }}>
-            Re-upload Audio
+            Edit Release
           </h1>
           {release && (
-            <p className="text-sm truncate" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm truncate flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
               {release.title}
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                style={{
+                  background: release.isActive ? 'rgba(160,232,124,0.12)' : 'rgba(255,77,77,0.1)',
+                  color: release.isActive ? 'var(--green)' : '#ff4d4d',
+                }}>
+                {release.isActive ? 'LIVE' : 'UNPUBLISHED'}
+              </span>
             </p>
           )}
         </div>
         {anyPending && (
           <button onClick={saveAll}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold"
             style={{ background: 'var(--green)', color: '#0a0a0a' }}>
             <Save size={14} /> Save All
           </button>
         )}
       </div>
 
+      {/* Publish controls */}
+      {release && (
+        <div className="flex items-center justify-between p-4 rounded-xl mb-6"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div>
+            <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+              {release.isActive ? 'Visible in your store' : 'Hidden from your store'}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {release.isActive
+                ? 'Fans can find and buy this release right now.'
+                : 'Republish when you\'re ready — existing buyers keep their downloads either way.'}
+            </p>
+          </div>
+          <button onClick={togglePublished} disabled={togglingActive}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold flex-shrink-0 disabled:opacity-60"
+            style={{
+              background: release.isActive ? 'rgba(255,77,77,0.1)' : 'var(--green)',
+              color: release.isActive ? '#ff4d4d' : '#0a0a0a',
+            }}>
+            {togglingActive ? <Loader2 size={14} className="animate-spin" /> : release.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
+            {release.isActive ? 'Unpublish' : 'Publish'}
+          </button>
+        </div>
+      )}
+
       <div className="p-4 rounded-xl text-sm mb-6"
         style={{ background: 'rgba(56,182,232,0.06)', border: '1px solid rgba(56,182,232,0.2)', color: 'var(--text-muted)' }}>
-        Upload new audio for each track below. Click <strong style={{ color: 'var(--text)' }}>Save</strong> per track (or <strong style={{ color: 'var(--text)' }}>Save All</strong>) once uploaded. The new URL is written to the database immediately — no re-submission needed.
+        Upload new audio for each track below. Click <strong style={{ color: 'var(--text)' }}>Save</strong> per track (or <strong style={{ color: 'var(--text)' }}>Save All</strong>) once uploaded. The new file replaces the live one immediately.
       </div>
 
       {tracks.length === 0 && (
@@ -225,16 +300,16 @@ export default function EditReleasePage() {
             </div>
 
             {/* Current URL (dim) */}
-            {track.fileUrl && !track.saved && (
+            {track.fullUrl && !track.saved && (
               <p className="text-xs mb-3 truncate font-mono px-2 py-1.5 rounded-lg"
                 style={{ background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                Current: {track.fileUrl || '(none — needs upload)'}
+                Current: {track.fullUrl || '(none — needs upload)'}
               </p>
             )}
-            {track.saved && track.fileUrl && (
+            {track.saved && track.fullUrl && (
               <p className="text-xs mb-3 truncate font-mono px-2 py-1.5 rounded-lg"
                 style={{ background: 'rgba(160,232,124,0.06)', color: 'var(--green)', border: '1px solid rgba(160,232,124,0.2)' }}>
-                ✓ {track.fileUrl}
+                ✓ {track.fullUrl}
               </p>
             )}
 
@@ -320,6 +395,27 @@ export default function EditReleasePage() {
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
             <ArrowLeft size={14} /> Cancel
           </Link>
+        </div>
+      )}
+
+      {/* Danger zone */}
+      {release && release.sales === 0 && (
+        <div className="mt-10 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-sm font-bold mb-2" style={{ color: '#ff4d4d' }}>Danger Zone</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            This release has no sales yet, so it can be deleted permanently.
+          </p>
+          <button onClick={handleDelete} disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-60"
+            style={{ background: 'rgba(255,77,77,0.1)', color: '#ff4d4d', border: '1px solid rgba(255,77,77,0.3)' }}>
+            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {deleting ? 'Deleting…' : 'Delete Release'}
+          </button>
+          {deleteError && (
+            <p className="mt-2 text-xs flex items-center gap-1.5" style={{ color: '#ff4d4d' }}>
+              <AlertCircle size={12} /> {deleteError}
+            </p>
+          )}
         </div>
       )}
     </div>

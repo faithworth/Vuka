@@ -54,10 +54,10 @@ export default function AdminPage() {
 
   // releases
   const [releases, setReleases]  = useState<any[]>([]);
-  const [relStatus, setRelStatus] = useState('metadata_review');
+  const [relStatus, setRelStatus] = useState('active'); // all | active | inactive
   const [relPage, setRelPage]     = useState(1);
   const [relTotal, setRelTotal]   = useState(0);
-  const [relCounts, setRelCounts] = useState<any[]>([]);
+  const [relCounts, setRelCounts] = useState<{ all: number; active: number; inactive: number }>({ all: 0, active: 0, inactive: 0 });
 
   // finance
   const [finance, setFinance]  = useState<any>(null);
@@ -119,7 +119,7 @@ export default function AdminPage() {
         if (d) {
           setReleases(d.releases || []);
           setRelTotal(d.total || 0);
-          setRelCounts(d.counts || []);
+          setRelCounts(d.counts || { all: 0, active: 0, inactive: 0 });
         }
       });
   }, [relStatus, relPage]);
@@ -158,7 +158,12 @@ export default function AdminPage() {
   useEffect(() => { if (tab === 'audit')    loadAudit();    }, [tab, loadAudit]);
 
   /* ── admin actions ─────────────────────────────────────────── */
-  async function releaseAction(releaseId: string, action: string) {
+  async function releaseAction(releaseId: string, action: 'activate' | 'deactivate' | 'delete') {
+    if (action === 'deactivate' && !actionNote.trim()) {
+      alert('Add a reason in the note field before unpublishing — it\'s sent to the artist.');
+      return;
+    }
+    if (action === 'delete' && !confirm('Permanently delete this release? This cannot be undone.')) return;
     setWorking(true);
     const r = await fetch('/api/admin/releases', {
       method: 'POST',
@@ -167,7 +172,7 @@ export default function AdminPage() {
     });
     setWorking(false);
     if (r.ok) { setActionNote(''); loadReleases(); }
-    else alert('Action failed');
+    else { const d = await r.json().catch(() => ({})); alert(d.error || 'Action failed'); }
   }
 
   async function payoutAction(requestId: string, action: string) {
@@ -369,8 +374,9 @@ export default function AdminPage() {
           <div className="space-y-4">
             {/* Status filter tabs */}
             <div className="flex gap-1 flex-wrap">
-              {['metadata_review', 'artwork_review', 'approved', 'live', 'failed', 'all'].map((s) => {
-                const cnt = relCounts.find((c: any) => c.status === s)?._count ?? (s === 'all' ? relTotal : 0);
+              {(['active', 'inactive', 'all'] as const).map((s) => {
+                const cnt = relCounts[s] ?? 0;
+                const labels: Record<string, string> = { active: 'Live', inactive: 'Unpublished', all: 'All' };
                 return (
                   <button key={s}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -380,7 +386,7 @@ export default function AdminPage() {
                       border: '1px solid var(--border)',
                     }}
                     onClick={() => { setRelStatus(s); setRelPage(1); }}>
-                    {s} {cnt > 0 && `(${cnt})`}
+                    {labels[s]} {cnt > 0 && `(${cnt})`}
                   </button>
                 );
               })}
@@ -390,7 +396,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                    {['Title', 'Artist', 'Type', 'Tracks', 'Status', 'Submitted', 'Actions'].map((h) => (
+                    {['Title', 'Artist', 'Type', 'Tracks', 'Status', 'Created', 'Actions'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold">{h}</th>
                     ))}
                   </tr>
@@ -405,35 +411,26 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3"><Badge label={rel.releaseType} color="var(--sky)" /></td>
                       <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{rel._count?.tracks}</td>
-                      <td className="px-4 py-3"><Badge label={rel.status} color={STATUS_COLORS[rel.status] || '#a0a0a0'} /></td>
+                      <td className="px-4 py-3">
+                        <Badge label={rel.isActive ? 'live' : 'unpublished'} color={rel.isActive ? '#a0e87c' : '#ff4d4d'} />
+                      </td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {rel.submittedAt ? new Date(rel.submittedAt).toLocaleDateString() : '—'}
+                        {rel.createdAt ? new Date(rel.createdAt).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1 flex-wrap">
-                          {rel.status === 'metadata_review' && (
-                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
-                              onClick={() => releaseAction(rel.id, 'approve_metadata')}>✓ Meta</button>
-                          )}
-                          {rel.status === 'artwork_review' && (
-                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
-                              onClick={() => releaseAction(rel.id, 'approve_artwork')}>✓ Art</button>
-                          )}
-                          {['metadata_review', 'artwork_review'].includes(rel.status) && (
-                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
-                              onClick={() => releaseAction(rel.id, 'approve')}>Approve</button>
-                          )}
-                          {rel.status === 'approved' && (
-                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: 'var(--sky)' }}
-                              onClick={() => releaseAction(rel.id, 'deliver')}>Deliver</button>
-                          )}
-                          {rel.status === 'failed' && (
-                            <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#e8c87c' }}
-                              onClick={() => releaseAction(rel.id, 'retry')}>Retry</button>
-                          )}
-                          {!['failed', 'live'].includes(rel.status) && (
+                          {rel.isActive ? (
                             <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#ff4d4d' }}
-                              onClick={() => releaseAction(rel.id, 'reject')}>Reject</button>
+                              onClick={() => releaseAction(rel.id, 'deactivate')}>Unpublish</button>
+                          ) : (
+                            <>
+                              <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#a0e87c' }}
+                                onClick={() => releaseAction(rel.id, 'activate')}>Republish</button>
+                              {!rel.sales && (
+                                <button className="btn btn-ghost text-xs py-0.5 px-2" style={{ color: '#ff4d4d' }}
+                                  onClick={() => releaseAction(rel.id, 'delete')}>Delete</button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -443,9 +440,9 @@ export default function AdminPage() {
               </table>
             </div>
 
-            {/* Optional admin notes input */}
+            {/* Optional admin notes input — required when unpublishing */}
             <div className="flex gap-3">
-              <input className="input flex-1 text-sm" placeholder="Optional note for action…"
+              <input className="input flex-1 text-sm" placeholder="Reason (required to unpublish, sent to the artist)…"
                 value={actionNote} onChange={(e) => setActionNote(e.target.value)} />
             </div>
 

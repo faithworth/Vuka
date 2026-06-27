@@ -9,7 +9,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  LayoutDashboard, Users, Music, Radio, DollarSign,
+  LayoutDashboard, Users, Music, DollarSign,
   Settings, Shield, Bell, LogOut, Menu, X, ChevronRight,
   BarChart2, Flag, Loader2, Crown, FileEdit,
 } from 'lucide-react';
@@ -19,7 +19,6 @@ const ADMIN_NAV = [
   { href: '/admin/users',        label: 'Users',        icon: Users },
   { href: '/admin/plans',        label: 'Plans',        icon: Crown },
   { href: '/admin/releases',     label: 'Releases',     icon: Music },
-  { href: '/admin/distribution', label: 'Distribution', icon: Radio },
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },
   { href: '/admin/cms',          label: 'CMS',          icon: FileEdit },
   { href: '/admin/settings',     label: 'Settings',     icon: Settings },

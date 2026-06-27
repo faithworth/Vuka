@@ -1,44 +1,33 @@
 'use client';
 // ============================================================
-// VUKA — Release Upload Wizard (Phase 3)
-// /dashboard/releases/new — 6-step wizard matching spec exactly:
-// 1. Release Info  2. Artwork  3. Tracks  4. Distribution
-// 5. Rights & Credits  6. Review & Submit
+// VUKA — Release Upload Wizard
+// /dashboard/releases/new — 5-step wizard for direct-to-fan sales.
+// Vuka does not distribute to DSPs and does not issue ISRC/UPC
+// codes — this collects only what's needed to sell directly:
+// release info, artwork, tracks, rights & credits, and a final
+// review before the release goes live immediately.
 // Uploads files directly to R2 via presigned URLs.
 // ============================================================
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronRight, ChevronLeft, Upload, Music, Image as ImageIcon,
-  Plus, Trash2, Loader2, CheckCircle, AlertCircle,
-  ArrowLeft, Hash, Users,
+  Plus, Trash2, Loader2, CheckCircle, AlertCircle, ArrowLeft,
 } from 'lucide-react';
 
-const GENRES = [
-  'Amapiano', 'Afrobeats', 'Gqom', 'Hip-Hop', 'Trap', 'R&B',
-  'Drill', 'House', 'Kwaito', 'Gospel', 'Jazz', 'Pop', 'Electronic',
-  'Reggae', 'Dancehall', 'Soul', 'Afro-House', 'Afro-Soul',
-];
-
 const RELEASE_TYPES = [
-  { value: 'SINGLE',  label: 'Single',  desc: '1 song' },
-  { value: 'EP',      label: 'EP',      desc: '2–6 songs' },
-  { value: 'ALBUM',   label: 'Album',   desc: '7+ songs' },
-  { value: 'MIXTAPE', label: 'Mixtape', desc: 'Any length' },
+  { value: 'single',  label: 'Single',  desc: '1 song' },
+  { value: 'ep',      label: 'EP',      desc: '2–6 songs' },
+  { value: 'album',   label: 'Album',   desc: '7+ songs' },
+  { value: 'mixtape', label: 'Mixtape', desc: 'Any length' },
 ];
-
-
 
 interface TrackEntry {
   id: string;
   title: string;
   trackNumber: number;
-  isExplicit: boolean;
-  featuredArtists: string;
-  composers: string;
-  producers: string;
   audioFile?: File;
   uploading: boolean;
   uploaded: boolean;
@@ -70,53 +59,46 @@ async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: n
   });
 }
 
-const STEPS = [
-  'Release Info', 'Artwork', 'Tracks',
-  'Rights & Credits', 'Review',
-];
+const STEPS = ['Release Info', 'Artwork', 'Tracks', 'Rights & Credits', 'Review'];
 
 export default function NewReleasePage() {
   const router = useRouter();
-  const [step, setStep]   = useState(1);
+  const [step, setStep]     = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
   // Step 1
-  const [releaseType, setReleaseType] = useState('SINGLE');
+  const [releaseType, setReleaseType] = useState('single');
   const [title, setTitle]             = useState('');
-  const [primaryGenre, setPrimaryGenre] = useState('');
-  const [secondaryGenre, setSecondaryGenre] = useState('');
-  const [language, setLanguage]       = useState('en');
   const [releaseDate, setReleaseDate] = useState('');
-  const [isExplicit, setIsExplicit]   = useState(false);
 
   // Pricing
-  const [price, setPrice]               = useState('');
+  const [price, setPrice]                   = useState('');
   const [payWhatYouWant, setPayWhatYouWant] = useState(false);
-  const [minPrice, setMinPrice]         = useState('');
+  const [minPrice, setMinPrice]             = useState('');
 
   // Step 2
-  const [artworkFile, setArtworkFile] = useState<File | null>(null);
+  const [artworkFile, setArtworkFile]       = useState<File | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
-  const [artworkUrl, setArtworkUrl]   = useState('');
+  const [artworkUrl, setArtworkUrl]         = useState('');
   const [artworkUploading, setArtworkUploading] = useState(false);
   const artworkRef = useRef<HTMLInputElement>(null);
 
   // Step 3
   const [tracks, setTracks] = useState<TrackEntry[]>([
-    { id: '1', title: '', trackNumber: 1, isExplicit: false, featuredArtists: '', composers: '', producers: '', uploading: false, uploaded: false, uploadProgress: 0 },
+    { id: '1', title: '', trackNumber: 1, uploading: false, uploaded: false, uploadProgress: 0 },
   ]);
 
-  // Step 4
-  const [copyrightYear, setCopyrightYear] = useState(new Date().getFullYear().toString());
+  // Step 4 — Rights & Credits
+  const [copyrightYear, setCopyrightYear]     = useState(new Date().getFullYear().toString());
   const [copyrightHolder, setCopyrightHolder] = useState('');
-  const [label, setLabel]           = useState('');
-  const [upc, setUpc]               = useState('');
+  const [label, setLabel]                     = useState('');
+  const [credits, setCredits]                 = useState('');
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
 
   function addTrack() {
     setTracks(t => [...t, {
       id: Date.now().toString(), title: '', trackNumber: t.length + 1,
-      isExplicit: false, featuredArtists: '', composers: '', producers: '',
       uploading: false, uploaded: false, uploadProgress: 0,
     }]);
   }
@@ -169,88 +151,64 @@ export default function NewReleasePage() {
     setSaving(true);
     setError('');
     try {
-      // Fetch artist name from settings (required by the distribution API)
-      const meRes = await fetch('/api/dashboard/settings');
-      const meData = meRes.ok ? await meRes.json() : {};
-      const artistName = meData?.artist?.name?.trim() || '';
+      const validTracks = tracks.filter(t => t.title.trim() && t.audioUrl);
+      if (validTracks.length === 0) throw new Error('Add at least one track with audio uploaded before publishing');
 
-      const body = {
-        title,
-        artistName,
-        releaseType,
-        primaryGenre,
-        secondaryGenre,
-        language,
-        scheduledDate: releaseDate || null,
-        labelName: label || 'Self-Released',
-        targetDSPs: ['vuka'],
-        artworkUrl,
-        copyrightYear: parseInt(copyrightYear),
-        copyrightHolder: copyrightHolder || title,
-        isExplicit,
-        upc: upc || undefined,
-        price: parseFloat(price) || 0,
-        minPrice: payWhatYouWant ? (parseFloat(minPrice) || 0) : 0,
-        payWhatYouWant,
-      };
+      const creditsBlock = [
+        copyrightHolder ? `© ${copyrightYear} ${copyrightHolder}` : `© ${copyrightYear}`,
+        label.trim() ? `Label: ${label.trim()}` : 'Label: Self-Released',
+        credits.trim(),
+        `Rights confirmed by the uploading artist on ${new Date().toISOString().slice(0, 10)}.`,
+      ].filter(Boolean).join('\n');
 
-      // Step 1: create the release record (status: draft)
-      const res = await fetch('/api/distribution/releases', {
+      // Step 1: create the release + track rows
+      const createRes = await fetch('/api/releases/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          title,
+          releaseType,
+          price: parseFloat(price) || 0,
+          minPrice: payWhatYouWant ? (parseFloat(minPrice) || 0) : 0,
+          payWhatWant: payWhatYouWant,
+          releaseDate: releaseDate || null,
+          credits: creditsBlock,
+          tracks: validTracks.map(t => ({ title: t.title, trackNumber: t.trackNumber })),
+        }),
       });
-      if (!res.ok) {
-        const d = await res.json();
+      if (!createRes.ok) {
+        const d = await createRes.json();
         throw new Error(d.error || 'Failed to create release');
       }
-      const { release } = await res.json();
+      const { release, tracks: trackRecords } = await createRes.json();
 
-      // Step 2: create each track — auto-generates ISRC per track
-      const validTracks = tracks.filter(t => t.title.trim());
-      if (validTracks.length === 0) throw new Error('Add at least one track before submitting');
-
-      for (const t of validTracks) {
-        const tRes = await fetch(`/api/distribution/releases/${release.id}/tracks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: t.title,
-            trackNumber: t.trackNumber,
-            explicit: t.isExplicit,
-            language,
-            audioUrl: t.audioUrl || '',   // ← public R2 URL — enables streaming + download
-            featuredArtists: t.featuredArtists.split(',').map((x: string) => x.trim()).filter(Boolean),
-            composers: t.composers.split(',').map((x: string) => x.trim()).filter(Boolean),
-            producers: t.producers.split(',').map((x: string) => x.trim()).filter(Boolean),
-          }),
-        });
-        if (!tRes.ok) {
-          const d = await tRes.json();
-          throw new Error(`Track "${t.title}" failed: ${d.error || 'Unknown error'}`);
-        }
-      }
-
-      // Step 3: submit for admin review (status: draft → metadata_review)
-      // This also sends the artist a confirmation email
-      const submitRes = await fetch(`/api/distribution/releases/${release.id}/submit`, {
-        method: 'POST',
+      // Step 2: map the already-uploaded audio URLs onto the created track rows
+      const trackUpdates: Record<string, { previewUrl: string; fullUrl: string }> = {};
+      trackRecords.forEach((tr: { id: string }, i: number) => {
+        const url = validTracks[i]?.audioUrl || '';
+        trackUpdates[tr.id] = { previewUrl: url, fullUrl: url };
       });
-      if (!submitRes.ok) {
-        const d = await submitRes.json();
-        // Warn but don't hard-fail — release is created, just not yet submitted
-        console.warn('[release wizard] submit step failed:', d);
-        throw new Error(d.errors?.[0] || d.error || 'Submission failed');
+
+      // Step 3: save artwork + track URLs and go live
+      const activateRes = await fetch('/api/releases/upload', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ releaseId: release.id, artworkUrl, trackUpdates, isActive: true }),
+      });
+      if (!activateRes.ok) {
+        const d = await activateRes.json();
+        throw new Error(d.error || 'Failed to publish release');
       }
 
-      router.push('/dashboard/releases?submitted=1');
+      router.push('/dashboard/releases?published=1');
     } catch (e: any) { setError(e.message); setSaving(false); }
   }
 
   const canProceed = () => {
-    if (step === 1) return title.trim() && primaryGenre;
-    if (step === 2) return artworkUrl || artworkUploading;
+    if (step === 1) return title.trim().length > 0;
+    if (step === 2) return Boolean(artworkUrl) || artworkUploading;
     if (step === 3) return tracks.every(t => t.title.trim());
+    if (step === 4) return rightsConfirmed;
     return true;
   };
 
@@ -275,8 +233,8 @@ export default function NewReleasePage() {
                 <button onClick={() => done && setStep(num)}
                   className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all"
                   style={{
-                    background: active ? 'rgba(160,232,124,0.12)' : done ? 'transparent' : 'transparent',
-                    color: active ? 'var(--green)' : done ? 'var(--text-muted)' : 'var(--text-muted)',
+                    background: active ? 'rgba(160,232,124,0.12)' : 'transparent',
+                    color: active ? 'var(--green)' : 'var(--text-muted)',
                   }}>
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                     active ? 'bg-green-400 text-black' : done ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-500'
@@ -324,58 +282,15 @@ export default function NewReleasePage() {
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                 style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Primary Genre *</label>
-                <select value={primaryGenre} onChange={e => setPrimaryGenre(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-                  <option value="">Select genre…</option>
-                  {GENRES.map(g => <option key={g}>{g}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Secondary Genre</label>
-                <select value={secondaryGenre} onChange={e => setSecondaryGenre(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-                  <option value="">None</option>
-                  {GENRES.filter(g => g !== primaryGenre).map(g => <option key={g}>{g}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Release Date <span className="font-normal opacity-60">(leave blank to go live immediately)</span>
+              </label>
+              <input type="date" value={releaseDate} onChange={e => setReleaseDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Release Date</label>
-                <input type="date" value={releaseDate} onChange={e => setReleaseDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Language</label>
-                <select value={language} onChange={e => setLanguage(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-                  <option value="en">English</option>
-                  <option value="zu">Zulu</option>
-                  <option value="af">Afrikaans</option>
-                  <option value="xh">Xhosa</option>
-                  <option value="st">Sotho</option>
-                  <option value="tn">Tswana</option>
-                  <option value="yo">Yoruba</option>
-                  <option value="sw">Swahili</option>
-                  <option value="ha">Hausa</option>
-                  <option value="pt">Portuguese</option>
-                  <option value="fr">French</option>
-                </select>
-              </div>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={isExplicit} onChange={e => setIsExplicit(e.target.checked)}
-                className="rounded" />
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Contains explicit content</span>
-            </label>
 
             {/* ── Pricing ── */}
             <div className="pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
@@ -485,7 +400,7 @@ export default function NewReleasePage() {
               Upload MP3, WAV, or FLAC. Max 500MB per track.
             </p>
             <div className="space-y-4">
-              {tracks.map((track, i) => (
+              {tracks.map(track => (
                 <div key={track.id} className="p-4 rounded-xl" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
@@ -506,7 +421,7 @@ export default function NewReleasePage() {
                   </div>
 
                   {/* Audio upload */}
-                  <div className="mb-3">
+                  <div>
                     <input type="file" accept="audio/*" id={`audio-${track.id}`} className="hidden"
                       onChange={e => e.target.files?.[0] && handleAudioSelect(track.id, e.target.files[0])} />
                     <label htmlFor={`audio-${track.id}`}
@@ -530,35 +445,14 @@ export default function NewReleasePage() {
                       </div>
                     )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                    <input value={track.featuredArtists} onChange={e => updateTrack(track.id, { featuredArtists: e.target.value })}
-                      placeholder="Featured artists (comma-separated)"
-                      className="px-3 py-2 rounded-lg outline-none"
-                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-                    <input value={track.composers} onChange={e => updateTrack(track.id, { composers: e.target.value })}
-                      placeholder="Composers"
-                      className="px-3 py-2 rounded-lg outline-none"
-                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-                    <input value={track.producers} onChange={e => updateTrack(track.id, { producers: e.target.value })}
-                      placeholder="Producers"
-                      className="px-3 py-2 rounded-lg outline-none"
-                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-                  </div>
-                  <label className="flex items-center gap-2 mt-2 text-xs cursor-pointer" style={{ color: 'var(--text-muted)' }}>
-                    <input type="checkbox" checked={track.isExplicit} onChange={e => updateTrack(track.id, { isExplicit: e.target.checked })} />
-                    Explicit content
-                  </label>
                 </div>
               ))}
             </div>
-            {(releaseType !== 'SINGLE' || tracks.length < 1) && (
-              <button onClick={addTrack}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-                <Plus size={14} /> Add Track
-              </button>
-            )}
+            <button onClick={addTrack}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+              <Plus size={14} /> Add Track
+            </button>
           </div>
         )}
 
@@ -580,30 +474,42 @@ export default function NewReleasePage() {
                   className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Label Name</label>
                 <input value={label} onChange={e => setLabel(e.target.value)}
                   placeholder="Self-Released"
                   className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                  UPC <span className="font-normal opacity-60">(leave blank to auto-assign)</span>
+                  Credits <span className="font-normal opacity-60">(featured artists, composers, producers — optional)</span>
                 </label>
-                <input value={upc} onChange={e => setUpc(e.target.value)}
-                  placeholder="Auto-assigned by Vuka"
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none font-mono"
+                <textarea value={credits} onChange={e => setCredits(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Featuring Sizwe M. Produced by DJ Khaya."
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
               </div>
             </div>
+
+            <label className="flex items-start gap-3 p-4 rounded-xl cursor-pointer"
+              style={{ background: 'rgba(160,232,124,0.06)', border: '1px solid rgba(160,232,124,0.2)' }}>
+              <input type="checkbox" checked={rightsConfirmed}
+                onChange={e => setRightsConfirmed(e.target.checked)}
+                className="mt-0.5 rounded" />
+              <span className="text-sm" style={{ color: 'var(--text)' }}>
+                I confirm that I own or control all necessary rights to sell this release on Vuka,
+                and that it does not infringe on anyone else's copyright.
+              </span>
+            </label>
           </div>
         )}
 
         {/* Step 5: Review */}
         {step === 5 && (
           <div className="space-y-5">
-            <h2 className="font-bold text-lg">Review & Submit</h2>
+            <h2 className="font-bold text-lg">Review & Publish</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 {artworkPreview && (
@@ -613,8 +519,7 @@ export default function NewReleasePage() {
               <div className="space-y-3 text-sm">
                 {[
                   { label: 'Title', value: title },
-                  { label: 'Type', value: releaseType },
-                  { label: 'Genre', value: [primaryGenre, secondaryGenre].filter(Boolean).join(', ') },
+                  { label: 'Type', value: RELEASE_TYPES.find(t => t.value === releaseType)?.label || releaseType },
                   { label: 'Release Date', value: releaseDate || 'Immediate' },
                   { label: 'Tracks', value: `${tracks.length} track${tracks.length !== 1 ? 's' : ''}` },
                   { label: 'Price', value: payWhatYouWant ? `Pay What You Want (min R${minPrice || 0})` : parseFloat(price) > 0 ? `R${price}` : 'Free' },
@@ -631,8 +536,7 @@ export default function NewReleasePage() {
             </div>
             <div className="p-4 rounded-xl text-sm"
               style={{ background: 'rgba(160,232,124,0.06)', border: '1px solid rgba(160,232,124,0.2)', color: 'var(--text-muted)' }}>
-              ✦ After submission, an admin will review your release within 2–7 days.
-              You will receive an email notification at every stage.
+              ✦ Vuka has no review queue — your release goes live the moment you publish, and fans can buy it immediately.
             </div>
           </div>
         )}
@@ -667,7 +571,7 @@ export default function NewReleasePage() {
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
             style={{ background: 'var(--green)', color: '#0a0a0a' }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-            {saving ? 'Submitting…' : 'Submit for Review'}
+            {saving ? 'Publishing…' : 'Publish Release'}
           </button>
         )}
       </div>

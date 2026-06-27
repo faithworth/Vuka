@@ -396,6 +396,43 @@ export async function sendReleaseRejected({
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 7B. RELEASE TAKEN DOWN (post-publish moderation)
+// ═══════════════════════════════════════════════════════════════
+// Vuka publishes instantly with no pre-review queue, so this is sent only
+// when an admin removes an already-live release for a guideline violation
+// (distinct from sendReleaseRejected, which assumes a pre-publish review).
+
+export async function sendReleaseTakenDown({
+  to,
+  artistName,
+  releaseTitle,
+  reason,
+  releaseUrl,
+}: {
+  to: string;
+  artistName: string;
+  releaseTitle: string;
+  reason: string;
+  releaseUrl: string;
+}) {
+  const subject = `"${releaseTitle}" has been unpublished`;
+  const html = layout(
+    card(`
+      ${icon('⚠️')}
+      ${heading(`"${releaseTitle}" was unpublished`)}
+      ${sub(`Hey ${artistName}, our team removed this release from the Vuka store.`)}
+      <div style="background:#1A1A1A;border-left:3px solid #FF4D4D;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
+        <p style="color:#A0A0A0;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
+        <p style="color:#F5F5F5;margin:0;font-size:15px;line-height:1.6;">${reason}</p>
+      </div>
+      <p style="color:#A0A0A0;font-size:14px;">Existing fans who already purchased keep their downloads. Make any needed changes and you can republish from your dashboard.</p>
+      ${btn(releaseUrl, 'Review & Republish →')}
+    `)
+  );
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 8. RELEASE LIVE
 // ═══════════════════════════════════════════════════════════════
 
@@ -403,28 +440,24 @@ export async function sendReleaseLive({
   to,
   artistName,
   releaseTitle,
-  platforms,
   shareUrl,
   releaseUrl,
 }: {
   to: string;
   artistName: string;
   releaseTitle: string;
-  platforms: string[];
   shareUrl: string;
   releaseUrl: string;
+  /** @deprecated Vuka sells directly — it no longer distributes to DSPs. Kept optional for callers mid-migration. */
+  platforms?: string[];
 }) {
   const subject = `🎉 "${releaseTitle}" is LIVE!`;
-  const platformPills = platforms
-    .map(p => `<span style="display:inline-block;background:#1A1A1A;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:4px 10px;font-size:12px;margin:3px;">${p}</span>`)
-    .join('');
   const html = layout(
     card(`
       ${icon('🎉')}
       <div style="text-align:center;">
         ${heading(`"${releaseTitle}" is LIVE!`)}
-        ${sub(`Sharp, ${artistName}! Your music is now streaming on ${platforms.length} platform${platforms.length > 1 ? 's' : ''}. Share it with the world!`)}
-        <div style="margin:20px 0;text-align:center;">${platformPills}</div>
+        ${sub(`Sharp, ${artistName}! Your music is now live on Vuka and ready for fans to buy. Share it with the world!`)}
         ${btn(shareUrl, '🔗 Share My Release')}
         ${btn(releaseUrl, 'View Analytics →', 'secondary')}
       </div>

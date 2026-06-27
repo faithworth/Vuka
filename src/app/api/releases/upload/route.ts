@@ -1,8 +1,15 @@
-// FIX: src/app/api/releases/upload/route.ts
-// Added: auto-generate UPC on release creation and ISRC per track.
-// ISRC format: ZA-ZAV-YY-NNNNN (South Africa / Vuka / year / designation)
-// UPC: 12-digit with check digit
-// These are stored in Release.upc and Track.isrc after the schema migration.
+// src/app/api/releases/upload/route.ts
+// Artist release upload — operates on the Release/Track models (Vuka's
+// direct-to-fan sales catalog). Vuka does NOT distribute to DSPs and does
+// NOT issue ISRC/UPC codes — those calls were removed because the fields
+// they wrote to don't exist on Release/Track and were causing every
+// upload to fail with a Prisma validation error in production.
+//
+// Flow:
+//   1. POST  — create the Release + Track rows, return presigned R2 PUT
+//              URLs so the browser can upload artwork/audio directly.
+//   2. PATCH — after the browser finishes uploading, save the public URLs
+//              and activate the release (isActive: true).
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,8 +17,8 @@ import prisma from '@/lib/prisma';
 import { getPresignedUploadUrl, getPublicUrl, r2Keys } from '@/lib/r2';
 import { requireArtist } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
-import { generateISRC, generateUPC } from '@/lib/distribution';
 import { getEffectivePlan, checkMonthlyUploadLimit } from '@/lib/plans';
+import { sendReleaseLive } from '@/lib/emails';
 
 // POST: create release + track records, return presigned R2 PUT URLs for direct browser upload
 export async function POST(req: NextRequest) {
@@ -39,9 +46,13 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────
 
     const body = await req.json();
-    const { title, releaseType, price, minPrice, payWhatWant, description, credits, releaseDate, tracks, artworkType, trackAudioTypes } = body;
+    const {
+      title, releaseType, price, minPrice, payWhatWant,
+      description, credits, releaseDate, tracks,
+      artworkType, trackAudioTypes,
+    } = body;
 
-    if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+    if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 });
     if (!tracks?.length) return NextResponse.json({ error: 'At least one track required' }, { status: 400 });
 
     // Generate unique slug
@@ -52,27 +63,23 @@ export async function POST(req: NextRequest) {
       slug = `${slugify(title)}-${suffix}`;
     }
 
-    // Generate UPC for the release
-    const upc = generateUPC();
-
     const release = await prisma.release.create({
       data: {
-        artistId:   user.artist.id,
-        title,
+        artistId:    user.artist.id,
+        title:       title.trim(),
         slug,
-        releaseType: releaseType || 'single',
-        price:      parseFloat(price) || 0,
-        minPrice:   parseFloat(minPrice) || 0,
+        releaseType: (releaseType || 'single').toLowerCase(),
+        price:       parseFloat(price) || 0,
+        minPrice:    parseFloat(minPrice) || 0,
         payWhatWant: !!payWhatWant,
         description: description || '',
         credits:     credits || '',
         releaseDate: releaseDate ? new Date(releaseDate) : undefined,
-        upc,          // ← store UPC on the release
         isActive:    false,
-      } as any, // 'as any' until prisma client is regenerated after migration
+      },
     });
 
-    // Create track records with auto-generated ISRCs
+    // Create track records
     const trackRecords = await Promise.all(
       (tracks as { title: string; trackNumber: number }[]).map((t, i) =>
         prisma.track.create({
@@ -80,10 +87,9 @@ export async function POST(req: NextRequest) {
             releaseId:   release.id,
             title:       t.title || `Track ${i + 1}`,
             trackNumber: t.trackNumber || i + 1,
-            isrc:        generateISRC(), // ← generate ISRC per track
             previewUrl:  '',
             fullUrl:     '',
-          } as any,
+          },
         })
       )
     );
@@ -121,7 +127,7 @@ export async function PATCH(req: NextRequest) {
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { releaseId, artworkUrl, trackUpdates } = body;
+    const { releaseId, artworkUrl, trackUpdates, isActive } = body;
 
     if (!releaseId) return NextResponse.json({ error: 'releaseId required' }, { status: 400 });
 
@@ -145,15 +151,37 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Activate release with artwork URL
+    const wasInactive = !release.isActive;
+    const willActivate = isActive !== undefined ? !!isActive : undefined;
+
+    // Activate release with artwork URL (only touches isActive when the caller
+    // explicitly asked for it — lets this endpoint be reused for a plain
+    // track-audio swap without accidentally changing publish state)
     const updated = await prisma.release.update({
       where: { id: releaseId },
       data: {
-        artworkUrl: artworkUrl || '',
-        isActive:   true,
+        ...(artworkUrl ? { artworkUrl } : {}),
+        ...(willActivate !== undefined ? { isActive: willActivate } : {}),
       },
       include: { tracks: { orderBy: { trackNumber: 'asc' } } },
     });
+
+    // First time going live — let the artist know. Vuka has no DSP delivery
+    // pipeline, so this fires the moment the release actually goes live.
+    if (wasInactive && willActivate) {
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+        await sendReleaseLive({
+          to: user.email,
+          artistName: user.artist.name,
+          releaseTitle: updated.title,
+          shareUrl: `${appUrl}/releases/${updated.id}`,
+          releaseUrl: `${appUrl}/dashboard/releases/${updated.id}`,
+        });
+      } catch (emailErr) {
+        console.error('[releases/upload] PATCH live email failed (non-fatal):', emailErr);
+      }
+    }
 
     return NextResponse.json({ release: updated });
   } catch (err: any) {
