@@ -14,7 +14,7 @@
  *   itemId      — DB id of the item
  */
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type State =
@@ -22,7 +22,7 @@ type State =
   | { phase: 'redirecting'; downloadUrl: string }
   | { phase: 'error'; message: string };
 
-export default function PayPalReturnPage() {
+function PayPalReturnInner() {
   const params = useSearchParams();
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: 'capturing' });
@@ -140,5 +140,22 @@ export default function PayPalReturnPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PayPalReturnPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight:      '60vh',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+      }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>⏳ Confirming your payment…</p>
+      </div>
+    }>
+      <PayPalReturnInner />
+    </Suspense>
   );
 }
