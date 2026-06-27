@@ -24,7 +24,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
-  const ip      = getClientIp(req);
+  const ip      = getClientIp(req.headers);
 
   // ── Rate limit — 3 attempts per hour per IP ───────────────────────────
   const limited = await rateLimit(ip, RATE_LIMITS.magic_link_request, ip);

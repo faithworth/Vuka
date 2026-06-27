@@ -23,7 +23,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
-  const ip      = getClientIp(req);
+  const ip      = getClientIp(req.headers);
 
   if (!isPayPalConfigured()) {
     return NextResponse.json(

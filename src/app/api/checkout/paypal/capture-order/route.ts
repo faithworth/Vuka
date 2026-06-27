@@ -31,7 +31,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
-  const ip      = getClientIp(req);
+  const ip      = getClientIp(req.headers);
 
   const limited = await rateLimit(ip, RATE_LIMITS.checkout_init, ip);
   if (limited) return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
