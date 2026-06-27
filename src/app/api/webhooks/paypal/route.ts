@@ -19,7 +19,7 @@ import prisma from '@/lib/prisma';
 import { verifyWebhookSignature, PAYPAL_WEBHOOK_ID } from '@/lib/paypal';
 import { logger } from '@/lib/logger';
 import { captureException } from '@/lib/monitoring/sentry';
-import { auditLog } from '@/lib/audit';
+
 
 export async function POST(req: NextRequest) {
   let rawBody: string;
@@ -104,12 +104,12 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        await auditLog({
+        await prisma.adminLog.create({ data: {
           action:     `paypal_webhook:${transmissionId}`,
-          entityType: 'system',
-          entityId:   captureId ?? 'unknown',
-          meta:       { eventType, captureId, orderIdStr },
-        });
+          targetType: 'system',
+          targetId:   captureId ?? 'unknown',
+          notes:      JSON.stringify({ eventType, captureId, orderIdStr }),
+        } }).catch(() => {});
         break;
       }
 
@@ -137,12 +137,12 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        await auditLog({
+        await prisma.adminLog.create({ data: {
           action:     `paypal_webhook:${transmissionId}`,
-          entityType: 'system',
-          entityId:   captureId ?? 'unknown',
-          meta:       { eventType, captureId },
-        });
+          targetType: 'system',
+          targetId:   captureId ?? 'unknown',
+          notes:      JSON.stringify({ eventType, captureId }),
+        } }).catch(() => {});
         break;
       }
 
@@ -150,22 +150,22 @@ export async function POST(req: NextRequest) {
         logger.warn('[PayPal webhook] Capture reversed (chargeback) — manual review required', {
           transmissionId, event,
         });
-        await auditLog({
+        await prisma.adminLog.create({ data: {
           action:     `paypal_webhook:${transmissionId}`,
-          entityType: 'system',
-          entityId:   'chargeback',
-          meta:       { eventType, event },
-        });
+          targetType: 'system',
+          targetId:   'chargeback',
+          notes:      JSON.stringify({ eventType }),
+        } }).catch(() => {});
         break;
       }
 
       default: {
-        await auditLog({
+        await prisma.adminLog.create({ data: {
           action:     `paypal_webhook:${transmissionId}`,
-          entityType: 'system',
-          entityId:   eventType,
-          meta:       { eventType },
-        });
+          targetType: 'system',
+          targetId:   eventType,
+          notes:      JSON.stringify({ eventType }),
+        } }).catch(() => {});
         break;
       }
     }
