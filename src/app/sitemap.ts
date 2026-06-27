@@ -58,20 +58,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         take:    10_000,
       }).catch(() => []),
 
-      // Releases — approved or live
+      // Releases — active
       prisma.release.findMany({
         where: {
-          status: { in: ['approved', 'live'] },
+          isActive: true,
         },
         select:  { slug: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         take:    10_000,
       }).catch(() => []),
 
-      // Events — upcoming only
+      // Events — upcoming and published
       prisma.event.findMany({
         where: {
           startDate: { gte: new Date() },
+          status:    'published',
         },
         select:  { slug: true, updatedAt: true },
         orderBy: { startDate: 'asc' },
