@@ -41,7 +41,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Artist profiles (public, verified or has content)
       prisma.artist.findMany({
         where: {
-          slug:         { not: null },
           isPublic:     true,
         },
         select:  { slug: true, updatedAt: true },
@@ -52,7 +51,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Beats — published and for sale
       prisma.beat.findMany({
         where: {
-          slug:        { not: null },
           isPublished: true,
         },
         select:  { slug: true, updatedAt: true },
@@ -63,7 +61,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Releases — approved or live
       prisma.release.findMany({
         where: {
-          slug:   { not: null },
           status: { in: ['approved', 'live'] },
         },
         select:  { slug: true, updatedAt: true },
@@ -74,7 +71,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Events — upcoming only
       prisma.event.findMany({
         where: {
-          slug:      { not: null },
           startDate: { gte: new Date() },
         },
         select:  { slug: true, updatedAt: true },
