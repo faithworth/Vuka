@@ -43,8 +43,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isPublic:     true,
         },
-        select:  { slug: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
+        select:  { slug: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
         take:    5_000,
       }).catch(() => []),
 
@@ -53,8 +53,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isPublished: true,
         },
-        select:  { slug: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
+        select:  { slug: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
         take:    10_000,
       }).catch(() => []),
 
@@ -63,8 +63,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           status: { in: ['approved', 'live'] },
         },
-        select:  { slug: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
+        select:  { slug: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
         take:    10_000,
       }).catch(() => []),
 
@@ -84,7 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((a) => a.slug)
       .map((a) => ({
         url:             `${BASE}/artist/${a.slug}`,
-        lastModified:    a.updatedAt,
+        lastModified:    a.createdAt,
         changeFrequency: 'weekly',
         priority:        0.8,
       }));
@@ -93,7 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((b) => b.slug)
       .map((b) => ({
         url:             `${BASE}/beats/${b.slug}`,
-        lastModified:    b.updatedAt,
+        lastModified:    b.createdAt,
         changeFrequency: 'weekly',
         priority:        0.7,
       }));
@@ -102,7 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((r) => r.slug)
       .map((r) => ({
         url:             `${BASE}/release/${r.slug}`,
-        lastModified:    r.updatedAt,
+        lastModified:    r.createdAt,
         changeFrequency: 'weekly',
         priority:        0.75,
       }));
