@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Beats — published and for sale
       prisma.beat.findMany({
         where: {
-          isPublished: true,
+          isActive: true,
         },
         select:  { slug: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
