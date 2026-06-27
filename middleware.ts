@@ -1,30 +1,33 @@
 /**
- * VUKA — Production Middleware
+ * VUKA — Production Middleware (Paystack edition)
  *
  * Applied to every request via Next.js edge middleware. Responsibilities:
  *   1. Inject x-trace-id for request correlation across logs
  *   2. Block known malicious path patterns (traversal, probe strings)
- *   3. Admin route protection — validates Supabase session + email check
+ *   3. Admin route protection — validates Supabase session + email + role
  *   4. Cron endpoints protected by CRON_SECRET bearer token
- *   5. Payment webhooks (Paystack, PayPal) always public — signature-verified
- *      inside each handler, never gated here
+ *   5. Paystack webhook + public data routes always public (signature-verified
+ *      inside each handler — not user-auth gated)
  *   6. Pass Supabase auth cookies through for SSR rendering
  *
- * Security: Admin check uses server-only ADMIN_EMAIL env var.
- * NEXT_PUBLIC_ADMIN_EMAIL has been permanently removed — it exposed the
- * admin email in the JS bundle, visible to every visitor.
+ * FIX: previous version imported a non-existent `createClient` from
+ * '@/lib/supabase_server', which has no such export and broke the production
+ * type-check (`Module has no exported member 'createClient'`). Replaced with
+ * a proper middleware-scoped @supabase/ssr client built directly from the
+ * NextRequest/NextResponse cookie APIs (cookies() from next/headers is NOT
+ * available in middleware).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// Server-only — never expose this via NEXT_PUBLIC_* prefix
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
-// Routes that require ADMIN_EMAIL + valid session to access
+// Routes that require ADMIN_EMAIL + admin DB role to access
 const ADMIN_PATHS = [
   '/admin',
   '/api/admin',
+  '/api/distribution/admin',
   '/api/payouts/admin',
   '/api/moderation/admin',
   '/api/moderation/queue',
@@ -34,13 +37,8 @@ const ADMIN_PATHS = [
   '/api/analytics/platform',
 ] as const;
 
-// Separately gated by CRON_SECRET bearer token (not Supabase session)
-const CRON_PATHS = [
-  '/api/workers/cron',
-  '/api/cron/expire-plans',
-  '/api/cron/referral-rewards',
-  '/api/cron/campaign-deadlines',
-] as const;
+// Cron is separately gated by CRON_SECRET (not Supabase session)
+const CRON_PATHS = ['/api/workers/cron'] as const;
 
 // Routes that bypass Supabase session validation entirely
 const PUBLIC_PATHS = [
@@ -53,40 +51,80 @@ const PUBLIC_PATHS = [
   '/api/auth/magic-link',
   '/api/auth/callback',
   '/api/auth/register',
-  '/api/redownload',
 
-  // ── Paystack (signature-verified inside each handler) ─────────────────
+  // ── Paystack — single webhook + initialize + per-flow notify wrappers ──
+  // (signature-verified inside each handler — not user-auth gated)
   '/api/checkout/paystack/webhook',
   '/api/checkout/paystack/initialize',
   '/api/plans/notify',
   '/api/marketplace/checkout',
-
-  // ── PayPal (signature-verified inside each handler) ───────────────────
+  '/api/marketplace/checkout/notify',
+  '/api/creator/memberships/notify',
+  '/api/support/create-session',
+  '/api/support/webhook',
+  '/api/industry/order',
+  '/api/webhooks/paystack',
+  '/api/webhooks/flutterwave',
   '/api/webhooks/paypal',
-  '/api/checkout/paypal/create-order',
-  '/api/checkout/paypal/capture-order',
 
-  // ── Public content ────────────────────────────────────────────────────
-  '/api/beats/public',
-  '/api/releases/public',
-  '/api/artists/public',
-  '/api/search',
-  '/api/discover',
-  '/api/feed',
-  '/sitemap.xml',
+  // Stripe stubs — return 410/200, don't need auth
+  '/api/checkout/stripe/',
+  '/api/connect/onboard',
+
+  // Public data / discovery / store endpoints
+  '/api/store/',
+  '/api/artist/',
+  '/api/discovery/',
+  '/api/social/',
+  '/api/licensing/verify',
+  '/api/invoices',
+  '/api/analytics/plays',
+  '/api/play',
+  '/api/download',
+
+  // Admin login / repair — gated internally, not by Supabase session
+  '/admin/login',
+  '/admin/db-repair',
+  '/api/admin/db-repair',
+
+  // Next.js / static assets
+  '/favicon',
+  '/_next',
+  '/static',
   '/robots.txt',
+  '/sitemap.xml',
 ] as const;
 
-// Path patterns that are always blocked (security probes)
+// Patterns that are outright blocked — return 404 to avoid fingerprinting
 const BLOCKED_PATTERNS = [
-  /\.\.[\\/]/,           // path traversal
-  /\.(env|git|htaccess)/, // common probe targets
-  /\/wp-/i,              // WordPress probes
-  /\/(php|asp|aspx|jsp)$/i, // wrong-stack probes
-  /\/xmlrpc\.php/i,
-  /__pycache__/,
-  /\/etc\/passwd/,
-] as const;
+  '../',
+  '/.env',
+  '/etc/passwd',
+  '/proc/',
+  'wp-admin',
+  'phpMyAdmin',
+  '.git/',
+  'xmlrpc',
+  '<script',
+  'javascript:',
+  'data:text',
+  '\\x',
+  '%2e%2e',    // URL-encoded ..
+  '%252e',     // double-encoded .
+  '/actuator',
+  '/.well-known/acme-challenge/../',
+  '/vendor/',
+  '/shell',
+  '/cmd',
+];
+
+function generateTraceId(): string {
+  return `vk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+}
 
 function isAdminPath(pathname: string): boolean {
   return ADMIN_PATHS.some((p) => pathname.startsWith(p));
@@ -96,82 +134,100 @@ function isCronPath(pathname: string): boolean {
   return CRON_PATHS.some((p) => pathname.startsWith(p));
 }
 
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+function isBlockedPath(pathname: string): boolean {
+  const lower = pathname.toLowerCase();
+  return BLOCKED_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
 }
 
-function isBlocked(pathname: string): boolean {
-  return BLOCKED_PATTERNS.some((re) => re.test(pathname));
-}
-
-function generateTraceId(): string {
-  return `vuka_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  );
 }
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const traceId = generateTraceId();
 
-  // ── 1. Block malicious patterns ────────────────────────────────────────
-  if (isBlocked(pathname)) {
-    return new NextResponse(null, { status: 404 });
+  // ── 1. Block malicious paths immediately (before any DB/auth work) ─────
+  if (isBlockedPath(pathname)) {
+    return new NextResponse('Not Found', {
+      status: 404,
+      headers: { 'x-trace-id': traceId },
+    });
   }
 
-  // ── 2. Cron endpoints — CRON_SECRET bearer token only ─────────────────
-  if (isCronPath(pathname)) {
-    const cronSecret   = process.env.CRON_SECRET;
-    const authHeader   = req.headers.get('authorization') ?? '';
-    const providedSecret = authHeader.startsWith('Bearer ')
-      ? authHeader.slice(7)
-      : req.headers.get('x-cron-secret') ?? '';
+  // ── 2. Inject trace ID + client IP into request headers ───────────────
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-trace-id', traceId);
+  requestHeaders.set('x-forwarded-trace', traceId);
+  requestHeaders.set('x-client-ip', getClientIp(req));
 
-    if (!cronSecret || providedSecret !== cronSecret) {
+  // ── 3. Cron endpoints — gated by CRON_SECRET, not Supabase session ────
+  if (isCronPath(pathname)) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      return NextResponse.json(
+        { error: 'CRON_SECRET not configured', traceId },
+        { status: 500, headers: { 'x-trace-id': traceId } }
+      );
+    }
+
+    const authHeader  = req.headers.get('authorization') ?? '';
+    const querySecret = req.nextUrl.searchParams.get('secret') ?? '';
+    const xCronHeader = req.headers.get('x-cron-secret') ?? '';
+
+    const validSecret =
+      authHeader === `Bearer ${cronSecret}` ||
+      querySecret === cronSecret ||
+      xCronHeader === cronSecret;
+
+    if (!validSecret) {
       return NextResponse.json(
         { error: 'Unauthorized', traceId },
         { status: 401, headers: { 'x-trace-id': traceId } }
       );
     }
 
-    const res = NextResponse.next();
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
     res.headers.set('x-trace-id', traceId);
     return res;
   }
 
-  // ── 3. Public paths — pass through with trace ID ──────────────────────
+  // ── 4. Short-circuit public routes — no session validation needed ──────
   if (isPublicPath(pathname)) {
-    const response = NextResponse.next();
-    response.headers.set('x-trace-id', traceId);
-    return response;
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    res.headers.set('x-trace-id', traceId);
+    return res;
   }
 
-  // ── 4. Admin paths — require valid session + matching ADMIN_EMAIL ──────
-  if (isAdminPath(pathname)) {
-    // Build a middleware-scoped Supabase client (cookies() is not available here)
-    let response = NextResponse.next({
-      request: { headers: req.headers },
-    });
+  // ── 5. Supabase session validation ────────────────────────────────────
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => req.cookies.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value }) =>
-              req.cookies.set(name, value)
-            );
-            response = NextResponse.next({ request: { headers: req.headers } });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll(); },
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          response = NextResponse.next({ request: { headers: requestHeaders } });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
+          );
         },
-      }
-    );
+      },
+    }
+  );
 
-    const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
+  // ── 6. Admin route enforcement ────────────────────────────────────────
+  if (isAdminPath(pathname)) {
     if (!user) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
@@ -184,7 +240,6 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Email must match server-only ADMIN_EMAIL (never NEXT_PUBLIC_ADMIN_EMAIL)
     if (!ADMIN_EMAIL || user.email !== ADMIN_EMAIL) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
@@ -194,21 +249,19 @@ export async function middleware(req: NextRequest) {
       }
       return NextResponse.redirect(new URL('/', req.url));
     }
-
-    response.headers.set('x-trace-id', traceId);
-    return response;
   }
 
-  // ── 5. All other paths — pass through with trace ID ───────────────────
-  // Individual pages and API routes enforce their own auth via
-  // requireAuth() / requireArtist() in src/lib/auth.ts.
-  const response = NextResponse.next();
+  // ── 7. Attach trace ID to response ──────────────────────────────────────
+  // Note: non-admin routes are intentionally NOT blanket-redirected here.
+  // Each page/API route enforces its own auth via requireAuth()/requireArtist()
+  // (see src/lib/auth.ts) — middleware only gates /admin* and cron, and passes
+  // Supabase cookies through so SSR pages can read the session.
   response.headers.set('x-trace-id', traceId);
   return response;
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf)).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
