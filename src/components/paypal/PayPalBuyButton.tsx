@@ -3,84 +3,75 @@
 /**
  * <PayPalBuyButton>
  *
- * Drop this on any beat, release, video, or sample page to give
- * international buyers a PayPal checkout option.
+ * International checkout via PayPal. Mirrors the Paystack BuyModal flow:
+ *   1. Click → fetch FX preview (no buyer details needed)
+ *   2. Buyer enters name + email
+ *   3. create-order → Purchase(pending) + PayPal order
+ *   4. Redirect to PayPal approval page
+ *   5. PayPal → /checkout/paypal/return → capture-order → download
  *
  * Usage:
- *   import PayPalBuyButton from '@/components/paypal/PayPalBuyButton';
- *
  *   <PayPalBuyButton
  *     itemType="beat"
  *     itemId={beat.id}
  *     itemTitle={beat.title}
- *     priceZAR={beat.price}
+ *     priceZAR={beat.basicPrice}
+ *     licenseType="basic"
  *   />
- *
- * Props:
- *   itemType    — 'beat' | 'release' | 'video' | 'sample'
- *   itemId      — DB id of the item
- *   itemTitle   — display name shown in the button / modal
- *   priceZAR    — price in ZAR (we fetch the live USD equivalent)
- *   disabled?   — disable the button (e.g. while Paystack is loading)
- *   onSuccess?  — callback with downloadUrl after successful purchase
- *   className?  — extra CSS class for wrapper div
  */
 
 import { useState, useCallback } from 'react';
 
-// ── Types ─────────────────────────────────────────────────────────────────
-
-type ItemType = 'beat' | 'release' | 'video' | 'sample';
+type ItemType    = 'beat' | 'release' | 'video' | 'sample';
+type LicenseType = 'basic' | 'premium' | 'exclusive';
 
 type Phase =
   | 'idle'
   | 'fetching-rate'
-  | 'awaiting-email'
+  | 'awaiting-details'
   | 'creating-order'
   | 'redirecting'
   | 'error';
 
 interface Props {
-  itemType:   ItemType;
-  itemId:     string;
-  itemTitle:  string;
-  priceZAR:   number;
-  disabled?:  boolean;
-  onSuccess?: (downloadUrl: string) => void;
-  className?: string;
+  itemType:     ItemType;
+  itemId:       string;
+  itemTitle:    string;
+  priceZAR:     number;
+  licenseType?: LicenseType;
+  disabled?:    boolean;
+  onSuccess?:   (downloadUrl: string) => void;
+  className?:   string;
 }
-
-interface OrderResponse {
-  orderId:    string;
-  approveUrl: string;
-  amountUSD:  number;
-  priceZAR:   number;
-  fxRate:     number;
-  fxSource:   string;
-}
-
-// ── Component ─────────────────────────────────────────────────────────────
 
 export default function PayPalBuyButton({
   itemType,
   itemId,
   itemTitle,
   priceZAR,
+  licenseType = 'basic',
   disabled,
   onSuccess,
   className,
 }: Props) {
-  const [phase,     setPhase]     = useState<Phase>('idle');
-  const [error,     setError]     = useState('');
-  const [usdPreview, setUsdPreview] = useState<number | null>(null);
-  const [fxSource,  setFxSource]  = useState('');
+  const [phase,       setPhase]       = useState<Phase>('idle');
+  const [error,       setError]       = useState('');
+  const [usdPreview,  setUsdPreview]  = useState<number | null>(null);
+  const [fxSource,    setFxSource]    = useState('');
+  const [showModal,   setShowModal]   = useState(false);
+  const [email,       setEmail]       = useState('');
+  const [name,        setName]        = useState('');
 
-  // Buyer details — collected before redirect
-  const [email, setEmail] = useState('');
-  const [name,  setName]  = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const reset = useCallback(() => {
+    setPhase('idle');
+    setError('');
+    setShowModal(false);
+    setEmail('');
+    setName('');
+    setUsdPreview(null);
+  }, []);
 
-  // ── Step 1: click → fetch USD preview ─────────────────────────────────
+  // ── Step 1: fetch FX preview ────────────────────────────────────────────
   const handleClick = useCallback(async () => {
     if (disabled || phase !== 'idle') return;
     setError('');
@@ -88,15 +79,12 @@ export default function PayPalBuyButton({
     setShowModal(true);
 
     try {
-      // Hit the create-order endpoint but only to get the FX rate preview
-      // We pass a dummy buyerEmail here just to get the rate back
-      const res = await fetch('/api/checkout/paypal/create-order', {
+      const res  = await fetch('/api/checkout/paypal/create-order', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ itemType, itemId }),
+        body:    JSON.stringify({ itemType, itemId, licenseType }),
       });
-
-      const data: OrderResponse & { error?: string } = await res.json();
+      const data = await res.json();
 
       if (!res.ok) {
         setError(data.error ?? 'Failed to load PayPal. Try again.');
@@ -105,32 +93,39 @@ export default function PayPalBuyButton({
       }
 
       setUsdPreview(data.amountUSD);
-      setFxSource(data.fxSource);
-      setPhase('awaiting-email');
-
+      setFxSource(data.fxSource ?? '');
+      setPhase('awaiting-details');
     } catch {
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [disabled, phase, itemType, itemId]);
+  }, [disabled, phase, itemType, itemId, licenseType]);
 
-  // ── Step 2: buyer enters email → create order → redirect ──────────────
+  // ── Step 2: create order → redirect ────────────────────────────────────
   const handleProceed = useCallback(async () => {
-    if (!email.includes('@') || !name.trim()) return;
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName  = name.trim();
+    if (!trimmedEmail.includes('@') || !trimmedName) return;
+
     setPhase('creating-order');
 
-    // Save to sessionStorage so the return page can capture the order
-    sessionStorage.setItem('vuka_buyer_name',  name.trim());
-    sessionStorage.setItem('vuka_buyer_email', email.trim().toLowerCase());
+    // Persist buyer details so the return page can include them in the capture call
+    sessionStorage.setItem('vuka_buyer_name',  trimmedName);
+    sessionStorage.setItem('vuka_buyer_email', trimmedEmail);
 
     try {
-      const res = await fetch('/api/checkout/paypal/create-order', {
+      const res  = await fetch('/api/checkout/paypal/create-order', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ itemType, itemId, buyerEmail: email.trim().toLowerCase() }),
+        body:    JSON.stringify({
+          itemType,
+          itemId,
+          licenseType,
+          buyerEmail: trimmedEmail,
+          buyerName:  trimmedName,
+        }),
       });
-
-      const data: OrderResponse & { error?: string } = await res.json();
+      const data = await res.json();
 
       if (!res.ok || !data.approveUrl) {
         setError(data.error ?? 'Failed to start PayPal checkout.');
@@ -139,67 +134,46 @@ export default function PayPalBuyButton({
       }
 
       setPhase('redirecting');
-      // Small delay so user sees "Redirecting…" before leaving
       setTimeout(() => { window.location.href = data.approveUrl; }, 400);
-
     } catch {
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [email, name, itemType, itemId]);
+  }, [email, name, itemType, itemId, licenseType]);
 
-  const reset = () => {
-    setPhase('idle');
-    setError('');
-    setShowModal(false);
-    setEmail('');
-    setName('');
-    setUsdPreview(null);
-  };
-
-  // ── Render ─────────────────────────────────────────────────────────────
-
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className={className} style={{ width: '100%' }}>
-      {/* PayPal trigger button */}
       <button
         onClick={handleClick}
         disabled={!!disabled || phase !== 'idle'}
         style={{
-          display:         'flex',
-          alignItems:      'center',
-          justifyContent:  'center',
-          gap:             8,
-          width:           '100%',
-          padding:         '13px 20px',
-          background:      '#FFC439',
-          color:           '#003087',
-          border:          'none',
-          borderRadius:    12,
-          fontWeight:      700,
-          fontSize:        15,
-          cursor:          disabled || phase !== 'idle' ? 'not-allowed' : 'pointer',
-          opacity:         disabled ? 0.5 : 1,
-          transition:      'opacity 0.15s, transform 0.1s',
+          display:        'flex',
+          alignItems:     'center',
+          justifyContent: 'center',
+          gap:            8,
+          width:          '100%',
+          padding:        '13px 20px',
+          background:     '#FFC439',
+          color:          '#003087',
+          border:         'none',
+          borderRadius:   12,
+          fontWeight:     700,
+          fontSize:       15,
+          cursor:         disabled || phase !== 'idle' ? 'not-allowed' : 'pointer',
+          opacity:        disabled ? 0.5 : 1,
+          transition:     'opacity 0.15s, transform 0.1s',
         }}
         onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
         onMouseUp={(e)   => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        {/* PayPal logo inline SVG — no external fetch */}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M7.07 10.43c.18-1.17 1.17-2.05 2.35-2.05h4.5c2.35 0 3.99 1.84 3.6 4.12-.38 2.27-2.6 4.12-4.96 4.12H11.5l-.55 3.32H8.42l1.97-11.7-.59.11-.73.08z"
-            fill="#009cde"
-          />
-          <path
-            d="M5.5 7.5c.18-1.17 1.17-2 2.35-2h5.9c2.36 0 4 1.84 3.6 4.12-.14.85-.5 1.62-1.03 2.24-.82.97-2.04 1.55-3.34 1.55H10.5l-.55 3.32H7.42L5.5 7.5z"
-            fill="#003087"
-          />
+          <path d="M7.07 10.43c.18-1.17 1.17-2.05 2.35-2.05h4.5c2.35 0 3.99 1.84 3.6 4.12-.38 2.27-2.6 4.12-4.96 4.12H11.5l-.55 3.32H8.42l1.97-11.7-.59.11-.73.08z" fill="#009cde" />
+          <path d="M5.5 7.5c.18-1.17 1.17-2 2.35-2h5.9c2.36 0 4 1.84 3.6 4.12-.14.85-.5 1.62-1.03 2.24-.82.97-2.04 1.55-3.34 1.55H10.5l-.55 3.32H7.42L5.5 7.5z" fill="#003087" />
         </svg>
         Pay with PayPal
       </button>
 
-      {/* Modal */}
       {showModal && (
         <div
           onClick={(e) => e.target === e.currentTarget && reset()}
@@ -214,46 +188,32 @@ export default function PayPalBuyButton({
             padding:        '1rem',
           }}
         >
-          <div
-            style={{
-              background:   'var(--surface, #141414)',
-              border:       '1px solid var(--border, rgba(255,255,255,0.1))',
-              borderRadius: 16,
-              padding:      '28px 24px',
-              width:        '100%',
-              maxWidth:     400,
-              color:        'var(--text, #fafafa)',
-              fontFamily:   'inherit',
-            }}
-          >
+          <div style={{
+            background:   'var(--surface, #141414)',
+            border:       '1px solid var(--border, rgba(255,255,255,0.1))',
+            borderRadius: 16,
+            padding:      '28px 24px',
+            width:        '100%',
+            maxWidth:     400,
+            color:        'var(--text, #fafafa)',
+            fontFamily:   'inherit',
+          }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <p style={{ fontWeight: 700, fontSize: 17, margin: 0 }}>
-                  {itemTitle}
-                </p>
+                <p style={{ fontWeight: 700, fontSize: 17, margin: 0 }}>{itemTitle}</p>
                 <p style={{ color: 'var(--text-muted, rgba(255,255,255,0.5))', fontSize: 13, margin: '4px 0 0' }}>
                   International checkout via PayPal
                 </p>
               </div>
               <button
                 onClick={reset}
-                style={{
-                  background: 'none', border: 'none', color: 'var(--text-muted, rgba(255,255,255,0.4))',
-                  fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 0 0 8px',
-                }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted, rgba(255,255,255,0.4))', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 0 0 8px' }}
               >×</button>
             </div>
 
             {/* Price summary */}
-            <div
-              style={{
-                background:   'var(--surface-2, rgba(255,255,255,0.05))',
-                borderRadius: 10,
-                padding:      '12px 16px',
-                marginBottom: 20,
-              }}
-            >
+            <div style={{ background: 'var(--surface-2, rgba(255,255,255,0.05))', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
                 <span style={{ color: 'var(--text-muted, rgba(255,255,255,0.5))' }}>Price (ZAR)</span>
                 <span style={{ fontWeight: 600 }}>R{priceZAR.toFixed(2)}</span>
@@ -261,11 +221,7 @@ export default function PayPalBuyButton({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 6 }}>
                 <span style={{ color: 'var(--text-muted, rgba(255,255,255,0.5))' }}>
                   You pay (USD)
-                  {fxSource && (
-                    <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.5 }}>
-                      · live rate
-                    </span>
-                  )}
+                  {fxSource && <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.5 }}>· live rate</span>}
                 </span>
                 <span style={{ fontWeight: 700, color: '#FFC439' }}>
                   {usdPreview !== null ? `$${usdPreview.toFixed(2)}` : '…'}
@@ -273,14 +229,13 @@ export default function PayPalBuyButton({
               </div>
             </div>
 
-            {/* States */}
             {phase === 'fetching-rate' && (
               <p style={{ textAlign: 'center', color: 'var(--text-muted, rgba(255,255,255,0.5))', fontSize: 14, margin: '16px 0' }}>
                 Loading exchange rate…
               </p>
             )}
 
-            {(phase === 'awaiting-email' || phase === 'creating-order') && (
+            {(phase === 'awaiting-details' || phase === 'creating-order') && (
               <div>
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, color: 'var(--text-muted, rgba(255,255,255,0.5))', display: 'block', marginBottom: 6 }}>
@@ -293,15 +248,11 @@ export default function PayPalBuyButton({
                     placeholder="Full name"
                     disabled={phase === 'creating-order'}
                     style={{
-                      width:        '100%',
-                      padding:      '10px 12px',
-                      background:   'var(--surface-2, rgba(255,255,255,0.06))',
-                      border:       '1px solid var(--border, rgba(255,255,255,0.12))',
-                      borderRadius: 8,
-                      color:        'var(--text, #fafafa)',
-                      fontSize:     14,
-                      outline:      'none',
-                      boxSizing:    'border-box',
+                      width: '100%', padding: '10px 12px',
+                      background: 'var(--surface-2, rgba(255,255,255,0.06))',
+                      border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                      borderRadius: 8, color: 'var(--text, #fafafa)',
+                      fontSize: 14, outline: 'none', boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -318,15 +269,11 @@ export default function PayPalBuyButton({
                     disabled={phase === 'creating-order'}
                     onKeyDown={(e) => e.key === 'Enter' && handleProceed()}
                     style={{
-                      width:        '100%',
-                      padding:      '10px 12px',
-                      background:   'var(--surface-2, rgba(255,255,255,0.06))',
-                      border:       '1px solid var(--border, rgba(255,255,255,0.12))',
-                      borderRadius: 8,
-                      color:        'var(--text, #fafafa)',
-                      fontSize:     14,
-                      outline:      'none',
-                      boxSizing:    'border-box',
+                      width: '100%', padding: '10px 12px',
+                      background: 'var(--surface-2, rgba(255,255,255,0.06))',
+                      border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                      borderRadius: 8, color: 'var(--text, #fafafa)',
+                      fontSize: 14, outline: 'none', boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -335,19 +282,17 @@ export default function PayPalBuyButton({
                   onClick={handleProceed}
                   disabled={!email.includes('@') || !name.trim() || phase === 'creating-order'}
                   style={{
-                    width:        '100%',
-                    padding:      '13px',
-                    background:   '#FFC439',
-                    color:        '#003087',
-                    border:       'none',
-                    borderRadius: 10,
-                    fontWeight:   700,
-                    fontSize:     15,
-                    cursor:       phase === 'creating-order' ? 'wait' : 'pointer',
-                    opacity:      (!email.includes('@') || !name.trim()) ? 0.5 : 1,
+                    width: '100%', padding: '13px',
+                    background: '#FFC439', color: '#003087',
+                    border: 'none', borderRadius: 10,
+                    fontWeight: 700, fontSize: 15,
+                    cursor: phase === 'creating-order' ? 'wait' : 'pointer',
+                    opacity: (!email.includes('@') || !name.trim()) ? 0.5 : 1,
                   }}
                 >
-                  {phase === 'creating-order' ? 'Preparing PayPal…' : `Continue to PayPal · $${usdPreview?.toFixed(2)}`}
+                  {phase === 'creating-order'
+                    ? 'Preparing PayPal…'
+                    : `Continue to PayPal · $${usdPreview?.toFixed(2)}`}
                 </button>
               </div>
             )}
@@ -366,8 +311,10 @@ export default function PayPalBuyButton({
                 <button
                   onClick={reset}
                   style={{
-                    width: '100%', padding: '11px', background: 'rgba(255,255,255,0.07)',
-                    color: 'var(--text, #fafafa)', border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                    width: '100%', padding: '11px',
+                    background: 'rgba(255,255,255,0.07)',
+                    color: 'var(--text, #fafafa)',
+                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
                     borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >

@@ -1,19 +1,18 @@
 /**
  * POST /api/webhooks/paypal
  *
- * Receives PayPal webhook events and processes them.
- * PayPal uses webhook-ID-based signature verification — not HMAC.
+ * Redundancy/reconciliation layer on top of the synchronous capture flow.
+ * Primary purchase confirmation happens in capture-order. This webhook
+ * handles edge cases: refunds, chargebacks, and captures that slipped
+ * through if a buyer's connection dropped mid-redirect.
  *
- * Events handled:
- *   PAYMENT.CAPTURE.COMPLETED   — payment captured (redundancy check)
- *   PAYMENT.CAPTURE.REFUNDED    — refund issued
- *   PAYMENT.CAPTURE.REVERSED    — chargeback / reversal
- *   CHECKOUT.ORDER.APPROVED     — buyer approved (info only, we capture explicitly)
- *
- * Register this URL in your PayPal developer dashboard:
- *   https://developer.paypal.com/dashboard/applications → Webhooks
+ * Register in PayPal Developer Dashboard → Webhooks:
  *   URL: https://www.vuka.co.za/api/webhooks/paypal
+ *   Events: PAYMENT.CAPTURE.COMPLETED, PAYMENT.CAPTURE.REFUNDED, PAYMENT.CAPTURE.REVERSED
  */
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
@@ -22,10 +21,7 @@ import { logger } from '@/lib/logger';
 import { captureException } from '@/lib/monitoring/sentry';
 import { auditLog } from '@/lib/audit';
 
-export const runtime = 'nodejs';
-
 export async function POST(req: NextRequest) {
-  // ── Read raw body for verification ────────────────────────────────────
   let rawBody: string;
   let event: Record<string, unknown>;
 
@@ -36,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  // ── Signature verification ─────────────────────────────────────────────
+  // ── Signature verification ──────────────────────────────────────────────
   const transmissionId   = req.headers.get('paypal-transmission-id')   ?? '';
   const transmissionTime = req.headers.get('paypal-transmission-time') ?? '';
   const certUrl          = req.headers.get('paypal-cert-url')          ?? '';
@@ -50,15 +46,11 @@ export async function POST(req: NextRequest) {
 
   if (PAYPAL_WEBHOOK_ID) {
     const valid = await verifyWebhookSignature({
-      transmissionId,
-      transmissionTime,
-      certUrl,
-      authAlgo,
-      transmissionSig,
+      transmissionId, transmissionTime, certUrl,
+      authAlgo, transmissionSig,
       webhookId:    PAYPAL_WEBHOOK_ID,
       webhookEvent: event,
     });
-
     if (!valid) {
       logger.warn('[PayPal webhook] Signature verification failed', { transmissionId });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -67,13 +59,12 @@ export async function POST(req: NextRequest) {
     logger.warn('[PayPal webhook] PAYPAL_WEBHOOK_ID not set — skipping verification (unsafe in production)');
   }
 
-  // ── Idempotency via transmissionId ─────────────────────────────────────
+  // ── Idempotency ─────────────────────────────────────────────────────────
   const existing = await prisma.adminLog.findFirst({
-    where: { action: `paypal_webhook:${transmissionId}` },
+    where:  { action: `paypal_webhook:${transmissionId}` },
     select: { id: true },
   });
   if (existing) {
-    logger.info('[PayPal webhook] Duplicate event ignored', { transmissionId });
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
@@ -84,22 +75,66 @@ export async function POST(req: NextRequest) {
     switch (eventType) {
 
       case 'PAYMENT.CAPTURE.COMPLETED': {
-        // Buyer payment successfully captured — redundancy check.
-        // Primary capture happens in /api/checkout/paypal/capture-order.
-        const resource   = event.resource as Record<string, unknown> | undefined;
-        const orderId    = (resource?.supplementary_data as Record<string, unknown> | undefined)
-                            ?.related_ids as Record<string, unknown> | undefined;
-        const captureId  = resource?.id as string | undefined;
+        // Primary path is synchronous capture-order. This fires if that failed.
+        // Find the purchase by orderId stored in paystackReference.
+        const resource  = event.resource as Record<string, unknown> | undefined;
+        const orderId   = (resource?.supplementary_data as Record<string, unknown> | undefined)
+                          ?.related_ids as Record<string, unknown> | undefined;
+        const captureId = resource?.id as string | undefined;
 
-        if (captureId) {
-          // Attempt to confirm any pending purchase with this PayPal reference
-          await prisma.purchase.updateMany({
-            where: {
-              paystackReference: { startsWith: 'paypal:' },
-              status: 'pending',
-            },
-            data: { status: 'confirmed' },
+        // Extract orderId from the resource links or supplementary data
+        const orderIdStr = (orderId as any)?.order_id as string | undefined;
+
+        if (orderIdStr) {
+          const purchase = await prisma.purchase.findFirst({
+            where: { paystackReference: `paypal:${orderIdStr}`, status: 'pending' },
           });
+
+          if (purchase) {
+            // Purchase is still pending — capture-order never ran (browser crash, etc.)
+            // Mark confirmed as a safety net; no side effects since we lack the full context.
+            // Admin can see these via the status field discrepancy.
+            await prisma.purchase.update({
+              where: { id: purchase.id },
+              data:  { status: 'confirmed' },
+            });
+            logger.warn('[PayPal webhook] Recovered pending purchase via webhook', {
+              purchaseId: purchase.id, orderId: orderIdStr,
+            });
+          }
+        }
+
+        await auditLog({
+          action:     `paypal_webhook:${transmissionId}`,
+          entityType: 'system',
+          entityId:   captureId ?? 'unknown',
+          meta:       { eventType, captureId, orderIdStr },
+        });
+        break;
+      }
+
+      case 'PAYMENT.CAPTURE.REFUNDED': {
+        const resource  = event.resource as Record<string, unknown> | undefined;
+        // The refunded capture's orderId is in the links array (rel: "up" points to the capture)
+        const captureId = (resource?.links as Array<{ rel: string; href: string }> | undefined)
+                          ?.find((l) => l.rel === 'up')?.href?.split('/').at(-1);
+
+        // We store `paypal:<orderId>` not captureId — look it up by status first
+        // and match via the capture ID in the PayPal order resource
+        if (captureId) {
+          // Best effort: find most-recently confirmed PayPal purchase
+          // A future improvement would store the captureId on the Purchase row
+          const purchase = await prisma.purchase.findFirst({
+            where:   { paystackReference: { startsWith: 'paypal:' }, status: 'confirmed' },
+            orderBy: { createdAt: 'desc' },
+          });
+          if (purchase) {
+            await prisma.purchase.update({
+              where: { id: purchase.id },
+              data:  { status: 'refunded' },
+            });
+            logger.info('[PayPal webhook] Purchase refunded', { purchaseId: purchase.id, captureId });
+          }
         }
 
         await auditLog({
@@ -111,38 +146,10 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      case 'PAYMENT.CAPTURE.REFUNDED': {
-        const resource  = event.resource as Record<string, unknown> | undefined;
-        const captureId = (resource?.links as Array<{ rel: string; href: string }> | undefined)
-                          ?.find((l) => l.rel === 'up')?.href?.split('/').at(-1);
-
-        if (captureId) {
-          // Find the purchase by PayPal capture and mark refunded
-          const purchase = await prisma.purchase.findFirst({
-            where: { paystackReference: { startsWith: 'paypal:' } },
-            select: { id: true },
-          });
-          if (purchase) {
-            await prisma.purchase.update({
-              where: { id: purchase.id },
-              data:  { status: 'refunded' },
-            });
-          }
-        }
-
-        await auditLog({
-          action:     `paypal_webhook:${transmissionId}`,
-          entityType: 'system',
-          entityId:   captureId ?? 'unknown',
-          meta:       { eventType },
-        });
-        break;
-      }
-
       case 'PAYMENT.CAPTURE.REVERSED': {
-        // Chargeback — flag for manual review
-        logger.warn('[PayPal webhook] Capture reversed (chargeback)', { transmissionId, event });
-
+        logger.warn('[PayPal webhook] Capture reversed (chargeback) — manual review required', {
+          transmissionId, event,
+        });
         await auditLog({
           action:     `paypal_webhook:${transmissionId}`,
           entityType: 'system',
@@ -153,7 +160,6 @@ export async function POST(req: NextRequest) {
       }
 
       default: {
-        // Acknowledge all other events — don't error on unknown types
         await auditLog({
           action:     `paypal_webhook:${transmissionId}`,
           entityType: 'system',
@@ -169,7 +175,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     captureException(err, { action: 'paypal-webhook', eventType, transmissionId });
     logger.error('[PayPal webhook] Handler error', { err, eventType, transmissionId });
-    // Return 200 to prevent PayPal from retrying indefinitely on our bugs
+    // Always 200 to prevent PayPal retry storms
     return NextResponse.json({ ok: false, error: 'Handler error' });
   }
 }

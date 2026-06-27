@@ -4,13 +4,12 @@
  * /checkout/paypal/return
  *
  * PayPal redirects the buyer here after they approve the payment.
- * We capture the order and redirect to the download page.
- *
  * Query params from PayPal:
- *   token       — the PayPal order ID
- *   PayerID     — the buyer's PayPal account ID
+ *   token       — the PayPal orderId
+ *   PayerID     — buyer's PayPal account ID (not used, PayPal includes it)
  *
  * Our params (set in create-order returnUrl):
+ *   purchaseId  — our DB purchase row (created by create-order)
  *   itemType    — beat | release | video | sample
  *   itemId      — DB id of the item
  */
@@ -29,16 +28,16 @@ export default function PayPalReturnPage() {
   const [state, setState] = useState<State>({ phase: 'capturing' });
 
   useEffect(() => {
-    const orderId   = params.get('token');
-    const itemType  = params.get('itemType');
-    const itemId    = params.get('itemId');
+    const orderId     = params.get('token');
+    const purchaseId  = params.get('purchaseId');
+    const itemType    = params.get('itemType');
+    const itemId      = params.get('itemId');
 
     if (!orderId || !itemType || !itemId) {
       setState({ phase: 'error', message: 'Missing payment details. Please contact support.' });
       return;
     }
 
-    // Pull buyer details from sessionStorage (set by the checkout page)
     const buyerName  = sessionStorage.getItem('vuka_buyer_name')  ?? 'Customer';
     const buyerEmail = sessionStorage.getItem('vuka_buyer_email') ?? '';
 
@@ -52,7 +51,14 @@ export default function PayPalReturnPage() {
         const res = await fetch('/api/checkout/paypal/capture-order', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, itemType, itemId, buyerName, buyerEmail }),
+          body: JSON.stringify({
+            orderId,
+            purchaseId: purchaseId ?? '',
+            itemType,
+            itemId,
+            buyerName,
+            buyerEmail,
+          }),
         });
 
         const data = await res.json();
@@ -65,13 +71,10 @@ export default function PayPalReturnPage() {
           return;
         }
 
-        // Clean up session storage
         sessionStorage.removeItem('vuka_buyer_name');
         sessionStorage.removeItem('vuka_buyer_email');
 
         setState({ phase: 'redirecting', downloadUrl: data.downloadUrl });
-
-        // Redirect to download page
         setTimeout(() => router.push(data.downloadUrl), 800);
 
       } catch {
@@ -123,12 +126,12 @@ export default function PayPalReturnPage() {
           <a
             href="/store"
             style={{
-              padding:      '10px 24px',
-              background:   'var(--green, #22c55e)',
-              color:        '#0a0a0a',
-              borderRadius: 10,
-              fontWeight:   700,
-              fontSize:     14,
+              padding:        '10px 24px',
+              background:     'var(--green, #22c55e)',
+              color:          '#0a0a0a',
+              borderRadius:   10,
+              fontWeight:     700,
+              fontSize:       14,
               textDecoration: 'none',
             }}
           >
