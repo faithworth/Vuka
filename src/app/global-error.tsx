@@ -21,7 +21,7 @@ export default function GlobalError({
     } catch { /* never throw inside an error boundary */ }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[Vuka] Global error:', error);
+      console.error('[Vuka Music] Global error:', error);
     }
   }, [error]);
 
@@ -51,7 +51,7 @@ export default function GlobalError({
               marginBottom: 12,
             }}
           >
-            Vuka ran into a problem
+            Vuka Music ran into a problem
           </h1>
           <p
             style={{

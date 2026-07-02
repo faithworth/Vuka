@@ -1,6 +1,6 @@
 // src/app/api/releases/upload/route.ts
-// Artist release upload — operates on the Release/Track models (Vuka's
-// direct-to-fan sales catalog). Vuka does NOT distribute to DSPs and does
+// Artist release upload — operates on the Release/Track models (Vuka Music's
+// direct-to-fan sales catalog). Vuka Music does NOT distribute to DSPs and does
 // NOT issue ISRC/UPC codes — those calls were removed because the fields
 // they wrote to don't exist on Release/Track and were causing every
 // upload to fail with a Prisma validation error in production.
@@ -166,7 +166,7 @@ export async function PATCH(req: NextRequest) {
       include: { tracks: { orderBy: { trackNumber: 'asc' } } },
     });
 
-    // First time going live — let the artist know. Vuka has no DSP delivery
+    // First time going live — let the artist know. Vuka Music has no DSP delivery
     // pipeline, so this fires the moment the release actually goes live.
     if (wasInactive && willActivate) {
       try {

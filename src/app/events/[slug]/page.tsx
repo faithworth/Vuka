@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Loader2, Calendar, MapPin, Ticket, Check, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Check, AlertCircle } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function EventPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -44,7 +45,7 @@ export default function EventPage() {
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-ZA', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
   const fmtRand = (n: number) => n === 0 ? 'Free' : `R${n.toFixed(2)}`;
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background:'var(--bg)' }}><Loader2 size={24} className="animate-spin" style={{ color:'var(--text-muted)' }}/></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background:'var(--bg)' }}><VukaLoader size={24} /></div>;
   if (!event)  return <div className="min-h-screen flex items-center justify-center" style={{ background:'var(--bg)' }}><p style={{ color:'var(--text-muted)' }}>Event not found.</p></div>;
 
   if (success) return (
@@ -113,7 +114,7 @@ export default function EventPage() {
             <button onClick={buyTicket} disabled={submitting || !name || !email}
               className="w-full mt-4 py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
               style={{ background:'linear-gradient(135deg,#d4a000,#b38600)' }}>
-              {submitting ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin"/>Processing…</span>
+              {submitting ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} />Processing…</span>
                 : selected.price === 0 ? 'Get Free Ticket'
                 : `Buy ${qty} × ${fmtRand(selected.price)} = R${(selected.price * parseInt(qty || '1')).toFixed(2)}`}
             </button>

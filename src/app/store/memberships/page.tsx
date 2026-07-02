@@ -8,9 +8,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link                                          from 'next/link';
 import { Navbar }                                    from '@/components/Navbar';
 import {
-  Users, Search, Loader2, Zap, Check,
-  ChevronLeft, ChevronRight, SlidersHorizontal,
+  Users, Search, Zap, Check, ChevronLeft, ChevronRight, SlidersHorizontal,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // ─── Domain types ─────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ function TierCard({ tier, onJoin, joining }: {
             style={{ background: 'var(--sky)' }}
           >
             {joining
-              ? <><Loader2 size={13} className="animate-spin" /> Joining…</>
+              ? <><VukaLoader size={13} /> Joining…</>
               : <><Users size={13} /> Join</>}
           </button>
         </div>

@@ -8,11 +8,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Users, Music, TrendingUp, Shield, Flag, LogOut, Loader2,
-  Music2, CheckCircle, XCircle, Clock, AlertTriangle,
-  DollarSign, Settings, FileText, RefreshCw, ChevronDown,
-  Filter, Search,
+  Users, Music, TrendingUp, Shield, Flag, LogOut, Music2, CheckCircle, XCircle, Clock, AlertTriangle, DollarSign, Settings, FileText, RefreshCw, ChevronDown, Filter, Search,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const ADMIN_EMAIL = ''; // Unused — role check is done via /api/auth/me isAdmin flag
 
@@ -217,7 +215,7 @@ export default function AdminPage() {
   /* ── early exits ───────────────────────────────────────────── */
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={24} />
     </div>
   );
 
@@ -242,7 +240,7 @@ export default function AdminPage() {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}>
             <Music2 size={13} className="text-white" />
           </div>
-          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
+          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka Music</span>
           <Badge label="Admin" color="#e8c87c" />
         </div>
         <Link href="/" className="btn btn-ghost text-sm">← Back to site</Link>
@@ -458,7 +456,7 @@ export default function AdminPage() {
         {tab === 'finance' && (
           <div className="space-y-6">
             {!finance ? (
-              <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin" style={{ color: 'var(--sky)' }} /></div>
+              <div className="flex justify-center py-12"><VukaLoader size={20} /></div>
             ) : (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -742,7 +740,7 @@ function AdminAnalyticsTab() {
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 40, color: 'var(--text-muted)' }}>
-      <Loader2 size={18} className="animate-spin" /> Loading analytics…
+      <VukaLoader size={18} /> Loading analytics…
     </div>
   );
 

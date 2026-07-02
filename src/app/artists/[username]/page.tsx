@@ -14,8 +14,8 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
-    title: `${params.username} — Vuka`,
-    description: `Listen to ${params.username} on Vuka`,
+    title: `${params.username} — Vuka Music`,
+    description: `Listen to ${params.username} on Vuka Music`,
   };
 }
 

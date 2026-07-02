@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     ? `R${fmtNum(milestone)}`
     : `${fmtNum(milestone)} ${dimLabel}`;
 
-  const artistName = artist?.name ?? 'Vuka Artist';
+  const artistName = artist?.name ?? 'Vuka Music Artist';
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -71,9 +71,9 @@ export async function GET(req: NextRequest) {
   <rect x="2" y="2" width="1196" height="626" rx="24" ry="24"
     fill="none" stroke="${meta.color}" stroke-width="2" stroke-opacity="0.4"/>
 
-  <!-- Vuka wordmark -->
+  <!-- Vuka Music wordmark -->
   <text x="60" y="72" font-family="system-ui,sans-serif" font-weight="900"
-    font-size="28" fill="white" opacity="0.9">Vuka</text>
+    font-size="28" fill="white" opacity="0.9">Vuka Music</text>
   <text x="117" y="72" font-family="system-ui,sans-serif" font-weight="900"
     font-size="28" fill="${meta.color}">Music</text>
 

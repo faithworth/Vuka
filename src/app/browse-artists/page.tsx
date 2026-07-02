@@ -8,10 +8,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import {
-  Search, Loader2, Music, Users, Star, Send, Filter,
-  Globe, Building2, ChevronRight, Handshake, Mic2,
+  Search, Music, Users, Star, Send, Filter, Globe, Building2, ChevronRight, Handshake, Mic2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const GENRES = [
   '', 'Amapiano', 'Afrobeats', 'Gqom', 'Hip Hop', 'Kwaito',
@@ -116,7 +116,7 @@ export default function BrowseArtistsPage() {
               Find Artists
             </h1>
             <p className="text-base md:text-lg max-w-xl" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              Browse active artists across Africa. Send deals, offers, or management inquiries directly through Vuka.
+              Browse active artists across Africa. Send deals, offers, or management inquiries directly through Vuka Music.
             </p>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function BrowseArtistsPage() {
           {/* Grid */}
           {loading && artists.length === 0 ? (
             <div className="flex justify-center py-20">
-              <Loader2 size={28} className="animate-spin" style={{ color: 'var(--gold)' }} />
+              <VukaLoader size={28} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -182,7 +182,7 @@ export default function BrowseArtistsPage() {
           )}
           {loading && artists.length > 0 && (
             <div className="flex justify-center mt-8">
-              <Loader2 size={20} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+              <VukaLoader size={20} />
             </div>
           )}
 
@@ -303,7 +303,7 @@ function ArtistCard({ artist, userRole, isOfferOpen, offerForm, sending, sent, o
                   <button onClick={onSendOffer} disabled={sending}
                     className="btn btn-primary flex-1 text-xs"
                     style={{ background: 'var(--gold)', color: '#0a0a0a' }}>
-                    {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    {sending ? <VukaLoader size={12} /> : <Send size={12} />}
                     Send Offer
                   </button>
                 </div>

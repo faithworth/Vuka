@@ -6,10 +6,9 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import {
-  CheckCircle, Clock, TrendingUp, Wallet, ArrowUpRight,
-  Loader2, RefreshCw, Building2, CreditCard, Zap, ExternalLink,
-  Plus, Banknote,
+  CheckCircle, Clock, TrendingUp, Wallet, ArrowUpRight, RefreshCw, Building2, CreditCard, Zap, ExternalLink, Plus, Banknote,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function PayoutsPage() {
   const [data, setData]     = useState<any>(null);
@@ -106,7 +105,7 @@ export default function PayoutsPage() {
 
   if (loading) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-      <Loader2 size={18} className="animate-spin" /> Loading your earnings…
+      <VukaLoader size={18} /> Loading your earnings…
     </div>
   );
 
@@ -418,7 +417,7 @@ export default function PayoutsPage() {
                     <button onClick={saveBankAccount} disabled={bankSaving}
                       className="flex-1 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-60"
                       style={{ background: 'var(--sky)' }}>
-                      {bankSaving ? <><Loader2 size={14} className="animate-spin inline mr-2" />Saving…</> : 'Save Account'}
+                      {bankSaving ? <><VukaLoader size={14} className="inline mr-2" />Saving…</> : 'Save Account'}
                     </button>
                     <button onClick={() => setShowBankForm(false)}
                       className="px-4 py-2.5 rounded-lg text-sm font-medium"
@@ -470,7 +469,7 @@ export default function PayoutsPage() {
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50"
                   style={{ background: summary.totalPending > 0 ? 'linear-gradient(135deg,#d4a000,#b38600)' : 'var(--surface2)' }}>
                   {requestingPayout
-                    ? <><Loader2 size={14} className="animate-spin" /> Submitting…</>
+                    ? <><VukaLoader size={14} /> Submitting…</>
                     : <><ArrowUpRight size={14} /> Request Payout {summary.totalPending > 0 ? `· ${formatCurrency(summary.totalPending)}` : ''}</>}
                 </button>
               </div>

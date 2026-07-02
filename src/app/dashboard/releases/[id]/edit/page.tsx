@@ -4,16 +4,16 @@
 // /dashboard/releases/[id]/edit
 // Re-upload audio per track, edit basic metadata, and control
 // whether the release is published. Backed by /api/releases/[id]
-// (the direct-sales Release model — Vuka has no DSP distribution).
+// (the direct-sales Release model — Vuka Music has no DSP distribution).
 // ============================================================
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Upload, Loader2, CheckCircle,
-  AlertCircle, Save, Eye, EyeOff, Trash2,
+  ArrowLeft, Upload, CheckCircle, AlertCircle, Save, Eye, EyeOff, Trash2,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface TrackState {
   id: string;
@@ -185,7 +185,7 @@ export default function EditReleasePage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading release…
+        <VukaLoader size={18} /> Loading release…
       </div>
     );
   }
@@ -260,7 +260,7 @@ export default function EditReleasePage() {
               background: release.isActive ? 'rgba(255,77,77,0.1)' : 'var(--green)',
               color: release.isActive ? '#ff4d4d' : '#0a0a0a',
             }}>
-            {togglingActive ? <Loader2 size={14} className="animate-spin" /> : release.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
+            {togglingActive ? <VukaLoader size={14} /> : release.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
             {release.isActive ? 'Unpublish' : 'Publish'}
           </button>
         </div>
@@ -334,7 +334,7 @@ export default function EditReleasePage() {
                     opacity: (track.uploading || track.saving) ? 0.7 : 1,
                   }}>
                   {track.uploading ? (
-                    <><Loader2 size={14} className="animate-spin" /> Uploading… {track.uploadProgress}%</>
+                    <><VukaLoader size={14} /> Uploading… {track.uploadProgress}%</>
                   ) : track.uploaded ? (
                     <><CheckCircle size={14} /> New file ready — click Save</>
                   ) : (
@@ -356,7 +356,7 @@ export default function EditReleasePage() {
                   disabled={track.saving}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold flex-shrink-0 disabled:opacity-50"
                   style={{ background: 'var(--sky)', color: 'white' }}>
-                  {track.saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  {track.saving ? <VukaLoader size={13} /> : <Save size={13} />}
                   {track.saving ? 'Saving…' : 'Save'}
                 </button>
               )}
@@ -408,7 +408,7 @@ export default function EditReleasePage() {
           <button onClick={handleDelete} disabled={deleting}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-60"
             style={{ background: 'rgba(255,77,77,0.1)', color: '#ff4d4d', border: '1px solid rgba(255,77,77,0.3)' }}>
-            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {deleting ? <VukaLoader size={14} /> : <Trash2 size={14} />}
             {deleting ? 'Deleting…' : 'Delete Release'}
           </button>
           {deleteError && (

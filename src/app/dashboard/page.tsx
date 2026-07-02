@@ -61,7 +61,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="font-bold text-sm" style={{ color:'var(--gold)' }}>🚀 Get set up — {onboarding.doneCount}/{onboarding.total} done</p>
-              <p className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>Complete these steps to start earning on Vuka.</p>
+              <p className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>Complete these steps to start earning on Vuka Music.</p>
             </div>
             <button onClick={dismissOnboarding} className="p-1.5 rounded-lg" style={{ color:'var(--text-muted)' }}><X size={14}/></button>
           </div>
@@ -114,7 +114,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   You keep <strong style={{ color: planColor }}>{artistPct}%</strong> of every sale
-                  &nbsp;·&nbsp; Vuka takes {platformPct}%
+                  &nbsp;·&nbsp; Vuka Music takes {platformPct}%
                   {plan?.planExpiresAt && plan?.planSlug !== 'free' && (
                     <> &nbsp;·&nbsp; Renews {new Date(plan.planExpiresAt).toLocaleDateString('en-ZA')}</>
                   )}

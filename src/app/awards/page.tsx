@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Trophy, ThumbsUp, Check } from 'lucide-react';
+import { Trophy, ThumbsUp, Check } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function AwardsPage() {
   const [awards,  setAwards]  = useState<any[]>([]);
@@ -34,7 +35,7 @@ export default function AwardsPage() {
     setVoting(null);
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background:'var(--bg)' }}><Loader2 size={24} className="animate-spin" style={{ color:'var(--text-muted)' }}/></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background:'var(--bg)' }}><VukaLoader size={24} /></div>;
 
   return (
     <div className="min-h-screen pb-20" style={{ background:'var(--bg)' }}>
@@ -85,7 +86,7 @@ export default function AwardsPage() {
                               <button onClick={() => vote(nom.id)} disabled={isVoting}
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs disabled:opacity-50"
                                 style={{ background: isVoted ? 'rgba(212,160,0,0.15)' : 'var(--surface2)', color: isVoted ? 'var(--gold)' : 'var(--text-muted)', border:`1px solid ${isVoted ? 'rgba(212,160,0,0.3)' : 'var(--border)'}` }}>
-                                {isVoting ? <Loader2 size={12} className="animate-spin"/> : isVoted ? <><Check size={12}/>Voted</> : <><ThumbsUp size={12}/>Vote</>}
+                                {isVoting ? <VukaLoader size={12} /> : isVoted ? <><Check size={12}/>Voted</> : <><ThumbsUp size={12}/>Vote</>}
                               </button>
                             )}
                             {award.status === 'announced' && isWinner && <Trophy size={18} style={{ color:'var(--gold)' }}/>}

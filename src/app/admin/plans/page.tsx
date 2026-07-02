@@ -4,9 +4,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Crown, Zap, Star, Search, RefreshCw, Loader2,
-  CheckCircle, XCircle, Clock, ChevronDown,
+  Crown, Zap, Star, Search, RefreshCw, CheckCircle, XCircle, Clock, ChevronDown,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const PLAN_DEFS: Record<string, { color: string; label: string }> = {
   free:  { color: '#6b7280', label: 'Free'  },
@@ -121,7 +121,7 @@ export default function AdminPlansPage() {
         <button onClick={load} disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          {loading ? <VukaLoader size={14} /> : <RefreshCw size={14} />} Refresh
         </button>
       </div>
 
@@ -167,7 +167,7 @@ export default function AdminPlansPage() {
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+          <VukaLoader size={24} />
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
@@ -288,7 +288,7 @@ export default function AdminPlansPage() {
               <button onClick={() => doAction('set_plan', modal.id)} disabled={actionLoading}
                 className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-60"
                 style={{ background: PLAN_DEFS[overridePlan]?.color || 'var(--sky)' }}>
-                {actionLoading ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
+                {actionLoading ? <VukaLoader size={14} className="inline mr-1" /> : null}
                 Set {overridePlan} plan
               </button>
             </div>

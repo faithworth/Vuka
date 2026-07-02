@@ -11,8 +11,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { Shield, Mail, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Shield, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -67,7 +68,7 @@ export default function AdminLoginPage() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <Loader2 className="animate-spin" size={32} style={{ color: 'var(--green)' }} />
+        <VukaLoader size={32} />
       </div>
     );
   }
@@ -139,7 +140,7 @@ export default function AdminLoginPage() {
             <button type="submit" disabled={sending}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-opacity"
               style={{ background: 'var(--green)', color: '#0a0a0a', opacity: sending ? 0.6 : 1 }}>
-              {sending ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
+              {sending ? <VukaLoader size={16} /> : <Shield size={16} />}
               {sending ? 'Sending…' : 'Send Magic Link'}
             </button>
           </form>

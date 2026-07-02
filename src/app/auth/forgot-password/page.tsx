@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Music, Mail, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Music, Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -40,7 +41,7 @@ export default function ForgotPasswordPage() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-green)' }}>
               <Music size={15} className="text-black" />
             </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka</span>
+            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
           </Link>
           <div className="card p-8">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -70,7 +71,7 @@ export default function ForgotPasswordPage() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-green)' }}>
               <Music size={15} className="text-black" />
             </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka</span>
+            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Forgot password?</h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Enter your email and we'll send a reset link</p>
@@ -104,7 +105,7 @@ export default function ForgotPasswordPage() {
               disabled={loading || !email}
               className="btn btn-primary w-full py-3 disabled:opacity-60">
               {loading
-                ? <><Loader2 size={15} className="animate-spin" /> Sending…</>
+                ? <><VukaLoader size={15} /> Sending…</>
                 : 'Send Reset Link'}
             </button>
           </form>

@@ -11,13 +11,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Shield, ShieldCheck, ShieldOff,
-  Smartphone, Monitor, Laptop, Tablet,
-  Loader2, CheckCircle2, XCircle,
-  Eye, EyeOff, Clock, Key, Lock,
-  RefreshCw, LogOut, AlertTriangle,
-  Copy, Check, ChevronRight, X,
+  Shield, ShieldCheck, ShieldOff, Smartphone, Monitor, Laptop, Tablet, CheckCircle2, XCircle, Eye, EyeOff, Clock, Key, Lock, RefreshCw, LogOut, AlertTriangle, Copy, Check, ChevronRight, X,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -178,7 +174,7 @@ function SetupModal({
           {/* Loading */}
           {step === 'loading' && (
             <div className="flex flex-col items-center py-10 gap-3">
-              <Loader2 size={28} className="animate-spin" style={{ color: 'var(--color-accent-green)' }} />
+              <VukaLoader size={28} />
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Generating secure key…</p>
               {error && <p className="text-sm" style={{ color: '#f87171' }}>{error}</p>}
             </div>
@@ -253,7 +249,7 @@ function SetupModal({
                   type="submit"
                   disabled={loading || token.length !== 6}
                   className="btn btn-primary flex-1 disabled:opacity-60">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : 'Verify & Enable'}
+                  {loading ? <VukaLoader size={14} /> : 'Verify & Enable'}
                 </button>
               </div>
             </form>
@@ -386,7 +382,7 @@ function DisableModal({
                 disabled={loading || token.length !== 6}
                 className="btn flex-1 disabled:opacity-60"
                 style={{ background: '#ef4444', color: '#fff', border: 'none' }}>
-                {loading ? <Loader2 size={14} className="animate-spin" /> : 'Disable 2FA'}
+                {loading ? <VukaLoader size={14} /> : 'Disable 2FA'}
               </button>
             </div>
           </form>
@@ -503,7 +499,7 @@ function ChangePasswordModal({
                   type="submit"
                   disabled={loading || newPw.length < 8 || newPw !== confirm}
                   className="btn btn-primary flex-1 disabled:opacity-60">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : 'Update Password'}
+                  {loading ? <VukaLoader size={14} /> : 'Update Password'}
                 </button>
               </div>
             </form>
@@ -615,8 +611,7 @@ export default function SecurityPage() {
     return (
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: 'var(--color-background)' }}>
-        <Loader2 size={22} className="animate-spin"
-          style={{ color: 'var(--color-accent-green)' }} />
+        <VukaLoader size={22} />
       </div>
     );
   }
@@ -733,7 +728,7 @@ export default function SecurityPage() {
                   border: '1px solid rgba(255,77,77,0.25)',
                   color: '#f87171',
                 }}>
-                {revokingAll ? <Loader2 size={11} className="animate-spin" /> : <LogOut size={11} />}
+                {revokingAll ? <VukaLoader size={11} /> : <LogOut size={11} />}
                 Sign Out Others
               </button>
             )}
@@ -806,7 +801,7 @@ export default function SecurityPage() {
                   opacity: revoking === s.id ? 0.5 : 1,
                 }}>
                 {revoking === s.id
-                  ? <Loader2 size={15} className="animate-spin" />
+                  ? <VukaLoader size={15} />
                   : <LogOut size={15} />}
               </button>
             </div>

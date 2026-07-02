@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
-import { Shield, Loader2, ArrowLeft } from 'lucide-react';
+import { Shield, ArrowLeft } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,8 +24,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     return (
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: 'var(--color-background)' }}>
-        <Loader2 size={22} className="animate-spin"
-          style={{ color: 'var(--color-accent-green)' }} />
+        <VukaLoader size={22} />
       </div>
     );
   }
@@ -39,7 +39,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         }}>
         <div className="max-w-2xl mx-auto w-full flex items-center gap-3">
           <Link href="/" className="font-bold text-lg" style={{ color: 'var(--color-accent-green)' }}>
-            Vuka
+            Vuka Music
           </Link>
           <div className="w-px h-4" style={{ background: 'var(--color-border-tertiary)' }} />
           <div className="flex items-center gap-1.5 text-sm"

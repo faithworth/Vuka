@@ -50,7 +50,7 @@ export async function GET(
 
   const zipEntries: Record<string, Uint8Array> = {};
   const distRelease = (purchase as any).distributionRelease;
-  const folderName = purchase.beat?.title || purchase.release?.title || distRelease?.title || 'Vuka-Purchase';
+  const folderName = purchase.beat?.title || purchase.release?.title || distRelease?.title || 'Vuka Music-Purchase';
 
   if (purchase.beat) {
     const beat = purchase.beat;

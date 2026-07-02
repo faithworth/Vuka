@@ -9,9 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Loader2, CheckCircle, Upload, Camera, ExternalLink,
-  Instagram, Twitter, Youtube, Music2, Globe, ArrowLeft,
+  CheckCircle, Upload, Camera, ExternalLink, Instagram, Twitter, Youtube, Music2, Globe, ArrowLeft,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const GENRES = [
   'Amapiano', 'Afrobeats', 'Gqom', 'Hip-Hop', 'Trap', 'R&B',
@@ -136,7 +136,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin" size={28} style={{ color: 'var(--green)' }} />
+        <VukaLoader size={28} />
       </div>
     );
   }
@@ -165,7 +165,7 @@ export default function ProfilePage() {
             {bannerPreview && <img src={bannerPreview} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               {bannerUploading
-                ? <Loader2 size={24} className="animate-spin text-white" />
+                ? <VukaLoader size={24} className="text-white" />
                 : <Upload size={24} className="text-white" />}
             </div>
             <input ref={bannerRef} type="file" accept="image/*" className="hidden"
@@ -185,7 +185,7 @@ export default function ProfilePage() {
               </div>
               <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 {avatarUploading
-                  ? <Loader2 size={16} className="animate-spin text-white" />
+                  ? <VukaLoader size={16} className="text-white" />
                   : <Camera size={16} className="text-white" />}
               </div>
               <input ref={avatarRef} type="file" accept="image/*" className="hidden"
@@ -304,7 +304,7 @@ export default function ProfilePage() {
           <button type="submit" disabled={saving}
             className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold disabled:opacity-60"
             style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-            {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+            {saving ? <VukaLoader size={14} /> : null}
             {saving ? 'Saving…' : 'Save Profile'}
           </button>
           {saved && (

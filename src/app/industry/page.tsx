@@ -30,21 +30,21 @@ const HOW_IT_WORKS = [
   },
   {
     n: '03', t: 'Artists find and hire you',
-    d: 'Artists on Vuka browse the Services hub. They pay directly through Vuka — payment is immediate, no chasing invoices.',
+    d: 'Artists on Vuka Music browse the Services hub. They pay directly through Vuka Music — payment is immediate, no chasing invoices.',
   },
   {
     n: '04', t: 'You receive 90% instantly',
-    d: 'Vuka deducts 10% as a platform fee. The remaining 90% is queued for your next payout. No admin, no delays.',
+    d: 'Vuka Music deducts 10% as a platform fee. The remaining 90% is queued for your next payout. No admin, no delays.',
   },
 ];
 
 const WHY = [
-  { icon: DollarSign, t: 'You keep 90% of every order',      d: 'Vuka charges a flat 10% platform fee on industry service orders. You set your own price — Vuka never dictates rates.' },
+  { icon: DollarSign, t: 'You keep 90% of every order',      d: 'Vuka Music charges a flat 10% platform fee on industry service orders. You set your own price — Vuka Music never dictates rates.' },
   { icon: Zap,        t: 'Instant payment confirmation',      d: 'Artists pay via Paystack at checkout. Payment is confirmed immediately — no waiting, no invoicing back and forth.' },
-  { icon: Users,      t: 'Direct access to active artists',  d: 'All artists on Vuka are already selling music. They have revenue and they invest in their careers.' },
-  { icon: Shield,     t: 'Vuka holds payment safely',        d: 'Payments go through Vuka\'s escrow — artists can\'t cancel a confirmed payment, and you always get paid.' },
+  { icon: Users,      t: 'Direct access to active artists',  d: 'All artists on Vuka Music are already selling music. They have revenue and they invest in their careers.' },
+  { icon: Shield,     t: 'Vuka Music holds payment safely',        d: 'Payments go through Vuka Music\'s escrow — artists can\'t cancel a confirmed payment, and you always get paid.' },
   { icon: Music,      t: 'Africa-first community',           d: 'Built for Amapiano, Afrobeats, Gqom, Hip Hop, Kwaito and more. Work with artists who need you.' },
-  { icon: TrendingUp, t: 'Browse and find artists too',      d: 'Industry professionals can browse all artists on Vuka, filter by genre, and send deals or offers directly.' },
+  { icon: TrendingUp, t: 'Browse and find artists too',      d: 'Industry professionals can browse all artists on Vuka Music, filter by genre, and send deals or offers directly.' },
 ];
 
 export default function IndustryPage() {
@@ -73,7 +73,7 @@ export default function IndustryPage() {
             </h1>
 
             <p className="text-lg md:text-xl mb-4 max-w-2xl mx-auto" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              Vuka is where Africa's artists come to sell their music. Create a profile, list your professional services,
+              Vuka Music is where Africa's artists come to sell their music. Create a profile, list your professional services,
               and get hired directly by artists — with payment handled instantly through the platform.
             </p>
 
@@ -83,7 +83,7 @@ export default function IndustryPage() {
             }}>
               <DollarSign size={16} style={{ color: 'var(--gold)' }} />
               <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
-                Vuka charges <span style={{ color: 'var(--gold)' }}>10% per order</span> · You keep 90% · No subscription fee
+                Vuka Music charges <span style={{ color: 'var(--gold)' }}>10% per order</span> · You keep 90% · No subscription fee
               </span>
             </div>
 
@@ -159,7 +159,7 @@ export default function IndustryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Order amount', example: 'R5,000', color: 'var(--text)' },
-                { label: 'Vuka fee (10%)', example: '− R500', color: 'var(--gold)' },
+                { label: 'Vuka Music fee (10%)', example: '− R500', color: 'var(--gold)' },
                 { label: 'You receive', example: 'R4,500', color: 'var(--green)' },
               ].map(item => (
                 <div key={item.label} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -170,7 +170,7 @@ export default function IndustryPage() {
             </div>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               The fee is calculated automatically — no invoices to send, no chasing payments.
-              Artists pay at checkout; Vuka routes the net amount to your payout queue.
+              Artists pay at checkout; Vuka Music routes the net amount to your payout queue.
             </p>
           </div>
         </section>
@@ -179,7 +179,7 @@ export default function IndustryPage() {
         <section className="py-20 px-4" style={{ background: 'var(--surface)' }}>
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-black text-center mb-14" style={{ color: 'var(--text)' }}>
-              Why list on Vuka?
+              Why list on Vuka Music?
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {WHY.map(w => (

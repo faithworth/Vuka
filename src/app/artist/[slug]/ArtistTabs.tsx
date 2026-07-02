@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink,
-  Loader2, Video, Package, ShoppingBag, Users, Check, Zap,
-  type LucideIcon,
+  Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink, Video, Package, ShoppingBag, Users, Check, Zap, type LucideIcon,
 } from 'lucide-react';
 import { BeatCard } from '@/components/BeatCard';
 import { ReleaseCard } from '@/components/ReleaseCard';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // ─── Domain types ────────────────────────────────────────────────────────────
 
@@ -385,7 +384,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                         }}
                       >
                         {subscribing === tier.id
-                          ? <><Loader2 size={13} className="animate-spin" /> Redirecting…</>
+                          ? <><VukaLoader size={13} /> Redirecting…</>
                           : <><Users size={13} /> Join</>}
                       </button>
                     </div>
@@ -402,7 +401,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
         <section className="mb-12 max-w-2xl">
           {postsLoading ? (
             <div className="flex justify-center py-10">
-              <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+              <VukaLoader size={24} />
             </div>
           ) : !posts.length ? (
             <div

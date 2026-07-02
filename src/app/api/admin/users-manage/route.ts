@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
           await sendAccountSuspended({
             to: target.email,
             displayName: target.name || target.email,
-            reason: reason || "Your account has been suspended for violating Vuka's Terms of Service.",
+            reason: reason || "Your account has been suspended for violating Vuka Music's Terms of Service.",
             appealUrl: `${APP_URL()}/appeal?userId=${userId}`,
           });
         } catch (e) { console.error('[admin/users] suspend email failed:', e); }

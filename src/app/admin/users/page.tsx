@@ -7,11 +7,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Search, Filter, Loader2, RefreshCw, Shield, ShieldOff,
-  UserCheck, UserX, ChevronDown, ExternalLink, Edit2,
-  Trash2, AlertTriangle, CheckCircle, XCircle, Eye,
-  Mail, DollarSign,
+  Search, Filter, RefreshCw, Shield, ShieldOff, UserCheck, UserX, ChevronDown, ExternalLink, Edit2, Trash2, AlertTriangle, CheckCircle, XCircle, Eye, Mail, DollarSign,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const ROLES = ['ALL', 'artist', 'producer', 'fan', 'industry', 'admin'];
 const STATUS = ['ALL', 'ACTIVE', 'SUSPENDED', 'UNVERIFIED'];
@@ -97,7 +95,7 @@ export default function AdminUsersPage() {
         <button onClick={load} disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          {loading ? <VukaLoader size={14} /> : <RefreshCw size={14} />} Refresh
         </button>
       </div>
 
@@ -144,7 +142,7 @@ export default function AdminUsersPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No users found</td></tr>

@@ -17,12 +17,12 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>You own your music. Always.</h2>
-            <p>When you upload music to Vuka, you keep 100% of your rights. We do not claim ownership of your recordings, compositions, or artwork — not now, not ever. You can remove your music at any time, sell it anywhere else simultaneously, and leave the platform without owing us anything for future sales.</p>
+            <p>When you upload music to Vuka Music, you keep 100% of your rights. We do not claim ownership of your recordings, compositions, or artwork — not now, not ever. You can remove your music at any time, sell it anywhere else simultaneously, and leave the platform without owing us anything for future sales.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>What we take — and how it reduces as you grow</h2>
-            <p>Vuka charges one platform fee on each confirmed sale. There are no separate fees for crowdfunding, events, or keeping your music discoverable. The fee is:</p>
+            <p>Vuka Music charges one platform fee on each confirmed sale. There are no separate fees for crowdfunding, events, or keeping your music discoverable. The fee is:</p>
             <div className="mt-3 rounded-2xl overflow-hidden" style={{ border:'1px solid var(--border)' }}>
               {[
                 ['Free plan — R0–R2,000 lifetime sales', '10% platform fee (you keep 90%)'],
@@ -42,27 +42,27 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>How you get paid</h2>
-            <p>Your earnings accumulate in your Vuka wallet after each confirmed sale. You request a withdrawal whenever you want — minimum R50, processed within 1–3 business days via your registered South African bank account. We use Paystack and Flutterwave to process payments; both are PCI-DSS compliant.</p>
+            <p>Your earnings accumulate in your Vuka Music wallet after each confirmed sale. You request a withdrawal whenever you want — minimum R50, processed within 1–3 business days via your registered South African bank account. We use Paystack and Flutterwave to process payments; both are PCI-DSS compliant.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>What you can sell on Vuka</h2>
+            <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>What you can sell on Vuka Music</h2>
             <p>Singles, EPs, albums, instrumentals/beats (with licensing), exclusive content behind a membership paywall, event tickets, and crowdfunding campaigns. All sold directly to fans — no middlemen between you and your money.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>Content rules</h2>
-            <p>You confirm that you own or have licensed all content you upload, that it does not infringe anyone else's rights, and that it complies with South African law. Vuka uses ACRCloud-style content identification to flag potential copyright matches; if a match is found, we'll notify you before taking any action. Uploading content you don't own may result in removal and account suspension.</p>
+            <p>You confirm that you own or have licensed all content you upload, that it does not infringe anyone else's rights, and that it complies with South African law. Vuka Music uses ACRCloud-style content identification to flag potential copyright matches; if a match is found, we'll notify you before taking any action. Uploading content you don't own may result in removal and account suspension.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>If you use Split Sheets</h2>
-            <p>If you create a split sheet for a release or beat, you confirm that all listed collaborators have agreed to the revenue share in advance. Vuka distributes according to the percentages you set — we're not responsible for disputes between collaborators.</p>
+            <p>If you create a split sheet for a release or beat, you confirm that all listed collaborators have agreed to the revenue share in advance. Vuka Music distributes according to the percentages you set — we're not responsible for disputes between collaborators.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>POPIA compliance</h2>
-            <p>Vuka is compliant with the Protection of Personal Information Act (POPIA). We collect only the information needed to run your account and process payments. We do not sell your personal data to third parties. You can request a copy of your data or ask for deletion at any time by emailing accounts@vukamusic.com.</p>
+            <p>Vuka Music is compliant with the Protection of Personal Information Act (POPIA). We collect only the information needed to run your account and process payments. We do not sell your personal data to third parties. You can request a copy of your data or ask for deletion at any time by emailing accounts@vukamusic.com.</p>
           </section>
 
           <section>

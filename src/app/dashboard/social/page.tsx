@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Image, Link2, Send } from 'lucide-react';
+import { Plus, Trash2, Image, Link2, Send } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Post {
   id: string;
@@ -102,7 +103,7 @@ export default function DashboardPostsPage() {
               </button>
               <button onClick={createPost} disabled={posting || !body.trim()}
                 className="btn btn-primary gap-2 disabled:opacity-50">
-                {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {posting ? <VukaLoader size={14} /> : <Send size={14} />}
                 Post
               </button>
             </div>
@@ -114,7 +115,7 @@ export default function DashboardPostsPage() {
       {/* Posts list */}
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+          <VukaLoader size={24} />
         </div>
       ) : posts.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>

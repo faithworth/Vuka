@@ -196,7 +196,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (checking) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div className="flex items-center gap-3">
-        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--sky)' }} />
+        <VukaLoader size={20} />
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</span>
       </div>
     </div>
@@ -215,7 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               style={{ background: 'var(--sky)' }}>
               <Music2 size={13} className="text-black" />
             </div>
-            <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka</span>
+            <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka Music</span>
           </Link>
           {artistName && (
             <p className="text-xs mt-2 truncate" style={{ color: 'var(--text-muted)' }}>

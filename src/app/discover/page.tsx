@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, TrendingUp, Music, Disc, Users, Loader2 } from 'lucide-react';
+import { Search, TrendingUp, Music, Disc, Users } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Artist { slug: string; name: string; photoUrl: string; bio: string; genreTags: string[]; isVerified: boolean; totalPlays: number; }
 interface Beat { id: string; slug: string; title: string; artworkUrl: string; basicPrice: number; artist: { name: string; slug: string }; genre: string; }
@@ -107,7 +108,7 @@ export default function DiscoverPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
+            <VukaLoader size={28} />
           </div>
         ) : (
           <>

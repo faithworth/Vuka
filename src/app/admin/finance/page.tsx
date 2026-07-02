@@ -6,12 +6,10 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Loader2, RefreshCw, CheckCircle, XCircle, DollarSign,
-  TrendingUp, Download, Clock, ChevronRight, Search,
-  ArrowLeft, Music, Film, Mic2, Package, Tag, Heart,
-  User, AlertTriangle,
+  RefreshCw, CheckCircle, XCircle, DollarSign, TrendingUp, Download, Clock, ChevronRight, Search, ArrowLeft, Music, Film, Mic2, Package, Tag, Heart, User, AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type MainTab = 'overview' | 'sales' | 'tips' | 'subscriptions' | 'artists' | 'payouts';
 
@@ -65,7 +63,7 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
       .then(r => r.json()).then(setData).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin" size={24} style={{ color: 'var(--green)' }} /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><VukaLoader size={24} /></div>;
   if (!data) return null;
 
   const { revenue, payouts, topArtists, salesByType } = data;
@@ -78,7 +76,7 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Total Gross" value={formatCurrency(revenue.gross)} color="var(--green)"
             sub={`${revenue.salesCount} sales · ${revenue.tipsCount} tips · ${revenue.subsCount ?? 0} subs`} />
-          <StatCard label="Vuka Keeps" value={formatCurrency(revenue.platformCut)} color="var(--gold)" />
+          <StatCard label="Vuka Music Keeps" value={formatCurrency(revenue.platformCut)} color="var(--gold)" />
           <StatCard label="Artists Get" value={formatCurrency(revenue.artistTotal)} color="#38b6e8" />
           <StatCard label="Paid Out" value={formatCurrency(payouts.paidAmount)} color="#a0a0a0" sub={`${payouts.paidCount} payouts`} />
         </div>
@@ -89,7 +87,7 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Gross (30d)" value={formatCurrency(revenue.monthGross)} color="var(--green)"
             sub={`${revenue.monthSalesCount} sales · ${revenue.monthTipsCount} tips · ${revenue.monthSubsCount ?? 0} subs`} />
-          <StatCard label="Vuka Keeps (30d)" value={formatCurrency(revenue.monthPlatform)} color="var(--gold)" />
+          <StatCard label="Vuka Music Keeps (30d)" value={formatCurrency(revenue.monthPlatform)} color="var(--gold)" />
           <StatCard label="Plan Subscriptions" value={formatCurrency(revenue.subsTotal ?? 0)} color="#c084fc"
             sub={`${revenue.subsCount ?? 0} total`} />
           <StatCard label="Pending Payouts" value={formatCurrency(payouts.pendingAmount)} color="#e8a87c" sub={`${payouts.pendingCount} requests`} />
@@ -140,7 +138,7 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
               <table className="w-full text-sm" style={{ minWidth: 700 }}>
                 <thead>
                   <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                    {['Artist', 'Sales', 'Tips', 'Gross', 'Vuka Keeps', 'Artist Gets', 'Paid Out', 'Balance'].map(h => (
+                    {['Artist', 'Sales', 'Tips', 'Gross', 'Vuka Music Keeps', 'Artist Gets', 'Paid Out', 'Balance'].map(h => (
                       <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
@@ -232,7 +230,7 @@ function SalesTab() {
           <table className="w-full text-sm" style={{ minWidth: 900 }}>
             <thead>
               <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Buyer', 'Artist', 'Type', 'Item', 'License', 'Gross', 'Vuka Fee', 'Artist Net', 'Status', 'Ref'].map(h => (
+                {['Date', 'Buyer', 'Artist', 'Type', 'Item', 'License', 'Gross', 'Vuka Music Fee', 'Artist Net', 'Status', 'Ref'].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
@@ -240,7 +238,7 @@ function SalesTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={11} className="px-4 py-10 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : !data?.purchases?.length ? (
                 <tr><td colSpan={11} className="px-4 py-10 text-center" style={{ color: 'var(--text-muted)' }}>No confirmed sales found</td></tr>
@@ -332,7 +330,7 @@ function TipsTab() {
           <table className="w-full text-sm" style={{ minWidth: 700 }}>
             <thead>
               <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Fan', 'Artist', 'Tier', 'Gross', 'Vuka Fee', 'Artist Net', 'Message'].map(h => (
+                {['Date', 'Fan', 'Artist', 'Tier', 'Gross', 'Vuka Music Fee', 'Artist Net', 'Message'].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
@@ -340,7 +338,7 @@ function TipsTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} className="px-4 py-10 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : !data?.tips?.length ? (
                 <tr><td colSpan={8} className="px-4 py-10 text-center" style={{ color: 'var(--text-muted)' }}>No tips found yet</td></tr>
@@ -412,7 +410,7 @@ function SubscriptionsTab() {
           <table className="w-full text-sm" style={{ minWidth: 700 }}>
             <thead>
               <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Artist', 'Plan', 'Amount', 'Vuka Keeps', 'Ref'].map(h => (
+                {['Date', 'Artist', 'Plan', 'Amount', 'Vuka Music Keeps', 'Ref'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
@@ -420,7 +418,7 @@ function SubscriptionsTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} className="px-4 py-10 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : !data?.purchases?.length ? (
                 <tr><td colSpan={6} className="px-4 py-10 text-center" style={{ color: 'var(--text-muted)' }}>No plan subscriptions yet</td></tr>
@@ -534,7 +532,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
     } finally { setWorking(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin" size={24} style={{ color: 'var(--green)' }} /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><VukaLoader size={24} /></div>;
   if (!data) return null;
 
   // API returned an error object (e.g. 503 DB error, 404 not found)
@@ -596,7 +594,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Gross" value={formatCurrency(summary.grossSales + summary.grossTips)} color="var(--green)" sub={`${summary.salesCount} sales · ${summary.tipsCount} tips`} />
-        <StatCard label="Vuka Keeps" value={formatCurrency(summary.totalPlatform)} color="var(--gold)" sub="per artist plan rate" />
+        <StatCard label="Vuka Music Keeps" value={formatCurrency(summary.totalPlatform)} color="var(--gold)" sub="per artist plan rate" />
         <StatCard label="Artist Total" value={formatCurrency(summary.totalEarned)} color="#38b6e8" sub="after platform fee" />
         <StatCard label="Balance Owed" value={formatCurrency(summary.balance)} color={summary.balance > 0 ? '#e8c87c' : '#a0e87c'} sub={`Paid out: ${formatCurrency(summary.paidOut)}`} />
       </div>
@@ -669,7 +667,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
             <table className="w-full text-sm" style={{ minWidth: 800 }}>
               <thead>
                 <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Buyer', 'Type', 'Item', 'License', 'Gross', 'Vuka', 'Artist', 'Status'].map(h => (
+                  {['Date', 'Buyer', 'Type', 'Item', 'License', 'Gross', 'Vuka Music', 'Artist', 'Status'].map(h => (
                     <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                   ))}
                 </tr>
@@ -712,7 +710,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
             <table className="w-full text-sm" style={{ minWidth: 600 }}>
               <thead>
                 <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Fan', 'Tier', 'Gross', 'Vuka', 'Artist', 'Message'].map(h => (
+                  {['Date', 'Fan', 'Tier', 'Gross', 'Vuka Music', 'Artist', 'Message'].map(h => (
                     <th key={h} className="px-3 py-3 text-left font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{h}</th>
                   ))}
                 </tr>
@@ -841,7 +839,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
             <button onClick={sendPayment} disabled={working || !payAmt}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
               style={{ background: working || !payAmt ? 'var(--surface2)' : 'var(--green)', color: '#0a0a0a', opacity: working ? 0.7 : 1 }}>
-              {working ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+              {working ? <VukaLoader size={14} /> : <CheckCircle size={14} />}
               {working ? 'Processing…' : `Mark Paid · R${parseFloat(payAmt || '0').toFixed(2)}`}
             </button>
           </div>
@@ -887,7 +885,7 @@ function ArtistsTab({ onArtistClick }: { onArtistClick: (id: string) => void }) 
     } finally { setWorking(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin" size={24} style={{ color: 'var(--green)' }} /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><VukaLoader size={24} /></div>;
 
   const artists = data?.topArtists || [];
 
@@ -992,7 +990,7 @@ function ArtistsTab({ onArtistClick }: { onArtistClick: (id: string) => void }) 
             <button onClick={sendQuickPay} disabled={working || !payAmt}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
               style={{ background: working || !payAmt ? 'var(--surface2)' : 'var(--green)', color: '#0a0a0a' }}>
-              {working ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+              {working ? <VukaLoader size={14} /> : <CheckCircle size={14} />}
               {working ? 'Processing…' : `Mark Paid · R${parseFloat(payAmt || '0').toFixed(2)}`}
             </button>
           </div>
@@ -1062,7 +1060,7 @@ function PayoutsTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : !data?.requests?.length ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center" style={{ color: 'var(--text-muted)' }}>No payout requests</td></tr>

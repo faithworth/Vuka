@@ -9,7 +9,8 @@
 
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, Users, Edit2, Trash2, Check, X } from 'lucide-react';
+import { Plus, Users, Edit2, Trash2, Check, X } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Tier {
   id: string;
@@ -221,7 +222,7 @@ export default function MembershipsPage() {
           <div className="flex gap-2 justify-end">
             <button onClick={closeForm} className="btn btn-secondary px-5">Cancel</button>
             <button onClick={saveTier} disabled={saving} className="btn btn-primary gap-2 disabled:opacity-50">
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {saving ? <VukaLoader size={14} /> : <Check size={14} />}
               {editing ? 'Save Changes' : 'Create Tier'}
             </button>
           </div>
@@ -230,7 +231,7 @@ export default function MembershipsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+          <VukaLoader size={24} />
         </div>
       ) : tiers.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>

@@ -35,7 +35,7 @@ export async function GET() {
   }
   const steps = [
     { key: 'hasProfile',     label: 'Complete your profile', desc: 'Add a bio and profile photo', done: ob.hasProfile, href: '/dashboard/profile' },
-    { key: 'hasRelease',     label: 'Upload your first release', desc: 'Get your music live on Vuka', done: ob.hasRelease, href: '/dashboard/releases/new' },
+    { key: 'hasRelease',     label: 'Upload your first release', desc: 'Get your music live on Vuka Music', done: ob.hasRelease, href: '/dashboard/releases/new' },
     { key: 'hasBankAccount', label: 'Add your bank account', desc: 'So you can receive payouts', done: ob.hasBankAccount, href: '/dashboard/payouts' },
     { key: 'hasSocials',     label: 'Connect your socials', desc: 'Let fans find you everywhere', done: ob.hasSocials, href: '/dashboard/profile' },
   ];

@@ -4,7 +4,8 @@
 // Percentages must sum to 100. Locked after first sale.
 
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Users, Loader2, Lock, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Users, Lock, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Recipient { name: string; email: string; role: string; percentage: string; artistId?: string }
 interface SplitSheet {
@@ -95,7 +96,7 @@ export default function SplitsPage() {
   if (loading) {
     return (
       <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading split sheets…
+        <VukaLoader size={18} /> Loading split sheets…
       </div>
     );
   }
@@ -215,7 +216,7 @@ export default function SplitsPage() {
           <button onClick={save} disabled={saving || !pctOk}
             className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg,#d4a000,#b38600)' }}>
-            {saving ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Saving…</span> : 'Create Split Sheet'}
+            {saving ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} /> Saving…</span> : 'Create Split Sheet'}
           </button>
         </div>
       )}

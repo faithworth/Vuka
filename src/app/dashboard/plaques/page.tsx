@@ -3,7 +3,8 @@
 // Artist achievements dashboard — multi-dimensional milestone plaques.
 
 import { useEffect, useState } from 'react';
-import { Loader2, Share2, Copy, Check, Trophy, TrendingUp } from 'lucide-react';
+import { Share2, Copy, Check, Trophy, TrendingUp } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const DIMENSION_ICONS: Record<string, string> = {
   sales_units:        '🛒',
@@ -75,7 +76,7 @@ export default function PlaquesPage() {
   if (loading) {
     return (
       <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading achievements…
+        <VukaLoader size={18} /> Loading achievements…
       </div>
     );
   }

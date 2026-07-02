@@ -24,7 +24,7 @@ export async function GET() {
         where: { status: 'confirmed' },
         _sum: { platformFee: true, amount: true },
       }),
-      // Vuka publishes instantly — "totalReleases"/"pendingReleases" here mean
+      // Vuka Music publishes instantly — "totalReleases"/"pendingReleases" here mean
       // live vs. unpublished, not a DSP review queue (there is none).
       prisma.release.count({ where: { isActive: true } }),
       prisma.release.count({ where: { isActive: false } }),

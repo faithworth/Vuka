@@ -5,10 +5,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import {
-  Search, Loader2, Briefcase, Clock,
-  Star, Music, Mic2, Video, Package,
-  Sliders, ShoppingCart, X, AlertCircle,
+  Search, Briefcase, Clock, Star, Music, Mic2, Video, Package, Sliders, ShoppingCart, X, AlertCircle,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const CATEGORIES = [
   { value: '',             label: 'All Services',      icon: Briefcase },
@@ -175,7 +174,7 @@ export default function MarketplacePage() {
           {/* Services grid */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="animate-spin" size={28} style={{ color: 'var(--green)' }} />
+              <VukaLoader size={28} />
             </div>
           ) : !services.length ? (
             <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>
@@ -300,7 +299,7 @@ export default function MarketplacePage() {
                 className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
                 style={{ background: 'var(--green)', color: '#0a0a0a' }}>
                 {paying
-                  ? <><Loader2 size={15} className="animate-spin" /> Redirecting to payment…</>
+                  ? <><VukaLoader size={15} /> Redirecting to payment…</>
                   : <><ShoppingCart size={15} /> Pay R{selectedPkg?.price ?? 0} — Secure checkout</>
                 }
               </button>

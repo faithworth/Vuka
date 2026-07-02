@@ -15,11 +15,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const artist = await getArtist(params.slug);
   if (!artist) return { title: 'Artist not found' };
   return {
-    title: `${artist.name} on Vuka — Buy beats & music`,
+    title: `${artist.name} on Vuka Music — Buy beats & music`,
     description: `${artist.storefront?.tagline || artist.bio || ''} ${artist.genreTags?.join(', ')}`.trim(),
     openGraph: {
-      title: `${artist.name} on Vuka — Buy beats & music`,
-      description: `Shop now on Vuka`,
+      title: `${artist.name} on Vuka Music — Buy beats & music`,
+      description: `Shop now on Vuka Music`,
       images: artist.coverUrl ? [artist.coverUrl] : [],
     },
   };
@@ -233,7 +233,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
 
       <div className="mt-4 mb-10 text-center">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Vuka retains {artist.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {artist.artistSharePct ?? 85}%.
+          Vuka Music retains {artist.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {artist.artistSharePct ?? 85}%.
         </p>
       </div>
     </div>

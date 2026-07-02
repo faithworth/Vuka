@@ -47,7 +47,7 @@ export default function ReleasePageClient({ release }: { release: any }) {
 
   function shareWhatsApp() {
     const url  = `${window.location.origin}/releases/${release.slug || release.id}`;
-    const text = `Check out "${release.title}" by ${release.artist?.name} on Vuka: ${url}`;
+    const text = `Check out "${release.title}" by ${release.artist?.name} on Vuka Music: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 
@@ -287,7 +287,7 @@ export default function ReleasePageClient({ release }: { release: any }) {
 
         {/* Fee note */}
         <div className="text-center text-xs py-4" style={{ color: 'var(--text-muted)' }}>
-          Vuka retains {release.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {release.artistSharePct ?? 85}%.
+          Vuka Music retains {release.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {release.artistSharePct ?? 85}%.
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Music2 } from 'lucide-react';
 
-export const metadata = { title: 'Refund Policy — Vuka', description: 'Vuka refund and return policy for digital goods.' };
+export const metadata = { title: 'Refund Policy — Vuka Music', description: 'Vuka Music refund and return policy for digital goods.' };
 
 export default function RefundsPage() {
   return (
@@ -9,7 +9,7 @@ export default function RefundsPage() {
       <header className="px-6 py-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}><Music2 size={13} className="text-white" /></div>
-          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
+          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka Music</span>
         </Link>
         <span style={{ color: 'var(--border)' }}>/</span>
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Refund Policy</span>
@@ -20,7 +20,7 @@ export default function RefundsPage() {
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
           <p className="font-bold mb-1" style={{ color: 'var(--gold)' }}>All sales are final</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Vuka sells digital goods. Once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable. This is consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp).</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Vuka Music sells digital goods. Once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable. This is consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp).</p>
         </div>
 
         <div className="space-y-6 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>

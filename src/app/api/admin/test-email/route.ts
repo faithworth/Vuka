@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
       case 'account-suspended':
         result = await sendAccountSuspended({
           to, displayName: 'Test Artist',
-          reason: 'Violation of Vuka Terms of Service — Section 4.2: Distribution of unlicensed content.',
+          reason: 'Violation of Vuka Music Terms of Service — Section 4.2: Distribution of unlicensed content.',
           appealUrl: `${base}/appeal?ref=SUSP-001`,
           suspendedUntil: '30 June 2026',
         });
@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
       case 'broadcast':
         result = await sendBroadcast({
           to, displayName: 'Test Artist',
-          subject: 'Vuka Platform Update — New Feature Available',
+          subject: 'Vuka Music Platform Update — New Feature Available',
           title: '🎉 New Feature: Pre-Save Campaigns',
           body: `We've just launched Pre-Save Campaigns!\n\nYou can now create a pre-save link for any upcoming release and share it with fans before your drop date.\n\nFans who pre-save will automatically have your release in their library on release day.`,
           ctaLabel: 'Try Pre-Save Campaigns →',

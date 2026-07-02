@@ -1,7 +1,7 @@
 /**
  * POST /api/checkout/stripe/webhook
  *
- * Phase 12 — DEPRECATED. Stripe webhook removed from Vuka.
+ * Phase 12 — DEPRECATED. Stripe webhook removed from Vuka Music.
  * All payments processed via Paystack webhook at /api/checkout/paystack/webhook
  *
  * Returns 200 so any accidental Stripe webhook deliveries don't retry forever.

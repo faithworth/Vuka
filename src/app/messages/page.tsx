@@ -2,7 +2,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { Send, Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Send, MessageSquare, ArrowLeft } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // Normalised shape used by this page
 interface Conversation {
@@ -122,7 +123,7 @@ export default function MessagesPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={28} />
     </div>
   );
 
@@ -246,7 +247,7 @@ export default function MessagesPage() {
                   />
                   <button onClick={sendMessage} disabled={sending || !draft.trim()}
                     className="btn btn-primary px-4 disabled:opacity-50">
-                    {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {sending ? <VukaLoader size={16} /> : <Send size={16} />}
                   </button>
                 </div>
               </>

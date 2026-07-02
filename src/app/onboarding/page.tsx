@@ -8,7 +8,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, CheckCircle, Music, MapPin, Mic, ArrowRight, ChevronRight, Upload } from 'lucide-react';
+import { CheckCircle, Music, MapPin, Mic, ArrowRight, ChevronRight, Upload } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const GENRE_OPTIONS = [
   'Amapiano', 'Afrobeats', 'Gqom', 'Hip-Hop', 'Trap',
@@ -171,7 +172,7 @@ export default function OnboardingPage() {
                 onClick={() => saveStep(2)}
                 disabled={genres.length === 0 || saving}
                 className="btn btn-primary w-full disabled:opacity-50">
-                {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+                {saving ? <VukaLoader size={16} /> : null}
                 Continue <ArrowRight size={15} />
               </button>
               <button onClick={() => setStep(2)} className="w-full mt-3 text-center text-sm py-2"
@@ -243,7 +244,7 @@ export default function OnboardingPage() {
                 </button>
                 <button onClick={() => saveStep(3)} disabled={saving}
                   className="btn btn-primary flex-1 disabled:opacity-50">
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {saving ? <VukaLoader size={16} /> : null}
                   Continue <ArrowRight size={15} />
                 </button>
               </div>
@@ -298,7 +299,7 @@ export default function OnboardingPage() {
                 </button>
                 <button onClick={() => saveStep(4)} disabled={saving}
                   className="btn btn-primary flex-1 disabled:opacity-50">
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {saving ? <VukaLoader size={16} /> : null}
                   {photoFile ? 'Save & Continue' : 'Skip'} <ArrowRight size={15} />
                 </button>
               </div>

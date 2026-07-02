@@ -5,10 +5,9 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Plus, Loader2, Megaphone, Trash2, Eye, Check,
-  AlertCircle, Users, Target, Calendar, ChevronRight,
-  TrendingUp, Lock, Globe,
+  Plus, Megaphone, Trash2, Eye, Check, AlertCircle, Users, Target, Calendar, ChevronRight, TrendingUp, Lock, Globe,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface CampaignTier { id: string; title: string; description: string; amount: number; perks: string[]; maxBackers: number | null; backerCount: number }
 interface Campaign {
@@ -138,7 +137,7 @@ export default function CampaignsPage() {
   if (loading) {
     return (
       <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading campaigns…
+        <VukaLoader size={18} /> Loading campaigns…
       </div>
     );
   }
@@ -262,7 +261,7 @@ export default function CampaignsPage() {
             className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg,#d4a000,#b38600)' }}>
             {saving
-              ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Creating…</span>
+              ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} /> Creating…</span>
               : 'Save as Draft'}
           </button>
         </div>
@@ -375,13 +374,13 @@ export default function CampaignsPage() {
               <button onClick={() => publish(selected.id)} disabled={publishing}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)' }}>
-                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
+                {publishing ? <VukaLoader size={14} /> : <Globe size={14} />}
                 Publish Campaign
               </button>
               <button onClick={() => deleteCampaign(selected.id)} disabled={deleting}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm"
                 style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}>
-                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {deleting ? <VukaLoader size={14} /> : <Trash2 size={14} />}
                 Delete Draft
               </button>
             </>

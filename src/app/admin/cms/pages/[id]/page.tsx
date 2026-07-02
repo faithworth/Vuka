@@ -9,6 +9,7 @@ import {
   Clock, CheckCircle, Send, X, Settings, History, Lock, Star,
 } from 'lucide-react';
 import { BLOCK_TYPES, BlockType } from '@/lib/cms';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type Block = { id: string; pageId: string; type: string; label: string; content: Record<string, unknown>; order: number; isVisible: boolean };
 type Page  = { id: string; slug: string; title: string; description: string; status: string; isSystem: boolean; metaTitle: string; metaDesc: string; publishedAt: string | null; blocks: Block[]; collaborators: Array<{ userId: string; canEdit: boolean; canPublish: boolean; user: { id: string; name: string; email: string; role: string } }>; comments: Array<{ id: string; body: string; resolved: boolean; createdAt: string; createdById: string }> };
@@ -283,7 +284,7 @@ export default function CmsPageEditor() {
 
   useEffect(() => { if (tab === 'revisions') loadRevisions(); if (tab === 'collaborate') loadUsers(); }, [tab]);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><RefreshCw size={28} className="animate-spin" style={{ color: 'var(--text-muted)' }} /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><VukaLoader size={28} /></div>;
   if (!page)   return <div className="text-center py-20"><p style={{ color: 'var(--text-muted)' }}>Page not found.</p><Link href="/admin/cms" className="text-sm mt-2 inline-block" style={{ color: 'var(--sky)' }}>← Back</Link></div>;
 
   const sc    = SL[page.status] ?? SL.draft;

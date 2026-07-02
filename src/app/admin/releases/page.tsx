@@ -2,16 +2,16 @@
 // ============================================================
 // VUKA — Admin Releases
 // /admin/releases — post-publish moderation for the direct-sales
-// catalog. Vuka has no DSP distribution and no pre-publish review
+// catalog. Vuka Music has no DSP distribution and no pre-publish review
 // queue: releases go live the moment the artist publishes them.
 // This page lets admins unpublish, republish, or delete a release.
 // ============================================================
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Loader2, RefreshCw, Eye, EyeOff, Trash2,
-  Search, Music, ExternalLink,
+  RefreshCw, Eye, EyeOff, Trash2, Search, Music, ExternalLink,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const TAB_FILTERS = ['all', 'active', 'inactive'] as const;
 type TabFilter = typeof TAB_FILTERS[number];
@@ -82,7 +82,7 @@ export default function AdminReleasesPage() {
         <button onClick={load} disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          {loading ? <VukaLoader size={14} /> : <RefreshCw size={14} />} Refresh
         </button>
       </div>
 
@@ -124,7 +124,7 @@ export default function AdminReleasesPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center">
-                  <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={20} className="mx-auto" />
                 </td></tr>
               ) : releases.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>

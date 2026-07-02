@@ -2,7 +2,7 @@
 // ============================================================
 // VUKA — Release Upload Wizard
 // /dashboard/releases/new — 5-step wizard for direct-to-fan sales.
-// Vuka does not distribute to DSPs and does not issue ISRC/UPC
+// Vuka Music does not distribute to DSPs and does not issue ISRC/UPC
 // codes — this collects only what's needed to sell directly:
 // release info, artwork, tracks, rights & credits, and a final
 // review before the release goes live immediately.
@@ -13,9 +13,9 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ChevronRight, ChevronLeft, Upload, Music, Image as ImageIcon,
-  Plus, Trash2, Loader2, CheckCircle, AlertCircle, ArrowLeft,
+  ChevronRight, ChevronLeft, Upload, Music, Image as ImageIcon, Plus, Trash2, CheckCircle, AlertCircle, ArrowLeft,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const RELEASE_TYPES = [
   { value: 'single',  label: 'Single',  desc: '1 song' },
@@ -322,7 +322,7 @@ export default function NewReleasePage() {
                     />
                   </div>
                   <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                    You receive the majority of every sale. Vuka retains a small platform fee based on your plan.
+                    You receive the majority of every sale. Vuka Music retains a small platform fee based on your plan.
                   </p>
                 </div>
               ) : (
@@ -380,7 +380,7 @@ export default function NewReleasePage() {
             </div>
             {artworkUploading && (
               <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                <Loader2 size={14} className="animate-spin" style={{ color: 'var(--green)' }} />
+                <VukaLoader size={14} />
                 Uploading artwork…
               </div>
             )}
@@ -432,7 +432,7 @@ export default function NewReleasePage() {
                         color: track.uploaded ? 'var(--green)' : 'var(--text-muted)',
                       }}>
                       {track.uploading ? (
-                        <><Loader2 size={14} className="animate-spin" /> Uploading… {track.uploadProgress}%</>
+                        <><VukaLoader size={14} /> Uploading… {track.uploadProgress}%</>
                       ) : track.uploaded ? (
                         <><CheckCircle size={14} /> {track.audioFile?.name || 'Audio uploaded'}</>
                       ) : (
@@ -499,7 +499,7 @@ export default function NewReleasePage() {
                 onChange={e => setRightsConfirmed(e.target.checked)}
                 className="mt-0.5 rounded" />
               <span className="text-sm" style={{ color: 'var(--text)' }}>
-                I confirm that I own or control all necessary rights to sell this release on Vuka,
+                I confirm that I own or control all necessary rights to sell this release on Vuka Music,
                 and that it does not infringe on anyone else's copyright.
               </span>
             </label>
@@ -536,7 +536,7 @@ export default function NewReleasePage() {
             </div>
             <div className="p-4 rounded-xl text-sm"
               style={{ background: 'rgba(160,232,124,0.06)', border: '1px solid rgba(160,232,124,0.2)', color: 'var(--text-muted)' }}>
-              ✦ Vuka has no review queue — your release goes live the moment you publish, and fans can buy it immediately.
+              ✦ Vuka Music has no review queue — your release goes live the moment you publish, and fans can buy it immediately.
             </div>
           </div>
         )}
@@ -570,7 +570,7 @@ export default function NewReleasePage() {
           <button onClick={handleSubmit} disabled={saving}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
             style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            {saving ? <VukaLoader size={14} /> : <CheckCircle size={14} />}
             {saving ? 'Publishing…' : 'Publish Release'}
           </button>
         )}

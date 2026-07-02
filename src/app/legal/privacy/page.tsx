@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Music2 } from 'lucide-react';
 
-export const metadata = { title: 'Privacy Policy — Vuka', description: 'How Vuka collects and uses your data.' };
+export const metadata = { title: 'Privacy Policy — Vuka Music', description: 'How Vuka Music collects and uses your data.' };
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <section className="mb-8">
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       <header className="px-6 py-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}><Music2 size={13} className="text-white" /></div>
-          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
+          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka Music</span>
         </Link>
         <span style={{ color: 'var(--border)' }}>/</span>
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Privacy Policy</span>

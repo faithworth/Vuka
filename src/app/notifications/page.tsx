@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import {
-  Bell, ShoppingBag, Heart, Users, MessageCircle, Star,
-  Music2, Loader2, CheckCheck,
+  Bell, ShoppingBag, Heart, Users, MessageCircle, Star, Music2, CheckCheck,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Notification {
   id: string;
@@ -109,7 +109,7 @@ export default function NotificationsPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={28} />
     </div>
   );
 
@@ -132,7 +132,7 @@ export default function NotificationsPage() {
             <button onClick={markAllRead} disabled={markingAll}
               className="flex items-center gap-2 text-sm font-medium disabled:opacity-50"
               style={{ color: 'var(--sky)' }}>
-              {markingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
+              {markingAll ? <VukaLoader size={14} /> : <CheckCheck size={14} />}
               Mark all read
             </button>
           )}

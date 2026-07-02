@@ -1,8 +1,9 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2, CheckCircle2, Upload, Music, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Upload, Music, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type UploadType = 'beat' | 'release';
@@ -264,7 +265,7 @@ export default function UploadPage() {
       </div>
       <h2 className="text-3xl font-bold mb-3" style={{ color: 'var(--text)' }}>You're live.</h2>
       <p className="mb-2 text-lg" style={{ color: 'var(--text-muted)' }}>
-        Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka.
+        Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka Music.
       </p>
       <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 98% of every sale is yours.</p>
       <div className="flex gap-4 flex-wrap justify-center">
@@ -441,7 +442,7 @@ export default function UploadPage() {
             <button onClick={handleBeatSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
               style={{ background: 'var(--sky)' }}>
-              {loading ? <><Loader2 size={16} className="animate-spin" />Uploading…</> : <><Upload size={16} />Publish Beat</>}
+              {loading ? <><VukaLoader size={16} />Uploading…</> : <><Upload size={16} />Publish Beat</>}
             </button>
           </div>
         </div>
@@ -583,7 +584,7 @@ export default function UploadPage() {
             <button onClick={handleReleaseSubmit} disabled={loading}
               className="flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
               style={{ background: 'var(--sky)' }}>
-              {loading ? <><Loader2 size={16} className="animate-spin" />Uploading…</> : <><Upload size={16} />Publish Release</>}
+              {loading ? <><VukaLoader size={16} />Uploading…</> : <><Upload size={16} />Publish Release</>}
             </button>
           </div>
         </div>

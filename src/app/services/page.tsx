@@ -4,7 +4,7 @@
 //   • Industry Professional services (management, promo, sync, legal…)
 //   • Artist marketplace services (mixing, mastering, features, beats…)
 //
-// Industry services: artist pays → Vuka charges 10% fee on industry (auto via Paystack)
+// Industry services: artist pays → Vuka Music charges 10% fee on industry (auto via Paystack)
 // Marketplace services: buyer pays → artist plan fee (5–15%) applies
 //
 // Both tabs are visible to everyone. Logged-in artists can buy/inquire/order.
@@ -15,12 +15,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import {
-  Search, Loader2, Briefcase, Calendar, MessageSquare,
-  CheckCircle, Send, ShoppingCart, Users, Star, Clock,
-  Music, Mic2, Building2, ChevronRight, Zap, Shield,
-  DollarSign, ArrowRight, X, AlertCircle,
+  Search, Briefcase, Calendar, MessageSquare, CheckCircle, Send, ShoppingCart, Users, Star, Clock, Music, Mic2, Building2, ChevronRight, Zap, Shield, DollarSign, ArrowRight, X, AlertCircle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ServiceTab = 'industry' | 'marketplace';
@@ -268,7 +266,7 @@ export default function ServicesPage() {
                 </h1>
                 <p className="text-base md:text-lg max-w-xl" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
                   Industry professionals & artists offering their skills.
-                  All payments through Vuka — <span style={{ color: 'var(--gold)' }}>secure, instant, transparent.</span>
+                  All payments through Vuka Music — <span style={{ color: 'var(--gold)' }}>secure, instant, transparent.</span>
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -277,7 +275,7 @@ export default function ServicesPage() {
                   background: 'var(--surface)', border: '1px solid var(--border)',
                 }}>
                   <p className="font-bold mb-0.5" style={{ color: 'var(--gold)' }}>Industry pros</p>
-                  <p style={{ color: 'var(--text-muted)' }}>10% Vuka fee · You keep 90%</p>
+                  <p style={{ color: 'var(--text-muted)' }}>10% Vuka Music fee · You keep 90%</p>
                 </div>
                 <div className="px-4 py-3 rounded-2xl text-sm" style={{
                   background: 'var(--surface)', border: '1px solid var(--border)',
@@ -354,7 +352,7 @@ export default function ServicesPage() {
 
               {indLoading ? (
                 <div className="flex justify-center py-20">
-                  <Loader2 size={28} className="animate-spin" style={{ color: 'var(--gold)' }} />
+                  <VukaLoader size={28} />
                 </div>
               ) : filteredIndustry.length === 0 ? (
                 <EmptyState icon={<Building2 size={36} />} title="No industry services found"
@@ -387,7 +385,7 @@ export default function ServicesPage() {
                   <h3 className="text-xl font-black mb-2">Are you an industry professional?</h3>
                   <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
                     List your services and get discovered by artists across Africa.
-                    Vuka charges only 10% per order — you keep 90%.
+                    Vuka Music charges only 10% per order — you keep 90%.
                   </p>
                   <Link href="/auth/register?role=industry"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm"
@@ -404,7 +402,7 @@ export default function ServicesPage() {
             <>
               {mktLoading ? (
                 <div className="flex justify-center py-20">
-                  <Loader2 size={28} className="animate-spin" style={{ color: 'var(--green)' }} />
+                  <VukaLoader size={28} />
                 </div>
               ) : filteredMkt.length === 0 ? (
                 <EmptyState icon={<Mic2 size={36} />} title="No artist services found"
@@ -427,7 +425,7 @@ export default function ServicesPage() {
                   <h3 className="text-xl font-black mb-2">Offer your skills</h3>
                   <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
                     List mixing, mastering, features, beats, and more.
-                    Get paid securely through Vuka.
+                    Get paid securely through Vuka Music.
                   </p>
                   <Link href="/dashboard/services"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm"
@@ -513,7 +511,7 @@ export default function ServicesPage() {
             <button onClick={handleMktCheckout} disabled={mktPaying || !mktSelectedPkg}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
               style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-              {mktPaying ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Pay R{(mktSelectedPkg?.price ?? 0).toLocaleString()} <ArrowRight size={16} /></>}
+              {mktPaying ? <><VukaLoader size={16} /> Processing…</> : <>Pay R{(mktSelectedPkg?.price ?? 0).toLocaleString()} <ArrowRight size={16} /></>}
             </button>
           </div>
         </div>
@@ -601,7 +599,7 @@ function IndustryCard({
         {canAct && !isOwnService && (
           <div className="flex items-center gap-1.5 mb-4 text-[11px]" style={{ color: 'var(--text-muted)' }}>
             <Shield size={10} style={{ color: 'var(--green)' }} />
-            <span>Vuka fee: R{platformFee.toFixed(2)} · Provider gets: R{providerNet.toFixed(2)}</span>
+            <span>Vuka Music fee: R{platformFee.toFixed(2)} · Provider gets: R{providerNet.toFixed(2)}</span>
           </div>
         )}
 
@@ -631,14 +629,14 @@ function IndustryCard({
                   {/* Inquiry (free, no payment) */}
                   <button onClick={() => onInquire(svc.id)} disabled={inquiring === svc.id}
                     className="btn btn-secondary flex-1 text-xs">
-                    {inquiring === svc.id ? <Loader2 size={12} className="animate-spin" /> : <MessageSquare size={12} />}
+                    {inquiring === svc.id ? <VukaLoader size={12} /> : <MessageSquare size={12} />}
                     Inquire
                   </button>
                   {/* Order (triggers Paystack payment) */}
                   <button onClick={() => onOrder(svc)} disabled={ordering === svc.id}
                     className="btn btn-primary flex-1 text-xs"
                     style={{ background: 'var(--gold)', color: '#0a0a0a' }}>
-                    {ordering === svc.id ? <Loader2 size={12} className="animate-spin" /> : <ShoppingCart size={12} />}
+                    {ordering === svc.id ? <VukaLoader size={12} /> : <ShoppingCart size={12} />}
                     Pay R{price.toLocaleString()}
                   </button>
                 </div>
@@ -652,7 +650,7 @@ function IndustryCard({
                 </button>
                 <button onClick={() => onMessage(svc)} disabled={messaging === svc.id}
                   className="btn btn-secondary px-3 text-sm" title="Direct message">
-                  {messaging === svc.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  {messaging === svc.id ? <VukaLoader size={13} /> : <Send size={13} />}
                 </button>
               </div>
             )}

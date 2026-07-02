@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Star, Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, RefreshCw, Search, ExternalLink, Check, X } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type FA = {
   id: string; tagline: string; blurb: string; order: number; isVisible: boolean;
@@ -122,7 +123,7 @@ export default function FeaturedArtistsAdmin() {
             <div className="space-y-2 max-h-72 overflow-y-auto">
               {searching && <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Searching…</p>}
               {!searching && q && results.length === 0 && <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No matching artists.</p>}
-              {!searching && !q && <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Start typing to search Vuka artists.</p>}
+              {!searching && !q && <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Start typing to search Vuka Music artists.</p>}
               {results.map(artist => (
                 <button key={artist.id} onClick={() => add(artist)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all"
@@ -155,7 +156,7 @@ export default function FeaturedArtistsAdmin() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16"><RefreshCw size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} /></div>
+        <div className="flex items-center justify-center py-16"><VukaLoader size={24} /></div>
       ) : featured.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed var(--border)', color: 'var(--text-muted)' }}>
           <Star size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />

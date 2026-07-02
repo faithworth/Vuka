@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { UserCheck, UserPlus, Loader2 } from 'lucide-react';
+import { UserCheck, UserPlus } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function FollowButton({ artistId, artistName }: { artistId: string; artistName: string }) {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function FollowButton({ artistId, artistName }: { artistId: strin
   if (loading) return (
     <button disabled className="px-6 py-3 rounded-xl font-bold opacity-50 flex items-center gap-2 justify-center"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-      <Loader2 size={16} className="animate-spin" />
+      <VukaLoader size={16} />
       Loading…
     </button>
   );
@@ -61,7 +62,7 @@ export default function FollowButton({ artistId, artistName }: { artistId: strin
         color: following ? 'var(--sky)' : 'var(--text)',
       }}>
       {toggling
-        ? <Loader2 size={16} className="animate-spin" />
+        ? <VukaLoader size={16} />
         : following
           ? <><UserCheck size={16} /> Following</>
           : <><UserPlus size={16} /> Follow</>}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, Globe, FileText, Archive, Eye, Edit3, Trash2, Clock, CheckCircle, Star, RefreshCw, Search, Lock, Users, AlertCircle, ChevronRight } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type PS = 'draft' | 'review' | 'approved' | 'published' | 'archived';
 type Page = { id: string; slug: string; title: string; description: string; status: PS; isSystem: boolean; publishedAt: string | null; updatedAt: string; _count: { blocks: number; collaborators: number; comments: number } };
@@ -141,7 +142,7 @@ export default function CmsPagesAdmin() {
 
       {/* List */}
       {loading ? (
-        <div className="flex items-center justify-center py-16"><RefreshCw size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} /></div>
+        <div className="flex items-center justify-center py-16"><VukaLoader size={24} /></div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>{search ? `No pages matching "${search}"` : 'No pages yet.'}</div>
       ) : (

@@ -10,8 +10,9 @@
  */
 
 import { useState } from 'react';
-import { Shield, RefreshCw, Wrench, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Shield, RefreshCw, Wrench, CheckCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type UserRow = {
   id: string;
@@ -167,7 +168,7 @@ export default function DbRepairPage() {
               disabled={loading}
               className="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-60"
               style={{ background: 'var(--sky)', color: '#fff' }}>
-              {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+              {loading ? <VukaLoader size={15} /> : <RefreshCw size={15} />}
               Scan DB
             </button>
           </div>
@@ -223,7 +224,7 @@ export default function DbRepairPage() {
                   disabled={fixingAll}
                   className="ml-4 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-60 flex-shrink-0"
                   style={{ background: '#a0e87c', color: '#0a0a0a' }}>
-                  {fixingAll ? <Loader2 size={15} className="animate-spin" /> : <Shield size={15} />}
+                  {fixingAll ? <VukaLoader size={15} /> : <Shield size={15} />}
                   {fixingAll ? 'Fixing…' : 'Fix All Issues'}
                 </button>
               </div>
@@ -366,7 +367,7 @@ function UserCard({ u, expanded, onToggle, onFix, fixing, broken }: {
               disabled={fixing || selectedRole === u.role}
               className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-1.5"
               style={{ background: '#a0e87c', color: '#0a0a0a' }}>
-              {fixing ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />}
+              {fixing ? <VukaLoader size={13} /> : <Wrench size={13} />}
               {fixing ? 'Fixing…' : selectedRole === u.role ? 'No Change' : `Set to ${selectedRole}`}
             </button>
           </div>

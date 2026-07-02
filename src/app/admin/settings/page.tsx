@@ -6,7 +6,8 @@
 // ============================================================
 
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, RefreshCw, Save, Plus, Trash2, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { RefreshCw, Save, Plus, Trash2, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type SettingsTab = 'plans' | 'payouts' | 'platforms' | 'genres' | 'landing' | 'flags';
 
@@ -73,7 +74,7 @@ export default function AdminSettingsPage() {
           <button onClick={load} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+            {loading ? <VukaLoader size={14} /> : <RefreshCw size={14} />} Refresh
           </button>
         </div>
       </div>
@@ -94,7 +95,7 @@ export default function AdminSettingsPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="animate-spin" size={24} style={{ color: 'var(--green)' }} />
+          <VukaLoader size={24} />
         </div>
       ) : (
         <div className="rounded-2xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -154,7 +155,7 @@ export default function AdminSettingsPage() {
                 disabled={saving}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {saving ? <VukaLoader size={14} /> : <Save size={14} />}
                 Save Plans
               </button>
             </div>
@@ -184,7 +185,7 @@ export default function AdminSettingsPage() {
                 disabled={saving}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {saving ? <VukaLoader size={14} /> : <Save size={14} />}
                 Save Payout Settings
               </button>
             </div>
@@ -292,7 +293,7 @@ export default function AdminSettingsPage() {
                 disabled={saving}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {saving ? <VukaLoader size={14} /> : <Save size={14} />}
                 Save Landing Page
               </button>
             </div>

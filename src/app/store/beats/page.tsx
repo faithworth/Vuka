@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import StorePage from '../page';
 
 export const metadata: Metadata = {
-  title: 'Buy Beats — Vuka',
+  title: 'Buy Beats — Vuka Music',
   description: 'Browse and buy beats from independent producers. Amapiano, Afrobeats, Hip Hop, Drill and more.',
 };
 

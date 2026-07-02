@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import {
-  Loader2, Plus, Pencil, Trash2, Eye, EyeOff,
-  Briefcase, DollarSign, Calendar, Star,
+  Plus, Pencil, Trash2, Eye, EyeOff, Briefcase, DollarSign, Calendar, Star,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const CATEGORIES = [
   { value: 'mixing',       label: 'Mixing' },
@@ -159,7 +159,7 @@ export default function ArtistServicesPage() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+          <VukaLoader size={24} />
         </div>
       ) : services.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -223,7 +223,7 @@ export default function ArtistServicesPage() {
                     </button>
                     <button onClick={() => deleteService(svc.id)} disabled={deleting === svc.id}
                       className="p-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
-                      {deleting === svc.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                      {deleting === svc.id ? <VukaLoader size={15} /> : <Trash2 size={15} />}
                     </button>
                   </div>
                 </div>
@@ -307,7 +307,7 @@ export default function ArtistServicesPage() {
             <div className="flex gap-3">
               <button onClick={() => setShowForm(false)} className="btn btn-secondary flex-1">Cancel</button>
               <button onClick={saveService} disabled={saving} className="btn btn-primary flex-1">
-                {saving ? <Loader2 size={15} className="animate-spin" /> : null}
+                {saving ? <VukaLoader size={15} /> : null}
                 {saving ? 'Saving…' : editId ? 'Update Service' : 'List Service'}
               </button>
             </div>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, Upload, Video, Music, Image as ImageIcon, X, AlertCircle, Plus, Trash2, Eye, Pencil, Check, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Upload, Video, Music, Image as ImageIcon, X, AlertCircle, Plus, Trash2, Eye, Pencil, Check, AlertTriangle } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const GENRES = ['Afrobeats', 'Amapiano', 'Hip Hop', 'Trap', 'R&B', 'Drill', 'Gqom', 'House', 'Jazz', 'Gospel', 'Kwaito', 'Pop', 'Electronic'];
 
@@ -266,7 +267,7 @@ export default function VideosPage() {
         {uploadType === 'video' ? 'Video live!' : 'Sample pack live!'}
       </h2>
       <p className="mb-8 text-lg" style={{ color: 'var(--text-muted)' }}>
-        Your {uploadType === 'video' ? 'video' : 'sample pack'} is now on Vuka.
+        Your {uploadType === 'video' ? 'video' : 'sample pack'} is now on Vuka Music.
       </p>
       <div className="flex gap-4">
         <button onClick={() => { setSuccess(false); setTab('list'); }}
@@ -301,7 +302,7 @@ export default function VideosPage() {
       {tab === 'list' ? (
         loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+            <VukaLoader size={24} />
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -538,7 +539,7 @@ export default function VideosPage() {
               disabled={uploading}
               className="flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2"
               style={{ background: 'var(--sky)' }}>
-              {uploading ? <><Loader2 size={16} className="animate-spin" />Uploading…</> : <><Upload size={16} />Publish {uploadType === 'video' ? 'Video' : 'Sample Pack'}</>}
+              {uploading ? <><VukaLoader size={16} />Uploading…</> : <><Upload size={16} />Publish {uploadType === 'video' ? 'Video' : 'Sample Pack'}</>}
             </button>
           </div>
         </div>

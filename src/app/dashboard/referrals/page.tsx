@@ -4,7 +4,8 @@
 // Shows unique link, signup count, progress toward reward, and badge status.
 
 import { useEffect, useState } from 'react';
-import { Copy, Check, Users, Gift, Star, Loader2, RefreshCw, Share2 } from 'lucide-react';
+import { Copy, Check, Users, Gift, Star, RefreshCw, Share2 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface ReferralData {
   referralCode:    string;
@@ -84,7 +85,7 @@ export default function ReferralsPage() {
   if (loading) {
     return (
       <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading referrals…
+        <VukaLoader size={18} /> Loading referrals…
       </div>
     );
   }
@@ -132,7 +133,7 @@ export default function ReferralsPage() {
           <div>
             <p className="text-sm font-bold" style={{ color: 'var(--gold)' }}>You're a Founding Artist</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              This badge is permanent on your profile. You're part of the first wave of artists who built Vuka.
+              This badge is permanent on your profile. You're part of the first wave of artists who built Vuka Music.
               Thank you.
             </p>
           </div>
@@ -147,7 +148,7 @@ export default function ReferralsPage() {
           <div>
             <p className="text-sm font-bold" style={{ color: 'var(--green)' }}>Reward claimed — 3 months Pro unlocked</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Your Pro plan has been extended. Keep sharing — every artist you bring makes Vuka stronger.
+              Your Pro plan has been extended. Keep sharing — every artist you bring makes Vuka Music stronger.
             </p>
           </div>
         </div>
@@ -163,7 +164,7 @@ export default function ReferralsPage() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg,#d4a000,#b38600)' }}>
             {claiming
-              ? <><Loader2 size={14} className="animate-spin" /> Claiming…</>
+              ? <><VukaLoader size={14} /> Claiming…</>
               : <><Gift size={14} /> Claim 3 Months Pro Free</>}
           </button>
           {claimMsg && (

@@ -1,5 +1,5 @@
 // src/app/api/industry/order/route.ts
-// Artist pays for an industry service through Vuka.
+// Artist pays for an industry service through Vuka Music.
 // POST  — create order + Paystack payment URL
 // GET   — artist views their own industry orders
 

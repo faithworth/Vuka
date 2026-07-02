@@ -9,9 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Loader2, TrendingUp, Users, Play, BarChart2, Globe,
-  RefreshCw, Download, Music, Heart, Repeat2, MessageCircle,
-  DollarSign, Eye, Activity,
+  TrendingUp, Users, Play, BarChart2, Globe, RefreshCw, Download, Music, Heart, Repeat2, MessageCircle, DollarSign, Eye, Activity,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart } from '@/components/analytics/LineChart';
@@ -20,6 +18,7 @@ import { DonutChart } from '@/components/analytics/DonutChart';
 import { GeoHeatmap } from '@/components/analytics/GeoHeatmap';
 import { StatCard } from '@/components/analytics/StatCard';
 import { PeriodSelector, PERIODS, type Period } from '@/components/analytics/PeriodSelector';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -585,7 +584,7 @@ export default function AnalyticsPage() {
       {/* Loading */}
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '48px 0', color: 'var(--text-muted)', fontSize: 14 }}>
-          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+          <VukaLoader size={18} />
           Loading analytics…
         </div>
       )}

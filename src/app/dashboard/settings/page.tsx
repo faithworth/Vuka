@@ -8,10 +8,9 @@
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  Loader2, CheckCircle2, Mic2, ExternalLink,
-  QrCode, Download, Building2, Plus, Trash2, Wallet,
-  Crown, Zap, Star, Check, ArrowRight, AlertTriangle,
+  CheckCircle2, Mic2, ExternalLink, QrCode, Download, Building2, Plus, Trash2, Wallet, Crown, Zap, Star, Check, ArrowRight, AlertTriangle,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const PLAN_DEFS = [
   {
@@ -234,7 +233,7 @@ function SettingsContent() {
 
   if (loading) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-      <Loader2 size={20} className="animate-spin" /> Loading your profile…
+      <VukaLoader size={20} /> Loading your profile…
     </div>
   );
   if (!artist) return (
@@ -258,7 +257,7 @@ function SettingsContent() {
             border: `1px solid ${planActivateMsg.startsWith('✅') ? 'rgba(160,232,124,0.3)' : planActivateMsg.startsWith('⚠️') ? 'rgba(239,68,68,0.3)' : 'rgba(96,165,250,0.3)'}`,
             color: 'var(--text)',
           }}>
-          {planActivating && <span className="animate-spin inline-block">⏳</span>}
+          {planActivating && <VukaLoader size={14} />}
           {planActivateMsg}
         </div>
       )}
@@ -268,7 +267,7 @@ function SettingsContent() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Add your bank account so Vuka can pay you every Friday via EFT.
+            Add your bank account so Vuka Music can pay you every Friday via EFT.
           </p>
         </div>
 
@@ -390,7 +389,7 @@ function SettingsContent() {
                 <button onClick={saveBankAccount} disabled={bankSaving}
                   className="flex-1 py-3 rounded-xl font-bold text-sm text-white disabled:opacity-60"
                   style={{ background: 'var(--sky)' }}>
-                  {bankSaving ? <><Loader2 size={14} className="animate-spin inline mr-2" />Saving…</> : 'Save Account'}
+                  {bankSaving ? <><VukaLoader size={14} className="inline mr-2" />Saving…</> : 'Save Account'}
                 </button>
                 <button onClick={() => { setShowBankForm(false); setBankError(null); }}
                   className="px-5 py-3 rounded-xl text-sm font-medium"
@@ -525,7 +524,7 @@ function SettingsContent() {
             className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-60 transition-all"
             style={{ background: saved ? 'var(--green)' : 'var(--sky)' }}>
             {saving
-              ? <><Loader2 size={16} className="animate-spin inline mr-2" />Saving…</>
+              ? <><VukaLoader size={16} className="inline mr-2" />Saving…</>
               : saved
               ? <><CheckCircle2 size={16} className="inline mr-2" />Profile Saved!</>
               : 'Save Profile'}
@@ -578,7 +577,7 @@ function SettingsContent() {
 
                 {/* Share line */}
                 <p className="text-sm font-semibold mb-3" style={{ color: p.color }}>
-                  You keep {p.artistSharePct}% · Vuka takes {p.platformFeePct}%
+                  You keep {p.artistSharePct}% · Vuka Music takes {p.platformFeePct}%
                 </p>
 
                 {/* Features */}
@@ -598,7 +597,7 @@ function SettingsContent() {
                     disabled={planLoading}
                     className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60"
                     style={{ background: p.color }}>
-                    {planLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                    {planLoading ? <VukaLoader size={14} /> : <ArrowRight size={14} />}
                     Upgrade to {p.name}
                   </button>
                 )}
@@ -695,7 +694,7 @@ export default function SettingsPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--green)' }} />
+        <VukaLoader size={36} />
       </div>
     }>
       <SettingsContent />

@@ -3,7 +3,7 @@
  * POST /api/admin/releases  { releaseId, action, notes }
  * Actions: activate | deactivate | delete
  *
- * Vuka publishes releases instantly when the artist hits "Publish" — there
+ * Vuka Music publishes releases instantly when the artist hits "Publish" — there
  * is no pre-publish review queue and no DSP delivery. This endpoint is
  * purely for post-publish moderation: pulling a release from the store
  * (deactivate), restoring it (activate), or removing one that never sold

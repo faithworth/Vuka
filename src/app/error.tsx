@@ -24,7 +24,7 @@ export default function Error({
 
     // Always log to console in dev — Sentry swallows in production
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[Vuka] Page error:', error);
+      console.error('[Vuka Music] Page error:', error);
     }
   }, [error]);
 

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Save, ExternalLink, Store, Palette, Type, Globe, Instagram, Twitter, Youtube } from 'lucide-react';
+import { Save, ExternalLink, Store, Palette, Type, Globe, Instagram, Twitter, Youtube } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface SocialLinks {
   instagram?: string;
@@ -86,7 +87,7 @@ export default function StorefrontPage() {
 
   if (loading) return (
     <div className="p-6 md:p-10 flex justify-center py-20">
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={24} />
     </div>
   );
 
@@ -110,7 +111,7 @@ export default function StorefrontPage() {
           )}
           <button onClick={save} disabled={saving} className="btn btn-primary gap-2 disabled:opacity-50">
             {saving
-              ? <Loader2 size={14} className="animate-spin" />
+              ? <VukaLoader size={14} />
               : saved ? '✓ Saved' : <><Save size={14} /> Save</>
             }
           </button>
@@ -249,7 +250,7 @@ export default function StorefrontPage() {
 
       <div className="mt-6 flex justify-end">
         <button onClick={save} disabled={saving} className="btn btn-primary gap-2 disabled:opacity-50">
-          {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+          {saving ? <VukaLoader size={14} /> : <Save size={14} />}
           {saved ? 'Saved!' : 'Save Storefront'}
         </button>
       </div>

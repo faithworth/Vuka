@@ -16,7 +16,7 @@ async function requireLabelPlan() {
     return {
       user: null,
       error: NextResponse.json(
-        { error: 'The Label feature requires a Vuka Label plan. Upgrade at /pricing.' },
+        { error: 'The Label feature requires a Vuka Music Label plan. Upgrade at /pricing.' },
         { status: 403 },
       ),
     };

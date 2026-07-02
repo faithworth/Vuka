@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Loader2, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye } from 'lucide-react';
+import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface EventTicketForm { name: string; description: string; price: string; quantity: string }
 interface EventItem {
@@ -86,7 +87,7 @@ export default function EventsPage() {
     setActioning(false);
   }
 
-  if (loading) return <div className="p-10 flex items-center gap-3" style={{ color:'var(--text-muted)' }}><Loader2 size={18} className="animate-spin" /> Loading events…</div>;
+  if (loading) return <div className="p-10 flex items-center gap-3" style={{ color:'var(--text-muted)' }}><VukaLoader size={18} /> Loading events…</div>;
 
   // ── CREATE ──
   if (step === 'create') return (
@@ -147,7 +148,7 @@ export default function EventsPage() {
           </div>
         </div>
         <button onClick={create} disabled={saving} className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50" style={{ background:'linear-gradient(135deg,#d4a000,#b38600)' }}>
-          {saving ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin"/>Creating…</span> : 'Save as Draft'}
+          {saving ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} />Creating…</span> : 'Save as Draft'}
         </button>
       </div>
     </div>
@@ -198,7 +199,7 @@ export default function EventsPage() {
       <div className="flex gap-3 flex-wrap">
         {selected.status === 'draft' && <>
           <button onClick={() => action(selected.id,'publish')} disabled={actioning} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>
-            {actioning ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>} Publish
+            {actioning ? <VukaLoader size={14} /> : <Globe size={14}/>} Publish
           </button>
           <button onClick={() => del(selected.id)} disabled={actioning} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm" style={{ background:'rgba(248,113,113,0.1)', color:'#f87171', border:'1px solid rgba(248,113,113,0.2)' }}>
             <Trash2 size={14}/> Delete

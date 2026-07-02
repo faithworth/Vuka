@@ -224,3 +224,22 @@ code, pre, .font-mono, [class*="mono"], .stat-number { font-family: var(--font-m
 .bottom-sheet     { animation: slideFromBottom 0.35s cubic-bezier(0.32,0.72,0,1) forwards; }
 .animate-fade-in  { animation: fadeIn   0.5s ease forwards; }
 .animate-slide-up { animation: slideUp  0.4s ease forwards; }
+
+/* ── Vuka Music brand mark animations ───────────────────────────── */
+@keyframes vuka-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.08); opacity: 0.6; }
+}
+.vuka-pulse {
+  transform-origin: center;
+  animation: vuka-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes vuka-sweep {
+  0%   { transform: translateX(0); }
+  45%  { transform: translateX(130px); }
+  100% { transform: translateX(130px); }
+}
+.vuka-sweep {
+  animation: vuka-sweep 3.6s ease-in-out infinite;
+}

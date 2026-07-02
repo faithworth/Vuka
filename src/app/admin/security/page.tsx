@@ -7,9 +7,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Loader2, RefreshCw, Shield, Eye, Flag, Activity,
-  Search, Download, Clock, AlertTriangle, CheckCircle,
+  RefreshCw, Shield, Eye, Flag, Activity, Search, Download, Clock, AlertTriangle, CheckCircle,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type SecurityTab = 'audit' | 'flags' | 'activity';
 
@@ -63,7 +63,7 @@ export default function AdminSecurityPage() {
         <button onClick={load} disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          {loading ? <VukaLoader size={14} /> : <RefreshCw size={14} />} Refresh
         </button>
       </div>
 
@@ -112,7 +112,7 @@ export default function AdminSecurityPage() {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={5} className="px-4 py-8 text-center">
-                    <Loader2 className="animate-spin mx-auto" size={20} style={{ color: 'var(--green)' }} />
+                    <VukaLoader size={20} className="mx-auto" />
                   </td></tr>
                 ) : logs.length === 0 ? (
                   <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>
@@ -167,7 +167,7 @@ export default function AdminSecurityPage() {
         <div className="space-y-3">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin" size={20} style={{ color: 'var(--green)' }} />
+              <VukaLoader size={20} />
             </div>
           ) : flags.length === 0 ? (
             <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>No open flags</div>

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
-import { Heart, MessageCircle, Repeat2, Music, Disc, ExternalLink, Loader2, Users } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Music, Disc, ExternalLink, Users } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Post {
   id: string;
@@ -102,7 +103,7 @@ export default function FeedPage() {
 
   if (!authed || loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={28} />
     </div>
   );
 

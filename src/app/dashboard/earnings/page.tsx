@@ -8,9 +8,9 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import {
-  TrendingUp, Download, BarChart2, Loader2, RefreshCw,
-  Music, Disc, ChevronDown,
+  TrendingUp, Download, BarChart2, RefreshCw, Music, Disc, ChevronDown,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 type Period = 1 | 3 | 12 | 24;
 
@@ -131,7 +131,7 @@ export default function EarningsPage() {
 
       {loading ? (
         <div className="flex items-center gap-3 py-12" style={{ color: 'var(--text-muted)' }}>
-          <Loader2 size={18} className="animate-spin" /> Loading earnings…
+          <VukaLoader size={18} /> Loading earnings…
         </div>
       ) : (
         <>
@@ -140,7 +140,7 @@ export default function EarningsPage() {
             {[
               { label: 'Gross',                   value: formatCurrency(totalGross),    color: 'var(--gold)',  icon: TrendingUp },
               { label: `Net (Your ${artistPct}%)`, value: formatCurrency(totalNet),      color: 'var(--green)', icon: BarChart2 },
-              { label: `Vuka ${platformPct}% Fee`, value: formatCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
+              { label: `Vuka Music ${platformPct}% Fee`, value: formatCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
               { label: 'Total Sales',               value: (data?.totalSales ?? 0).toString(), color: 'var(--sky)', icon: BarChart2 },
             ].map(card => (
               <div key={card.label} className="p-5 rounded-2xl"
@@ -285,7 +285,7 @@ export default function EarningsPage() {
             style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
             <span style={{ color: 'var(--gold)', flexShrink: 0 }}>✦</span>
             <p style={{ color: 'var(--text-muted)' }}>
-              All net amounts shown are after Vuka's {platformPct}% platform fee.
+              All net amounts shown are after Vuka Music's {platformPct}% platform fee.
               You keep {artistPct}% of every sale — no hidden charges.
             </p>
           </div>

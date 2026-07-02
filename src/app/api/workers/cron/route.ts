@@ -25,7 +25,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
  *   payout_process — flag stale approved payouts for admin attention
  *   all           — run all jobs in sequence
  *
- * Note: Vuka is a direct-to-fan sales platform (no DSP distribution), so the
+ * Note: Vuka Music is a direct-to-fan sales platform (no DSP distribution), so the
  * legacy `notify_live` (DistributionRelease) and `distribution_retry`
  * (DSPDelivery) jobs have been removed. Releases on the `Release` model go
  * live instantly when the artist publishes — no delayed "went live" job is

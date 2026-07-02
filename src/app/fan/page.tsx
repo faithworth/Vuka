@@ -4,11 +4,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  ShoppingBag, Heart, Download, Music2, Loader2, ExternalLink,
-  LogOut, UserCheck, Rss, Bell, Users, CheckCheck,
-  MessageCircle, Star, Package, XCircle, AlertCircle,
+  ShoppingBag, Heart, Download, Music2, ExternalLink, LogOut, UserCheck, Rss, Bell, Users, CheckCheck, MessageCircle, Star, Package, XCircle, AlertCircle,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Purchase {
   id: string;
@@ -188,7 +187,7 @@ export default function FanDashboard() {
 
   if (!user || loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={24} />
     </div>
   );
 
@@ -402,7 +401,7 @@ export default function FanDashboard() {
                 <button onClick={markAllRead} disabled={markingAll}
                   className="flex items-center gap-1.5 text-sm font-medium disabled:opacity-50"
                   style={{ color: 'var(--sky)' }}>
-                  {markingAll ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />} Mark all read
+                  {markingAll ? <VukaLoader size={13} /> : <CheckCheck size={13} />} Mark all read
                 </button>
               )}
             </div>
@@ -505,7 +504,7 @@ export default function FanDashboard() {
                         className="flex items-center justify-center gap-1 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
                         style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                         {cancellingId === m.id
-                          ? <Loader2 size={11} className="animate-spin" />
+                          ? <VukaLoader size={11} />
                           : <XCircle size={11} />}
                         Cancel
                       </button>

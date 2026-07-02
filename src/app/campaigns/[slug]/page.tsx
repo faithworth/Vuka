@@ -2,7 +2,8 @@
 // src/app/campaigns/[slug]/page.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Loader2, Users, Calendar, Target, Check, AlertCircle, Heart } from 'lucide-react';
+import { Users, Calendar, Target, Check, AlertCircle, Heart } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Tier { id: string; title: string; description: string; amount: number; perks: string[]; maxBackers: number | null; backerCount: number; available: number | null }
 interface Campaign {
@@ -72,7 +73,7 @@ export default function CampaignPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+      <VukaLoader size={24} />
     </div>
   );
   if (!campaign) return (
@@ -218,7 +219,7 @@ export default function CampaignPage() {
                 className="w-full mt-4 py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#d4a000,#b38600)' }}>
                 {submitting
-                  ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Processing…</span>
+                  ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} /> Processing…</span>
                   : `Back for ${selected ? fmtRand(selected.amount) : amount ? `R${parseFloat(amount).toFixed(2)}` : '…'}`}
               </button>
               <p className="text-xs text-center mt-3" style={{ color: 'var(--text-muted)' }}>

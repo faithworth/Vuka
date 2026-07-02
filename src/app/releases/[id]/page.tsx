@@ -116,13 +116,13 @@ export async function generateMetadata(
   { params }: { params: { id: string } }
 ): Promise<Metadata> {
   const release = await getRelease(params.id);
-  if (!release) return { title: 'Release not found — Vuka' };
+  if (!release) return { title: 'Release not found — Vuka Music' };
 
   const artistName = release.artist?.name ?? 'Unknown Artist';
-  const title      = `${release.title} — ${artistName} | Vuka`;
+  const title      = `${release.title} — ${artistName} | Vuka Music`;
   const description = (release as any).description
     ? `${(release as any).description.slice(0, 150)}…`
-    : `Stream "${release.title}" by ${artistName} on Vuka.`;
+    : `Stream "${release.title}" by ${artistName} on Vuka Music.`;
 
   return {
     title,

@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Music, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Music, ShieldCheck, KeyRound } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 function TwoFAForm() {
   const router = useRouter();
@@ -87,7 +88,7 @@ function TwoFAForm() {
               style={{ background: 'var(--color-accent-green)' }}>
               <Music size={15} className="text-black" />
             </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka</span>
+            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
           </Link>
 
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -151,7 +152,7 @@ function TwoFAForm() {
               disabled={isDisabled}
               className="btn btn-primary w-full py-3 disabled:opacity-60">
               {loading
-                ? <><Loader2 size={15} className="animate-spin" /> Verifying…</>
+                ? <><VukaLoader size={15} /> Verifying…</>
                 : 'Verify'}
             </button>
           </form>
@@ -186,8 +187,7 @@ export default function TwoFAPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: 'var(--color-background)' }}>
-        <Loader2 size={22} className="animate-spin"
-          style={{ color: 'var(--color-accent-green)' }} />
+        <VukaLoader size={22} />
       </div>
     }>
       <TwoFAForm />

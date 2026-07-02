@@ -3,9 +3,9 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Vuka — Release. Distribute. Earn. Own.',
+  title: 'Vuka Music — Release. Distribute. Earn. Own.',
   description:
-    "Vuka is Africa's independent music distribution platform. Upload your music, distribute to Spotify, Apple Music, Boomplay, Audiomack and 30+ platforms. Keep up to 100% of your royalties. Built for South African and African independent artists.",
+    "Vuka Music is Africa's independent music distribution platform. Upload your music, distribute to Spotify, Apple Music, Boomplay, Audiomack and 30+ platforms. Keep up to 100% of your royalties. Built for South African and African independent artists.",
   keywords: [
     'vuka', 'vuka distro', 'music distribution south africa',
     'south african music platform', 'african music distribution',
@@ -21,17 +21,17 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka — Release. Distribute. Earn. Own.',
+    title: 'Vuka Music — Release. Distribute. Earn. Own.',
     description:
       "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. Paystack payments.",
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
-    siteName: 'Vuka',
+    siteName: 'Vuka Music',
     type: 'website',
     locale: 'en_ZA',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vuka — Release. Distribute. Earn. Own.',
+    title: 'Vuka Music — Release. Distribute. Earn. Own.',
     description:
       "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties.",
   },
@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        {/* Vuka Design System fonts — Syne (headings), DM Sans (body), JetBrains Mono (numbers/code) */}
+        {/* Vuka Music Design System fonts — Syne (headings), DM Sans (body), JetBrains Mono (numbers/code) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link

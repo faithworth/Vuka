@@ -2,7 +2,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Music, Eye, EyeOff, Loader2, CheckCircle2, XCircle, Lock } from 'lucide-react';
+import { Music, Eye, EyeOff, CheckCircle2, XCircle, Lock } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 function StrengthBar({ password }: { password: string }) {
   if (!password) return null;
@@ -85,7 +86,7 @@ function ResetForm() {
 
   if (checking) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-      <Loader2 size={22} className="animate-spin" style={{ color: 'var(--color-accent-green)' }} />
+      <VukaLoader size={22} />
     </div>
   );
 
@@ -97,7 +98,7 @@ function ResetForm() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-green)' }}>
               <Music size={15} className="text-black" />
             </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka</span>
+            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
             {done ? 'Password Updated!' : 'Set New Password'}
@@ -175,7 +176,7 @@ function ResetForm() {
                 disabled={loading || password.length < 8 || password !== confirm}
                 className="btn btn-primary w-full py-3 disabled:opacity-60">
                 {loading
-                  ? <><Loader2 size={15} className="animate-spin" /> Updating…</>
+                  ? <><VukaLoader size={15} /> Updating…</>
                   : 'Update Password'}
               </button>
             </form>
@@ -190,7 +191,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-        <Loader2 size={22} className="animate-spin" style={{ color: 'var(--color-accent-green)' }} />
+        <VukaLoader size={22} />
       </div>
     }>
       <ResetForm />

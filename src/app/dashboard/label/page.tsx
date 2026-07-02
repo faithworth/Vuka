@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import { Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { getEffectivePlan } from '@/lib/plans';
 import Link from 'next/link';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 interface RosterArtist { id: string; name: string; slug: string; photoUrl?: string; revenueShare: number; status: string; joinedAt: string | null }
 interface LabelData { id: string; name: string; slug: string; logoUrl: string; description: string; website: string; roster: RosterArtist[] }
@@ -85,7 +86,7 @@ export default function LabelPage() {
         <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--text)' }}>Label Plan Required</h2>
         <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           The Label feature lets you manage multiple artists, set revenue splits, and issue invite links — all under one roof.
-          It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Label plan</strong> (R999/mo, 5% platform fee).
+          It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Music Label plan</strong> (R999/mo, 5% platform fee).
         </p>
         <Link href="/pricing"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black"
@@ -100,7 +101,7 @@ export default function LabelPage() {
     </div>
   );
 
-  if (loading) return <div className="p-10 flex items-center gap-3" style={{ color:'var(--text-muted)' }}><Loader2 size={18} className="animate-spin"/>Loading label…</div>;
+  if (loading) return <div className="p-10 flex items-center gap-3" style={{ color:'var(--text-muted)' }}><VukaLoader size={18} />Loading label…</div>;
 
   // ── CREATE LABEL ──
   if (!label) return (
@@ -133,7 +134,7 @@ export default function LabelPage() {
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={createLabel} disabled={saving || !name.trim()} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50" style={{ background:'linear-gradient(135deg,#d4a000,#b38600)' }}>
-              {saving ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin"/>Creating…</span> : 'Create Label'}
+              {saving ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} />Creating…</span> : 'Create Label'}
             </button>
             <button onClick={() => setCreating(false)} className="px-4 py-2.5 rounded-xl font-bold text-sm" style={{ background:'var(--surface2)', color:'var(--text-muted)' }}>Cancel</button>
           </div>
@@ -167,7 +168,7 @@ export default function LabelPage() {
           <h2 className="text-sm font-bold mb-3" style={{ color:'var(--text)' }}>Invite an Artist to Your Roster</h2>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color:'var(--text-muted)' }}>Artist Vuka slug</label>
+              <label className="text-xs font-semibold mb-1 block" style={{ color:'var(--text-muted)' }}>Artist Vuka Music slug</label>
               <input className="input w-full" placeholder="e.g. blaze-kwena-jr" value={artistSlug} onChange={e => setSlug(e.target.value)} />
             </div>
             <div>
@@ -176,10 +177,10 @@ export default function LabelPage() {
             </div>
           </div>
           <div className="text-xs p-3 rounded-xl mb-3" style={{ background:'rgba(56,182,232,0.08)', color:'var(--text-muted)' }}>
-            Artist keeps <strong style={{ color:'var(--sky)' }}>{revenueShare}%</strong> of net revenue (after Vuka fee). Label keeps {(100 - parseFloat(revenueShare || '0')).toFixed(0)}%. The artist must accept the invite before splits apply.
+            Artist keeps <strong style={{ color:'var(--sky)' }}>{revenueShare}%</strong> of net revenue (after Vuka Music fee). Label keeps {(100 - parseFloat(revenueShare || '0')).toFixed(0)}%. The artist must accept the invite before splits apply.
           </div>
           <button onClick={sendInvite} disabled={saving || !artistSlug.trim()} className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50" style={{ background:'linear-gradient(135deg,#d4a000,#b38600)' }}>
-            {saving ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin"/>Generating…</span> : 'Generate Invite Link'}
+            {saving ? <span className="flex items-center justify-center gap-2"><VukaLoader size={14} />Generating…</span> : 'Generate Invite Link'}
           </button>
           {inviteLink && (
             <div className="mt-3 p-3 rounded-xl" style={{ background:'var(--surface2)', border:'1px solid var(--border)' }}>

@@ -1,9 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import {
-  Loader2, Plus, Package, Pencil, Trash2, Check, X,
-  Image as ImageIcon, AlertCircle, Eye, EyeOff, ShoppingBag,
+  Plus, Package, Pencil, Trash2, Check, X, Image as ImageIcon, AlertCircle, Eye, EyeOff, ShoppingBag,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const SIZES_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];
 
@@ -200,7 +200,7 @@ export default function DashboardMerchPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <Loader2 size={24} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={24} />
     </div>
   );
 
@@ -278,7 +278,7 @@ export default function DashboardMerchPage() {
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Title *</label>
               <input value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Vuka Classic Tee"
+                placeholder="e.g. Vuka Music Classic Tee"
                 className="w-full px-3 py-2 rounded-xl text-sm"
                 style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             </div>
@@ -334,7 +334,7 @@ export default function DashboardMerchPage() {
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
                 style={{ background: 'var(--sky)' }}>
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                {saving ? <VukaLoader size={15} /> : <Check size={15} />}
                 {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Item'}
               </button>
               <button onClick={closeForm} className="px-4 py-2.5 rounded-xl text-sm font-medium"

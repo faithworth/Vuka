@@ -5,12 +5,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import {
-  Plus, Pencil, Trash2, Loader2, LogOut, Briefcase,
-  CheckCircle, Clock, XCircle, Eye, EyeOff, MessageSquare,
-  DollarSign, Calendar, Send, Settings, TrendingUp,
-  Building2, Globe, User, Mail, Shield, BadgeCheck,
-  ChevronRight, Handshake, AlertCircle, RefreshCw, Users,
+  Plus, Pencil, Trash2, LogOut, Briefcase, CheckCircle, Clock, XCircle, Eye, EyeOff, MessageSquare, DollarSign, Calendar, Send, Settings, TrendingUp, Building2, Globe, User, Mail, Shield, BadgeCheck, ChevronRight, Handshake, AlertCircle, RefreshCw, Users,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const CATEGORIES = [
   { value: 'promotion',    label: 'Promotion & Marketing' },
@@ -264,7 +261,7 @@ export default function IndustryDashboardPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <Loader2 size={28} className="animate-spin" style={{ color: 'var(--sky)' }} />
+      <VukaLoader size={28} />
     </div>
   );
 
@@ -444,7 +441,7 @@ export default function IndustryDashboardPage() {
                           </button>
                           <button onClick={() => deleteService(svc.id)} disabled={deletingId === svc.id}
                             className="p-2 rounded-lg" style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
-                            {deletingId === svc.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                            {deletingId === svc.id ? <VukaLoader size={15} /> : <Trash2 size={15} />}
                           </button>
                         </div>
                       </div>
@@ -513,14 +510,14 @@ export default function IndustryDashboardPage() {
                                 disabled={updatingInquiry === inq.id}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
                                 style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--green)' }}>
-                                {updatingInquiry === inq.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                                {updatingInquiry === inq.id ? <VukaLoader size={11} /> : <CheckCircle size={11} />}
                                 Accept
                               </button>
                               <button onClick={() => updateInquiry(inq.id, 'rejected')}
                                 disabled={updatingInquiry === inq.id}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
                                 style={{ background: 'rgba(204,26,26,0.08)', color: 'var(--red)' }}>
-                                {updatingInquiry === inq.id ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                                {updatingInquiry === inq.id ? <VukaLoader size={11} /> : <XCircle size={11} />}
                                 Decline
                               </button>
                             </>
@@ -528,7 +525,7 @@ export default function IndustryDashboardPage() {
                           <button onClick={() => messageArtist(inq)} disabled={messaging === inq.id}
                             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
                             style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}>
-                            {messaging === inq.id ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+                            {messaging === inq.id ? <VukaLoader size={11} /> : <Send size={11} />}
                             {messaging === inq.id ? 'Opening chat…' : 'Message Artist'}
                           </button>
                         </div>
@@ -609,7 +606,7 @@ export default function IndustryDashboardPage() {
           <div>
             <h2 className="text-xl font-black mb-2" style={{ color: 'var(--text)' }}>Earnings & Payouts</h2>
             <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              Track payments from your service orders. Vuka deducts a 10% platform fee per order — you keep 90%.
+              Track payments from your service orders. Vuka Music deducts a 10% platform fee per order — you keep 90%.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -630,9 +627,9 @@ export default function IndustryDashboardPage() {
               <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>How fees work</p>
                 <p>
-                  When an artist pays for your service, <strong style={{ color: 'var(--gold)' }}>Vuka deducts 10%</strong> as a platform fee.
+                  When an artist pays for your service, <strong style={{ color: 'var(--gold)' }}>Vuka Music deducts 10%</strong> as a platform fee.
                   You receive <strong style={{ color: 'var(--green)' }}>90% of the order amount</strong> in your next payout.
-                  Example: artist pays R1,000 → Vuka fee R100 → you receive R900.
+                  Example: artist pays R1,000 → Vuka Music fee R100 → you receive R900.
                 </p>
               </div>
             </div>
@@ -641,7 +638,7 @@ export default function IndustryDashboardPage() {
               <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <TrendingUp size={36} className="mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
                 <p className="font-bold mb-1" style={{ color: 'var(--text)' }}>No referral earnings yet</p>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Refer artists to Vuka to earn commission on their sales.</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Refer artists to Vuka Music to earn commission on their sales.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -750,7 +747,7 @@ export default function IndustryDashboardPage() {
               )}
 
               <button onClick={saveSettings} disabled={savingSettings} className="btn btn-primary w-full">
-                {savingSettings ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : 'Save Profile'}
+                {savingSettings ? <><VukaLoader size={14} /> Saving…</> : 'Save Profile'}
               </button>
             </div>
 
@@ -853,7 +850,7 @@ export default function IndustryDashboardPage() {
             <div className="flex gap-3">
               <button onClick={() => setShowServiceForm(false)} className="btn btn-secondary flex-1">Cancel</button>
               <button onClick={saveService} disabled={savingService} className="btn btn-primary flex-1">
-                {savingService ? <Loader2 size={15} className="animate-spin" /> : null}
+                {savingService ? <VukaLoader size={15} /> : null}
                 {savingService ? 'Saving…' : editId ? 'Update Service' : 'List Service'}
               </button>
             </div>
@@ -911,7 +908,7 @@ export default function IndustryDashboardPage() {
             <div className="flex gap-3">
               <button onClick={() => setShowDealForm(false)} className="btn btn-secondary flex-1">Cancel</button>
               <button onClick={saveDeal} disabled={savingDeal} className="btn btn-primary flex-1">
-                {savingDeal ? <Loader2 size={15} className="animate-spin" /> : null}
+                {savingDeal ? <VukaLoader size={15} /> : null}
                 {savingDeal ? 'Saving…' : 'Save Deal'}
               </button>
             </div>

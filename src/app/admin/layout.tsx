@@ -9,10 +9,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  LayoutDashboard, Users, Music, DollarSign,
-  Settings, Shield, Bell, LogOut, Menu, X, ChevronRight,
-  BarChart2, Flag, Loader2, Crown, FileEdit,
+  LayoutDashboard, Users, Music, DollarSign, Settings, Shield, Bell, LogOut, Menu, X, ChevronRight, BarChart2, Flag, Crown, FileEdit,
 } from 'lucide-react';
+import VukaLoader from '@/components/brand/VukaLoader';
 
 const ADMIN_NAV = [
   { href: '/admin',              label: 'Overview',     icon: LayoutDashboard, exact: true },
@@ -56,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <Loader2 className="animate-spin" size={32} style={{ color: 'var(--green)' }} />
+        <VukaLoader size={32} />
       </div>
     );
   }

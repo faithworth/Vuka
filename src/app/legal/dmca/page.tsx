@@ -26,7 +26,7 @@ export default function DMCAPage() {
       <header className="px-6 py-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--sky)' }}><Music2 size={13} className="text-white" /></div>
-          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka</span>
+          <span className="font-bold" style={{ color: 'var(--text)' }}>Vuka Music</span>
         </Link>
         <span style={{ color: 'var(--border)' }}>/</span>
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>DMCA Takedown</span>
@@ -34,7 +34,7 @@ export default function DMCAPage() {
       <main className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>DMCA Takedown Notice</h1>
         <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-          If you believe your copyrighted work has been uploaded to Vuka without authorisation, complete this form. We will investigate within 72 hours.
+          If you believe your copyrighted work has been uploaded to Vuka Music without authorisation, complete this form. We will investigate within 72 hours.
         </p>
 
         {submitted ? (
@@ -57,7 +57,7 @@ export default function DMCAPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text)' }}>URL of Infringing Content on Vuka *</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text)' }}>URL of Infringing Content on Vuka Music *</label>
               <input className="input" required value={form.itemUrl} onChange={e => setForm(p => ({ ...p, itemUrl: e.target.value }))} placeholder="https://vukamusic.com/beat/..." />
             </div>
 
