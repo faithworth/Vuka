@@ -60,8 +60,8 @@ export async function createInvoiceFromOrder(orderId: string) {
   return prisma.invoice.create({
     data: {
       number,
-      artistId: order.sellerId,
-      total:    order.amount,
+      artistId: order.sellerArtistId,
+      total:    order.packagePrice,
       currency: order.currency,
       issuedAt: new Date(),
     },

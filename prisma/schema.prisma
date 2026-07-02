@@ -598,49 +598,67 @@ model MarketplaceService {
 }
 
 model MarketplaceOrder {
-  id          String              @id @default(cuid())
-  serviceId   String
-  service     MarketplaceService  @relation(fields: [serviceId], references: [id])
-  buyerId     String
-  buyer       User                @relation("buyer", fields: [buyerId], references: [id])
-  sellerId    String
-  seller      Artist              @relation("seller", fields: [sellerId], references: [id])
-  amount      Float
-  currency    String              @default("ZAR")
-  status      String              @default("pending") // pending, active, delivered, revision, complete, disputed, cancelled
-  requirements String             @default("")
-  deliverables String[]
-  deadline    DateTime?
+  id               String              @id @default(cuid())
+  serviceId        String
+  service          MarketplaceService  @relation(fields: [serviceId], references: [id])
+  buyerUserId      String
+  buyer            User                @relation("buyer", fields: [buyerUserId], references: [id])
+  sellerArtistId   String
+  seller           Artist              @relation("seller", fields: [sellerArtistId], references: [id])
+  packageName      String
+  packagePrice     Float
+  currency         String              @default("ZAR")
+  status           String              @default("pending") // pending, active, delivered, revision, complete, disputed, cancelled
+  requirements     String              @default("")
+  deliveryDays     Int
+  dueAt            DateTime?
+  deliveredAt      DateTime?
+  completedAt      DateTime?
+  deliverables     String[]
+  sellerNotes      String              @default("")
+  revisionCount    Int                 @default(0)
+  maxRevisions     Int                 @default(1)
+  revisionNotes    String              @default("")
+  purchaseId       String?
+  payfastRef       String?
+  stripePaymentId  String?
+  platformFee      Float               @default(0)
+  netAmount        Float               @default(0)
   paystackReference String?
-  dispute     MarketplaceDispute?
-  review      ServiceReview?
-  createdAt   DateTime            @default(now())
+  dispute          MarketplaceDispute?
+  review           ServiceReview?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @default(now())
 
   @@index([paystackReference])
+  @@index([buyerUserId])
+  @@index([sellerArtistId])
+  @@index([status])
+  @@index([serviceId])
 }
 
 model MarketplaceDispute {
-  id        String           @id @default(cuid())
-  orderId   String           @unique
-  order     MarketplaceOrder @relation(fields: [orderId], references: [id])
-  raisedBy  String
-  disputer  User             @relation("disputant", fields: [raisedBy], references: [id])
-  reason    String
-  status    String           @default("open") // open, resolved, closed
-  createdAt DateTime         @default(now())
+  id            String           @id @default(cuid())
+  orderId       String           @unique
+  order         MarketplaceOrder @relation(fields: [orderId], references: [id])
+  raisedByUserId String
+  disputer      User             @relation("disputant", fields: [raisedByUserId], references: [id])
+  reason        String
+  status        String           @default("open") // open, resolved, closed
+  createdAt     DateTime         @default(now())
 }
 
 model ServiceReview {
-  id        String           @id @default(cuid())
-  orderId   String           @unique
-  order     MarketplaceOrder @relation(fields: [orderId], references: [id])
-  serviceId String
-  service   MarketplaceService @relation(fields: [serviceId], references: [id])
-  reviewerId String
-  reviewer  User             @relation("reviewer", fields: [reviewerId], references: [id])
-  rating    Int
-  body      String           @default("")
-  createdAt DateTime         @default(now())
+  id             String           @id @default(cuid())
+  orderId        String           @unique
+  order          MarketplaceOrder @relation(fields: [orderId], references: [id])
+  serviceId      String
+  service        MarketplaceService @relation(fields: [serviceId], references: [id])
+  reviewerUserId String
+  reviewer       User             @relation("reviewer", fields: [reviewerUserId], references: [id])
+  rating         Int
+  comment        String           @default("")
+  createdAt      DateTime         @default(now())
 }
 
 model DistributionRelease {

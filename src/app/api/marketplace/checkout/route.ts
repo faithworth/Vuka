@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { requireAuth } from '@/lib/auth';
+import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +19,13 @@ export async function POST(req: NextRequest) {
 
     const service = await prisma.marketplaceService.findUnique({
       where: { id: serviceId },
-      include: { artist: { include: { user: true } } },
+      include: {
+        artist: {
+          include: { user: true },
+          // planSlug, planExpiresAt, lifetimeGrossSales are scalar fields on Artist,
+          // included automatically — no extra select needed.
+        },
+      },
     });
     if (!service?.isActive) return NextResponse.json({ error: 'Service not available' }, { status: 404 });
 
@@ -26,12 +33,18 @@ export async function POST(req: NextRequest) {
     // never trust a client-supplied amount for a payment.
     const packages = Array.isArray(service.packages) ? (service.packages as any[]) : [];
     let amount: number;
+    let resolvedPackageName: string;
+    let orderDeliveryDays: number;
     if (packages.length > 0) {
       const pkg = packageName ? packages.find(p => p.name === packageName) : packages[0];
       if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 400 });
       amount = Number(pkg.price);
+      resolvedPackageName = pkg.name;
+      orderDeliveryDays = parseInt(pkg.deliveryDays, 10) || service.deliveryDays || 7;
     } else {
       amount = Number(service.price);
+      resolvedPackageName = 'Standard';
+      orderDeliveryDays = service.deliveryDays || 7;
     }
     if (!amount || amount <= 0) return NextResponse.json({ error: 'Invalid service price' }, { status: 400 });
 
@@ -41,19 +54,26 @@ export async function POST(req: NextRequest) {
     const buyerArtist = await prisma.artist.findUnique({ where: { userId: user.id }, select: { id: true } });
     if (buyerArtist?.id === service.artistId) return NextResponse.json({ error: 'Cannot order your own service' }, { status: 400 });
 
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + (service.deliveryDays || 7));
+    const dueAt = new Date();
+    dueAt.setDate(dueAt.getDate() + orderDeliveryDays);
+
+    const platformFee = calcFee(amount, service.artist.planSlug, service.artist.planExpiresAt, service.artist.lifetimeGrossSales);
+    const netAmount    = calcNet(amount, service.artist.planSlug, service.artist.planExpiresAt, service.artist.lifetimeGrossSales);
 
     const order = await prisma.marketplaceOrder.create({
       data: {
         serviceId,
-        buyerId:      user.id,
-        sellerId:     service.artistId,
-        amount:       Number(amount),
-        currency:     'ZAR',
-        requirements: requirements || '',
-        status:       'pending',
-        deadline,
+        buyerUserId:    user.id,
+        sellerArtistId: service.artistId,
+        packageName:    resolvedPackageName,
+        packagePrice:   amount,
+        currency:       'ZAR',
+        requirements:   requirements || '',
+        status:         'pending',
+        deliveryDays:   orderDeliveryDays,
+        dueAt,
+        platformFee,
+        netAmount,
       },
     });
 

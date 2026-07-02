@@ -110,9 +110,9 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
 
     const amountGross = verification.amountZAR;
 
-    const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true } });
-    const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt);
-    const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt);
+    const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true, lifetimeGrossSales: true } });
+    const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
+    const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
     await prisma.marketplaceOrder.update({ where: { id: orderId }, data: { status: 'active' } });
     await prisma.marketplaceService.update({ where: { id: order.serviceId }, data: { totalOrders: { increment: 1 } } }).catch(() => {});
@@ -146,6 +146,11 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
     });
 
     logger.info('[marketplace/notify] Order activated', { traceId, orderId, reference });
+
+    await prisma.artist.update({
+      where: { id: artistId },
+      data:  { lifetimeGrossSales: { increment: amountGross } },
+    }).catch(e => logger.error('[marketplace/notify] lifetimeGrossSales increment failed', { error: String(e) }));
   } catch (err) {
     logger.error('[marketplace/notify] Error', { traceId, orderId, error: err instanceof Error ? err.message : String(err) });
   }
@@ -198,11 +203,11 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
 
     const artist = await prisma.artist.findUnique({
       where: { id: membership.artistId },
-      select: { planSlug: true, planExpiresAt: true },
+      select: { planSlug: true, planExpiresAt: true, lifetimeGrossSales: true },
     });
 
-    const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt);
-    const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt);
+    const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
+    const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
     await prisma.artistPayout.create({
       data: {
@@ -233,6 +238,11 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
     });
 
     logger.info('[memberships/notify] Membership activated', { traceId, membershipId: membership.id });
+
+    await prisma.artist.update({
+      where: { id: membership.artistId },
+      data:  { lifetimeGrossSales: { increment: amountGross } },
+    }).catch(e => logger.error('[memberships/notify] lifetimeGrossSales increment failed', { error: String(e) }));
   } catch (err) {
     logger.error('[memberships/notify] Error', { traceId, error: err instanceof Error ? err.message : String(err) });
   }

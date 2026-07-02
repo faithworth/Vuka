@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
 
     const orders = await prisma.marketplaceOrder.findMany({
       where: role === 'seller' && dbUser.artist
-        ? { sellerId: dbUser.artist.id }
-        : { buyerId: dbUser.id },
+        ? { sellerArtistId: dbUser.artist.id }
+        : { buyerUserId: dbUser.id },
       include: {
         service: { select: { title: true, category: true } },
         seller:  { select: { name: true, slug: true, photoUrl: true } },

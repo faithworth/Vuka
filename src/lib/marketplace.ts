@@ -1,17 +1,17 @@
 // ============================================================
 // src/lib/marketplace.ts
-// Rewritten to use ONLY actual schema fields.
-// MarketplaceOrder: buyerId, sellerId, amount, status, requirements, deliverables, deadline
-// MarketplaceDispute: orderId, raisedBy, reason, status
-// ServiceReview: orderId, serviceId, reviewerId, rating, body
+// Rewritten to use ONLY actual database columns (verified against
+// prisma/migrations/phase2_creator_economy/migration.sql).
+// MarketplaceOrder: buyerUserId, sellerArtistId, packageName, packagePrice,
+//                    status, requirements, deliverables, deliveryDays, dueAt,
+//                    platformFee, netAmount
+// MarketplaceDispute: orderId, raisedByUserId, reason, status
+// ServiceReview: orderId, serviceId, reviewerUserId, rating, comment
 // RevenueRecord: type, amount, platformFee, netAmount, period
 // ============================================================
 
 import prisma from './prisma';
-import { platformFee as calcFee, getPlan } from './plans';
-
-// Marketplace uses Free plan rate (15%) — sellers don't have subscriptions
-const MARKETPLACE_PLAN = 'free';
+import { platformFee as calcFee, artistNet as calcNet, getPlan } from './plans';
 
 function getPeriod(): string {
   const now = new Date();
@@ -24,6 +24,7 @@ export async function createMarketplaceOrder(params: {
   serviceId: string;
   buyerUserId: string;
   requirements?: string;
+  packageName?: string;
 }) {
   const service = await prisma.marketplaceService.findUnique({
     where: { id: params.serviceId },
@@ -34,20 +35,43 @@ export async function createMarketplaceOrder(params: {
   const buyer = await prisma.user.findUnique({ where: { id: params.buyerUserId }, include: { artist: true } });
   if (buyer?.artist?.id === service.artistId) throw new Error('Cannot order your own service');
 
-  const platformFee = calcFee(service.price, MARKETPLACE_PLAN);
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + service.deliveryDays);
+  // Derive price/package server-side — never trust client input for payments.
+  const packages = Array.isArray(service.packages) ? (service.packages as any[]) : [];
+  let price: number;
+  let resolvedPackageName: string;
+  let deliveryDays: number;
+  if (packages.length > 0) {
+    const pkg = params.packageName ? packages.find(p => p.name === params.packageName) : packages[0];
+    if (!pkg) throw new Error('Package not found');
+    price = Number(pkg.price);
+    resolvedPackageName = pkg.name;
+    deliveryDays = parseInt(pkg.deliveryDays, 10) || service.deliveryDays || 7;
+  } else {
+    price = Number(service.price);
+    resolvedPackageName = 'Standard';
+    deliveryDays = service.deliveryDays || 7;
+  }
+
+  const platformFee = calcFee(price, service.artist.planSlug, service.artist.planExpiresAt, service.artist.lifetimeGrossSales);
+  const netAmount    = calcNet(price, service.artist.planSlug, service.artist.planExpiresAt, service.artist.lifetimeGrossSales);
+
+  const dueAt = new Date();
+  dueAt.setDate(dueAt.getDate() + deliveryDays);
 
   return prisma.marketplaceOrder.create({
     data: {
-      serviceId:    params.serviceId,
-      buyerId:      params.buyerUserId,
-      sellerId:     service.artistId,
-      amount:       service.price,
-      currency:     service.currency,
-      requirements: params.requirements || '',
-      status:       'pending',
-      deadline,
+      serviceId:      params.serviceId,
+      buyerUserId:    params.buyerUserId,
+      sellerArtistId: service.artistId,
+      packageName:    resolvedPackageName,
+      packagePrice:   price,
+      currency:       service.currency,
+      requirements:   params.requirements || '',
+      status:         'pending',
+      deliveryDays,
+      dueAt,
+      platformFee,
+      netAmount,
     },
   });
 }
@@ -61,7 +85,7 @@ export async function deliverOrder(
 ) {
   const order = await prisma.marketplaceOrder.findUnique({ where: { id: orderId } });
   if (!order) throw new Error('Order not found');
-  if (order.sellerId !== sellerArtistId) throw new Error('Unauthorized');
+  if (order.sellerArtistId !== sellerArtistId) throw new Error('Unauthorized');
   if (order.status !== 'active') throw new Error(`Order is ${order.status}, cannot deliver`);
 
   return prisma.marketplaceOrder.update({
@@ -78,7 +102,7 @@ export async function requestRevision(orderId: string, buyerUserId: string) {
     include: { service: true },
   });
   if (!order) throw new Error('Order not found');
-  if (order.buyerId !== buyerUserId) throw new Error('Unauthorized');
+  if (order.buyerUserId !== buyerUserId) throw new Error('Unauthorized');
   if (order.status !== 'delivered') throw new Error('Order has not been delivered yet');
 
   return prisma.marketplaceOrder.update({
@@ -93,7 +117,7 @@ export async function completeOrder(orderId: string, buyerUserId: string) {
   return prisma.$transaction(async (tx) => {
     const order = await tx.marketplaceOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new Error('Order not found');
-    if (order.buyerId !== buyerUserId) throw new Error('Unauthorized');
+    if (order.buyerUserId !== buyerUserId) throw new Error('Unauthorized');
     if (order.status !== 'delivered') throw new Error('Order must be delivered to complete');
 
     const updated = await tx.marketplaceOrder.update({
@@ -101,13 +125,16 @@ export async function completeOrder(orderId: string, buyerUserId: string) {
       data: { status: 'complete' },
     });
 
-    const platformFee = calcFee(order.amount, MARKETPLACE_PLAN);
-    const netAmount   = order.amount - platformFee;
+    // Use the fee/net already locked in on the order at checkout time —
+    // recomputing here could disagree if the artist's plan or lifetime
+    // sales changed between order creation and completion.
+    const platformFee = order.platformFee;
+    const netAmount    = order.netAmount;
 
     // Release payout to seller (truthful: pending until processed)
     await tx.artistPayout.create({
       data: {
-        artistId:  order.sellerId,
+        artistId:  order.sellerArtistId,
         amount:    netAmount,
         method:    'bank',
         currency:  order.currency,
@@ -120,9 +147,9 @@ export async function completeOrder(orderId: string, buyerUserId: string) {
     // Revenue record
     await tx.revenueRecord.create({
       data: {
-        artistId:    order.sellerId,
+        artistId:    order.sellerArtistId,
         type:        'marketplace',
-        amount:      order.amount,
+        amount:      order.packagePrice,
         platformFee,
         netAmount,
         period:      getPeriod(),
@@ -144,14 +171,14 @@ export async function raiseDispute(
   const order = await prisma.marketplaceOrder.findUnique({ where: { id: orderId } });
   if (!order) throw new Error('Order not found');
 
-  const sellerUser = await prisma.artist.findUnique({ where: { id: order.sellerId }, select: { userId: true } });
-  const isParty = order.buyerId === raisedByUserId || sellerUser?.userId === raisedByUserId;
+  const sellerUser = await prisma.artist.findUnique({ where: { id: order.sellerArtistId }, select: { userId: true } });
+  const isParty = order.buyerUserId === raisedByUserId || sellerUser?.userId === raisedByUserId;
   if (!isParty) throw new Error('Only order parties can raise a dispute');
 
   return prisma.$transaction(async (tx) => {
     await tx.marketplaceOrder.update({ where: { id: orderId }, data: { status: 'disputed' } });
     return tx.marketplaceDispute.create({
-      data: { orderId, raisedBy: raisedByUserId, reason, status: 'open' },
+      data: { orderId, raisedByUserId, reason, status: 'open' },
     });
   });
 }
@@ -162,21 +189,21 @@ export async function submitReview(
   orderId: string,
   reviewerUserId: string,
   rating: number,
-  body?: string,
+  comment?: string,
 ) {
   if (rating < 1 || rating > 5) throw new Error('Rating must be 1–5');
   const order = await prisma.marketplaceOrder.findUnique({ where: { id: orderId } });
   if (!order) throw new Error('Order not found');
-  if (order.buyerId !== reviewerUserId) throw new Error('Only the buyer can review');
+  if (order.buyerUserId !== reviewerUserId) throw new Error('Only the buyer can review');
   if (order.status !== 'complete') throw new Error('Can only review completed orders');
 
   return prisma.serviceReview.create({
     data: {
       orderId,
-      serviceId:   order.serviceId,
-      reviewerId:  reviewerUserId,
+      serviceId:      order.serviceId,
+      reviewerUserId,
       rating,
-      body:        body || '',
+      comment:        comment || '',
     },
   });
 }
