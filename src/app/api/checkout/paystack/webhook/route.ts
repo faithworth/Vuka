@@ -11,6 +11,7 @@
  *   MEM_  → fan creator membership     → handleMembershipEvent
  *   ISO_  → industry service order     → handleIndustryOrderEvent
  *   SUP_  → fan support / tip          → handleSupportEvent
+ *   TICKET_ → event ticket purchase    → handleTicketEvent
  *
  * Replaces /api/checkout/payfast/notify.
  * Handles beat, release, video, sample, merch purchase confirmation.
@@ -31,7 +32,7 @@ import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
-import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent } from '@/lib/webhooks/paystack-handlers';
+import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent, handleTicketEvent, handleCampaignEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
   const traceId   = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -72,6 +73,14 @@ export async function POST(req: NextRequest) {
   }
   if (reference.startsWith('SUP_')) {
     await handleSupportEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('TICKET_')) {
+    await handleTicketEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('CAMP_')) {
+    await handleCampaignEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
 

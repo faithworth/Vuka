@@ -43,7 +43,7 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM = () => process.env.EMAIL_FROM || 'Vuka Music <noreply@mail.vukamusic.com>';
+const FROM = () => process.env.EMAIL_FROM || 'Vuka <noreply@mail.vukamusic.com>';
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 // ── Shared layout wrapper ─────────────────────────────────────
@@ -54,7 +54,7 @@ function layout(body: string): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Vuka Music</title>
+  <title>Vuka</title>
 </head>
 <body style="margin:0;padding:0;background:#0A0A0A;color:#F5F5F5;font-family:'DM Sans',Helvetica,Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A;min-height:100vh;">
@@ -76,7 +76,7 @@ function layout(body: string): string {
         <tr>
           <td align="center" style="padding-top:24px;">
             <p style="color:#6B6B6B;font-size:12px;margin:0;">
-              Vuka Music · Africa's Independent Music Platform<br/>
+              Vuka · Africa's Independent Music Platform<br/>
               <a href="${APP_URL()}/legal/privacy" style="color:#6B6B6B;">Privacy</a> &nbsp;·&nbsp;
               <a href="${APP_URL()}/legal/terms" style="color:#6B6B6B;">Terms</a> &nbsp;·&nbsp;
               <a href="${APP_URL()}/dashboard/settings" style="color:#6B6B6B;">Unsubscribe</a>
@@ -141,12 +141,12 @@ export async function sendWelcome({
   displayName: string;
   verifyUrl: string;
 }) {
-  const subject = `Welcome to Vuka Music, ${displayName} 🎵`;
+  const subject = `Welcome to Vuka, ${displayName} 🎵`;
   const html = layout(
     card(`
       ${icon('🎵')}
       <div style="text-align:center;">
-        ${heading(`Sharp, ${displayName}! Welcome to Vuka Music.`)}
+        ${heading(`Sharp, ${displayName}! Welcome to Vuka.`)}
         ${sub('You\'re joining Africa\'s independent music platform. Verify your email to unlock your dashboard and start distributing.')}
         ${btn(verifyUrl, 'Verify Email →')}
         <p style="color:#6B6B6B;font-size:12px;margin-top:16px;">Link expires in 24 hours. If you didn't sign up, ignore this email.</p>
@@ -181,7 +181,7 @@ export async function sendVerifyEmail({
   displayName: string;
   verifyUrl: string;
 }) {
-  const subject = `Verify your Vuka Music email address`;
+  const subject = `Verify your Vuka email address`;
   const html = layout(
     card(`
       ${icon('✉️')}
@@ -215,8 +215,8 @@ export async function sendMagicLink({
   isAdmin?: boolean;
 }) {
   const subject = isAdmin
-    ? `Vuka Music Admin — Your sign-in link`
-    : `Your Vuka Music sign-in link`;
+    ? `Vuka Admin — Your sign-in link`
+    : `Your Vuka sign-in link`;
   const html = layout(
     card(`
       ${icon(isAdmin ? '🔐' : '⚡')}
@@ -227,7 +227,7 @@ export async function sendMagicLink({
             ? `Hey ${displayName}, here is your one-time admin sign-in link. It expires in 10 minutes and can only be used once.`
             : `Hey ${displayName}, click the button below to sign in — no password needed.`
         )}
-        ${btn(magicUrl, isAdmin ? '🔐 Sign In to Admin →' : '⚡ Sign In to Vuka Music →')}
+        ${btn(magicUrl, isAdmin ? '🔐 Sign In to Admin →' : '⚡ Sign In to Vuka →')}
         <p style="color:#6B6B6B;font-size:12px;margin-top:16px;">
           ${isAdmin ? 'This link expires in 10 minutes and is IP-bound.' : 'This link expires in 15 minutes. If you didn\'t request this, ignore it safely.'}
         </p>
@@ -258,12 +258,12 @@ export async function sendNewDeviceAlert({
   time: string;
   securityUrl: string;
 }) {
-  const subject = `New login to your Vuka Music account — ${location}`;
+  const subject = `New login to your Vuka account — ${location}`;
   const html = layout(
     card(`
       ${icon('🔔')}
       ${heading('New device sign-in detected')}
-      ${sub(`Hey ${displayName}, a new device just signed in to your Vuka Music account. If this was you, no action needed.`)}
+      ${sub(`Hey ${displayName}, a new device just signed in to your Vuka account. If this was you, no action needed.`)}
       ${infoTable(`
         ${row('Device', deviceName)}
         ${row('Location', location)}
@@ -299,7 +299,7 @@ export async function sendReleaseSubmitted({
   trackCount: number;
   releaseUrl: string;
 }) {
-  const subject = `"${releaseTitle}" submitted for review — Vuka Music`;
+  const subject = `"${releaseTitle}" submitted for review — Vuka`;
   const html = layout(
     card(`
       ${icon('📤')}
@@ -398,7 +398,7 @@ export async function sendReleaseRejected({
 // ═══════════════════════════════════════════════════════════════
 // 7B. RELEASE TAKEN DOWN (post-publish moderation)
 // ═══════════════════════════════════════════════════════════════
-// Vuka Music publishes instantly with no pre-review queue, so this is sent only
+// Vuka publishes instantly with no pre-review queue, so this is sent only
 // when an admin removes an already-live release for a guideline violation
 // (distinct from sendReleaseRejected, which assumes a pre-publish review).
 
@@ -420,7 +420,7 @@ export async function sendReleaseTakenDown({
     card(`
       ${icon('⚠️')}
       ${heading(`"${releaseTitle}" was unpublished`)}
-      ${sub(`Hey ${artistName}, our team removed this release from the Vuka Music store.`)}
+      ${sub(`Hey ${artistName}, our team removed this release from the Vuka store.`)}
       <div style="background:#1A1A1A;border-left:3px solid #FF4D4D;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
         <p style="color:#A0A0A0;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
         <p style="color:#F5F5F5;margin:0;font-size:15px;line-height:1.6;">${reason}</p>
@@ -448,7 +448,7 @@ export async function sendReleaseLive({
   releaseTitle: string;
   shareUrl: string;
   releaseUrl: string;
-  /** @deprecated Vuka Music sells directly — it no longer distributes to DSPs. Kept optional for callers mid-migration. */
+  /** @deprecated Vuka sells directly — it no longer distributes to DSPs. Kept optional for callers mid-migration. */
   platforms?: string[];
 }) {
   const subject = `🎉 "${releaseTitle}" is LIVE!`;
@@ -457,7 +457,7 @@ export async function sendReleaseLive({
       ${icon('🎉')}
       <div style="text-align:center;">
         ${heading(`"${releaseTitle}" is LIVE!`)}
-        ${sub(`Sharp, ${artistName}! Your music is now live on Vuka Music and ready for fans to buy. Share it with the world!`)}
+        ${sub(`Sharp, ${artistName}! Your music is now live on Vuka and ready for fans to buy. Share it with the world!`)}
         ${btn(shareUrl, '🔗 Share My Release')}
         ${btn(releaseUrl, 'View Analytics →', 'secondary')}
       </div>
@@ -700,12 +700,12 @@ export async function sendAccountSuspended({
   appealUrl: string;
   suspendedUntil?: string;
 }) {
-  const subject = `Important: Your Vuka Music account has been suspended`;
+  const subject = `Important: Your Vuka account has been suspended`;
   const html = layout(
     card(`
       ${icon('🚫')}
       ${heading('Account suspended')}
-      ${sub(`Hey ${displayName}, your Vuka Music account has been suspended${suspendedUntil ? ` until ${suspendedUntil}` : ''}. Your content has been unpublished.`)}
+      ${sub(`Hey ${displayName}, your Vuka account has been suspended${suspendedUntil ? ` until ${suspendedUntil}` : ''}. Your content has been unpublished.`)}
       <div style="background:#1A1A1A;border-left:3px solid #FF4D4D;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
         <p style="color:#A0A0A0;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
         <p style="color:#F5F5F5;margin:0;font-size:15px;line-height:1.6;">${reason}</p>
@@ -737,12 +737,12 @@ export async function sendLoginAlert({
   time: string;
   securityUrl: string;
 }) {
-  const subject = `New sign-in to your Vuka Music account`;
+  const subject = `New sign-in to your Vuka account`;
   const html = layout(
     card(`
       ${icon('🔑')}
       ${heading('Successful sign-in')}
-      ${sub(`Hey ${displayName}, your Vuka Music account was just signed into. If this was you, you're all good.`)}
+      ${sub(`Hey ${displayName}, your Vuka account was just signed into. If this was you, you're all good.`)}
       ${infoTable(`
         ${row('Device', deviceName)}
         ${row('Location', location)}
@@ -783,7 +783,7 @@ export async function sendBroadcast({
       ${sub(`Hey ${displayName},`)}
       <div style="color:#F5F5F5;font-size:15px;line-height:1.8;margin-bottom:24px;">${body.replace(/\n/g, '<br/>')}</div>
       ${ctaLabel && ctaUrl ? btn(ctaUrl, ctaLabel) : ''}
-      <p style="color:#6B6B6B;font-size:12px;margin-top:24px;">This is a message from the Vuka Music team.</p>
+      <p style="color:#6B6B6B;font-size:12px;margin-top:24px;">This is a message from the Vuka team.</p>
     `)
   );
   return getResend().emails.send({ from: FROM(), to, subject, html });
@@ -801,7 +801,7 @@ export async function sendPurchaseConfirmation({
 }) {
   const isFree = amount === 0;
   const subject = isFree
-    ? `Your free download is ready — Vuka Music`
+    ? `Your free download is ready — Vuka`
     : `Purchase confirmed — ${itemName}`;
 
   const html = layout(card(`
@@ -827,7 +827,45 @@ export async function sendPurchaseConfirmation({
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
-export async function sendArtistSaleNotification({
+export async function sendTicketConfirmation({
+  to, buyerName, eventTitle, eventVenue, eventCity, eventStartDate, ticketName, quantity, amount, currency, ticketUrls,
+}: {
+  to: string; buyerName: string; eventTitle: string; eventVenue: string; eventCity: string;
+  eventStartDate: Date; ticketName: string; quantity: number; amount: number; currency: string; ticketUrls: string[];
+}) {
+  const dateStr = eventStartDate.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = eventStartDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  const subject = `Your ticket${quantity > 1 ? 's are' : ' is'} ready — ${eventTitle}`;
+
+  const ticketLinks = ticketUrls.map((url, i) =>
+    `<div style="margin-top:12px;">${btn(url, quantity > 1 ? `🎟 View Ticket ${i + 1}` : '🎟 View Your Ticket')}</div>`
+  ).join('');
+
+  const html = layout(card(`
+    ${icon('🎟')}
+    <div style="text-align:center;margin-bottom:32px;">
+      ${heading(`Sharp, ${buyerName}! You're going.`)}
+      ${sub(`Your ${quantity > 1 ? `${quantity} tickets are` : 'ticket is'} confirmed for ${eventTitle}.`)}
+    </div>
+    ${infoTable(`
+      ${row('Event', `<strong>${eventTitle}</strong>`)}
+      ${row('When', `${dateStr} · ${timeStr}`)}
+      ${row('Where', `${eventVenue}${eventCity ? `, ${eventCity}` : ''}`)}
+      ${row('Ticket type', ticketName)}
+      ${row('Quantity', String(quantity))}
+      ${row('Paid', amount === 0 ? '<span style="color:#A0E87C;">Free</span>' : `<span style="color:#A0E87C;">${currency} ${amount.toFixed(2)}</span>`, true)}
+    `)}
+    ${ticketLinks}
+    <p style="color:#6B6B6B;font-size:12px;text-align:center;margin-top:20px;line-height:1.6;">
+      Each ticket has its own unique QR code — one scan per code, one person per ticket.<br/>
+      Screenshot or save it before the event. Doors staff scan it once at the gate; it can't be reused or shared.
+    </p>
+  `));
+
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
+
   to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl, planSlug,
 }: {
   to: string; artistName: string; buyerName: string; itemName: string;
@@ -852,7 +890,7 @@ export async function sendArtistSaleNotification({
         ${licenseType ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">License</span><span style="text-transform:capitalize;">${licenseType}</span></div>` : ''}
         <div style="border-top:1px solid #2d2050;padding-top:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Sale Price</span><span>${currency} ${amount.toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Music Platform Fee (${feePct}%)</span><span style="color:#ef4444;">−${currency} ${feeAmt.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (${feePct}%)</span><span style="color:#ef4444;">−${currency} ${feeAmt.toFixed(2)}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:#f0eafa;font-weight:700;">You receive</span><span style="color:#10b981;font-weight:700;font-size:20px;">${currency} ${netAmount.toFixed(2)}</span></div>
         </div>
       </div>
@@ -868,7 +906,7 @@ export async function sendSupportFanConfirmation({
 }: {
   to: string; fanName: string; artistName: string; amount: number; currency: string; tier: string; message?: string;
 }) {
-  const subject = `You just made someone's day ♥ — Vuka Music`;
+  const subject = `You just made someone's day ♥ — Vuka`;
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
@@ -889,12 +927,38 @@ export async function sendSupportFanConfirmation({
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
+export async function sendCampaignBackerConfirmation({
+  to, backerName, artistName, campaignTitle, amount, currency, tierTitle, message,
+}: {
+  to: string; backerName: string; artistName: string; campaignTitle: string; amount: number; currency: string; tierTitle?: string; message?: string;
+}) {
+  const subject = `You just backed ${campaignTitle} ♥ — Vuka`;
+  const html = `<!DOCTYPE html><html>
+<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
+    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
+      <div style="font-size:48px;text-align:center;margin-bottom:16px;">🎯</div>
+      <h2 style="text-align:center;">Thanks for backing, ${backerName}</h2>
+      <p style="color:#8b7daa;text-align:center;margin:8px 0 24px;">You just helped fund "${campaignTitle}" by ${artistName}.</p>
+      <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Campaign</span><span>${campaignTitle}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Pledge</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
+        ${tierTitle ? `<div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#38b6e8;font-weight:700;">${tierTitle}</span></div>` : ''}
+      </div>
+      ${message ? `<div style="background:#1e1828;border-left:3px solid #38b6e8;padding:16px;border-radius:0 12px 12px 0;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your message:</p><p style="font-style:italic;">"${message}"</p></div>` : ''}
+    </div>
+  </div>
+</body></html>`;
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
 export async function sendNewMessageNotification({
   to, name, preview, inboxUrl,
 }: {
   to: string; name: string; preview: string; inboxUrl: string;
 }) {
-  const subject = `💬 You have a new message on Vuka Music`;
+  const subject = `💬 You have a new message on Vuka`;
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
@@ -942,7 +1006,7 @@ export async function sendTestEmail(to: string) {
   return getResend().emails.send({
     from: FROM(),
     to,
-    subject: 'Vuka Music — Email system is working ✓',
+    subject: 'Vuka — Email system is working ✓',
     html: layout(card(`
       ${icon('✅')}
       <div style="text-align:center;">
@@ -960,7 +1024,7 @@ export async function sendRedownloadLinks({
   to: string; buyerName: string;
   purchases: { itemName: string; downloadUrl: string }[];
 }) {
-  const subject = `Your Vuka Music download links`;
+  const subject = `Your Vuka download links`;
 
   const purchaseRows = purchases.map((p, i) => `
     <tr>
@@ -1005,7 +1069,7 @@ export async function sendSupportArtistNotification({
   amount: number; currency: string; message?: string; tier: string;
   goalTitle?: string; goalPercent?: number;
 }) {
-  const subject = `♥ ${fanName} just supported you on Vuka Music`;
+  const subject = `♥ ${fanName} just supported you on Vuka`;
   const html = `<!DOCTYPE html><html>
 <body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
@@ -1040,12 +1104,12 @@ export async function sendPasswordResetEmail({
   displayName: string;
   resetUrl: string;
 }) {
-  const subject = 'Reset your Vuka Music password';
+  const subject = 'Reset your Vuka password';
   const html = layout(
     card(
       icon('🔐') +
       heading('Password Reset Request') +
-      sub(`Hi ${displayName}, we received a request to reset your Vuka Music password.`) +
+      sub(`Hi ${displayName}, we received a request to reset your Vuka password.`) +
       sub('This link expires in <strong>1 hour</strong>. If you did not request this, you can safely ignore it — your password will not change.') +
       btn(resetUrl, 'Reset My Password', 'primary') +
       `<p style="color:#555;font-size:11px;margin-top:16px;text-align:center;word-break:break-all;">${resetUrl}</p>`
@@ -1067,12 +1131,12 @@ export async function sendPasswordChangedEmail({
   displayName: string;
   securityUrl: string;
 }) {
-  const subject = 'Your Vuka Music password was changed';
+  const subject = 'Your Vuka password was changed';
   const html = layout(
     card(
       icon('🔑') +
       heading('Password Changed') +
-      sub(`Hi ${displayName}, your Vuka Music password was successfully updated.`) +
+      sub(`Hi ${displayName}, your Vuka password was successfully updated.`) +
       sub('All other devices have been signed out. If you did not make this change, reset your password immediately.') +
       btn(securityUrl, 'Review Account Security', 'danger')
     )
@@ -1093,7 +1157,7 @@ export async function send2FAEnabledEmail({
   displayName: string;
   securityUrl: string;
 }) {
-  const subject = 'Two-factor authentication enabled — Vuka Music';
+  const subject = 'Two-factor authentication enabled — Vuka';
   const html = layout(
     card(
       icon('✅') +
@@ -1119,12 +1183,12 @@ export async function send2FADisabledEmail({
   displayName: string;
   securityUrl: string;
 }) {
-  const subject = '⚠️ Two-factor authentication disabled — Vuka Music';
+  const subject = '⚠️ Two-factor authentication disabled — Vuka';
   const html = layout(
     card(
       icon('⚠️') +
       heading('2FA Disabled') +
-      sub(`Hi ${displayName}, two-factor authentication has been turned off on your Vuka Music account.`) +
+      sub(`Hi ${displayName}, two-factor authentication has been turned off on your Vuka account.`) +
       sub('If you did not make this change, your account may be compromised. Secure it immediately.') +
       btn(securityUrl, 'Secure My Account', 'danger')
     )
@@ -1147,12 +1211,12 @@ export async function sendSessionRevokedEmail({
   deviceName: string;
   securityUrl: string;
 }) {
-  const subject = 'A device was signed out of your Vuka Music account';
+  const subject = 'A device was signed out of your Vuka account';
   const html = layout(
     card(
       icon('🚪') +
       heading('Device Signed Out') +
-      sub(`Hi ${displayName}, the device <strong style="color:#F0F0F0">${deviceName}</strong> was signed out of your Vuka Music account.`) +
+      sub(`Hi ${displayName}, the device <strong style="color:#F0F0F0">${deviceName}</strong> was signed out of your Vuka account.`) +
       sub('If you did not do this, review your account security immediately.') +
       btn(securityUrl, 'Review Security', 'secondary')
     )
@@ -1173,12 +1237,12 @@ export async function sendAllSessionsRevokedEmail({
   displayName: string;
   securityUrl: string;
 }) {
-  const subject = 'All devices signed out of your Vuka Music account';
+  const subject = 'All devices signed out of your Vuka account';
   const html = layout(
     card(
       icon('🔒') +
       heading('All Devices Signed Out') +
-      sub(`Hi ${displayName}, all devices have been signed out of your Vuka Music account.`) +
+      sub(`Hi ${displayName}, all devices have been signed out of your Vuka account.`) +
       sub('You will need to sign in again on all your devices. If you did not request this, contact support immediately.') +
       btn(`${APP_URL()}/auth/login`, 'Sign In Again', 'primary')
     )

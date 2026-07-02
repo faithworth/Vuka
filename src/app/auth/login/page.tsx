@@ -2,9 +2,8 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Music, Eye, EyeOff } from 'lucide-react';
+import { Music, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
-import VukaLoader from '@/components/brand/VukaLoader';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24">
@@ -113,7 +112,7 @@ function LoginForm() {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
               <Music size={17} className="text-white" />
             </div>
-            <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka Music</span>
+            <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka</span>
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Welcome back</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sign in to your account</p>
@@ -122,10 +121,13 @@ function LoginForm() {
         <div className="card p-8">
 
           <button onClick={handleGoogle} disabled={googleLoading}
-            className="btn btn-secondary w-full mb-5 gap-2 disabled:opacity-60">
-            {googleLoading ? <VukaLoader size={16} /> : <GoogleIcon />}
+            className="btn btn-secondary w-full mb-2 gap-2 disabled:opacity-60">
+            {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
             Continue with Google
           </button>
+          <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>
+            We use your Google account only to verify your email and sign you in — we never post or access anything else in your account.
+          </p>
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
@@ -157,7 +159,7 @@ function LoginForm() {
 
             <button type="submit" disabled={loading}
               className="btn btn-primary w-full py-3 disabled:opacity-60">
-              {loading ? <><VukaLoader size={16} />Signing in…</> : 'Sign In'}
+              {loading ? <><Loader2 size={16} className="animate-spin" />Signing in…</> : 'Sign In'}
             </button>
           </form>
 

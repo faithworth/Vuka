@@ -14,6 +14,7 @@
 //   MEM_  → fan creator membership                     (handleMembershipEvent)
 //   ISO_  → industry service order                     (handleIndustryOrderEvent)
 //   SUP_  → fan support / tip                           (handleSupportEvent)
+//   TICKET_ → event ticket purchase                     (handleTicketEvent)
 
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { verifyTransaction } from '@/lib/paystack';
@@ -21,7 +22,7 @@ import { PLANS } from '@/lib/plans';
 import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
-import { sendSupportFanConfirmation, sendSupportArtistNotification } from '@/lib/emails';
+import { sendSupportFanConfirmation, sendSupportArtistNotification, sendTicketConfirmation, sendCampaignBackerConfirmation } from '@/lib/emails';
 
 export type PaystackChargeEvent = {
   event: string;
@@ -127,7 +128,7 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
         currency:  'ZAR',
         status:    'pending',
         reference,
-        notes:     `Marketplace order ${orderId} — held pending delivery (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
+        notes:     `Marketplace order ${orderId} — held pending delivery (fee: R${fee.toFixed(2)} kept by Vuka)`,
       },
     });
 
@@ -219,7 +220,7 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
         currency:  'ZAR',
         status:    'pending',
         reference,
-        notes:     `Fan membership payment (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
+        notes:     `Fan membership payment (fee: R${fee.toFixed(2)} kept by Vuka)`,
       },
     });
 
@@ -259,8 +260,7 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
     include: {
       artist: {
         include: {
-          user:  true,
-          goals: { where: { isActive: true }, take: 1 },
+          user: true,
         },
       },
     },
@@ -303,7 +303,7 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
         currency:  txn.currency,
         status:    'pending',
         reference,
-        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka Music)`,
+        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka)`,
       },
     });
 
@@ -312,26 +312,122 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
       data:  { lifetimeGrossSales: { increment: txn.amount } },
     }).catch(e => logger.error('[support/notify] lifetimeGrossSales increment failed', { error: String(e) }));
 
-    const activeGoal = txn.artist.goals[0];
-    if (activeGoal) {
-      await prisma.goal.update({
-        where: { id: activeGoal.id },
-        data:  { currentAmount: { increment: txn.amount } },
-      });
-    }
-
-    const goalPercent = activeGoal
-      ? ((activeGoal.currentAmount + txn.amount) / activeGoal.targetAmount) * 100
-      : undefined;
-
     await Promise.all([
       sendSupportFanConfirmation({ to: txn.fanEmail, fanName: txn.fanName, artistName: txn.artist.name, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
-      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined, goalTitle: activeGoal?.title, goalPercent }),
+      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
     ]);
 
     logger.info('[support/notify] Tip confirmed', { traceId, txnId: txn.id });
   } catch (err) {
     logger.error('[support/notify] Processing error', { traceId, error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// ── TICKET_ — event ticket purchase (one Paystack ref can cover several rows) ──
+export async function handleTicketEvent(event: PaystackChargeEvent, traceId = 'no-trace') {
+  const reference = event.data?.reference ?? '';
+
+  const purchases = await prisma.ticketPurchase.findMany({
+    where: { paystackReference: reference, status: 'pending' },
+    include: { event: true, ticket: true },
+  });
+
+  if (!purchases.length) {
+    logger.warn('[events/notify] No pending TicketPurchase rows for reference', { traceId, reference });
+    return;
+  }
+
+  let verification;
+  try {
+    verification = await verifyTransaction(reference);
+  } catch (err) {
+    logger.error('[events/notify] Verification failed', { traceId, error: err instanceof Error ? err.message : String(err) });
+    return;
+  }
+
+  if (verification.status !== 'success') return;
+
+  try {
+    await prisma.ticketPurchase.updateMany({
+      where: { id: { in: purchases.map(p => p.id) } },
+      data:  { status: 'confirmed' },
+    });
+
+    await prisma.eventTicket.update({
+      where: { id: purchases[0].ticketId },
+      data:  { sold: { increment: purchases.length } },
+    });
+
+    const first = purchases[0];
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+    const totalAmount = purchases.reduce((s, p) => s + p.totalAmount, 0);
+
+    await sendTicketConfirmation({
+      to: first.buyerEmail, buyerName: first.buyerName,
+      eventTitle: first.event.title, eventVenue: first.event.venue, eventCity: first.event.city,
+      eventStartDate: first.event.startDate, ticketName: first.ticket.name, quantity: purchases.length,
+      amount: totalAmount, currency: first.currency,
+      ticketUrls: purchases.map(p => `${appUrl}/tickets/${p.qrToken}`),
+    });
+
+    logger.info('[events/notify] Tickets confirmed', { traceId, count: purchases.length, reference });
+  } catch (err) {
+    logger.error('[events/notify] Processing error', { traceId, error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// ── CAMP_ — campaign backing / pledge ──────────────────────────────────────
+export async function handleCampaignEvent(event: PaystackChargeEvent, traceId = 'no-trace') {
+  const reference = event.data?.reference ?? '';
+
+  const backer = await prisma.campaignBacker.findFirst({
+    where: { paystackReference: reference, status: 'pending' },
+    include: { campaign: { include: { artist: true } }, tier: true },
+  });
+
+  if (!backer) {
+    logger.warn('[campaign/notify] No pending CampaignBacker for reference', { traceId, reference });
+    return;
+  }
+
+  let verification;
+  try {
+    verification = await verifyTransaction(reference);
+  } catch (err) {
+    logger.error('[campaign/notify] Verification failed', { traceId, error: err instanceof Error ? err.message : String(err) });
+    return;
+  }
+
+  if (verification.status !== 'success') return;
+
+  try {
+    await prisma.campaignBacker.update({
+      where: { id: backer.id },
+      data:  { status: 'confirmed' },
+    });
+
+    await prisma.campaign.update({
+      where: { id: backer.campaignId },
+      data:  { currentAmount: { increment: backer.amount }, backerCount: { increment: 1 } },
+    });
+
+    if (backer.tierId) {
+      await prisma.campaignTier.update({
+        where: { id: backer.tierId },
+        data:  { backerCount: { increment: 1 } },
+      }).catch(e => logger.error('[campaign/notify] tier backerCount increment failed', { error: String(e) }));
+    }
+
+    await sendCampaignBackerConfirmation({
+      to: backer.backerEmail, backerName: backer.backerName,
+      artistName: backer.campaign.artist.name, campaignTitle: backer.campaign.title,
+      amount: backer.amount, currency: backer.currency,
+      tierTitle: backer.tier?.title, message: backer.message || undefined,
+    });
+
+    logger.info('[campaign/notify] Backing confirmed', { traceId, backerId: backer.id, campaignId: backer.campaignId });
+  } catch (err) {
+    logger.error('[campaign/notify] Processing error', { traceId, error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -388,7 +484,7 @@ export async function handleIndustryOrderEvent(event: PaystackChargeEvent, trace
           currency: 'ZAR',
           status:   'pending',
           reference,
-          notes:    `Industry service: ${o.serviceTitle} | industry_user:${o.industryUserId} | order:${o.id} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka Music)`,
+          notes:    `Industry service: ${o.serviceTitle} | industry_user:${o.industryUserId} | order:${o.id} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka)`,
         },
       });
     });
