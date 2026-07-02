@@ -90,12 +90,12 @@ export async function generateTaxRecord(artistId: string, year: number) {
     }),
   ]);
 
-  // MarketplaceOrder: use `amount` and `sellerId` (schema fields that exist)
+  // MarketplaceOrder: schema fields are `sellerArtistId` and `packagePrice`
   const marketplaceOrders = await prisma.marketplaceOrder.findMany({
-    where: { sellerId: artistId, status: 'complete', createdAt: { gte: yearStart, lt: yearEnd } },
-    select: { amount: true },
+    where: { sellerArtistId: artistId, status: 'complete', createdAt: { gte: yearStart, lt: yearEnd } },
+    select: { packagePrice: true },
   });
-  const marketplaceTotal = marketplaceOrders.reduce((s, o) => s + o.amount, 0);
+  const marketplaceTotal = marketplaceOrders.reduce((s, o) => s + o.packagePrice, 0);
 
   const totalEarnings  = (beatRevenue._sum.netAmount ?? 0)
                        + (releaseRevenue._sum.netAmount ?? 0)
