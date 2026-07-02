@@ -26,7 +26,7 @@ export default function TermsPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: January 2025 · Governing law: Republic of South Africa</p>
 
         <Section title="1. About Vuka">
-          <p>Vuka ("we", "us", "the platform") is a digital music marketplace operated by Vuka Music Platform (Pty) Ltd (Registration pending, CIPC), Republic of South Africa. These Terms govern your use of vuka.co.za and all related services.</p>
+          <p>Vuka ("we", "us", "the platform") is a digital music marketplace operated by Vuka Music Platform (Pty) Ltd (Registration pending, CIPC), Republic of South Africa. These Terms govern your use of vukamusic.com and all related services.</p>
           <p>By creating an account or making a purchase, you confirm you are at least 18 years old and agree to these Terms in full.</p>
         </Section>
 
@@ -54,7 +54,7 @@ export default function TermsPage() {
 
         <Section title="6. No Refund Policy">
           <p>All sales of digital goods on Vuka are final. We do not offer refunds once a purchase is confirmed and download access has been granted. This policy is consistent with the Electronic Communications and Transactions Act 25 of 2002 (ECT Act), which permits sellers to exclude the right of return for digital goods delivered immediately upon purchase.</p>
-          <p>If you believe you were charged incorrectly or did not receive access to your purchase, contact us at support@vuka.co.za within 7 days and we will investigate.</p>
+          <p>If you believe you were charged incorrectly or did not receive access to your purchase, contact us at support@vukamusic.com within 7 days and we will investigate.</p>
         </Section>
 
         <Section title="7. Prohibited Conduct">
@@ -79,7 +79,7 @@ export default function TermsPage() {
 
         <div className="mt-10 pt-8" style={{ borderTop: '1px solid var(--border)' }}>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Questions? Email <a href="mailto:support@vuka.co.za" className="underline" style={{ color: 'var(--sky)' }}>support@vuka.co.za</a>
+            Questions? Email <a href="mailto:support@vukamusic.com" className="underline" style={{ color: 'var(--sky)' }}>support@vukamusic.com</a>
             {' · '}<Link href="/legal/privacy" className="underline" style={{ color: 'var(--sky)' }}>Privacy Policy</Link>
             {' · '}<Link href="/legal/refunds" className="underline" style={{ color: 'var(--sky)' }}>Refund Policy</Link>
             {' · '}<Link href="/legal/dmca" className="underline" style={{ color: 'var(--sky)' }}>DMCA</Link>

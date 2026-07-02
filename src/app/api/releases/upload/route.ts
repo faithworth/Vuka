@@ -170,7 +170,7 @@ export async function PATCH(req: NextRequest) {
     // pipeline, so this fires the moment the release actually goes live.
     if (wasInactive && willActivate) {
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
         await sendReleaseLive({
           to: user.email,
           artistName: user.artist.name,

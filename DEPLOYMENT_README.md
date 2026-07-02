@@ -102,7 +102,7 @@ PAYFAST_SANDBOX=true          # set to false in production
 ADMIN_EMAIL=your@email.com    # this account becomes OWNER automatically
 
 # App URL (already set — verify it's correct)
-NEXT_PUBLIC_APP_URL=https://vuka.co.za
+NEXT_PUBLIC_APP_URL=https://vukamusic.com
 ```
 
 ### Step 3 — Copy all files

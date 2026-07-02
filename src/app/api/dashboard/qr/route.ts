@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const user = await requireArtist();
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
   const profileUrl = `${appUrl}/artist/${user.artist.slug}`;
 
   const qrDataUrl = await QRCode.toDataURL(profileUrl, {

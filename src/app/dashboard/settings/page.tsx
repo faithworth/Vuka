@@ -673,7 +673,7 @@ function SettingsContent() {
           </div>
           <div className="flex-1 space-y-3">
             <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
-              {`${process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za'}/artist/${artist.slug}`}
+              {`${process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com'}/artist/${artist.slug}`}
             </p>
             <a
               href="/api/dashboard/qr"

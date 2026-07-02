@@ -4,13 +4,13 @@
  *
  * Required env vars:
  *   PAYSTACK_SECRET_KEY  — sk_live_... or sk_test_...
- *   NEXT_PUBLIC_APP_URL  — https://vuka.co.za
+ *   NEXT_PUBLIC_APP_URL  — https://vukamusic.com
  */
 
 import crypto from 'crypto';
 
 const SECRET_KEY = process.env.PAYSTACK_SECRET_KEY ?? '';
-const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 // ── Reference generator ───────────────────────────────────────────────────────
 

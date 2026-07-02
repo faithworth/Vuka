@@ -19,11 +19,11 @@ export default function LandingPage() {
               "@type": "WebSite",
               "name": "Vuka",
               "alternateName": ["Vuka Music", "Vuka Distro"],
-              "url": "https://www.vuka.co.za",
+              "url": "https://www.vukamusic.com",
               "description": "Africa's independent music platform. Buy beats and music directly from African artists.",
               "potentialAction": {
                 "@type": "SearchAction",
-                "target": "https://www.vuka.co.za/store?q={search_term_string}",
+                "target": "https://www.vukamusic.com/store?q={search_term_string}",
                 "query-input": "required name=search_term_string"
               }
             })
@@ -162,7 +162,7 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-3 gap-10">
               {[
                 { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
-                { n: '02', t: 'Share your link', d: 'Get your personal store link — vuka.co.za/artist/you. Share it everywhere you already are.' },
+                { n: '02', t: 'Share your link', d: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
                 { n: '03', t: 'Get paid 98%', d: 'Paystack and Flutterwave move money directly to your bank account. Vuka retains just 2% to keep the platform running.' },
               ].map(s => (
                 <div key={s.n} className="text-center">

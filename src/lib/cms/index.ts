@@ -180,7 +180,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         heading: 'From studio to sold — in minutes',
         items: [
           { n: '01', title: 'Upload your music',  desc: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
-          { n: '02', title: 'Share your link',    desc: 'Get your personal store link — vuka.co.za/artist/you. Share it everywhere you already are.' },
+          { n: '02', title: 'Share your link',    desc: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
           { n: '03', title: 'Get paid directly',  desc: 'Paystack and Flutterwave move money directly to your bank account. Keep up to 95% of every sale.' },
         ],
       };

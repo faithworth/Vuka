@@ -7,7 +7,7 @@
  * through if a buyer's connection dropped mid-redirect.
  *
  * Register in PayPal Developer Dashboard → Webhooks:
- *   URL: https://www.vuka.co.za/api/webhooks/paypal
+ *   URL: https://www.vukamusic.com/api/webhooks/paypal
  *   Events: PAYMENT.CAPTURE.COMPLETED, PAYMENT.CAPTURE.REFUNDED, PAYMENT.CAPTURE.REVERSED
  */
 

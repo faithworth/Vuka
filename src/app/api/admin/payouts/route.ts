@@ -13,7 +13,7 @@ import {
   sendPayoutFailed,
 } from '@/lib/emails';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 export async function GET(req: NextRequest) {
   const user = await requireAdmin();

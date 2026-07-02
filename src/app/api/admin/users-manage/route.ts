@@ -10,7 +10,7 @@ import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { auditLog } from '@/lib/audit';
 import { sendAccountSuspended } from '@/lib/emails';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 export async function GET(req: NextRequest) {
   const user = await requireAdmin();

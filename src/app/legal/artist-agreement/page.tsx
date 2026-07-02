@@ -62,7 +62,7 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>POPIA compliance</h2>
-            <p>Vuka is compliant with the Protection of Personal Information Act (POPIA). We collect only the information needed to run your account and process payments. We do not sell your personal data to third parties. You can request a copy of your data or ask for deletion at any time by emailing accounts@vuka.co.za.</p>
+            <p>Vuka is compliant with the Protection of Personal Information Act (POPIA). We collect only the information needed to run your account and process payments. We do not sell your personal data to third parties. You can request a copy of your data or ask for deletion at any time by emailing accounts@vukamusic.com.</p>
           </section>
 
           <section>
@@ -77,7 +77,7 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>Questions?</h2>
-            <p>Email us at <a href="mailto:accounts@vuka.co.za" className="underline" style={{ color:'var(--sky)' }}>accounts@vuka.co.za</a>. We're a small team and we reply personally.</p>
+            <p>Email us at <a href="mailto:accounts@vukamusic.com" className="underline" style={{ color:'var(--sky)' }}>accounts@vukamusic.com</a>. We're a small team and we reply personally.</p>
           </section>
         </div>
 

@@ -72,7 +72,7 @@ export const THRESHOLDS: Record<string, { tier: PlaqueTier; milestone: number }[
 // The route renders an SVG card; this URL is what artists share to socials.
 
 function plaqueShareUrl(artistSlug: string, tier: string, dimension: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
   return `${base}/api/og/plaque?artist=${artistSlug}&tier=${tier}&dim=${dimension}`;
 }
 

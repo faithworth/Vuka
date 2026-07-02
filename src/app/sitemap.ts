@@ -13,7 +13,7 @@
 import { MetadataRoute } from 'next';
 import prisma from '@/lib/prisma';
 
-const BASE = 'https://www.vuka.co.za';
+const BASE = 'https://www.vukamusic.com';
 
 const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: BASE,                          lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0  },

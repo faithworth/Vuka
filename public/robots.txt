@@ -21,4 +21,4 @@ Disallow: /download/
 Disallow: /checkout/
 Disallow: /_next/
 
-Sitemap: https://www.vuka.co.za/sitemap.xml
+Sitemap: https://www.vukamusic.com/sitemap.xml

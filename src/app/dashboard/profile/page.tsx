@@ -193,7 +193,7 @@ export default function ProfilePage() {
             </div>
             <div className="pb-1">
               <div className="font-bold">{name || 'Your Name'}</div>
-              {slug && <div className="text-sm" style={{ color: 'var(--text-muted)' }}>vuka.co.za/artist/{slug}</div>}
+              {slug && <div className="text-sm" style={{ color: 'var(--text-muted)' }}>vukamusic.com/artist/{slug}</div>}
             </div>
           </div>
         </div>

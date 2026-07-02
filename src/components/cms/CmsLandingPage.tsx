@@ -38,11 +38,11 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
             '@type': 'WebSite',
             name: 'Vuka',
             alternateName: ['Vuka Music', 'Vuka Distro'],
-            url: 'https://www.vuka.co.za',
+            url: 'https://www.vukamusic.com',
             description: page.metaDesc || "Africa's independent music platform. Buy beats and music directly from African artists.",
             potentialAction: {
               '@type': 'SearchAction',
-              target: 'https://www.vuka.co.za/store?q={search_term_string}',
+              target: 'https://www.vukamusic.com/store?q={search_term_string}',
               'query-input': 'required name=search_term_string',
             },
           }),

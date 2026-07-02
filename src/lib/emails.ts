@@ -43,8 +43,8 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM = () => process.env.EMAIL_FROM || 'Vuka <noreply@mail.vuka.co.za>';
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+const FROM = () => process.env.EMAIL_FROM || 'Vuka <noreply@mail.vukamusic.com>';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 // ── Shared layout wrapper ─────────────────────────────────────
 

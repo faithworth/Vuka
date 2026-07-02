@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const o = order[0];
 
     // Initialize Paystack transaction (artist pays the full amount; platform takes 10% from industry's net)
-    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
     const reference = generateReference('ISO');
 
     const result = await initializeTransaction({

@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
   });
 
   // ── Create PayPal order ─────────────────────────────────────────────────
-  const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vuka.co.za';
+  const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vukamusic.com';
   const idempotencyKey = `vuka-order-${purchase.id}`;
 
   let order;

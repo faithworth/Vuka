@@ -11,7 +11,7 @@ import prisma from '@/lib/prisma';
 import { createServiceClient } from '@/lib/supabase_server';
 
 const RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 interface ResetTokenRow {
   id: string;

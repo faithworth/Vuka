@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { orderId, purchaseId, buyerName, buyerEmail } = parsed.data;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vuka.co.za';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vukamusic.com';
 
   // ── Load the pending Purchase created by create-order ──────────────────
   const purchase = await prisma.purchase.findFirst({

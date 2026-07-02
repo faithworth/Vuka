@@ -759,7 +759,7 @@ export default function IndustryDashboardPage() {
               <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                 Verified industry professionals get a badge on their listings. Contact support to get verified.
               </p>
-              <a href="mailto:support@vuka.co.za"
+              <a href="mailto:support@vukamusic.com"
                 className="text-xs font-semibold flex items-center gap-1.5"
                 style={{ color: 'var(--sky)' }}>
                 Contact support <ChevronRight size={12} />

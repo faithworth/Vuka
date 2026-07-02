@@ -15,7 +15,7 @@ import { sendPasswordChangedEmail } from '@/lib/emails';
 import { auditLog } from '@/lib/audit';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);

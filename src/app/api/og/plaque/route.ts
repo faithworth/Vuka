@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
   <!-- Bottom tagline -->
   <text x="600" y="588" font-family="system-ui,sans-serif" font-size="18"
     text-anchor="middle" fill="white" opacity="0.4">
-    vuka.co.za
+    vukamusic.com
   </text>
 </svg>`;
 

@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Build purchase list ───────────────────────────────────────────────
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vuka.co.za';
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vukamusic.com';
   const buyerName   = purchases[0]?.buyerName ?? 'Customer';
 
   const purchaseList = purchases.map((p) => ({

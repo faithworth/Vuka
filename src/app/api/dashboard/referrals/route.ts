@@ -7,7 +7,7 @@ import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
 const REWARD_THRESHOLD = 5; // referrals needed to earn 3 months Pro
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 function generateCode(name: string): string {
   const base = name

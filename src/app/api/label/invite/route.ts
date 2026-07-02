@@ -19,6 +19,6 @@ export async function POST(req: NextRequest) {
   const invite = await prisma.labelArtist.create({
     data: { id: `la_${Date.now()}`, labelId: label.id, artistId: artist.id, revenueShare: share, status: 'pending', inviteToken: `inv_${Date.now()}_${Math.random().toString(36).slice(2,8)}` },
   });
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
   return NextResponse.json({ ok: true, inviteLink: `${appUrl}/label/accept?token=${invite.inviteToken}` });
 }

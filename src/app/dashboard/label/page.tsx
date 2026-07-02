@@ -151,7 +151,7 @@ export default function LabelPage() {
         <div>
           {label.logoUrl && <img src={label.logoUrl} alt={label.name} className="w-12 h-12 rounded-xl object-cover mb-2"/>}
           <h1 className="text-2xl font-black" style={{ color:'var(--text)' }}>{label.name}</h1>
-          <p className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>vuka.co.za/label/{label.slug}</p>
+          <p className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>vukamusic.com/label/{label.slug}</p>
         </div>
         <button onClick={() => setInviting(i => !i)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white" style={{ background:inviting ? 'var(--surface2)' : 'linear-gradient(135deg,#d4a000,#b38600)' }}>
           {inviting ? 'Cancel' : <><UserPlus size={15}/>Invite Artist</>}

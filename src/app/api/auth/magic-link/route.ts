@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createServiceClient();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
     const adminEmail = process.env.ADMIN_EMAIL;
     const isAdminRequest = email === adminEmail?.toLowerCase() && body.admin === true;

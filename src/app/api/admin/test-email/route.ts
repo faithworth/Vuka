@@ -24,7 +24,7 @@ import {
   sendTestEmail,
 } from '@/lib/emails';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret');
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
     'payout-failed', 'account-suspended', 'new-login-alert', 'broadcast',
   ];
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
   const results: Record<string, string> = {};
 
   for (const t of templates) {

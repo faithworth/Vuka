@@ -27,8 +27,8 @@ bucket_name = "vuka-artwork"
 # ── Routes ───────────────────────────────────────────────────
 # Production: all /audio/, /artwork/, /preview/ paths via CDN subdomain
 [[routes]]
-pattern = "audio.vuka.co.za/*"
-zone_name = "vuka.co.za"
+pattern = "audio.vukamusic.com/*"
+zone_name = "vukamusic.com"
 
 # ── Environment: Production ──────────────────────────────────
 [env.production]

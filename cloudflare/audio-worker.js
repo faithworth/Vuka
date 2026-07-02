@@ -26,8 +26,8 @@
  */
 
 const ALLOWED_ORIGINS = [
-  'https://www.vuka.co.za',
-  'https://vuka.co.za',
+  'https://www.vukamusic.com',
+  'https://vukamusic.com',
   'http://localhost:3000',
 ];
 

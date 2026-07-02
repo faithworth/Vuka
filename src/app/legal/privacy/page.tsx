@@ -48,7 +48,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="5. Your Rights (POPIA & GDPR)">
-          <p>You have the right to: access the personal data we hold about you; correct inaccurate data; request deletion (subject to legal retention requirements); object to processing; and data portability. Submit requests to support@vuka.co.za.</p>
+          <p>You have the right to: access the personal data we hold about you; correct inaccurate data; request deletion (subject to legal retention requirements); object to processing; and data portability. Submit requests to support@vukamusic.com.</p>
         </Section>
 
         <Section title="6. Cookies">
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="8. Contact">
-          <p>For any privacy concerns, contact us at <a href="mailto:support@vuka.co.za" className="underline" style={{ color: 'var(--sky)' }}>support@vuka.co.za</a>.</p>
+          <p>For any privacy concerns, contact us at <a href="mailto:support@vukamusic.com" className="underline" style={{ color: 'var(--sky)' }}>support@vukamusic.com</a>.</p>
         </Section>
 
         <div className="mt-10 pt-8" style={{ borderTop: '1px solid var(--border)' }}>

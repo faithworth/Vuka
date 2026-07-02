@@ -32,7 +32,7 @@ import {
 } from '@/lib/emails';
 import prisma from '@/lib/prisma';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 // ── GET — status ──────────────────────────────────────────────
 

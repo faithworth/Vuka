@@ -7,7 +7,7 @@
 //   PAYFAST_MERCHANT_KEY      — your platform's PayFast Merchant Key
 //   PAYFAST_PASSPHRASE        — optional but recommended
 //   PAYFAST_SANDBOX           — "true" for testing, omit/false for production
-//   NEXT_PUBLIC_APP_URL       — your deployed URL (e.g. https://vuka.co.za)
+//   NEXT_PUBLIC_APP_URL       — your deployed URL (e.g. https://vukamusic.com)
 
 import crypto from 'crypto';
 
@@ -19,7 +19,7 @@ const PAYFAST_HOST = PAYFAST_SANDBOX
 const MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID ?? '';
 const MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY ?? '';
 const PASSPHRASE = process.env.PAYFAST_PASSPHRASE ?? '';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vuka.co.za';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
 
 // ── Build PayFast payment URL ─────────────────────────────────
 

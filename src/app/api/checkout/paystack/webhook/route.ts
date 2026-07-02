@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
   // Flag to trigger increment after artistId is known.
   let pendingLifetimeSalesIncrement = purchase.amount;
 
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
   const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
 
   let itemName    = 'your purchase';

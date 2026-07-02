@@ -32,7 +32,7 @@ export default function RefundsPage() {
           <div>
             <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text)' }}>Exceptions we will honour</h2>
             <p>We will issue a credit or re-grant access if: (a) you were charged but did not receive download access; (b) the file you downloaded is corrupted and we cannot provide a working replacement; (c) you were charged twice for the same item.</p>
-            <p className="mt-2">To raise an exception, email <a href="mailto:support@vuka.co.za" className="underline" style={{ color: 'var(--sky)' }}>support@vuka.co.za</a> within 7 days with your order reference.</p>
+            <p className="mt-2">To raise an exception, email <a href="mailto:support@vukamusic.com" className="underline" style={{ color: 'var(--sky)' }}>support@vukamusic.com</a> within 7 days with your order reference.</p>
           </div>
 
           <div>

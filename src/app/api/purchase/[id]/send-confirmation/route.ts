@@ -139,7 +139,7 @@ export async function POST(
       }
     }
 
-    const appUrl     = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+    const appUrl     = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
     const downloadUrl = `${appUrl}/download/${purchase.downloadToken}`;
 
     const itemName =

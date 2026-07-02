@@ -49,7 +49,7 @@ const ENV_MANIFEST: EnvVar[] = [
   {
     key:         'NEXT_PUBLIC_APP_URL',
     required:    true,
-    description: 'Full public URL (e.g. https://www.vuka.co.za)',
+    description: 'Full public URL (e.g. https://www.vukamusic.com)',
     validate:    (v) => v.startsWith('https://') ? null : 'Must start with https://',
   },
   {
@@ -83,7 +83,7 @@ const ENV_MANIFEST: EnvVar[] = [
 
   // ── Email ─────────────────────────────────────────────────────────────
   { key: 'RESEND_API_KEY', required: true,  description: 'Resend API key for transactional email' },
-  { key: 'EMAIL_FROM',     required: false, description: 'From address (default: noreply@mail.vuka.co.za)' },
+  { key: 'EMAIL_FROM',     required: false, description: 'From address (default: noreply@mail.vukamusic.com)' },
 
   // ── Payments — Paystack (ZA — primary) ───────────────────────────────
   {

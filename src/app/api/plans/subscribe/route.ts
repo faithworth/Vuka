@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const artist = await prisma.artist.findUnique({ where: { id: user.artist.id }, select: { id: true } });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
-    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
     const reference = generateReference('PLAN');
 
     const result = await initializeTransaction({

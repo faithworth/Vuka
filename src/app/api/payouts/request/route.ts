@@ -12,7 +12,7 @@ import { schemas, validationError } from '@/lib/validation';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { sendPayoutRequested } from '@/lib/emails';
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vuka.co.za';
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 // GET — list artist's payout requests
 export async function GET() {
