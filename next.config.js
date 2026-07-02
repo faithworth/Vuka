@@ -16,14 +16,14 @@ const securityHeaders = [
       "default-src 'self'",
       // Next.js inline scripts + PayPal SDK
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://js.paystack.co",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // R2 CDN for audio/images + Supabase storage
       `img-src 'self' data: blob: https://*.r2.dev https://*.supabase.co`,
       `media-src 'self' blob: https://*.r2.dev https://*.cloudflare.com`,
       // PayPal, Paystack, Supabase, Resend
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://api-m.paypal.com https://api-m.sandbox.paypal.com https://api.resend.com https://*.upstash.io https://app.posthog.com",
       "frame-src https://www.paypal.com",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
