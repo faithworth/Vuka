@@ -1,16 +1,20 @@
 /**
  * POST /api/support/webhook
- * Paystack webhook — confirms support/tip transactions.
-  * Replaces the legacy /api/support/payfast-notify route.
+ *
+ * DEPRECATED — Paystack only supports ONE webhook URL per account, which is
+ * registered as /api/checkout/paystack/webhook. That route dispatches SUP_
+ * references here in code (see handleSupportEvent in
+ * @/lib/webhooks/paystack-handlers), not via a second HTTP call. Paystack
+ * itself never hits this URL. Kept as a thin delegating wrapper — not the
+ * old duplicate logic — so nothing can silently drift out of sync again if
+ * something external still points at this path.
  */
 
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { verifyPaystackWebhook, verifyTransaction } from '@/lib/paystack';
-import { sendSupportFanConfirmation, sendSupportArtistNotification } from '@/lib/emails';
-import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
+import { verifyPaystackWebhook } from '@/lib/paystack';
+import { handleSupportEvent } from '@/lib/webhooks/paystack-handlers';
 import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
@@ -31,80 +35,6 @@ export async function POST(req: NextRequest) {
   const reference = event.data?.reference ?? '';
   if (!reference.startsWith('SUP_')) return NextResponse.json({ ok: true });
 
-  // Find pending txn by stored reference
-  const txn = await prisma.supportTxn.findFirst({
-    where: { paystackReference: reference },
-    include: {
-      artist: {
-        include: {
-          user:  true,
-          goals: { where: { isActive: true }, take: 1 },
-        },
-      },
-    },
-  });
-
-  if (!txn) {
-    logger.warn('[support/webhook] SupportTxn not found', { traceId, reference });
-    return NextResponse.json({ ok: true });
-  }
-
-  if (txn.status !== 'pending') {
-    logger.info('[support/webhook] Duplicate — already processed', { traceId, reference });
-    return NextResponse.json({ ok: true });
-  }
-
-  // Verify with Paystack
-  try {
-    const verification = await verifyTransaction(reference);
-    if (verification.status !== 'success') return NextResponse.json({ ok: true });
-  } catch (err) {
-    logger.error('[support/webhook] Verification failed', { traceId, error: String(err) });
-    return NextResponse.json({ ok: true });
-  }
-
-  try {
-    await prisma.supportTxn.update({
-      where: { id: txn.id },
-      data:  { status: 'confirmed' },
-    });
-
-    const tipFee = calcFee(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt);
-    const tipNet = calcNet(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt);
-
-    await prisma.artistPayout.create({
-      data: {
-        artistId:  txn.artistId,
-        amount:    tipNet,
-        method:    'paystack',
-        currency:  txn.currency,
-        status:    'pending',
-        reference,
-        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka)`,
-      },
-    });
-
-    const activeGoal = txn.artist.goals[0];
-    if (activeGoal) {
-      await prisma.goal.update({
-        where: { id: activeGoal.id },
-        data:  { currentAmount: { increment: txn.amount } },
-      });
-    }
-
-    const goalPercent = activeGoal
-      ? ((activeGoal.currentAmount + txn.amount) / activeGoal.targetAmount) * 100
-      : undefined;
-
-    await Promise.all([
-      sendSupportFanConfirmation({ to: txn.fanEmail, fanName: txn.fanName, artistName: txn.artist.name, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
-      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined, goalTitle: activeGoal?.title, goalPercent }),
-    ]);
-
-    logger.info('[support/webhook] Tip confirmed', { traceId, txnId: txn.id });
-  } catch (err) {
-    logger.error('[support/webhook] Processing error', { traceId, error: String(err) });
-  }
-
+  await handleSupportEvent(event, traceId);
   return NextResponse.json({ ok: true });
 }

@@ -13,6 +13,7 @@
 //   MKT_  → marketplace service order                  (handleMarketplaceEvent)
 //   MEM_  → fan creator membership                     (handleMembershipEvent)
 //   ISO_  → industry service order                     (handleIndustryOrderEvent)
+//   SUP_  → fan support / tip                           (handleSupportEvent)
 
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { verifyTransaction } from '@/lib/paystack';
@@ -20,6 +21,7 @@ import { PLANS } from '@/lib/plans';
 import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
+import { sendSupportFanConfirmation, sendSupportArtistNotification } from '@/lib/emails';
 
 export type PaystackChargeEvent = {
   event: string;
@@ -245,6 +247,91 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
     }).catch(e => logger.error('[memberships/notify] lifetimeGrossSales increment failed', { error: String(e) }));
   } catch (err) {
     logger.error('[memberships/notify] Error', { traceId, error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// ── SUP_ — fan support / tip ──────────────────────────────────────────────
+export async function handleSupportEvent(event: PaystackChargeEvent, traceId = 'no-trace') {
+  const reference = event.data?.reference ?? '';
+
+  const txn = await prisma.supportTxn.findFirst({
+    where: { paystackReference: reference },
+    include: {
+      artist: {
+        include: {
+          user:  true,
+          goals: { where: { isActive: true }, take: 1 },
+        },
+      },
+    },
+  });
+
+  if (!txn) {
+    logger.warn('[support/notify] SupportTxn not found for reference', { traceId, reference });
+    return;
+  }
+
+  if (txn.status !== 'pending') {
+    logger.info('[support/notify] Already processed — duplicate webhook ignored', { traceId, reference });
+    return;
+  }
+
+  let verification;
+  try {
+    verification = await verifyTransaction(reference);
+  } catch (err) {
+    logger.error('[support/notify] Verification failed', { traceId, error: err instanceof Error ? err.message : String(err) });
+    return;
+  }
+
+  if (verification.status !== 'success') return;
+
+  try {
+    await prisma.supportTxn.update({
+      where: { id: txn.id },
+      data:  { status: 'confirmed' },
+    });
+
+    const tipFee = calcFee(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
+    const tipNet = calcNet(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
+
+    await prisma.artistPayout.create({
+      data: {
+        artistId:  txn.artistId,
+        amount:    tipNet,
+        method:    'paystack',
+        currency:  txn.currency,
+        status:    'pending',
+        reference,
+        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka)`,
+      },
+    });
+
+    await prisma.artist.update({
+      where: { id: txn.artistId },
+      data:  { lifetimeGrossSales: { increment: txn.amount } },
+    }).catch(e => logger.error('[support/notify] lifetimeGrossSales increment failed', { error: String(e) }));
+
+    const activeGoal = txn.artist.goals[0];
+    if (activeGoal) {
+      await prisma.goal.update({
+        where: { id: activeGoal.id },
+        data:  { currentAmount: { increment: txn.amount } },
+      });
+    }
+
+    const goalPercent = activeGoal
+      ? ((activeGoal.currentAmount + txn.amount) / activeGoal.targetAmount) * 100
+      : undefined;
+
+    await Promise.all([
+      sendSupportFanConfirmation({ to: txn.fanEmail, fanName: txn.fanName, artistName: txn.artist.name, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
+      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined, goalTitle: activeGoal?.title, goalPercent }),
+    ]);
+
+    logger.info('[support/notify] Tip confirmed', { traceId, txnId: txn.id });
+  } catch (err) {
+    logger.error('[support/notify] Processing error', { traceId, error: err instanceof Error ? err.message : String(err) });
   }
 }
 

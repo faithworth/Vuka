@@ -10,6 +10,7 @@
  *   MKT_  → marketplace service order  → handleMarketplaceEvent
  *   MEM_  → fan creator membership     → handleMembershipEvent
  *   ISO_  → industry service order     → handleIndustryOrderEvent
+ *   SUP_  → fan support / tip          → handleSupportEvent
  *
  * Replaces /api/checkout/payfast/notify.
  * Handles beat, release, video, sample, merch purchase confirmation.
@@ -30,7 +31,7 @@ import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
-import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent } from '@/lib/webhooks/paystack-handlers';
+import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
   const traceId   = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -67,6 +68,10 @@ export async function POST(req: NextRequest) {
   }
   if (reference.startsWith('ISO_')) {
     await handleIndustryOrderEvent(event, traceId);
+    return NextResponse.json({ ok: true });
+  }
+  if (reference.startsWith('SUP_')) {
+    await handleSupportEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
 
