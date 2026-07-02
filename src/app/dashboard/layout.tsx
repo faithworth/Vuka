@@ -17,6 +17,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { getEffectivePlan } from '@/lib/plans';
+import VukaLoader from '@/components/brand/VukaLoader';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
