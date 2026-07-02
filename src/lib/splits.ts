@@ -61,7 +61,7 @@ export async function disburseSplitSheet(params: DisburseParams): Promise<void> 
     if (recipientAmount <= 0) continue;
 
     try {
-      // If the recipient is a Vuka artist, credit their ArtistPayout wallet
+      // If the recipient is a Vuka Music artist, credit their ArtistPayout wallet
       if (recipient.artistId) {
         await prisma.artistPayout.create({
           data: {

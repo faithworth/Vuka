@@ -1,7 +1,7 @@
 /**
  * VUKA — Release Rights & Validation
  *
- * Vuka is a music sales platform — artists sell their music directly to
+ * Vuka Music is a music sales platform — artists sell their music directly to
  * fans. We are NOT a DSP distributor. There is no Spotify/Apple Music
  * delivery, no ISRC registration, no UPC assignment, no external DSP
  * pipeline, and no pre-publish review queue — a release goes live the
@@ -23,7 +23,7 @@
  * a small additive migration (e.g. `moderationNotes Json[]` on Release) —
  * ask before adding it.
  *
- * Artists retain 100% of their rights. Vuka only takes a platform fee on sales.
+ * Artists retain 100% of their rights. Vuka Music only takes a platform fee on sales.
  */
 
 // ── Rights Declaration ────────────────────────────────────────────────────

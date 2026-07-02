@@ -127,7 +127,7 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
         currency:  'ZAR',
         status:    'pending',
         reference,
-        notes:     `Marketplace order ${orderId} — held pending delivery (fee: R${fee.toFixed(2)} kept by Vuka)`,
+        notes:     `Marketplace order ${orderId} — held pending delivery (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
       },
     });
 
@@ -219,7 +219,7 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
         currency:  'ZAR',
         status:    'pending',
         reference,
-        notes:     `Fan membership payment (fee: R${fee.toFixed(2)} kept by Vuka)`,
+        notes:     `Fan membership payment (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
       },
     });
 
@@ -303,7 +303,7 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
         currency:  txn.currency,
         status:    'pending',
         reference,
-        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka)`,
+        notes:     `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka Music)`,
       },
     });
 
@@ -388,7 +388,7 @@ export async function handleIndustryOrderEvent(event: PaystackChargeEvent, trace
           currency: 'ZAR',
           status:   'pending',
           reference,
-          notes:    `Industry service: ${o.serviceTitle} | industry_user:${o.industryUserId} | order:${o.id} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka)`,
+          notes:    `Industry service: ${o.serviceTitle} | industry_user:${o.industryUserId} | order:${o.id} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka Music)`,
         },
       });
     });

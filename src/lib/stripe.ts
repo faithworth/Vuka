@@ -1,7 +1,7 @@
 /**
  * VUKA — Stripe (Removed)
  *
- * Stripe has been removed from the Vuka platform.
+ * Stripe has been removed from the Vuka Music platform.
  *
  * All payments are handled via:
  *   Paystack  — South African artists and buyers (ZAR, instant EFT, card)
@@ -15,15 +15,15 @@ export const stripe = null as unknown as never;
 
 export async function createCheckoutSession(): Promise<never> {
   throw new Error(
-    '[Vuka] Stripe is not active. Use Paystack (/api/checkout/paystack/initialize) ' +
+    '[Vuka Music] Stripe is not active. Use Paystack (/api/checkout/paystack/initialize) ' +
     'or PayPal (/api/checkout/paypal/create-order).'
   );
 }
 
 export async function createConnectAccountLink(): Promise<never> {
-  throw new Error('[Vuka] Stripe Connect is not active. Use Paystack Payouts or PayPal Payouts.');
+  throw new Error('[Vuka Music] Stripe Connect is not active. Use Paystack Payouts or PayPal Payouts.');
 }
 
 export async function createConnectAccount(): Promise<never> {
-  throw new Error('[Vuka] Stripe Connect is not active. Use Paystack Payouts or PayPal Payouts.');
+  throw new Error('[Vuka Music] Stripe Connect is not active. Use Paystack Payouts or PayPal Payouts.');
 }

@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import { encrypt, decrypt } from '@/lib/encryption';
 import prisma from '@/lib/prisma';
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Vuka';
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Vuka Music';
 const TOTP_OPTS = { digits: 6 as const, period: 30, window: 1 };
 
 // ── Types ─────────────────────────────────────────────────────

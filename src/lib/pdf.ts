@@ -186,7 +186,7 @@ export async function generateReceiptPDF({
   row('Date:', date.toLocaleDateString('en-ZA', { dateStyle: 'long' }));
   row('Reference:', purchaseId.toUpperCase().substring(0, 20));
 
-  page.drawText('Thank you for supporting independent music — Vuka', { x: 40, y: 50, size: 9, font: regular, color: muted });
+  page.drawText('Thank you for supporting independent music — Vuka Music', { x: 40, y: 50, size: 9, font: regular, color: muted });
 
   return Buffer.from(await doc.save());
 }

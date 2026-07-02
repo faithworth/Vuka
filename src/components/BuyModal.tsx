@@ -254,7 +254,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
               style={{ background: 'rgba(232,200,124,0.07)', border: '1px solid rgba(232,200,124,0.2)' }}
             >
               <p style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>
-                ✦ Vuka takes {fee}% to keep the platform running. The artist receives {share}% of this sale.
+                ✦ Vuka Music takes {fee}% to keep the platform running. The artist receives {share}% of this sale.
               </p>
             </div>
           );

@@ -404,7 +404,7 @@ export async function submitVerification(
 
   // Validate URL is from own bucket
   if (!validateAttachmentUrl(data.idDocumentUrl)) {
-    throw new Error('ID document must be uploaded via Vuka file upload');
+    throw new Error('ID document must be uploaded via Vuka Music file upload');
   }
 
   const request = await prisma.verificationRequest.upsert({

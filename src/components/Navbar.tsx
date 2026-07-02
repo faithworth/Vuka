@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import VukaLogo from '@/components/brand/VukaLogo';
 import {
-  Menu, X, Music2, Rss, Compass, MessageSquare, Bell, ChevronDown,
+  Menu, X, Rss, Compass, MessageSquare, Bell, ChevronDown,
   LayoutDashboard, BookOpen, Briefcase, ShieldCheck, Users,
   LogOut, Settings, TrendingUp, DollarSign, ShoppingBag, Upload,
 } from 'lucide-react';
@@ -227,13 +228,8 @@ export function Navbar() {
       <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 max-w-screen-xl mx-auto">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--green)' }}>
-            <Music2 size={15} className="text-black" />
-          </div>
-          <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-            Vuka
-          </span>
+        <Link href="/" className="flex-shrink-0">
+          <VukaLogo size={28} />
         </Link>
 
         {/* ── DESKTOP CENTER NAV (lg+) ──────────────────────────────────── */}

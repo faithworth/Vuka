@@ -98,7 +98,7 @@ const beatUpload = z.object({
 
 // ── Release (selling music directly — no distribution) ───────────────────
 //
-// Artists upload their music and sell it on Vuka. We are not a distributor.
+// Artists upload their music and sell it on Vuka Music. We are not a distributor.
 // No ISRC, no UPC, no DSP delivery — just rights, credits, and a price.
 
 const releaseCreate = z.object({

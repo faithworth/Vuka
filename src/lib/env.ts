@@ -206,13 +206,13 @@ export function validateEnv(throwOnError = false): EnvValidationResult {
     );
   }
   if (process.env.PAYFAST_MERCHANT_ID || process.env.PAYFAST_MERCHANT_KEY) {
-    warnings.push('PAYFAST_MERCHANT_ID / PAYFAST_MERCHANT_KEY are set but Vuka removed PayFast — delete them');
+    warnings.push('PAYFAST_MERCHANT_ID / PAYFAST_MERCHANT_KEY are set but Vuka Music removed PayFast — delete them');
   }
   if (process.env.STRIPE_SECRET_KEY) {
-    warnings.push('STRIPE_SECRET_KEY is set but Vuka does not use Stripe — delete it');
+    warnings.push('STRIPE_SECRET_KEY is set but Vuka Music does not use Stripe — delete it');
   }
   if (process.env.FLUTTERWAVE_SECRET_KEY || process.env.FLUTTERWAVE_HASH) {
-    warnings.push('FLUTTERWAVE_* keys are set but Flutterwave has been removed from Vuka — delete them');
+    warnings.push('FLUTTERWAVE_* keys are set but Flutterwave has been removed from Vuka Music — delete them');
   }
   if (isProduction && !process.env.UPSTASH_REDIS_REST_URL) {
     warnings.push('UPSTASH_REDIS_REST_URL not set — rate limiting will fall back to database writes under load');

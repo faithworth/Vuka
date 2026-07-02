@@ -177,7 +177,7 @@ function normalisePeriod(raw: string): string {
 
 // ── 2. REVENUE SHARE CALCULATION ─────────────────────────────
 // Fetches the artist's active subscription plan and calculates
-// Vuka's fee + artist net amount.
+// Vuka Music's fee + artist net amount.
 
 export async function calculateRevenueShare(params: {
   artistId: string;
@@ -568,7 +568,7 @@ export async function processFlutterwavePayout(params: {
         callback_url:   `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/flutterwave`,
         debit_currency: params.currency || 'ZAR',
         meta: {
-          sender:             'Vuka Distribution',
+          sender:             'Vuka Music Distribution',
           sender_country:     params.country || 'ZA',
           mobile_number:      '',
           recipient_address:  '',
@@ -637,7 +637,7 @@ export async function processPayPalPayout(params: {
       body: JSON.stringify({
         sender_batch_header: {
           sender_batch_id: params.reference,
-          email_subject:   'Vuka Royalty Payment',
+          email_subject:   'Vuka Music Royalty Payment',
           email_message:   'You have received a royalty payment from Vuka Music.',
         },
         items: [{

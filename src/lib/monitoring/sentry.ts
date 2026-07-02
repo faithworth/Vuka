@@ -108,7 +108,7 @@ function postWebhookAlert(message: string, error?: Error, context?: ErrorContext
   const isDiscord = webhookUrl.includes('discord.com');
 
   const text = [
-    `🚨 *Vuka Error* [${env}] [${commit}]`,
+    `🚨 *Vuka Music Error* [${env}] [${commit}]`,
     `> ${message}`,
     ...(error?.stack ? [`\`\`\`${error.stack.slice(0, 800)}\`\`\``] : []),
     ...(context?.action  ? [`Action: \`${context.action}\``]  : []),

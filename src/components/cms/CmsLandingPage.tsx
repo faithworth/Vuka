@@ -36,8 +36,8 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'WebSite',
-            name: 'Vuka',
-            alternateName: ['Vuka Music', 'Vuka Distro'],
+            name: 'Vuka Music',
+            alternateName: ['Vuka Music', 'Vuka Music Distro'],
             url: 'https://www.vukamusic.com',
             description: page.metaDesc || "Africa's independent music platform. Buy beats and music directly from African artists.",
             potentialAction: {

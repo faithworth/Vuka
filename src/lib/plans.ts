@@ -14,7 +14,7 @@ export interface VukaPlan {
   name:             string;
   priceZAR:         number;                    // 0 = free tier
   billingPeriod:    'MONTHLY' | 'YEARLY' | 'FREE';
-  platformFeePct:   number;                    // what Vuka keeps (e.g. 10 = 10%)
+  platformFeePct:   number;                    // what Vuka Music keeps (e.g. 10 = 10%)
   artistSharePct:   number;                    // what artist keeps
   releasesPerMonth: number | null;             // null = unlimited
   releasesPerYear?: number | null;

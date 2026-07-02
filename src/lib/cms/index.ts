@@ -141,12 +141,12 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       };
 
     case 'artists_grid':
-      return { heading: 'Featured Artists', subheading: 'Discover incredible talent on Vuka.', max: 6 };
+      return { heading: 'Featured Artists', subheading: 'Discover incredible talent on Vuka Music.', max: 6 };
 
     case 'stats':
       return {
         items: [
-          { value: '10,000+', label: 'Artists on Vuka'  },
+          { value: '10,000+', label: 'Artists on Vuka Music'  },
           { value: '50,000+', label: 'Tracks uploaded'   },
           { value: 'R2M+',    label: 'Paid to artists'  },
         ],
@@ -158,7 +158,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         items: [
           { q: 'How do I get paid?',          a: 'Payments are processed via Paystack (South Africa) and Flutterwave (rest of Africa). Money is sent to your bank account within 48 hours of a sale.' },
           { q: 'What is the platform fee?',   a: 'Free plan: 10% (auto-drops to 8.5% as you sell more). Pro: 8%. Label: 5%. Fees are deducted automatically at checkout.' },
-          { q: 'Can I sell internationally?', a: 'Yes — Vuka supports international buyers via card through Flutterwave. Your earnings are converted to ZAR.' },
+          { q: 'Can I sell internationally?', a: 'Yes — Vuka Music supports international buyers via card through Flutterwave. Your earnings are converted to ZAR.' },
         ],
       };
 
@@ -169,7 +169,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         heading: 'What artists say',
         items: [
-          { quote: 'Vuka changed how I sell my music. I keep so much more.',  author: 'DJ Khali',   role: 'Hip-Hop Producer, Cape Town' },
+          { quote: 'Vuka Music changed how I sell my music. I keep so much more.',  author: 'DJ Khali',   role: 'Hip-Hop Producer, Cape Town' },
           { quote: 'Finally a platform built for African artists.',            author: 'Amara Soul', role: 'Afrobeats Artist, Durban'    },
         ],
       };
@@ -190,7 +190,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         eyebrow: 'Industry Portal',
         heading: 'Scouts, Labels & Promoters — built in.',
-        body:    'Discover emerging talent, close deals, and manage artists directly on Vuka. Built for recruiters, sync buyers, sponsors, and artist managers.',
+        body:    'Discover emerging talent, close deals, and manage artists directly on Vuka Music. Built for recruiters, sync buyers, sponsors, and artist managers.',
         cta:     { label: 'Industry Portal', href: '/industry' },
         note:    'Free to apply',
       };

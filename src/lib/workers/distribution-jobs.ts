@@ -1,7 +1,7 @@
 /**
  * VUKA — Background Jobs (Payout Dispatcher)
  *
- * Vuka is a direct-to-fan SALES platform. We do not distribute to DSPs
+ * Vuka Music is a direct-to-fan SALES platform. We do not distribute to DSPs
  * (Spotify, Apple Music, etc.), so the old DSP delivery queue processor
  * has been removed along with the DSPDelivery / DistributionRelease
  * pipeline it operated on.

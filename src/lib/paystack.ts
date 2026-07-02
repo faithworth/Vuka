@@ -1,6 +1,6 @@
 /**
  * src/lib/paystack.ts
- * Vuka — Paystack integration (replaces src/lib/payfast.ts)
+ * Vuka Music — Paystack integration (replaces src/lib/payfast.ts)
  *
  * Required env vars:
  *   PAYSTACK_SECRET_KEY  — sk_live_... or sk_test_...

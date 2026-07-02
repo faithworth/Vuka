@@ -176,7 +176,7 @@ export async function createMembership(params: {
         currency:  tier.currency || 'ZAR',
         method:    'bank',
         status:    'pending',
-        notes:     `Fan membership: ${tier.name} — Vuka kept R${fee.toFixed(2)}`,
+        notes:     `Fan membership: ${tier.name} — Vuka Music kept R${fee.toFixed(2)}`,
       },
     });
 
@@ -238,7 +238,7 @@ export async function renewMembership(membershipId: string, amount: number) {
         currency:  membership.tier?.currency || 'ZAR',
         method:    'bank',
         status:    'pending',
-        notes:     `Membership renewal: ${membership.tier?.name || 'tier'} — Vuka kept R${fee.toFixed(2)}`,
+        notes:     `Membership renewal: ${membership.tier?.name || 'tier'} — Vuka Music kept R${fee.toFixed(2)}`,
       },
     });
 

@@ -17,8 +17,8 @@ export default function LandingPage() {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              "name": "Vuka",
-              "alternateName": ["Vuka Music", "Vuka Distro"],
+              "name": "Vuka Music",
+              "alternateName": ["Vuka Music", "Vuka Music Distro"],
               "url": "https://www.vukamusic.com",
               "description": "Africa's independent music platform. Buy beats and music directly from African artists.",
               "potentialAction": {
@@ -163,7 +163,7 @@ export default function LandingPage() {
               {[
                 { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
                 { n: '02', t: 'Share your link', d: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
-                { n: '03', t: 'Get paid 98%', d: 'Paystack and Flutterwave move money directly to your bank account. Vuka retains just 2% to keep the platform running.' },
+                { n: '03', t: 'Get paid 98%', d: 'Paystack and Flutterwave move money directly to your bank account. Vuka Music retains just 2% to keep the platform running.' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
@@ -188,7 +188,7 @@ export default function LandingPage() {
                   Scouts, Labels & Promoters — built in.
                 </h3>
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  Discover emerging talent, close deals, and manage artists directly on Vuka.
+                  Discover emerging talent, close deals, and manage artists directly on Vuka Music.
                   Built for recruiters, sync buyers, sponsors, and artist managers.
                 </p>
               </div>

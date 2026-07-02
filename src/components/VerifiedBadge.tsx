@@ -2,7 +2,7 @@
  * VerifiedBadge — pro platform-style verified mark.
  *
  * Shape: 8-point star seal (same geometry as YouTube, Spotify, X/Twitter).
- * Fill:  Vuka brand green (#A0E87C) with a darker stroke for depth.
+ * Fill:  Vuka Music brand green (#A0E87C) with a darker stroke for depth.
  * Mark:  crisp white checkmark, same proportions as Spotify.
  *
  * Renders as a pure inline SVG — zero deps, pixel-perfect at any size.

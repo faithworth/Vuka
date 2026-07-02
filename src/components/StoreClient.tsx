@@ -107,7 +107,7 @@ export default function StoreClient({ initialBeats, initialReleases }: { initial
         {loading && <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>Just now…</p>}
         {/* Fee transparency banner */}
         <div style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          ✦ Artists keep the majority of every sale. Vuka retains a small platform fee.
+          ✦ Artists keep the majority of every sale. Vuka Music retains a small platform fee.
         </div>
 
         {!loading && beats.length === 0 && releases.length === 0 && (

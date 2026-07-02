@@ -126,7 +126,7 @@ export async function notifyArtistOfFollow(
     userId: artistUserId,
     type: 'new_follower',
     title: `${followerName} started following you`,
-    body: 'You have a new follower on Vuka.',
+    body: 'You have a new follower on Vuka Music.',
     linkType: 'artist',
     linkId: followerSlug,
   });
@@ -169,7 +169,7 @@ export async function checkAndFireMilestones(
           userId: artistUserId,
           type: 'milestone_followers',
           title: `🎉 ${count.toLocaleString()} followers!`,
-          body: `You've reached ${count.toLocaleString()} followers on Vuka. Keep creating!`,
+          body: `You've reached ${count.toLocaleString()} followers on Vuka Music. Keep creating!`,
           linkType: '',
           linkId: '',
         });
@@ -183,7 +183,7 @@ export async function checkAndFireMilestones(
           userId: artistUserId,
           type: 'milestone_sales',
           title: `🎉 ${count} sale${count === 1 ? '' : 's'}!`,
-          body: `You've made ${count} sale${count === 1 ? '' : 's'} on Vuka. Your beats are moving!`,
+          body: `You've made ${count} sale${count === 1 ? '' : 's'} on Vuka Music. Your beats are moving!`,
           linkType: '',
           linkId: '',
         });
