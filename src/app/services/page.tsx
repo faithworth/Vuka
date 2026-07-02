@@ -209,7 +209,7 @@ export default function ServicesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceId: mktOrdering.id,
-          packageId: mktSelectedPkg.id,
+          packageName: mktSelectedPkg.name,
           buyerName: mktBuyerName,
           buyerEmail: mktBuyerEmail,
           requirements: mktRequirements,
@@ -460,16 +460,16 @@ export default function ServicesPage() {
                 <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Select Package</p>
                 <div className="grid gap-2">
                   {mktOrdering.packages.map((pkg: any) => (
-                    <button key={pkg.id} onClick={() => setMktSelectedPkg(pkg)}
+                    <button key={pkg.name} onClick={() => setMktSelectedPkg(pkg)}
                       className="text-left p-3 rounded-xl border transition-all"
                       style={{
-                        background: mktSelectedPkg?.id === pkg.id ? 'rgba(160,232,124,0.12)' : 'var(--bg)',
-                        borderColor: mktSelectedPkg?.id === pkg.id ? 'var(--green)' : 'var(--border)',
+                        background: mktSelectedPkg?.name === pkg.name ? 'rgba(160,232,124,0.12)' : 'var(--bg)',
+                        borderColor: mktSelectedPkg?.name === pkg.name ? 'var(--green)' : 'var(--border)',
                         color: 'var(--text)',
                       }}>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-sm">{pkg.name}</span>
-                        <span className="font-bold text-sm" style={{ color: 'var(--green)' }}>R{(pkg.priceZAR ?? 0).toLocaleString()}</span>
+                        <span className="font-bold text-sm" style={{ color: 'var(--green)' }}>R{(pkg.price ?? 0).toLocaleString()}</span>
                       </div>
                       {pkg.description && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{pkg.description}</p>}
                     </button>
@@ -513,7 +513,7 @@ export default function ServicesPage() {
             <button onClick={handleMktCheckout} disabled={mktPaying || !mktSelectedPkg}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
               style={{ background: 'var(--green)', color: '#0a0a0a' }}>
-              {mktPaying ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Pay R{(mktSelectedPkg?.priceZAR ?? 0).toLocaleString()} <ArrowRight size={16} /></>}
+              {mktPaying ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Pay R{(mktSelectedPkg?.price ?? 0).toLocaleString()} <ArrowRight size={16} /></>}
             </button>
           </div>
         </div>

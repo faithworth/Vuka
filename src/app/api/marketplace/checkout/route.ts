@@ -10,10 +10,10 @@ import { requireAuth } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { serviceId, packageName, amount, requirements, buyerName, buyerEmail } = await req.json();
+    const { serviceId, packageName, requirements, buyerName, buyerEmail } = await req.json();
 
-    if (!serviceId || !amount || !buyerEmail || !buyerName) {
-      return NextResponse.json({ error: 'serviceId, amount, buyerName and buyerEmail are required' }, { status: 400 });
+    if (!serviceId || !buyerEmail || !buyerName) {
+      return NextResponse.json({ error: 'serviceId, buyerName and buyerEmail are required' }, { status: 400 });
     }
 
     const service = await prisma.marketplaceService.findUnique({
@@ -21,6 +21,19 @@ export async function POST(req: NextRequest) {
       include: { artist: { include: { user: true } } },
     });
     if (!service?.isActive) return NextResponse.json({ error: 'Service not available' }, { status: 404 });
+
+    // Derive the price server-side from the service's own stored packages —
+    // never trust a client-supplied amount for a payment.
+    const packages = Array.isArray(service.packages) ? (service.packages as any[]) : [];
+    let amount: number;
+    if (packages.length > 0) {
+      const pkg = packageName ? packages.find(p => p.name === packageName) : packages[0];
+      if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 400 });
+      amount = Number(pkg.price);
+    } else {
+      amount = Number(service.price);
+    }
+    if (!amount || amount <= 0) return NextResponse.json({ error: 'Invalid service price' }, { status: 400 });
 
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: 'You must be logged in to place an order' }, { status: 401 });
