@@ -27,6 +27,11 @@ export default function GateScanPage() {
   const scannerRef = useRef<any>(null);
   const lastScannedRef = useRef<string>('');
   const lastScannedAtRef = useRef<number>(0);
+  // Tracks the in-flight stop()/clear() from the *previous* mount of this
+  // effect. The next start() must not begin until this resolves, or the
+  // new getUserMedia() request fights the old one for the same camera
+  // hardware — that race was why "Retry camera" never actually worked.
+  const teardownRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (manualMode) return;
@@ -38,6 +43,14 @@ export default function GateScanPage() {
       // Bundled import — no external CDN, so it isn't at the mercy of CSP
       // or unpkg being reachable.
       const { Html5Qrcode } = await import('html5-qrcode');
+      if (cancelled) return;
+
+      // Let any previous instance finish releasing the camera before this
+      // one touches it.
+      if (teardownRef.current) {
+        await teardownRef.current;
+        teardownRef.current = null;
+      }
       if (cancelled) return;
 
       const el = document.getElementById('gate-reader');
@@ -62,22 +75,32 @@ export default function GateScanPage() {
       const onDecode = (decodedText: string) => handleScan(decodedText);
       const onFrame = () => {}; // ignore per-frame no-QR-found noise
 
-      // Phones/tablets: prefer the rear ("environment") camera. Laptops and
-      // desktops usually only expose one front-facing webcam and will
-      // reject an exact facingMode constraint with OverconstrainedError —
-      // fall back to whatever camera is actually available.
       try {
-        await scanner.start({ facingMode: { ideal: 'environment' } }, config, onDecode, onFrame);
-        if (!cancelled) { setScanning(true); setCameraError(null); }
-        return;
-      } catch (err) {
-        if (cancelled) return;
-      }
+        // Pick the camera ONCE, up front, then call start() exactly once.
+        // The old code called scanner.start() a second time on the same
+        // instance whenever the facingMode attempt failed, without ever
+        // stopping the first attempt — that left html5-qrcode's internal
+        // state half-initialized, which is the vague "could not start the
+        // camera" error you were hitting every time, not real hardware
+        // flakiness.
+        let cameraId: string | { facingMode: { ideal: string } } =
+          { facingMode: { ideal: 'environment' } };
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras?.length) {
+            // Prefer whichever camera's label says it's the rear one;
+            // phones/tablets. Desktops/laptops just get their only camera.
+            const back = cameras.find(c => /back|rear|environment/i.test(c.label));
+            cameraId = (back ?? cameras[cameras.length - 1]).id;
+          }
+        } catch {
+          // getCameras() can fail before permission is granted on some
+          // browsers — fall back to the facingMode constraint below,
+          // still a single start() call either way.
+        }
 
-      try {
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras?.length) throw new Error('no-camera');
-        await scanner.start(cameras[0].id, config, onDecode, onFrame);
+        if (cancelled) return;
+        await scanner.start(cameraId, config, onDecode, onFrame);
         if (!cancelled) { setScanning(true); setCameraError(null); }
       } catch (err: any) {
         if (cancelled) return;
@@ -98,10 +121,19 @@ export default function GateScanPage() {
     return () => {
       cancelled = true;
       const s = scannerRef.current;
-      if (s?.isScanning) {
-        s.stop().then(() => s.clear()).catch(() => {});
-      } else if (s) {
-        try { s.clear(); } catch {}
+      scannerRef.current = null;
+      if (s) {
+        // Fully await stop()+clear() and stash the promise so the *next*
+        // effect run (Retry, or the manual/camera toggle) waits for it
+        // before requesting the camera again.
+        teardownRef.current = (async () => {
+          try {
+            if (s.isScanning) await s.stop();
+          } catch {
+            // already stopped / never fully started — fine either way
+          }
+          try { s.clear(); } catch {}
+        })();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
