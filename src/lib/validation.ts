@@ -33,16 +33,26 @@ const httpsUrl = () =>
   z.string().url().refine((u) => u.startsWith('https://'), 'URL must use HTTPS');
 
 /** Positive monetary amount — max 2 decimal places */
-const money = () =>
-  z.number()
-    .positive('Amount must be positive')
+const money = (opts?: { min?: number; minMessage?: string; max?: number; maxMessage?: string }) => {
+  let schema = z.number().positive('Amount must be positive');
+  if (opts?.min !== undefined) schema = schema.min(opts.min, opts.minMessage ?? `Minimum is ${opts.min}`);
+  if (opts?.max !== undefined) schema = schema.max(opts.max, opts.maxMessage ?? `Maximum is ${opts.max}`);
+  return schema
     // NOTE: previously used .multipleOf(0.01), which fails for large,
     // legitimately-computed amounts (e.g. R2,362,963.08 derived from
     // chained fee-percentage math) due to floating point representation
     // error — 0.01 isn't exactly representable in binary, so numbers like
     // 2362963.08 can internally be 2362963.0800000003 and fail an exact
     // "multiple of 0.01" check. Round to cents instead of rejecting.
+    //
+    // IMPORTANT: .min()/.max() must be applied to the raw ZodNumber BEFORE
+    // .transform() — ZodEffects (what .transform() returns) has no
+    // .min()/.max() methods, so chaining them after transform is a type
+    // error that silently degrades inference elsewhere (this is what broke
+    // the payouts/request build: TS couldn't resolve `amount`'s type past
+    // an invalid `.min()` call on money(), and it fell back to `unknown`).
     .transform((v) => Math.round(v * 100) / 100);
+};
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -155,7 +165,7 @@ const bankAccountAdd = z.object({
 });
 
 const payoutRequest = z.object({
-  amount:        money().min(100, 'Minimum payout is R100'),
+  amount:        money({ min: 100, minMessage: 'Minimum payout is R100' }),
   currency:      z.enum(['ZAR', 'USD']).default('ZAR'),
   method:        z.enum(['bank_transfer', 'paystack', 'paypal']),
   bankAccountId: cuid().optional(),
@@ -265,7 +275,7 @@ const paypalCaptureOrder = z.object({
 const membershipTierCreate = z.object({
   name:        safeText(100).min(1, 'Tier name required'),
   description: safeText(1000).optional(),
-  priceZAR:    money().min(10, 'Minimum tier price is R10'),
+  priceZAR:    money({ min: 10, minMessage: 'Minimum tier price is R10' }),
   perks:       z.array(safeText(200)).max(10).default([]),
   isActive:    z.boolean().default(true),
 });
@@ -276,7 +286,7 @@ const serviceCreate = z.object({
   title:       safeText(200).min(1, 'Service title required'),
   description: safeText(2000).min(10, 'Description required'),
   category:    z.enum(['mixing', 'mastering', 'production', 'songwriting', 'vocal_recording', 'artwork', 'music_video', 'consultation', 'other']),
-  priceZAR:    money().min(50, 'Minimum service price is R50'),
+  priceZAR:    money({ min: 50, minMessage: 'Minimum service price is R50' }),
   deliveryDays: z.number().int().min(1).max(90),
   revisions:   z.number().int().min(0).max(10).default(2),
 });
@@ -287,7 +297,7 @@ const serviceCreate = z.object({
 // reaching the database and corrupting every downstream revenue total.
 const supportCreate = z.object({
   artistSlug: safeText(100),
-  amount:     money().max(50_000, 'Amount seems unusually high — please double-check'),
+  amount:     money({ max: 50_000, maxMessage: 'Amount seems unusually high — please double-check' }),
   message:    safeText(500).optional().default(''),
   fanName:    safeText(100).min(1, 'Name required'),
   fanEmail:   z.string().email().max(254),
