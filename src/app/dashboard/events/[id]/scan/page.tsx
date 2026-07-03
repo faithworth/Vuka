@@ -45,7 +45,20 @@ export default function GateScanPage() {
 
       const scanner = new Html5Qrcode('gate-reader');
       scannerRef.current = scanner;
-      const config = { fps: 10, qrbox: { width: 260, height: 260 } };
+      // qrbox must never exceed the actual camera frame it gets back —
+      // a fixed pixel size (e.g. 260x260) is bigger than some webcams'
+      // and phone cameras' native resolution, which makes html5-qrcode
+      // acquire the stream (camera light on) and then immediately throw
+      // and release it (camera light off) right after. Sizing it off the
+      // real viewfinder dimensions avoids that entirely.
+      const config = {
+        fps: 10,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+          const size = Math.max(edge, 150); // never request an unreasonably tiny box
+          return { width: size, height: size };
+        },
+      };
       const onDecode = (decodedText: string) => handleScan(decodedText);
       const onFrame = () => {}; // ignore per-frame no-QR-found noise
 
