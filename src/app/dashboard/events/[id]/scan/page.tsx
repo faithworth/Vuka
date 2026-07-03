@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import Script from 'next/script';
 import { useParams } from 'next/navigation';
-import { CheckCircle2, XCircle, AlertTriangle, Loader2, ScanLine, Keyboard } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Loader2, ScanLine, Keyboard, CameraOff } from 'lucide-react';
 
 type ScanResult = {
   result: 'admit' | 'already_used' | 'invalid' | 'wrong_event' | 'unpaid';
@@ -16,8 +15,9 @@ export default function GateScanPage() {
   const params = useParams();
   const eventId = params?.id as string;
 
-  const [scriptReady, setScriptReady] = useState(false);
   const [scanning,    setScanning]    = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [retryKey,    setRetryKey]    = useState(0);
   const [busy,        setBusy]        = useState(false);
   const [lastResult,  setLastResult]  = useState<ScanResult>(null);
   const [manualToken, setManualToken] = useState('');
@@ -29,29 +29,70 @@ export default function GateScanPage() {
   const lastScannedAtRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!scriptReady || manualMode) return;
-    // @ts-ignore — loaded from CDN via next/script
-    const Html5Qrcode = (window as any).Html5Qrcode;
-    if (!Html5Qrcode) return;
+    if (manualMode) return;
+    if (typeof window === 'undefined') return;
 
-    const el = document.getElementById('gate-reader');
-    if (!el) return;
+    let cancelled = false;
 
-    const scanner = new Html5Qrcode('gate-reader');
-    scannerRef.current = scanner;
+    (async () => {
+      // Bundled import — no external CDN, so it isn't at the mercy of CSP
+      // or unpkg being reachable.
+      const { Html5Qrcode } = await import('html5-qrcode');
+      if (cancelled) return;
 
-    scanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 260, height: 260 } },
-      (decodedText: string) => handleScan(decodedText),
-      () => {}, // ignore per-frame no-QR-found noise
-    ).then(() => setScanning(true)).catch(() => setScanning(false));
+      const el = document.getElementById('gate-reader');
+      if (!el) return;
+
+      const scanner = new Html5Qrcode('gate-reader');
+      scannerRef.current = scanner;
+      const config = { fps: 10, qrbox: { width: 260, height: 260 } };
+      const onDecode = (decodedText: string) => handleScan(decodedText);
+      const onFrame = () => {}; // ignore per-frame no-QR-found noise
+
+      // Phones/tablets: prefer the rear ("environment") camera. Laptops and
+      // desktops usually only expose one front-facing webcam and will
+      // reject an exact facingMode constraint with OverconstrainedError —
+      // fall back to whatever camera is actually available.
+      try {
+        await scanner.start({ facingMode: { ideal: 'environment' } }, config, onDecode, onFrame);
+        if (!cancelled) { setScanning(true); setCameraError(null); }
+        return;
+      } catch (err) {
+        if (cancelled) return;
+      }
+
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras?.length) throw new Error('no-camera');
+        await scanner.start(cameras[0].id, config, onDecode, onFrame);
+        if (!cancelled) { setScanning(true); setCameraError(null); }
+      } catch (err: any) {
+        if (cancelled) return;
+        setScanning(false);
+        const name = err?.name || '';
+        if (name === 'NotAllowedError') {
+          setCameraError('Camera access was blocked. Allow camera permission for this site in your browser settings, then reload.');
+        } else if (name === 'NotFoundError' || err?.message === 'no-camera') {
+          setCameraError('No camera was found on this device.');
+        } else if (location.protocol !== 'https:') {
+          setCameraError('Camera access requires HTTPS.');
+        } else {
+          setCameraError('Could not start the camera. You can still check tickets by typing the code.');
+        }
+      }
+    })();
 
     return () => {
-      scanner.stop().catch(() => {});
+      cancelled = true;
+      const s = scannerRef.current;
+      if (s?.isScanning) {
+        s.stop().then(() => s.clear()).catch(() => {});
+      } else if (s) {
+        try { s.clear(); } catch {}
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scriptReady, manualMode]);
+  }, [manualMode, retryKey]);
 
   async function handleScan(qrToken: string) {
     // Debounce — camera keeps firing the same frame while the QR sits in view.
@@ -107,11 +148,6 @@ export default function GateScanPage() {
 
   return (
     <div className="min-h-screen px-4 py-6 max-w-lg mx-auto" style={{ background: 'var(--bg)' }}>
-      <Script
-        src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
-        onReady={() => setScriptReady(true)}
-      />
-
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-black" style={{ color: 'var(--text)' }}>Gate Scanner</h1>
         <button
@@ -136,12 +172,32 @@ export default function GateScanPage() {
       {banner}
 
       {!manualMode ? (
-        <div className="rounded-2xl overflow-hidden relative" style={{ border: '1px solid var(--border)', background: '#000' }}>
+        <div className="rounded-2xl overflow-hidden relative" style={{ border: '1px solid var(--border)', background: '#000', minHeight: 280 }}>
           <div id="gate-reader" style={{ width: '100%' }} />
-          {!scanning && (
+          {!scanning && !cameraError && (
             <div className="absolute inset-0 flex items-center justify-center flex-col gap-2" style={{ color: 'var(--text-muted)' }}>
               <Loader2 size={28} className="animate-spin" />
               <p className="text-xs">Starting camera…</p>
+            </div>
+          )}
+          {cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center flex-col gap-3 px-6 text-center" style={{ color: 'var(--text-muted)' }}>
+              <CameraOff size={28} />
+              <p className="text-xs">{cameraError}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setCameraError(null); setScanning(false); setRetryKey(k => k + 1); }}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                  Retry camera
+                </button>
+                <button
+                  onClick={() => setManualMode(true)}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium text-white"
+                  style={{ background: 'var(--accent)' }}>
+                  Type code instead
+                </button>
+              </div>
             </div>
           )}
           {busy && (
