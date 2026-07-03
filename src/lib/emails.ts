@@ -865,7 +865,7 @@ export async function sendTicketConfirmation({
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
-
+export async function sendArtistSaleNotification({
   to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl, planSlug,
 }: {
   to: string; artistName: string; buyerName: string; itemName: string;
