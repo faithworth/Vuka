@@ -30,25 +30,26 @@ export async function requestPayout(params: {
   const artist = await prisma.artist.findUnique({ where: { id: params.artistId } });
   if (!artist) throw new Error('Artist not found');
 
-  // Derive available balance from confirmed purchases netAmount
-  const [beatSales, releaseSales] = await Promise.all([
-    prisma.purchase.aggregate({
-      where: { status: 'confirmed', beat: { artistId: params.artistId } },
-      _sum: { netAmount: true },
-    }),
-    prisma.purchase.aggregate({
-      where: { status: 'confirmed', release: { artistId: params.artistId } },
-      _sum: { netAmount: true },
-    }),
-  ]);
-
-  const totalEarned = (beatSales._sum.netAmount ?? 0) + (releaseSales._sum.netAmount ?? 0);
-
+  // Derive available balance from the ArtistPayout ledger, which every
+  // revenue-confirming webhook writes to (sales, tips, memberships,
+  // marketplace orders, event tickets, campaign pledges, industry service
+  // orders). Previously this only summed beat + release purchase.netAmount,
+  // understating balance for artists earning from other sources — or, once
+  // a more-complete total was shown elsewhere in the UI, causing a
+  // legitimate payout request to be rejected as "exceeding" this
+  // artificially-low figure.
+  //
+  // Unpaid balance = ArtistPayout rows still 'pending' minus whatever is
+  // already tied up in an in-flight (not yet paid) PayoutRequest.
+  const pendingLedger = await prisma.artistPayout.aggregate({
+    where: { artistId: params.artistId, status: 'pending' },
+    _sum: { amount: true },
+  });
   const alreadyRequested = await prisma.payoutRequest.aggregate({
     where: { artistId: params.artistId, status: { in: ['pending', 'approved'] } },
     _sum: { amount: true },
   });
-  const available = totalEarned - (alreadyRequested._sum.amount ?? 0);
+  const available = (pendingLedger._sum.amount ?? 0) - (alreadyRequested._sum.amount ?? 0);
 
   if (params.amount > available + 0.01) {
     throw new Error(`Requested ${params.amount} exceeds available balance ${available.toFixed(2)}`);

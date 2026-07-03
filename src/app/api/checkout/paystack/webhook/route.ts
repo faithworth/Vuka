@@ -11,7 +11,8 @@
  *   MEM_  → fan creator membership     → handleMembershipEvent
  *   ISO_  → industry service order     → handleIndustryOrderEvent
  *   SUP_  → fan support / tip          → handleSupportEvent
- *   TICKET_ → event ticket purchase    → handleTicketEvent
+ *   ticket_   → event ticket purchase  → handleTicketEvent
+ *   campaign_ → campaign pledge        → handleCampaignEvent
  *
  * Replaces /api/checkout/payfast/notify.
  * Handles beat, release, video, sample, merch purchase confirmation.
@@ -75,11 +76,17 @@ export async function POST(req: NextRequest) {
     await handleSupportEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
-  if (reference.startsWith('TICKET_')) {
+  // FIX: event tickets and campaign pledges were charged via Paystack but
+  // never confirmed — their reference prefixes weren't dispatched anywhere,
+  // so they fell through to the generic Purchase lookup below, found
+  // nothing (they live in TicketPurchase/CampaignBacker, not Purchase),
+  // and silently no-opped. Paid tickets stayed invalid forever and pledges
+  // never counted toward the campaign.
+  if (reference.startsWith('ticket_')) {
     await handleTicketEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
-  if (reference.startsWith('CAMP_')) {
+  if (reference.startsWith('campaign_')) {
     await handleCampaignEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
@@ -117,7 +124,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Amount mismatch', { status: 400 });
   }
 
-  // Resolve plan for correct fee
+  // Resolve plan for correct fee.
+  // NOTE: previously only checked beatId/releaseId — video, sample, and
+  // merch purchases fell through with artistPlanSlug staying null, which
+  // silently forces the Free-tier rate (10%/9%/8.5%) even for Pro (8%) or
+  // Label (5%) artists, quietly overcharging them on every such sale.
   let artistPlanSlug: string | null = null;
   let artistPlanExpiresAt: Date | null = null;
   if (purchase.beatId) {
@@ -128,6 +139,18 @@ export async function POST(req: NextRequest) {
     const rel = await prisma.release.findUnique({ where: { id: (purchase as any).releaseId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
     artistPlanSlug = rel?.artist?.planSlug ?? null;
     artistPlanExpiresAt = rel?.artist?.planExpiresAt ?? null;
+  } else if (purchase.videoId) {
+    const video = await prisma.video.findUnique({ where: { id: purchase.videoId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
+    artistPlanSlug = video?.artist?.planSlug ?? null;
+    artistPlanExpiresAt = video?.artist?.planExpiresAt ?? null;
+  } else if (purchase.sampleId) {
+    const sample = await prisma.sample.findUnique({ where: { id: purchase.sampleId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
+    artistPlanSlug = sample?.artist?.planSlug ?? null;
+    artistPlanExpiresAt = sample?.artist?.planExpiresAt ?? null;
+  } else if ((purchase as any).merchId) {
+    const merchItem = await prisma.merch.findUnique({ where: { id: (purchase as any).merchId }, select: { artist: { select: { planSlug: true, planExpiresAt: true } } } });
+    artistPlanSlug = merchItem?.artist?.planSlug ?? null;
+    artistPlanExpiresAt = merchItem?.artist?.planExpiresAt ?? null;
   }
 
   const platformFeeAmt = calcPlatformFee(purchase.amount, artistPlanSlug, artistPlanExpiresAt);

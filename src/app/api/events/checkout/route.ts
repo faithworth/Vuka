@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
   }
   // Paid ticket — init Paystack
   const ref = `ticket_${purchase.id}`;
+  // FIX: paystackReference was never persisted, so the webhook had no way
+  // to find this row later — paid tickets stayed 'pending' forever even
+  // after a successful charge. Store it before initializing the charge.
+  await prisma.ticketPurchase.update({ where: { id: purchase.id }, data: { paystackReference: ref } });
   const ps = await initializeTransaction({
     email: buyerEmail, amountZAR: totalAmount * 100 / 100, reference: ref, metadata: { type: 'ticket', purchaseId: purchase.id, eventId, ticketId }, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/events/${ticket.event.slug}?ticket_success=1`,
   });

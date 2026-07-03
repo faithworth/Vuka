@@ -36,7 +36,13 @@ const httpsUrl = () =>
 const money = () =>
   z.number()
     .positive('Amount must be positive')
-    .multipleOf(0.01, 'Maximum 2 decimal places');
+    // NOTE: previously used .multipleOf(0.01), which fails for large,
+    // legitimately-computed amounts (e.g. R2,362,963.08 derived from
+    // chained fee-percentage math) due to floating point representation
+    // error — 0.01 isn't exactly representable in binary, so numbers like
+    // 2362963.08 can internally be 2362963.0800000003 and fail an exact
+    // "multiple of 0.01" check. Round to cents instead of rejecting.
+    .transform((v) => Math.round(v * 100) / 100);
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -275,6 +281,20 @@ const serviceCreate = z.object({
   revisions:   z.number().int().min(0).max(10).default(2),
 });
 
+// ── Support / tips ───────────────────────────────────────────────────────
+// R50,000 cap: generous enough for any legitimate fan tip while blocking
+// fat-finger/testing values (e.g. an extra couple of zeros) from ever
+// reaching the database and corrupting every downstream revenue total.
+const supportCreate = z.object({
+  artistSlug: safeText(100),
+  amount:     money().max(50_000, 'Amount seems unusually high — please double-check'),
+  message:    safeText(500).optional().default(''),
+  fanName:    safeText(100).min(1, 'Name required'),
+  fanEmail:   z.string().email().max(254),
+  isPublic:   z.boolean().optional().default(true),
+  tier:       safeText(50).optional().default('Listener'),
+});
+
 // ── Named schema export ───────────────────────────────────────────────────
 
 export const schemas = {
@@ -282,6 +302,9 @@ export const schemas = {
     register:        authRegister,
     login:           authLogin,
     magicLinkRequest,
+  },
+  support: {
+    create: supportCreate,
   },
   artist: {
     update: artistUpdate,

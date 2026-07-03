@@ -28,6 +28,7 @@ function resolveArtist(p: {
   video?: { artistId: string; artist?: any } | null;
   sample?: { artistId: string; artist?: any } | null;
   distributionRelease?: { artistId: string; artist?: any } | null;
+  merch?: { artistId: string; artist?: any } | null;
 }) {
   return (
     p.artist ||
@@ -36,6 +37,7 @@ function resolveArtist(p: {
     p.video?.artist ||
     p.sample?.artist ||
     p.distributionRelease?.artist ||
+    p.merch?.artist ||
     null
   );
 }
@@ -47,6 +49,7 @@ function resolveArtistId(p: {
   video?: { artistId: string } | null;
   sample?: { artistId: string } | null;
   distributionRelease?: { artistId: string } | null;
+  merch?: { artistId: string } | null;
 }) {
   return (
     p.artistId ||
@@ -55,43 +58,55 @@ function resolveArtistId(p: {
     p.video?.artistId ||
     p.sample?.artistId ||
     p.distributionRelease?.artistId ||
+    p.merch?.artistId ||
     null
   );
 }
 
-// Common include for Purchase → artist via item
+// Common include for Purchase → artist via item.
+// NOTE: every nested artist select includes planSlug/planExpiresAt — needed
+// so aggregations can use each artist's REAL fee rate instead of a flat
+// guess (see DEFAULT_TIP_RATE usage below, which is now only a fallback).
+const ARTIST_SELECT = { id: true, name: true, photoUrl: true, planSlug: true, planExpiresAt: true } as const;
+
 const PURCHASE_INCLUDE = {
   artist: {                           // direct FK — subscription, membership, marketplace
-    select: { id: true, name: true, photoUrl: true, planSlug: true, planExpiresAt: true },
+    select: ARTIST_SELECT,
   },
   beat: {
     select: {
       artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
+      artist: { select: ARTIST_SELECT },
     },
   },
   release: {
     select: {
       artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
+      artist: { select: ARTIST_SELECT },
     },
   },
   video: {
     select: {
       artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
+      artist: { select: ARTIST_SELECT },
     },
   },
   sample: {
     select: {
       artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
+      artist: { select: ARTIST_SELECT },
     },
   },
   distributionRelease: {
     select: {
       artistId: true, title: true,
-      artist: { select: { id: true, name: true, photoUrl: true } },
+      artist: { select: ARTIST_SELECT },
+    },
+  },
+  merch: {
+    select: {
+      artistId: true, title: true,
+      artist: { select: ARTIST_SELECT },
     },
   },
 } as const;
@@ -136,6 +151,16 @@ export async function GET(req: NextRequest) {
         _sum: { amount: true },
         _count: true,
       });
+      // Pro/Label subscription payments — a real revenue stream that was
+      // previously completely absent from Finance (only sales + tips were
+      // counted). "successful" here covers both still-active and since-
+      // cancelled/expired subscriptions; the artist paid Vuka Music
+      // regardless of whether the plan later lapsed.
+      const allPlanPayments = await prisma.artistPlanSubscription.findMany({
+        where: { status: { in: ['active', 'cancelled', 'expired'] } },
+        select: { amount: true },
+      });
+      const planRevenueTotal = allPlanPayments.reduce((a, s) => a + (s.amount || 0), 0);
 
       const sumPurchases = allPurchases.reduce(
         (a, p) => ({
@@ -171,17 +196,20 @@ export async function GET(req: NextRequest) {
           amount: true,
           platformFee: true,
           netAmount: true,
-          beat:    { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
-          release: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
-          video:   { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
-          sample:  { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
-          distributionRelease: { select: { artistId: true, artist: { select: { id: true, name: true, photoUrl: true } } } },
+          artistId: true,
+          artist:  { select: ARTIST_SELECT },
+          beat:    { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
+          release: { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
+          video:   { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
+          sample:  { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
+          distributionRelease: { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
+          merch:   { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
         },
       });
 
       const topTips = await prisma.supportTxn.findMany({
         where: { status: 'confirmed' },
-        select: { artistId: true, amount: true, artist: { select: { id: true, name: true, photoUrl: true } } },
+        select: { artistId: true, amount: true, artist: { select: ARTIST_SELECT } },
       });
 
       const paidPerArtist = await prisma.payoutRequest.groupBy({
@@ -243,9 +271,15 @@ export async function GET(req: NextRequest) {
             pendingRequests: 0, defaultBank: bankMap[artistId] || null,
           };
         }
+        // Use this artist's REAL plan rate, not the flat 10% default —
+        // previously every artist's tips were fee-adjusted at 10% here
+        // regardless of actual plan, which disagreed with the per-artist
+        // detail view (which always used the real rate) and produced
+        // mismatched "artist owes" / balance figures platform-wide.
+        const rate = artist ? platformFeeRate(artist.planSlug, artist.planExpiresAt) : DEFAULT_TIP_RATE;
         artistMap[artistId].grossTips   += t.amount || 0;
-        artistMap[artistId].artistOwes  += (t.amount || 0) * (1 - DEFAULT_TIP_RATE);
-        artistMap[artistId].platformCut += (t.amount || 0) * DEFAULT_TIP_RATE;
+        artistMap[artistId].artistOwes  += (t.amount || 0) * (1 - rate);
+        artistMap[artistId].platformCut += (t.amount || 0) * rate;
         artistMap[artistId].tipsCount   += 1;
       }
 
@@ -271,6 +305,13 @@ export async function GET(req: NextRequest) {
           monthPlatform:   sumMonthPurchases.platform + sumMonthTips * DEFAULT_TIP_RATE,
           monthSalesCount: monthPurchases.length,
           monthTipsCount:  monthTips.length,
+          // Plan (Pro/Label) subscriptions — 100% platform revenue, kept
+          // separate from sales/tips because artists don't get a cut of it.
+          planRevenue:       planRevenueTotal,
+          planPaymentsCount: allPlanPayments.length,
+          // What Vuka Music has actually earned in total: its cut of
+          // sales+tips, PLUS every plan subscription payment.
+          platformTotalRevenue: sumPurchases.platform + tipPlatform + planRevenueTotal,
         },
         payouts: {
           paidAmount:    paidPayouts._sum.amount  || 0,
@@ -371,6 +412,7 @@ export async function GET(req: NextRequest) {
             { video:               { is: { artistId } } },
             { sample:              { is: { artistId } } },
             { distributionRelease: { is: { artistId } } },
+            { merch:               { is: { artistId } } },
           ],
         },
         include: PURCHASE_INCLUDE,
@@ -402,6 +444,14 @@ export async function GET(req: NextRequest) {
         },
         orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
       });
+      // Plan (Pro/Label) subscription payments — previously invisible in
+      // admin finance entirely, even though these are real payments the
+      // artist made to Vuka Music (separate revenue stream from sales/tips).
+      const planPayments = await prisma.artistPlanSubscription.findMany({
+        where:   { artistId },
+        orderBy: { createdAt: 'desc' },
+      });
+      const planRevenueTotal = planPayments.reduce((a, s) => a + (s.amount || 0), 0);
 
       const purchases = rawPurchases.map((p) => ({
         ...p,
@@ -438,12 +488,15 @@ export async function GET(req: NextRequest) {
           balance,
           salesCount:  purchases.length,
           tipsCount:   tips.length,
+          planRevenueTotal,   // total the artist has paid Vuka Music for Pro/Label plans
+          planPaymentsCount:  planPayments.length,
         },
         purchases,
         tips: tipsWithFees,
         payoutRequests,
         payoutsLedger: artistPayouts,
         bankAccounts,
+        planPayments,         // full Pro/Label subscription payment history
       });
     }
 
@@ -576,18 +629,51 @@ export async function POST(req: NextRequest) {
             adminNotes:  notes ? `${notes}${reference ? ` | Ref: ${reference}` : ''}` : (reference ? `Ref: ${reference}` : 'Marked paid by admin'),
           },
         });
-        await tx.artistPayout.create({
-          data: {
-            artistId:    request.artistId,
-            amount:      request.amount,
-            currency:    request.currency,
-            status:      'paid',
-            method:      request.bankAccountId ? 'bank' : 'paystack',
-            reference:   reference || '',
-            notes:       notes || `PayoutRequest ${requestId}`,
-            processedAt: new Date(),
-          },
+
+        // Settle the artist's per-sale pending ledger entries against this
+        // payout (oldest first) instead of inserting a brand-new lump-sum
+        // row. Previously every payout added a fresh "paid" row on top of
+        // the untouched per-sale "pending" rows created at sale time — so
+        // "pending" balance never shrank after a payout and looked
+        // permanently ≈ equal to lifetime earnings ("double artist net").
+        const pendingEntries = await tx.artistPayout.findMany({
+          where: { artistId: request.artistId, status: 'pending' },
+          orderBy: { createdAt: 'asc' },
         });
+
+        let remaining = request.amount;
+        for (const entry of pendingEntries) {
+          if (remaining <= 0) break;
+          await tx.artistPayout.update({
+            where: { id: entry.id },
+            data: {
+              status:      'paid',
+              reference:   reference || entry.reference,
+              notes:       `${entry.notes} — settled by PayoutRequest ${requestId}`,
+              processedAt: new Date(),
+            },
+          });
+          remaining -= entry.amount;
+        }
+
+        // Any remainder (earnings from tips, subscriptions, memberships, or
+        // marketplace sales — none of which get a per-sale ArtistPayout row
+        // today) is recorded as one bridging entry so totals still
+        // reconcile, without duplicating the sales settled above.
+        if (remaining > 0.01) {
+          await tx.artistPayout.create({
+            data: {
+              artistId:    request.artistId,
+              amount:      Math.round(remaining * 100) / 100,
+              currency:    request.currency,
+              status:      'paid',
+              method:      request.bankAccountId ? 'bank' : 'paystack',
+              reference:   reference || '',
+              notes:       notes || `PayoutRequest ${requestId} (tips/subscription/membership earnings)`,
+              processedAt: new Date(),
+            },
+          });
+        }
       });
 
       return NextResponse.json({ ok: true });

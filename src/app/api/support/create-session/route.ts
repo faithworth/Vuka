@@ -10,16 +10,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { logger } from '@/lib/logger';
+import { schemas, validationError } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
 
   try {
-    const { artistSlug, amount, message, fanName, fanEmail, isPublic, tier } = await req.json();
-
-    if (!artistSlug || !amount || !fanEmail || !fanName) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const raw = await req.json();
+    const parsed = schemas.support.create.safeParse(raw);
+    if (!parsed.success) return validationError(parsed.error);
+    const { artistSlug, amount, message, fanName, fanEmail, isPublic, tier } = parsed.data;
 
     const artist = await prisma.artist.findUnique({ where: { slug: artistSlug }, include: { user: true } });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });

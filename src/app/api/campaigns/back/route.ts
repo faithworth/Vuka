@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { initializeTransaction, generateReference } from '@/lib/paystack';
+import { initializeTransaction } from '@/lib/paystack';
 
 export async function POST(req: NextRequest) {
   const user = await getServerUser();
@@ -25,18 +25,21 @@ export async function POST(req: NextRequest) {
       if (count >= tier.maxBackers) return NextResponse.json({ error: 'This tier is full' }, { status: 400 });
     }
   }
-  const ref = generateReference('CAMP');
   const backer = await prisma.campaignBacker.create({
     data: {
-      campaignId, tierId: tierId ?? null,
+      id: `cb_${Date.now()}`, campaignId, tierId: tierId ?? null,
       userId: user?.id ?? null, backerName, backerEmail,
       amount: amtNum, currency: 'ZAR', status: 'pending',
       anonymous: anonymous ?? false, message: message ?? '',
-      paystackReference: ref,
     },
   });
+  const ref = `campaign_${backer.id}`;
+  // FIX: paystackReference was never persisted — same bug as event tickets.
+  // Without it the webhook can never locate this pledge, so it stays
+  // 'pending' forever even after the fan is successfully charged.
+  await prisma.campaignBacker.update({ where: { id: backer.id }, data: { paystackReference: ref } });
   const ps = await initializeTransaction({
-    email: backerEmail, amountZAR: amtNum, reference: ref, metadata: { type: 'campaign_backing', backerId: backer.id, campaignId }, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/campaigns/${campaign.slug}?backed=1`,
+    email: backerEmail, amountZAR: amtNum * 100 / 100, reference: ref, metadata: { type: 'campaign_backing', backerId: backer.id, campaignId }, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/campaigns/${campaign.slug}?backed=1`,
   });
   if (!ps.authorizationUrl) return NextResponse.json({ error: 'Payment init failed' }, { status: 500 });
   return NextResponse.json({ ok: true, authorizationUrl: ps.authorizationUrl });

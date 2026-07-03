@@ -21,20 +21,17 @@ export async function GET() {
   try {
     const artist = await prisma.artist.findUnique({
       where: { id: user.artist.id },
-      select: { id: true, paystackRecipient: true, currency: true },
+      select: { id: true, paystackRecipient: true, currency: true, planSlug: true, planExpiresAt: true, lifetimeGrossSales: true },
     });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
 
-    // ArtistPayout uses `amount` — netAmount does not exist on this model
+    // ArtistPayout is kept as a per-sale audit ledger, still useful for the
+    // "recent activity" list below.
     const payouts = await prisma.artistPayout.findMany({
       where: { artistId: user.artist.id },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-
-    const totalEarned  = payouts.reduce((sum, p) => sum + p.amount, 0);
-    const totalPaid    = payouts.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-    const totalPending = payouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
 
     // Formal payout requests (against bank accounts)
     const payoutRequests = await prisma.payoutRequest.findMany({
@@ -43,6 +40,30 @@ export async function GET() {
       take: 20,
       include: { bankAccount: { select: { bankName: true, maskedNumber: true } } },
     });
+
+    // FIX: totalEarned/totalPaid/totalPending were previously derived purely
+    // from summing ArtistPayout.amount across ALL rows regardless of status,
+    // which double-counted: marking a payout "paid" used to INSERT a
+    // brand-new lump-sum row on top of the original per-sale "pending" rows
+    // instead of settling them, so "pending" balance never shrank after a
+    // payout — it stayed permanently equal to lifetime earnings (a
+    // "doubled" net), which is also why requesting that "pending" amount
+    // then failed validation (it was ~2x the real available balance).
+    //
+    // That double-booking bug is now fixed at the source (admin's mark_paid
+    // handler settles existing pending rows instead of duplicating them),
+    // which makes ArtistPayout the right ledger to sum again — it's actually
+    // the MOST complete one: every revenue-confirming webhook (sales, tips,
+    // memberships, marketplace orders, event tickets, campaign pledges, and
+    // industry service orders) writes a row here, including industry orders
+    // which don't even go through the Purchase table.
+    const payoutRows = await prisma.artistPayout.findMany({
+      where: { artistId: artist.id },
+      select: { amount: true, status: true },
+    });
+    const totalEarned  = payoutRows.reduce((sum, p) => sum + p.amount, 0);
+    const totalPaid    = payoutRows.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+    const totalPending = payoutRows.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
 
     // Bank accounts saved by artist
     const bankAccounts = await prisma.artistBankAccount.findMany({
