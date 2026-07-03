@@ -43,7 +43,14 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
           take: 20,
           select: { fanName: true, amount: true, currency: true, message: true, tier: true, createdAt: true },
         },
-        goals: { where: { isActive: true, OR: [{ deadline: null }, { deadline: { gt: new Date() } }] } },
+        campaigns: {
+          where: { status: { in: ['active', 'funded'] } },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            tiers: { orderBy: { amount: 'asc' } },
+            _count: { select: { backers: { where: { status: 'confirmed' } } } },
+          },
+        },
         followers: { select: { id: true } },
       },
     });

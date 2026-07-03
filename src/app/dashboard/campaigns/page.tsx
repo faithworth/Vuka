@@ -319,7 +319,7 @@ export default function CampaignsPage() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xl font-black" style={{ color: 'var(--text)' }}>{selected._count.backers}</div>
+              <div className="text-xl font-black" style={{ color: 'var(--text)' }}>{selected._count?.backers ?? 0}</div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>backers</div>
             </div>
             <div className="text-right">
@@ -342,11 +342,11 @@ export default function CampaignsPage() {
         </div>
 
         {/* Tiers */}
-        {selected.tiers.length > 0 && (
+        {(selected.tiers?.length ?? 0) > 0 && (
           <div className="mb-4">
             <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--text)' }}>Backer Tiers</h2>
             <div className="space-y-2">
-              {selected.tiers.map(tier => (
+              {selected.tiers.map((tier: any) => (
                 <div key={tier.id} className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>{tier.title}</span>

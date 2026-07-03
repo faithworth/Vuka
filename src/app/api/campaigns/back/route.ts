@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
   const backer = await prisma.campaignBacker.create({
     data: {
-      id: `cb_${Date.now()}`, campaignId, tierId: tierId ?? null,
+      campaignId, tierId: tierId ?? null,
       userId: user?.id ?? null, backerName, backerEmail,
       amount: amtNum, currency: 'ZAR', status: 'pending',
       anonymous: anonymous ?? false, message: message ?? '',

@@ -24,6 +24,8 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: `${BASE}/store/samples`,      lastModified: new Date(), changeFrequency: 'daily',   priority: 0.75 },
   { url: `${BASE}/discover`,           lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8  },
   { url: `${BASE}/marketplace`,        lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8  },
+  { url: `${BASE}/events`,             lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8  },
+  { url: `${BASE}/campaigns`,          lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8  },
   { url: `${BASE}/industry`,           lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.75 },
   { url: `${BASE}/auth/register`,      lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7  },
   { url: `${BASE}/auth/login`,         lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5  },
@@ -36,7 +38,7 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     // ── Fetch dynamic pages in parallel ─────────────────────────────────
-    const [artists, beats, releases, events] = await Promise.all([
+    const [artists, beats, releases, events, campaigns] = await Promise.all([
 
       // Artist profiles (public, verified or has content)
       prisma.artist.findMany({
@@ -79,6 +81,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         take:    500,
       }).catch(() => []),
 
+      // Campaigns — active or funded (publicly visible)
+      prisma.campaign.findMany({
+        where: {
+          status: { in: ['active', 'funded'] },
+        },
+        select:  { slug: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+        take:    500,
+      }).catch(() => []),
+
     ]);
 
     const artistRoutes: MetadataRoute.Sitemap = artists
@@ -117,12 +129,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority:        0.65,
       }));
 
+    const campaignRoutes: MetadataRoute.Sitemap = campaigns
+      .filter((c) => c.slug)
+      .map((c) => ({
+        url:             `${BASE}/campaigns/${c.slug}`,
+        lastModified:    c.updatedAt,
+        changeFrequency: 'daily',
+        priority:        0.65,
+      }));
+
     return [
       ...STATIC_ROUTES,
       ...artistRoutes,
       ...beatRoutes,
       ...releaseRoutes,
       ...eventRoutes,
+      ...campaignRoutes,
     ];
 
   } catch {

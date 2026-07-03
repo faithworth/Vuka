@@ -51,6 +51,18 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS "PayoutRequest_status_idx"     ON "PayoutRequest"("status");
     `,
   },
+  {
+    id:  'phase13_ticket_gate_security',
+    sql: `
+      -- Restores the anti-fraud columns for event check-in that were missing
+      -- from ticket_purchases. Additive/non-destructive.
+      ALTER TABLE "ticket_purchases"
+        ADD COLUMN IF NOT EXISTS "qrSignature"       TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS "checkedInAt"       TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "checkedInByUserId" TEXT,
+        ADD COLUMN IF NOT EXISTS "checkInDeviceInfo" TEXT NOT NULL DEFAULT '';
+    `,
+  },
 ];
 
 export async function POST(req: NextRequest) {

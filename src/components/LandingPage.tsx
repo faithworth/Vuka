@@ -237,7 +237,7 @@ export default function LandingPage() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { icon: Globe, title: 'Global Discovery', desc: 'Artists from SA, Nigeria, Ghana, Kenya and beyond.' },
-                  { icon: TrendingUp, title: 'Support Goals', desc: "Back an artist's recording or tour fund directly." },
+                  { icon: TrendingUp, title: 'Campaigns', desc: "Back an artist's recording or tour fund directly." },
                   { icon: Music, title: 'Build a Library', desc: 'Your purchases available for download anytime.' },
                   { icon: Shield, title: 'Safe & Secure', desc: 'Protected checkout. Immediate delivery.' },
                 ].map(c => (

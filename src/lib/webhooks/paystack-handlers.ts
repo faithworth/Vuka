@@ -21,7 +21,7 @@ import { PLANS } from '@/lib/plans';
 import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
-import { sendSupportFanConfirmation, sendSupportArtistNotification } from '@/lib/emails';
+import { sendSupportFanConfirmation, sendSupportArtistNotification, sendTicketConfirmation } from '@/lib/emails';
 
 export type PaystackChargeEvent = {
   event: string;
@@ -259,8 +259,7 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
     include: {
       artist: {
         include: {
-          user:  true,
-          goals: { where: { isActive: true }, take: 1 },
+          user: true,
         },
       },
     },
@@ -312,21 +311,9 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
       data:  { lifetimeGrossSales: { increment: txn.amount } },
     }).catch(e => logger.error('[support/notify] lifetimeGrossSales increment failed', { error: String(e) }));
 
-    const activeGoal = txn.artist.goals[0];
-    if (activeGoal) {
-      await prisma.goal.update({
-        where: { id: activeGoal.id },
-        data:  { currentAmount: { increment: txn.amount } },
-      });
-    }
-
-    const goalPercent = activeGoal
-      ? ((activeGoal.currentAmount + txn.amount) / activeGoal.targetAmount) * 100
-      : undefined;
-
     await Promise.all([
       sendSupportFanConfirmation({ to: txn.fanEmail, fanName: txn.fanName, artistName: txn.artist.name, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
-      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined, goalTitle: activeGoal?.title, goalPercent }),
+      sendSupportArtistNotification({ to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName, amount: txn.amount, currency: txn.currency, tier: txn.tier, message: txn.message || undefined }),
     ]);
 
     logger.info('[support/notify] Tip confirmed', { traceId, txnId: txn.id });
@@ -414,27 +401,39 @@ export async function handleTicketEvent(event: PaystackChargeEvent, traceId = 'n
   const reference = event.data?.reference ?? '';
 
   try {
-    const purchase = await prisma.ticketPurchase.findFirst({
-      where: { paystackReference: reference },
+    // A group purchase (qty > 1) creates one row PER TICKET — each with its
+    // own unique qrToken/signature — all sharing this one paystackReference,
+    // because it was one Paystack charge. findMany, not findFirst: every
+    // row in the group has to be confirmed together.
+    const purchases = await prisma.ticketPurchase.findMany({
+      where: { paystackReference: reference, status: 'pending' },
       include: { event: true, ticket: true },
     });
-    if (!purchase) { logger.warn('[tickets/notify] Ticket purchase not found for reference', { traceId, reference }); return; }
-    if (purchase.status !== 'pending') { logger.info('[tickets/notify] Duplicate — already processed', { traceId, reference }); return; }
+    if (!purchases.length) { logger.warn('[tickets/notify] No pending ticket rows for reference', { traceId, reference }); return; }
 
     const verification = await verifyTransaction(reference);
     if (verification.status !== 'success') return;
 
     const amountGross = verification.amountZAR;
-    const artistId     = purchase.event.artistId;
+    const first        = purchases[0];
+    const artistId      = first.event.artistId;
 
     const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true, lifetimeGrossSales: true } });
     const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
     const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
     await prisma.$transaction(async (tx) => {
-      await tx.ticketPurchase.update({ where: { id: purchase.id }, data: { status: 'confirmed' } });
-      await tx.eventTicket.update({ where: { id: purchase.ticketId }, data: { sold: { increment: purchase.quantity } } });
+      // Every row in the group gets confirmed — each remains its own
+      // independently scannable, independently check-in-able ticket.
+      await tx.ticketPurchase.updateMany({
+        where: { id: { in: purchases.map(p => p.id) } },
+        data:  { status: 'confirmed' },
+      });
+      await tx.eventTicket.update({ where: { id: first.ticketId }, data: { sold: { increment: purchases.length } } });
 
+      // Financial accounting stays as ONE record for the whole charge —
+      // Paystack processed one payment, so one payout/audit row is correct
+      // even though it produced several individual tickets.
       await tx.artistPayout.create({
         data: {
           artistId,
@@ -443,7 +442,7 @@ export async function handleTicketEvent(event: PaystackChargeEvent, traceId = 'n
           currency: 'ZAR',
           status:   'pending',
           reference,
-          notes:    `Ticket sale — ${purchase.quantity}× "${purchase.event.title}" (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
+          notes:    `Ticket sale — ${purchases.length}× "${first.event.title}" (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
         },
       });
 
@@ -451,8 +450,8 @@ export async function handleTicketEvent(event: PaystackChargeEvent, traceId = 'n
         data: {
           itemType:          'ticket',
           artistId,
-          buyerEmail:        purchase.buyerEmail,
-          buyerName:         purchase.buyerName,
+          buyerEmail:        first.buyerEmail,
+          buyerName:         first.buyerName,
           amount:            amountGross,
           currency:          'ZAR',
           platformFee:       fee,
@@ -469,7 +468,16 @@ export async function handleTicketEvent(event: PaystackChargeEvent, traceId = 'n
       data:  { lifetimeGrossSales: { increment: amountGross } },
     }).catch(e => logger.error('[tickets/notify] lifetimeGrossSales increment failed', { error: String(e) }));
 
-    logger.info('[tickets/notify] Ticket confirmed', { traceId, ticketPurchaseId: purchase.id, reference });
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+    await sendTicketConfirmation({
+      to: first.buyerEmail, buyerName: first.buyerName,
+      eventTitle: first.event.title, eventVenue: first.event.venue, eventCity: first.event.city,
+      eventStartDate: first.event.startDate, ticketName: first.ticket.name, quantity: purchases.length,
+      amount: amountGross, currency: 'ZAR',
+      ticketUrls: purchases.map(p => `${appUrl}/tickets/${p.qrToken}`),
+    }).catch(e => logger.error('[tickets/notify] confirmation email failed', { error: String(e) }));
+
+    logger.info('[tickets/notify] Tickets confirmed', { traceId, count: purchases.length, reference });
   } catch (err) {
     logger.error('[tickets/notify] Error', { traceId, reference, error: err instanceof Error ? err.message : String(err) });
   }

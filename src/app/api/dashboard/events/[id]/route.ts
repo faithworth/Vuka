@@ -27,11 +27,19 @@ export async function PATCH(req: NextRequest, { params }: P) {
   if (!ev) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const body = await req.json();
   if (body.action === 'publish') {
-    const updated = await prisma.event.update({ where: { id: params.id }, data: { status: 'published' } });
+    const updated = await prisma.event.update({
+      where: { id: params.id },
+      data: { status: 'published' },
+      include: { tickets: true, _count: { select: { purchases: { where: { status: 'confirmed' } } } } },
+    });
     return NextResponse.json({ ok: true, event: updated });
   }
   if (body.action === 'cancel') {
-    const updated = await prisma.event.update({ where: { id: params.id }, data: { status: 'cancelled' } });
+    const updated = await prisma.event.update({
+      where: { id: params.id },
+      data: { status: 'cancelled' },
+      include: { tickets: true, _count: { select: { purchases: { where: { status: 'confirmed' } } } } },
+    });
     return NextResponse.json({ ok: true, event: updated });
   }
   if (ev.status !== 'draft') return NextResponse.json({ error: 'Only draft events can be edited' }, { status: 400 });
@@ -48,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: P) {
       ...(endDate     !== undefined && { endDate: endDate ? new Date(endDate) : null }),
       ...(coverUrl    !== undefined && { coverUrl }),
     },
+    include: { tickets: true, _count: { select: { purchases: { where: { status: 'confirmed' } } } } },
   });
   return NextResponse.json({ ok: true, event: updated });
 }

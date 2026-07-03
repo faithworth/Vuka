@@ -66,7 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart2 },
       { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },
       { href: '/dashboard/referrals', label: 'Referrals', icon: Share2 },
-      { href: '/dashboard/goals',     label: 'Goals',     icon: Target },
       { href: '/dashboard/plaques',   label: 'Plaques',   icon: Trophy },
       { href: '/dashboard/events',    label: 'Events',    icon: Calendar },
       {

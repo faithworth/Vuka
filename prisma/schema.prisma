@@ -1665,6 +1665,10 @@ model TicketPurchase {
   paystackReference String?
   status            String      @default("pending") // pending, confirmed, cancelled, refunded
   qrToken           String      @unique @default(cuid())
+  qrSignature       String      @default("") // HMAC(secret, id + qrToken) — verified at the gate, not just looked up
+  checkedInAt       DateTime?
+  checkedInByUserId String?
+  checkInDeviceInfo String      @default("")
   createdAt         DateTime    @default(now())
 
   @@index([eventId, status])

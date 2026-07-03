@@ -130,6 +130,8 @@ export function Navbar() {
     { href: '/store/samples',      label: 'Samples'     },
     { href: '/store/merch',        label: 'Merch'       },
     { href: '/store/memberships',  label: 'Memberships' },
+    { href: '/campaigns',          label: 'Campaigns'   },
+    { href: '/events',             label: 'Events'      },
     { href: '/services',           label: 'Services'    },
     { href: '/industry',           label: 'For Industry'},
   ];
@@ -265,7 +267,7 @@ export function Navbar() {
           </div>
 
           {/* Top-level links */}
-          {[{ href: '/services', label: 'Services' }, { href: '/industry', label: 'For Industry' }].map(l => (
+          {[{ href: '/campaigns', label: 'Campaigns' }, { href: '/events', label: 'Events' }, { href: '/services', label: 'Services' }, { href: '/industry', label: 'For Industry' }].map(l => (
             <Link key={l.href} href={l.href}
               className="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               style={lnk(isActive(l.href))}>

@@ -54,6 +54,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const updated = await prisma.campaign.update({
         where: { id: params.id },
         data:  { status: 'active' },
+        include: {
+          tiers:   { orderBy: { amount: 'asc' } },
+          backers: { where: { status: 'confirmed' }, orderBy: { createdAt: 'desc' }, take: 50 },
+          _count:  { select: { backers: true } },
+        },
       });
       return NextResponse.json({ ok: true, campaign: updated });
     }
@@ -73,6 +78,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(targetAmount  && { targetAmount: parseFloat(targetAmount) }),
         ...(deadline      && { deadline: new Date(deadline) }),
         ...(campaignType  && { campaignType }),
+      },
+      include: {
+        tiers:   { orderBy: { amount: 'asc' } },
+        backers: { where: { status: 'confirmed' }, orderBy: { createdAt: 'desc' }, take: 50 },
+        _count:  { select: { backers: true } },
       },
     });
     return NextResponse.json({ ok: true, campaign: updated });

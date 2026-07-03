@@ -146,40 +146,37 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         {/* Tabbed: Beats / Releases / Posts */}
         <ArtistTabs artist={artist} />
 
-        {/* Goals — auto-hide any past their deadline */}
+        {/* Campaigns — crowdfunding projects this artist is currently running */}
         {(() => {
           const now = new Date();
-          const liveGoals = Array.from(
-            new Map(
-              (artist.goals || [])
-                .filter((g: any) => g.isActive && (!g.deadline || new Date(g.deadline) > now))
-                .map((g: any) => [g.id, g])
-            ).values()
-          );
-          if (!liveGoals.length) return null;
+          const liveCampaigns = (artist.campaigns || []).filter((c: any) => c.status === 'active' || c.status === 'funded');
+          if (!liveCampaigns.length) return null;
           return (
           <section className="mb-12">
-            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>🎯 Support Goals</h2>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>🎯 Campaigns</h2>
             <div className="space-y-4">
-              {liveGoals.map((goal: any) => {
-                const pct = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
-                const daysLeft = goal.deadline
-                  ? Math.ceil((new Date(goal.deadline).getTime() - now.getTime()) / 86400000)
-                  : null;
+              {liveCampaigns.map((campaign: any) => {
+                const pct = Math.min(100, (campaign.currentAmount / campaign.targetAmount) * 100);
+                const daysLeft = Math.max(0, Math.ceil((new Date(campaign.deadline).getTime() - now.getTime()) / 86400000));
+                const backerCount = campaign._count?.backers ?? campaign.backerCount ?? 0;
                 return (
-                  <div key={goal.id} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div key={campaign.id} className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="font-bold" style={{ color: 'var(--text)' }}>{goal.title}</h3>
-                        {goal.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{goal.description}</p>}
+                        <h3 className="font-bold" style={{ color: 'var(--text)' }}>{campaign.title}</h3>
+                        {campaign.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{campaign.description}</p>}
                       </div>
-                      {daysLeft !== null && (
+                      {campaign.status === 'active' ? (
                         <span className="text-xs px-2 py-1 rounded-full flex-shrink-0 ml-3"
                           style={{
                             background: daysLeft <= 7 ? 'rgba(239,68,68,0.1)' : 'var(--surface2)',
                             color: daysLeft <= 7 ? '#ef4444' : 'var(--text-muted)',
                           }}>
                           {daysLeft === 0 ? 'Last day!' : `${daysLeft}d left`}
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded-full flex-shrink-0 ml-3" style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--green)' }}>
+                          ✓ Funded
                         </span>
                       )}
                     </div>
@@ -189,16 +186,16 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold" style={{ color: accent }}>
-                        {goal.currency} {Number(goal.currentAmount).toFixed(2)} raised
+                        {campaign.currency} {Number(campaign.currentAmount).toFixed(2)} raised
                       </span>
                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {pct.toFixed(0)}% of {goal.currency} {Number(goal.targetAmount).toFixed(2)}
+                        {pct.toFixed(0)}% of {campaign.currency} {Number(campaign.targetAmount).toFixed(2)} · {backerCount} backers
                       </span>
                     </div>
-                    <a href={`/support/${artist.slug}`}
+                    <a href={`/campaigns/${campaign.slug}`}
                       className="block mt-4 text-center py-2 rounded-xl font-bold text-sm text-white"
                       style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
-                      ♥ Contribute to this goal
+                      🎯 Back this campaign
                     </a>
                   </div>
                 );

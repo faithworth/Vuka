@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye } from 'lucide-react';
+import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye, ScanLine } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 interface EventTicketForm { name: string; description: string; price: string; quantity: string }
@@ -172,19 +172,19 @@ export default function EventsPage() {
       </div>
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="p-4 rounded-xl" style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
-          <div className="text-xl font-black" style={{ color:'var(--gold)' }}>{selected._count.purchases}</div>
+          <div className="text-xl font-black" style={{ color:'var(--gold)' }}>{selected._count?.purchases ?? 0}</div>
           <div className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>Tickets sold</div>
         </div>
         <div className="p-4 rounded-xl" style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
-          <div className="text-xl font-black" style={{ color:'var(--green)' }}>{selected.tickets.length}</div>
+          <div className="text-xl font-black" style={{ color:'var(--green)' }}>{selected.tickets?.length ?? 0}</div>
           <div className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>Ticket types</div>
         </div>
       </div>
-      {selected.tickets.length > 0 && (
+      {(selected.tickets?.length ?? 0) > 0 && (
         <div className="mb-5">
           <h2 className="text-sm font-bold mb-2" style={{ color:'var(--text)' }}>Ticket Types</h2>
           <div className="space-y-2">
-            {selected.tickets.map(t => (
+            {selected.tickets.map((t: any) => (
               <div key={t.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
                 <div>
                   <div className="font-semibold text-sm" style={{ color:'var(--text)' }}>{t.name}</div>
@@ -208,6 +208,9 @@ export default function EventsPage() {
         {selected.status === 'published' && <>
           <a href={`/events/${selected.slug}`} target="_blank" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm" style={{ background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text)' }}>
             <Eye size={14}/> View Public Page
+          </a>
+          <a href={`/dashboard/events/${selected.id}/scan`} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white" style={{ background:'linear-gradient(135deg,#38b6e8,#2a8fc0)' }}>
+            <ScanLine size={14}/> Scan Tickets
           </a>
           <button onClick={() => action(selected.id,'cancel')} disabled={actioning} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm" style={{ background:'rgba(248,113,113,0.1)', color:'#f87171', border:'1px solid rgba(248,113,113,0.2)' }}>
             Cancel Event
