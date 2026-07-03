@@ -11,7 +11,7 @@
  *   MEM_  → fan creator membership     → handleMembershipEvent
  *   ISO_  → industry service order     → handleIndustryOrderEvent
  *   SUP_  → fan support / tip          → handleSupportEvent
- *   ticket_   → event ticket purchase  → handleTicketEvent
+ *   TICKET_   → event ticket purchase  → handleTicketEvent
  *   campaign_ → campaign pledge        → handleCampaignEvent
  *
  * Replaces /api/checkout/payfast/notify.
@@ -82,7 +82,15 @@ export async function POST(req: NextRequest) {
   // nothing (they live in TicketPurchase/CampaignBacker, not Purchase),
   // and silently no-opped. Paid tickets stayed invalid forever and pledges
   // never counted toward the campaign.
-  if (reference.startsWith('ticket_')) {
+  // BUG FIX: src/app/api/events/checkout/route.ts generates ticket
+  // references via generateReference('TICKET') — i.e. "TICKET_XXXX_YYYYY"
+  // (uppercase), matching every other prefix's convention (PLAN_, MKT_,
+  // SUP_, etc). This check was comparing against lowercase 'ticket_', which
+  // never matches, so every paid ticket fell through to the generic
+  // Purchase lookup below, found nothing, and silently no-opped — the
+  // charge succeeded on Paystack but the ticket stayed 'pending' forever
+  // and no confirmation email was ever sent.
+  if (reference.startsWith('TICKET_')) {
     await handleTicketEvent(event, traceId);
     return NextResponse.json({ ok: true });
   }
