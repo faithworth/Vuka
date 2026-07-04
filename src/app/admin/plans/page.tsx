@@ -197,8 +197,12 @@ export default function AdminPlansPage() {
                     <td className="px-4 py-3">
                       {latestSub ? <StatusBadge status={latestSub.status} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {a.planSubscriptions?.length || 0} payment{a.planSubscriptions?.length !== 1 ? 's' : ''}
+                    <td className="px-4 py-3 text-xs">
+                      <a href={`/admin/finance?artistId=${a.id}`}
+                         className="hover:underline"
+                         style={{ color: (a.planSubscriptions?.length || 0) > 0 ? 'var(--green)' : 'var(--text-muted)' }}>
+                        {a.planSubscriptions?.length || 0} payment{a.planSubscriptions?.length !== 1 ? 's' : ''}
+                      </a>
                     </td>
                     <td className="px-4 py-3">
                       <button

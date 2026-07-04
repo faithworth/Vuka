@@ -562,7 +562,7 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
     );
   }
 
-  const { artist, summary, purchases, tips, payoutRequests, payoutsLedger, bankAccounts = [] } = data;
+  const { artist, summary, purchases, tips, payoutRequests, payoutsLedger, bankAccounts = [], planPayments = [] } = data;
   const defaultBank = bankAccounts.find((b: any) => b.isDefault) || bankAccounts[0] || null;
 
   return (
@@ -603,6 +603,60 @@ function ArtistDetail({ artistId, onBack }: { artistId: string; onBack: () => vo
         <StatCard label="Sales Gross" value={formatCurrency(summary.grossSales)} sub={`${summary.salesCount} transactions`} />
         <StatCard label="Tips Gross" value={formatCurrency(summary.grossTips)} sub={`${summary.tipsCount} tips`} />
         <StatCard label="Payout Requests" value={String(payoutRequests.length)} sub={`${payoutRequests.filter((p: any) => p.status === 'pending').length} pending`} />
+      </div>
+
+      {/* Pro/Label plan payments — separate from sales/tips: this is money the
+          artist paid Vuka Music, not money Vuka Music owes the artist. */}
+      <div className="rounded-2xl p-4 space-y-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Plan Payments (Pro / Label)</p>
+          <p className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
+            {formatCurrency(summary.planRevenueTotal || 0)} total · {summary.planPaymentsCount || 0} payment{summary.planPaymentsCount === 1 ? '' : 's'}
+          </p>
+        </div>
+        {planPayments.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ color: 'var(--text-muted)' }} className="text-left text-xs uppercase tracking-wider">
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Plan</th>
+                  <th className="px-3 py-2">Amount</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Period</th>
+                  <th className="px-3 py-2">Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {planPayments.map((s: any) => (
+                  <tr key={s.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                    <td className="px-3 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                      {new Date(s.createdAt).toLocaleDateString('en-ZA')}
+                    </td>
+                    <td className="px-3 py-3 font-semibold capitalize whitespace-nowrap">{s.planSlug}</td>
+                    <td className="px-3 py-3 font-semibold whitespace-nowrap" style={{ color: 'var(--gold)' }}>{formatCurrency(s.amount)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                        style={{
+                          background: s.status === 'active' ? 'rgba(160,232,124,0.15)' : s.status === 'cancelled' ? 'rgba(232,124,124,0.15)' : 'var(--surface2)',
+                          color: s.status === 'active' ? 'var(--green)' : s.status === 'cancelled' ? '#e87c7c' : 'var(--text-muted)',
+                        }}>
+                        {s.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                      {s.currentPeriodStart ? new Date(s.currentPeriodStart).toLocaleDateString('en-ZA') : '—'}
+                      {s.currentPeriodEnd ? ` → ${new Date(s.currentPeriodEnd).toLocaleDateString('en-ZA')}` : ''}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{s.paystackReference || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>This artist has never paid for Pro or Label — currently on Free.</p>
+        )}
       </div>
 
       {/* Bank accounts panel */}
@@ -1168,6 +1222,15 @@ function PayoutsTab() {
 export default function AdminFinancePage() {
   const [tab, setTab]               = useState<MainTab>('overview');
   const [artistDrillId, setArtistDrillId] = useState<string | null>(null);
+
+  // Deep-link support: /admin/finance?artistId=xxx jumps straight into that
+  // artist's detail view (used by the "Sub History" link on Admin → Plans,
+  // so "1 payment" actually takes you somewhere instead of just being text).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('artistId');
+    if (id) { setArtistDrillId(id); setTab('artists'); }
+  }, []);
 
   function goArtist(id: string) {
     setArtistDrillId(id);
