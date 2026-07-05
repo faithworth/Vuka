@@ -67,6 +67,23 @@ export default function UploadPage() {
   const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({});
 
+  // The artist's actual current share of every sale — pulled from their
+  // real plan (Free auto-steps 10%→9%→8.5% fee as lifetime sales grow;
+  // Pro is a flat 8% fee; Label is a flat 5% fee). Never hardcode this —
+  // a fixed "98%" is only true for nobody on this fee schedule and is
+  // actively misleading once shown to a Pro/Label artist or a Free artist
+  // who hasn't reached the top step yet.
+  const [artistSharePct, setArtistSharePct] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/plans/status')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.effectiveArtistSharePct != null) setArtistSharePct(data.effectiveArtistSharePct); })
+      .catch(() => {}); // silent — share-percentage copy just won't render until this resolves
+  }, []);
+
+  const shareLabel = artistSharePct != null ? `${artistSharePct}%` : '…';
+
   // Beat fields — must be declared before any conditional returns (React rules of hooks)
   const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
   const [beatPrices, setBeatPrices] = useState({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
@@ -267,7 +284,7 @@ export default function UploadPage() {
       <p className="mb-2 text-lg" style={{ color: 'var(--text-muted)' }}>
         Your {uploadType === 'beat' ? 'beat' : relMeta.releaseType} is now on Vuka Music.
       </p>
-      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. 98% of every sale is yours.</p>
+      <p className="mb-10 text-sm" style={{ color: 'var(--green)' }}>Share your link and start earning. {shareLabel} of every sale is yours.</p>
       <div className="flex gap-4 flex-wrap justify-center">
         <button onClick={resetAll} className="px-6 py-3 rounded-xl font-semibold"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
@@ -288,7 +305,7 @@ export default function UploadPage() {
     <div className="p-6 md:p-10 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Upload to Your Store</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn 98% of every sale — direct to your bank.</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You earn {shareLabel} of every sale — direct to your bank.</p>
       </div>
 
       {/* Step progress */}
@@ -384,7 +401,7 @@ export default function UploadPage() {
       {step === 4 && uploadType === 'beat' && (
         <div>
           <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Set Your Prices</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep 98% of every sale. Prices in ZAR (South African Rand).</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep {shareLabel} of every sale. Prices in ZAR (South African Rand).</p>
           <div className="space-y-3 mb-8">
             <PriceField label="Basic License" sublabel="Non-exclusive · up to 5,000 streams · 2 music videos"
               value={beatPrices.basicPrice} onChange={v => setBeatPrices(p => ({ ...p, basicPrice: v }))} />
@@ -428,7 +445,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 98% of every sale · Zero platform fee · Direct to your bank
+            You earn {shareLabel} of every sale · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -570,7 +587,7 @@ export default function UploadPage() {
           )}
 
           <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--green)' }}>
-            You earn 98% of every sale · Zero platform fee · Direct to your bank
+            You earn {shareLabel} of every sale · Direct to your bank
           </div>
 
           {error && <ErrorBanner message={error} />}

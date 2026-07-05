@@ -98,14 +98,24 @@ Apply this CORS policy to the `vuka-audio` and `vuka-artwork` buckets:
 ```json
 [
   {
-    "AllowedOrigins": ["https://www.vuka.app", "https://vuka.app"],
-    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedOrigins": ["https://vukamusic.com", "https://www.vukamusic.com"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
     "AllowedHeaders": ["Range", "Authorization", "Content-Type"],
     "ExposeHeaders": ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"],
     "MaxAgeSeconds": 86400
   }
 ]
 ```
+
+Note: `PUT` is required here, not optional — every artwork/beat/release upload is a direct
+browser-to-R2 `PUT` via a presigned URL (see `/api/beats/upload`, `/api/releases/upload`,
+`/api/dashboard/settings/upload-url`). Without `PUT` in `AllowedMethods`, every upload fails
+with a browser-level network error before the request ever reaches R2 — this is not
+detectable from Vercel logs, since the PUT never touches the Next.js server.
+
+If you change domains (e.g. moving off a `*.vercel.app` preview domain onto a custom
+domain), update `AllowedOrigins` here immediately — a domain not listed here will fail
+uploads silently, with no server-side error to point to.
 
 ---
 

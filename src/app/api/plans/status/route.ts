@@ -8,7 +8,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
-import { getEffectivePlan } from '@/lib/plans';
+import { getEffectivePlan, platformFeeRate } from '@/lib/plans';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
@@ -19,9 +19,9 @@ export async function GET() {
     // $queryRaw bypasses Prisma's internal query result cache and goes
     // straight to the DB — essential after manual SQL updates via Supabase.
     const rows = await prisma.$queryRaw<
-      Array<{ planSlug: string; planExpiresAt: Date | null }>
+      Array<{ planSlug: string; planExpiresAt: Date | null; lifetimeGrossSales: number | null }>
     >`
-      SELECT "planSlug", "planExpiresAt"
+      SELECT "planSlug", "planExpiresAt", "lifetimeGrossSales"
       FROM "Artist"
       WHERE id = ${user.artist.id}
       LIMIT 1
@@ -32,7 +32,18 @@ export async function GET() {
     }
 
     const artist = rows[0];
+    const lifetimeGrossSales = artist.lifetimeGrossSales ?? 0;
     const effectivePlan = getEffectivePlan(artist.planSlug, artist.planExpiresAt);
+
+    // The plan's static platformFeePct/artistSharePct is only the *starting*
+    // rate for Free-tier artists — it steps down automatically as
+    // lifetimeGrossSales grows (10% → 9% → 8.5%). Every UI that shows "you
+    // earn X%" must use this actual, current, per-artist number — never the
+    // static plan default — or it lies to Free-tier artists who've grown
+    // past the entry rate, and to anyone on a plan other than Free.
+    const effectiveFeeRate      = platformFeeRate(artist.planSlug, artist.planExpiresAt, lifetimeGrossSales);
+    const effectivePlatformFeePct = Math.round(effectiveFeeRate * 1000) / 10; // e.g. 8.5
+    const effectiveArtistSharePct = Math.round((1 - effectiveFeeRate) * 1000) / 10; // e.g. 91.5
 
     // Get latest subscription record — wrapped in try/catch because the
     // artist_plan_subscriptions table may not be migrated yet; a missing
@@ -50,8 +61,14 @@ export async function GET() {
     return NextResponse.json({
       planSlug: effectivePlan.slug,
       planName: effectivePlan.name,
+      // Static plan defaults — kept for reference (e.g. plan comparison UI)
       platformFeePct: effectivePlan.platformFeePct,
       artistSharePct: effectivePlan.artistSharePct,
+      // Actual current rate for THIS artist right now — always use these
+      // for "you earn X% of every sale" style copy.
+      effectivePlatformFeePct,
+      effectiveArtistSharePct,
+      lifetimeGrossSales,
       priceZAR: effectivePlan.priceZAR,
       features: effectivePlan.features,
       planExpiresAt: artist.planExpiresAt,
