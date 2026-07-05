@@ -21,7 +21,7 @@ const securityHeaders = [
       `img-src 'self' data: blob: https://*.r2.dev https://*.supabase.co`,
       `media-src 'self' blob: https://*.r2.dev https://*.cloudflare.com`,
       // PayPal, Paystack, Supabase, Resend
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://api-m.paypal.com https://api-m.sandbox.paypal.com https://api.resend.com https://*.upstash.io https://app.posthog.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://api-m.paypal.com https://api-m.sandbox.paypal.com https://api.resend.com https://*.upstash.io https://app.posthog.com https://*.r2.cloudflarestorage.com https://*.r2.dev",
       "frame-src https://www.paypal.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "object-src 'none'",
