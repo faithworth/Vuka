@@ -2,8 +2,9 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Music, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import VukaLogo from '@/components/brand/VukaLogo';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24">
@@ -109,10 +110,7 @@ function LoginForm() {
 
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
-              <Music size={17} className="text-white" />
-            </div>
-            <span className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vuka</span>
+            <VukaLogo size={30} />
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text)' }}>Welcome back</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sign in to your account</p>

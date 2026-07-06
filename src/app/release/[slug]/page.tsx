@@ -79,7 +79,9 @@ export default function ReleasePage() {
               className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
               style={{ background: 'var(--red)' }}>
               <ShoppingCart className="w-5 h-5" />
-              {release.price === 0 ? 'Download Free' : 'Buy Now — Yebo ✓'}
+              {release.payWhatWant
+                ? (release.minPrice > 0 ? 'Pay What You Want' : 'Get It — Tip Optional')
+                : release.price === 0 ? 'Download Free' : 'Buy Now — Yebo ✓'}
             </button>
           </div>
         </div>

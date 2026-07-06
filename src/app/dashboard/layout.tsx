@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { getEffectivePlan } from '@/lib/plans';
 import VukaLoader from '@/components/brand/VukaLoader';
+import VukaLogo from '@/components/brand/VukaLogo';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
@@ -211,11 +212,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--sky)' }}>
-              <Music2 size={13} className="text-black" />
-            </div>
-            <span className="font-semibold text-base" style={{ color: 'var(--text)' }}>Vuka Music</span>
+            <VukaLogo size={26} />
           </Link>
           {artistName && (
             <p className="text-xs mt-2 truncate" style={{ color: 'var(--text-muted)' }}>

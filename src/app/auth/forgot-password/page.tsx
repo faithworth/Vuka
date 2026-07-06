@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Music, Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
+import VukaLogo from '@/components/brand/VukaLogo';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -38,10 +39,7 @@ export default function ForgotPasswordPage() {
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--color-background)' }}>
         <div className="w-full max-w-md text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-green)' }}>
-              <Music size={15} className="text-black" />
-            </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
+            <VukaLogo size={28} />
           </Link>
           <div className="card p-8">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -68,10 +66,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-green)' }}>
-              <Music size={15} className="text-black" />
-            </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Vuka Music</span>
+            <VukaLogo size={28} />
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Forgot password?</h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Enter your email and we'll send a reset link</p>

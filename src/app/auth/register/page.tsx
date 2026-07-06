@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Music, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
+import VukaLogo from '@/components/brand/VukaLogo';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24">
@@ -129,10 +130,7 @@ function RegisterForm() {
 
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--sky)' }}>
-              <Music size={16} className="text-white" />
-            </div>
-            <span className="font-black text-xl" style={{ color: 'var(--text)' }}>Vuka</span>
+            <VukaLogo size={30} />
           </Link>
           <h1 className="text-2xl font-black mb-1" style={{ color: 'var(--text)' }}>Create your account</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Africa's music marketplace</p>

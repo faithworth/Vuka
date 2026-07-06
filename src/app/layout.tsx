@@ -3,15 +3,15 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Vuka Music — Release. Distribute. Earn. Own.',
+  title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
   description:
-    "Vuka Music is Africa's independent music distribution platform. Upload your music, distribute to Spotify, Apple Music, Boomplay, Audiomack and 30+ platforms. Keep up to 100% of your royalties. Built for South African and African independent artists.",
+    "Vuka Music is the direct-to-fan sales platform for South African independent artists and producers. Sell beats, releases, event tickets, merch and more — keep up to 95% of every sale, paid straight to your bank via Paystack.",
   keywords: [
-    'vuka', 'vuka distro', 'music distribution south africa',
-    'south african music platform', 'african music distribution',
-    'distribute music africa', 'independent music artist sa',
-    'amapiano distribution', 'gqom beats', 'afrobeats distribution',
-    'paystack music', 'boomplay distribution', 'audiomack distribution',
+    'vuka', 'vuka music', 'sell beats south africa',
+    'south african music platform', 'african beat marketplace',
+    'sell music direct to fans', 'independent music artist sa',
+    'amapiano beats', 'gqom beats', 'afrobeats producer marketplace',
+    'paystack music', 'sell tickets south africa', 'artist crowdfunding south africa',
   ],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com'),
   alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com' },
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka Music — Release. Distribute. Earn. Own.',
+    title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
     description:
-      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties. Paystack payments.",
+      "South Africa's direct-to-fan sales platform for independent artists and producers. Keep up to 95% of every sale, paid straight to your bank via Paystack.",
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
     siteName: 'Vuka Music',
     type: 'website',
@@ -31,9 +31,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vuka Music — Release. Distribute. Earn. Own.',
+    title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
     description:
-      "Africa's independent music distribution platform. Upload once, distribute everywhere. Keep up to 100% royalties.",
+      "South Africa's direct-to-fan sales platform for independent artists and producers. Keep up to 95% of every sale.",
   },
   icons: { icon: '/favicon.svg' },
 };

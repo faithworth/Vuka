@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { releaseId, isActive, title, price, minPrice, description } = await req.json();
+    const { releaseId, isActive, title, price, minPrice, payWhatWant, description } = await req.json();
     const release = await prisma.release.findFirst({ where: { id: releaseId, artistId: user.artist.id } });
     if (!release) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const updated = await prisma.release.update({
@@ -79,6 +79,7 @@ export async function PATCH(req: NextRequest) {
         ...(title && { title }),
         ...(price !== undefined && { price }),
         ...(minPrice !== undefined && { minPrice }),
+        ...(payWhatWant !== undefined && { payWhatWant }),
         ...(description !== undefined && { description }),
       },
     });

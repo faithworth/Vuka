@@ -65,6 +65,16 @@ export default function EditReleasePage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // Pricing — editable after publish. This was previously impossible from
+  // the UI at all: once a release went live, price/minPrice/payWhatWant
+  // could only be fixed by hand in the database.
+  const [priceInput, setPriceInput]       = useState('');
+  const [minPriceInput, setMinPriceInput] = useState('');
+  const [payWhatWant, setPayWhatWant]     = useState(false);
+  const [savingPrice, setSavingPrice]     = useState(false);
+  const [priceSaved, setPriceSaved]       = useState(false);
+  const [priceError, setPriceError]       = useState('');
+
   // Load release + tracks
   useEffect(() => {
     if (!id) return;
@@ -72,6 +82,9 @@ export default function EditReleasePage() {
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(({ release: rel }) => {
         setRelease(rel);
+        setPriceInput(String(rel.price ?? 0));
+        setMinPriceInput(String(rel.minPrice ?? 0));
+        setPayWhatWant(!!rel.payWhatWant);
         setTracks((rel.tracks || []).map((t: any) => ({
           id:           t.id,
           title:        t.title,
@@ -137,6 +150,34 @@ export default function EditReleasePage() {
   async function saveAll() {
     const pending = tracks.filter(t => t.newAudioUrl && !t.saved);
     await Promise.all(pending.map(t => saveTrack(t.id)));
+  }
+
+  async function savePricing() {
+    setSavingPrice(true); setPriceError(''); setPriceSaved(false);
+    try {
+      const res = await fetch(`/api/dashboard/releases`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          releaseId: id,
+          payWhatWant,
+          price: payWhatWant ? 0 : (parseFloat(priceInput) || 0),
+          minPrice: payWhatWant ? (parseFloat(minPriceInput) || 0) : 0,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Could not update pricing');
+      }
+      const { release: updated } = await res.json();
+      setRelease(updated);
+      setPriceSaved(true);
+      setTimeout(() => setPriceSaved(false), 3000);
+    } catch (e: any) {
+      setPriceError(e.message || 'Could not update pricing');
+    } finally {
+      setSavingPrice(false);
+    }
   }
 
   async function togglePublished() {
@@ -262,6 +303,72 @@ export default function EditReleasePage() {
             }}>
             {togglingActive ? <VukaLoader size={14} /> : release.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
             {release.isActive ? 'Unpublish' : 'Publish'}
+          </button>
+        </div>
+      )}
+
+      {/* Pricing controls */}
+      {release && (
+        <div className="p-4 rounded-xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <p className="text-sm font-bold mb-3" style={{ color: 'var(--text)' }}>Pricing</p>
+
+          <label className="flex items-center gap-2 cursor-pointer mb-3">
+            <input type="checkbox" checked={payWhatWant}
+              onChange={e => setPayWhatWant(e.target.checked)}
+              className="rounded" />
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Pay What You Want (fans choose their own price)
+            </span>
+          </label>
+
+          {!payWhatWant ? (
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Price (ZAR) — set to 0 for a free download
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg" style={{ color: 'var(--gold)' }}>R</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={priceInput}
+                  onChange={e => setPriceInput(e.target.value)}
+                  placeholder="e.g. 50"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Minimum price (ZAR) — fans can pay more
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg" style={{ color: 'var(--gold)' }}>R</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={minPriceInput}
+                  onChange={e => setMinPriceInput(e.target.value)}
+                  placeholder="e.g. 20"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>Set to 0 to make it free with an option to tip.</p>
+            </div>
+          )}
+
+          {priceError && (
+            <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: '#ff4d4d' }}>
+              <AlertCircle size={14} /> {priceError}
+            </div>
+          )}
+
+          <button onClick={savePricing} disabled={savingPrice}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold mt-4 disabled:opacity-60"
+            style={{ background: 'var(--green)', color: '#0a0a0a' }}>
+            {savingPrice ? <VukaLoader size={14} /> : priceSaved ? <CheckCircle size={14} /> : <Save size={14} />}
+            {priceSaved ? 'Saved' : 'Save Pricing'}
           </button>
         </div>
       )}

@@ -12,6 +12,7 @@ import {
   LayoutDashboard, Users, Music, DollarSign, Settings, Shield, Bell, LogOut, Menu, X, ChevronRight, BarChart2, Flag, Crown, FileEdit,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
+import VukaLogo from '@/components/brand/VukaLogo';
 
 const ADMIN_NAV = [
   { href: '/admin',              label: 'Overview',     icon: LayoutDashboard, exact: true },
@@ -85,8 +86,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Logo */}
         <div className="p-6 flex items-center justify-between border-b" style={{ borderColor: 'var(--border)' }}>
           <div>
-            <div className="text-xl font-black font-display" style={{ color: 'var(--green)' }}>VUKA</div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Admin Console</div>
+            <VukaLogo size={26} animated={false} />
+            <div className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>Admin Console</div>
           </div>
           <button className="lg:hidden" onClick={() => setOpen(false)}>
             <X size={18} style={{ color: 'var(--text-muted)' }} />
@@ -132,7 +133,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button onClick={() => setOpen(true)}>
             <Menu size={20} style={{ color: 'var(--text)' }} />
           </button>
-          <span className="font-bold font-display" style={{ color: 'var(--green)' }}>VUKA Admin</span>
+          <VukaLogo size={22} withWordmark={false} animated={false} />
+          <span className="font-bold font-display" style={{ color: 'var(--text)' }}>Vuka Music <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Admin</span></span>
         </header>
 
         <main className="flex-1 overflow-auto p-6 md:p-8">
