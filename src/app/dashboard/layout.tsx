@@ -24,7 +24,7 @@ import {
   Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
   X, Send, Users, Store, Briefcase, Video, Package,
   MessageSquare, User, Share2, Trophy, Megaphone, GitFork, Calendar,
-  Building2, TrendingUp, Sparkles, type LucideIcon,
+  Building2, TrendingUp, Sparkles, Rss, Clapperboard, type LucideIcon,
 } from 'lucide-react';
 
 interface NavItem {
@@ -56,6 +56,8 @@ const NAV_GROUPS: NavGroup[] = [
     key: 'engage', label: 'Engage', icon: Users,
     items: [
       { href: '/dashboard/social',       label: 'Posts',       icon: Send },
+      { href: '/feed',                   label: 'Feed & Stories', icon: Rss },
+      { href: '/reels',                  label: 'Reels',        icon: Clapperboard },
       { href: '/dashboard/support',      label: 'Fan Support', icon: Heart },
       { href: '/dashboard/memberships',  label: 'Memberships', icon: Users },
       { href: '/dashboard/storefront',   label: 'Storefront',  icon: Store },

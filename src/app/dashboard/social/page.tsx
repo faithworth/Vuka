@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Plus, Trash2, Image as ImageIcon, Send, X, Loader2 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
@@ -106,7 +107,7 @@ export default function DashboardPostsPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Posts</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Share updates with your followers — also visible in the main Feed</p>
@@ -114,6 +115,18 @@ export default function DashboardPostsPage() {
         <button onClick={() => setShowForm(v => !v)} className="btn btn-primary gap-2">
           <Plus size={16} /> New Post
         </button>
+      </div>
+
+      {/* Looking for Stories/Reels? Those live on their own pages, not here. */}
+      <div className="flex flex-wrap gap-2 mb-8">
+        <Link href="/feed" className="text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-[var(--surface2)]"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+          📸 Post a Story → Feed
+        </Link>
+        <Link href="/reels" className="text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-[var(--surface2)]"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+          🎬 Post a Reel → Reels
+        </Link>
       </div>
 
       {/* Compose */}
