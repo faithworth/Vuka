@@ -2,6 +2,7 @@ import { Navbar } from '@/components/Navbar';
 import { Instagram, Twitter, Youtube, Music2, Radio } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import FollowButton from './FollowButton';
+import MessageButton from './MessageButton';
 import ArtistTabs from './ArtistTabs';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 
@@ -86,6 +87,7 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
               ♥ Support
             </a>
             <FollowButton artistId={artist.id} artistName={artist.name} />
+            <MessageButton artistUserId={artist.userId} />
           </div>
         </div>
 

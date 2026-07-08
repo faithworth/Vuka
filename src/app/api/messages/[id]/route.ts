@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import { getMessages, sendMessage, deleteMessage } from '@/lib/messaging';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
+import prisma from '@/lib/prisma';
 
 // GET /api/messages/[id]?cursor=ISO_DATE&limit=50
 export async function GET(
@@ -34,8 +36,11 @@ export async function POST(
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.message_send, ip);
+    if (limited) return NextResponse.json({ error: 'Too many messages — please slow down' }, { status: 429 });
+
     // Resolve the recipient from the conversation
-    const { default: prisma } = await import('@/lib/prisma');
     const conv = await prisma.messageConversation.findUnique({ where: { id: params.id } });
     if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
 

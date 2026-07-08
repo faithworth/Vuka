@@ -188,7 +188,10 @@ export default function ServicesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientId }),
       });
-      if (res.ok) router.push('/messages');
+      if (res.ok) {
+        const d = await res.json();
+        router.push(`/messages?conv=${d.conversation?.id ?? ''}`);
+      }
     } catch {}
     setMessaging(null);
   }

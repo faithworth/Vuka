@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Plus, Trash2, Image, Link2, Send } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Image as ImageIcon, Send, X, Loader2 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 interface Post {
   id: string;
   body: string;
+  mediaUrls: string[];
   likeCount: number;
   commentCount: number;
   repostCount: number;
@@ -13,13 +14,20 @@ interface Post {
   isPublished: boolean;
 }
 
+const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_MEDIA_MB = 10;
+const MAX_MEDIA_PER_POST = 4;
+
 export default function DashboardPostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState('');
+  const [media, setMedia] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/social/posts')
@@ -27,6 +35,31 @@ export default function DashboardPostsPage() {
       .then(d => { setPosts(d.posts || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (media.length + files.length > MAX_MEDIA_PER_POST) {
+      setError(`You can attach up to ${MAX_MEDIA_PER_POST} images per post.`);
+      return;
+    }
+    setUploading(true);
+    for (const file of files) {
+      if (!ALLOWED_MEDIA_TYPES.includes(file.type)) { setError(`${file.name}: unsupported file type`); continue; }
+      if (file.size > MAX_MEDIA_MB * 1024 * 1024) { setError(`${file.name}: over ${MAX_MEDIA_MB}MB`); continue; }
+      try {
+        const presignRes = await fetch('/api/social/upload-url', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentType: file.type, context: 'post' }),
+        });
+        if (!presignRes.ok) continue;
+        const { presignedUrl, publicUrl } = await presignRes.json();
+        const putRes = await fetch(presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+        if (putRes.ok) setMedia(prev => [...prev, publicUrl]);
+      } catch {}
+    }
+    setUploading(false);
+  }
 
   async function createPost() {
     if (!body.trim()) { setError('Post cannot be empty'); return; }
@@ -36,12 +69,13 @@ export default function DashboardPostsPage() {
       const res = await fetch('/api/social/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim() }),
+        body: JSON.stringify({ body: body.trim(), mediaUrls: media }),
       });
       if (res.ok) {
         const d = await res.json();
         setPosts(prev => [d.post, ...prev]);
         setBody('');
+        setMedia([]);
         setShowForm(false);
       } else {
         const d = await res.json();
@@ -75,7 +109,7 @@ export default function DashboardPostsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Posts</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Share updates with your followers</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Share updates with your followers — also visible in the main Feed</p>
         </div>
         <button onClick={() => setShowForm(v => !v)} className="btn btn-primary gap-2">
           <Plus size={16} /> New Post
@@ -92,12 +126,33 @@ export default function DashboardPostsPage() {
             placeholder="Share an update, new release, or anything with your fans…"
             value={body}
             onChange={e => setBody(e.target.value)}
-            maxLength={1000}
+            maxLength={2000}
           />
+          {media.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {media.map((url, i) => (
+                <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button onClick={() => setMedia(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-center justify-between">
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{body.length}/1000</span>
+            <div className="flex items-center gap-2">
+              <input ref={fileInputRef} type="file" accept={ALLOWED_MEDIA_TYPES.join(',')} multiple className="hidden" onChange={handleFiles} />
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading || media.length >= MAX_MEDIA_PER_POST}
+                className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)] disabled:opacity-40" style={{ color: 'var(--text-muted)' }}
+                title="Attach images">
+                {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+              </button>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{body.length}/2000</span>
+            </div>
             <div className="flex gap-2">
-              <button onClick={() => { setShowForm(false); setBody(''); setError(''); }}
+              <button onClick={() => { setShowForm(false); setBody(''); setMedia([]); setError(''); }}
                 className="btn btn-secondary px-4">
                 Cancel
               </button>
@@ -137,6 +192,13 @@ export default function DashboardPostsPage() {
                   <Trash2 size={15} />
                 </button>
               </div>
+              {post.mediaUrls?.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {post.mediaUrls.map((url, i) => (
+                    <img key={i} src={url} alt="" className="aspect-square rounded-lg object-cover" />
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span>{timeAgo(post.publishedAt)}</span>
                 <span>❤️ {post.likeCount}</span>

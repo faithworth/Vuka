@@ -2,12 +2,17 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import { toggleLike, getBulkLikeStatus } from '@/lib/social';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 // POST /api/social/likes — toggle like
 export async function POST(req: NextRequest) {
   try {
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.like_toggle, ip);
+    if (limited) return NextResponse.json({ error: 'Too many actions — please slow down' }, { status: 429 });
 
     const { targetType, targetId } = await req.json();
     if (!targetType || !targetId) {

@@ -41,6 +41,7 @@ export const RATE_LIMITS = {
   beat_upload:        { key: 'beat_upload',        max: 20,  windowMs: 3_600_000  },
   release_upload:     { key: 'release_upload',     max: 10,  windowMs: 3_600_000  },
   avatar_upload:      { key: 'avatar_upload',      max: 10,  windowMs: 3_600_000  },
+  social_upload:      { key: 'social_upload',      max: 40,  windowMs: 3_600_000  }, // post/message media, any user
 
   // ── Social ────────────────────────────────────────────────
   comment_post:       { key: 'comment_post',       max: 10,  windowMs: 60_000     },
@@ -48,6 +49,8 @@ export const RATE_LIMITS = {
   follow_action:      { key: 'follow_action',      max: 50,  windowMs: 60_000     },
   repost_action:      { key: 'repost_action',      max: 30,  windowMs: 60_000     },
   post_create:        { key: 'post_create',        max: 5,   windowMs: 3_600_000  },
+  story_create:       { key: 'story_create',        max: 20,  windowMs: 3_600_000  },
+  reel_create:        { key: 'reel_create',         max: 8,   windowMs: 3_600_000  },
 
   // ── Messaging ─────────────────────────────────────────────
   message_send:       { key: 'message_send',       max: 20,  windowMs: 60_000     },

@@ -7,7 +7,7 @@ import VukaLogo from '@/components/brand/VukaLogo';
 import {
   Menu, X, Rss, Compass, MessageSquare, Bell, ChevronDown,
   LayoutDashboard, BookOpen, Briefcase, ShieldCheck, Users,
-  LogOut, Settings, TrendingUp, DollarSign, ShoppingBag, Upload,
+  LogOut, Settings, TrendingUp, DollarSign, ShoppingBag, Upload, Clapperboard,
 } from 'lucide-react';
 
 type Role = 'fan' | 'artist' | 'industry' | 'admin' | null;
@@ -38,19 +38,11 @@ export function Navbar() {
           else if (data.isArtist || r === 'artist' || r === 'producer') setRole('artist');
           else setRole('fan');
           try {
-            const [nRes, mRes] = await Promise.all([
-              fetch('/api/social/notifications'),
-              fetch('/api/messages/conversations'),
-            ]);
-            if (nRes.ok) {
-              const nd = await nRes.json();
-              const notifs: any[] = nd.notifications || [];
-              setUnreadNotifs(notifs.filter((n: any) => !n.isRead).length);
-            }
-            if (mRes.ok) {
-              const md = await mRes.json();
-              const convs: any[] = md.conversations || [];
-              setUnreadMsgs(convs.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0));
+            const cRes = await fetch('/api/notifications/unread-counts');
+            if (cRes.ok) {
+              const counts = await cRes.json();
+              setUnreadNotifs(counts.notifications || 0);
+              setUnreadMsgs(counts.messages || 0);
             }
           } catch {}
         }
@@ -64,6 +56,21 @@ export function Navbar() {
   }, []);
 
   useEffect(() => setMobileOpen(false), [pathname]);
+
+  // Keep notification/message badges live while the user is on the site.
+  useEffect(() => {
+    if (!user) return;
+    const poll = () => {
+      if (document.hidden) return;
+      fetch('/api/notifications/unread-counts')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) { setUnreadNotifs(d.notifications || 0); setUnreadMsgs(d.messages || 0); } })
+        .catch(() => {});
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', poll); };
+  }, [user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -152,6 +159,7 @@ export function Navbar() {
       { href: '/browse-artists', label: 'Find Artists', icon: Users },
     ] : []),
     { href: '/feed',     label: 'Feed',     icon: Rss },
+    { href: '/reels',    label: 'Reels',    icon: Clapperboard },
     { href: '/discover', label: 'Discover', icon: Compass },
   ] : [];
 

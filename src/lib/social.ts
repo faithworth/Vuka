@@ -16,6 +16,7 @@
 import prisma from './prisma';
 import { logger } from './logger';
 import { sendNewMessageNotification } from './emails';
+import { checkAndAwardPlaques } from './plaques';
 
 // ── RATE LIMIT CONSTANTS ──────────────────────────────────────
 export const RATE_WINDOWS = {
@@ -141,7 +142,8 @@ export async function createArtistPost(
       linkItemId:data.linkItemId ?? '',
     },
     include: {
-      artist: { select: { name: true, slug: true } },
+      artist: { select: { name: true, slug: true, photoUrl: true, isVerified: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -253,6 +255,9 @@ export async function followArtist(userId: string, artistId: string): Promise<vo
     linkType: 'artist',
     linkId: artistId,
   });
+
+  // Follower-count milestone plaques — fire-and-forget, never blocks the follow action.
+  checkAndAwardPlaques(artistId).catch(() => {});
 }
 
 export async function unfollowArtist(userId: string, artistId: string): Promise<void> {
@@ -267,9 +272,68 @@ export async function getFollowStatus(userId: string, artistId: string): Promise
   return !!f;
 }
 
+export async function getBulkFollowStatus(
+  userId: string,
+  artistIds: string[]
+): Promise<Record<string, boolean>> {
+  if (artistIds.length === 0) return {};
+  const follows = await prisma.follow.findMany({
+    where: { userId, artistId: { in: artistIds } },
+    select: { artistId: true },
+  });
+  const followedIds = new Set(follows.map((f) => f.artistId));
+  return Object.fromEntries(artistIds.map((id) => [id, followedIds.has(id)]));
+}
+
 // ── LIKES ─────────────────────────────────────────────────────
 
-type LikeableType = 'beat' | 'release' | 'post' | 'comment';
+type LikeableType = 'beat' | 'release' | 'post' | 'comment' | 'reel';
+
+/**
+ * Resolve the user who "owns" a likeable/commentable entity, so we know
+ * who to notify. Returns null for entities with no clear owner.
+ */
+async function resolveEntityOwner(
+  targetType: LikeableType,
+  targetId: string
+): Promise<{ ownerId: string; preview: string } | null> {
+  if (targetType === 'post') {
+    const post = await prisma.artistPost.findUnique({
+      where: { id: targetId },
+      select: { body: true, artist: { select: { userId: true } } },
+    });
+    return post ? { ownerId: post.artist.userId, preview: post.body.slice(0, 60) } : null;
+  }
+  if (targetType === 'beat') {
+    const beat = await prisma.beat.findUnique({
+      where: { id: targetId },
+      select: { title: true, artist: { select: { userId: true } } },
+    });
+    return beat ? { ownerId: beat.artist.userId, preview: beat.title } : null;
+  }
+  if (targetType === 'release') {
+    const release = await prisma.release.findUnique({
+      where: { id: targetId },
+      select: { title: true, artist: { select: { userId: true } } },
+    });
+    return release ? { ownerId: release.artist.userId, preview: release.title } : null;
+  }
+  if (targetType === 'reel') {
+    const reel = await prisma.reel.findUnique({
+      where: { id: targetId },
+      select: { caption: true, artist: { select: { userId: true } } },
+    });
+    return reel ? { ownerId: reel.artist.userId, preview: reel.caption.slice(0, 60) || 'a reel' } : null;
+  }
+  if (targetType === 'comment') {
+    const comment = await prisma.postComment.findUnique({
+      where: { id: targetId },
+      select: { userId: true, body: true },
+    });
+    return comment ? { ownerId: comment.userId, preview: comment.body.slice(0, 60) } : null;
+  }
+  return null;
+}
 
 export async function toggleLike(
   userId: string,
@@ -286,6 +350,8 @@ export async function toggleLike(
     entityExists = !!(await prisma.artistPost.findUnique({ where: { id: targetId }, select: { id: true } }));
   } else if (targetType === 'comment') {
     entityExists = !!(await prisma.postComment.findUnique({ where: { id: targetId }, select: { id: true } }));
+  } else if (targetType === 'reel') {
+    entityExists = !!(await prisma.reel.findUnique({ where: { id: targetId }, select: { id: true } }));
   }
   if (!entityExists) throw new Error(`${targetType} not found`);
 
@@ -298,6 +364,8 @@ export async function toggleLike(
     // Decrement counter
     if (targetType === 'post') {
       await prisma.artistPost.update({ where: { id: targetId }, data: { likeCount: { decrement: 1 } } });
+    } else if (targetType === 'reel') {
+      await prisma.reel.update({ where: { id: targetId }, data: { likeCount: { decrement: 1 } } });
     }
     return { liked: false };
   } else {
@@ -306,7 +374,32 @@ export async function toggleLike(
     });
     if (targetType === 'post') {
       await prisma.artistPost.update({ where: { id: targetId }, data: { likeCount: { increment: 1 } } });
+    } else if (targetType === 'reel') {
+      await prisma.reel.update({ where: { id: targetId }, data: { likeCount: { increment: 1 } } });
     }
+
+    // Notify the owner — fire-and-forget, never blocks the toggle response.
+    void (async () => {
+      try {
+        const owner = await resolveEntityOwner(targetType, targetId);
+        if (owner && owner.ownerId !== userId) {
+          const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+          await createNotification({
+            userId: owner.ownerId,
+            type: 'new_like',
+            title: `${actor?.name ?? 'Someone'} liked your ${targetType}`,
+            body: owner.preview,
+            linkType: targetType,
+            linkId: targetId,
+          });
+        }
+      } catch (err) {
+        logger.warn('[social] like notification failed', {
+          targetType, targetId, error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
+
     return { liked: true };
   }
 }
@@ -352,6 +445,20 @@ export async function toggleSave(
   }
 }
 
+export async function getBulkSaveStatus(
+  userId: string,
+  targetType: string,
+  targetIds: string[]
+): Promise<Record<string, boolean>> {
+  if (targetIds.length === 0) return {};
+  const events = await prisma.engagementEvent.findMany({
+    where: { userId, eventType: 'save', targetType, targetId: { in: targetIds } },
+    select: { targetId: true },
+  });
+  const savedIds = new Set(events.map((e) => e.targetId));
+  return Object.fromEntries(targetIds.map((id) => [id, savedIds.has(id)]));
+}
+
 export async function getUserSaves(
   userId: string,
   targetType?: string,
@@ -374,25 +481,32 @@ export async function getUserSaves(
 
 // ── REPOSTS ───────────────────────────────────────────────────
 
-export async function repost(
+/**
+ * Toggle a repost on/off (Twitter/X-style: click again to undo). Mirrors
+ * toggleLike's semantics rather than throwing on a duplicate action.
+ */
+export async function toggleRepost(
   userId: string,
   targetType: string,
   targetId: string,
   note?: string
-): Promise<object> {
+): Promise<{ reposted: boolean }> {
   const existing = await prisma.engagementEvent.findFirst({
     where: { userId, eventType: 'repost', targetType, targetId },
   });
-  if (existing) throw new Error('Already reposted');
 
-  const event = await prisma.engagementEvent.create({
-    data: {
-      userId,
-      eventType: 'repost',
-      targetType,
-      targetId,
-      meta: note ? { note } : {},
-    },
+  if (existing) {
+    await prisma.engagementEvent.delete({ where: { id: existing.id } });
+    if (targetType === 'post') {
+      await prisma.artistPost.update({ where: { id: targetId }, data: { repostCount: { decrement: 1 } } });
+    } else if (targetType === 'reel') {
+      await prisma.reel.update({ where: { id: targetId }, data: { repostCount: { decrement: 1 } } });
+    }
+    return { reposted: false };
+  }
+
+  await prisma.engagementEvent.create({
+    data: { userId, eventType: 'repost', targetType, targetId, meta: note ? { note } : {} },
   });
 
   if (targetType === 'post') {
@@ -400,9 +514,74 @@ export async function repost(
       where: { id: targetId },
       data: { repostCount: { increment: 1 } },
     });
+
+    // Notify the original post owner — fire-and-forget.
+    void (async () => {
+      try {
+        const post = await prisma.artistPost.findUnique({
+          where: { id: targetId },
+          select: { body: true, artist: { select: { userId: true } } },
+        });
+        if (post && post.artist.userId !== userId) {
+          const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+          await createNotification({
+            userId: post.artist.userId,
+            type: 'new_repost',
+            title: `${actor?.name ?? 'Someone'} reposted your post`,
+            body: note || post.body.slice(0, 60),
+            linkType: 'post',
+            linkId: targetId,
+          });
+        }
+      } catch (err) {
+        logger.warn('[social] repost notification failed', {
+          targetId, error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
+  } else if (targetType === 'reel') {
+    await prisma.reel.update({ where: { id: targetId }, data: { repostCount: { increment: 1 } } });
+
+    void (async () => {
+      try {
+        const reel = await prisma.reel.findUnique({
+          where: { id: targetId },
+          select: { caption: true, artist: { select: { userId: true } } },
+        });
+        if (reel && reel.artist.userId !== userId) {
+          const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+          await createNotification({
+            userId: reel.artist.userId,
+            type: 'new_repost',
+            title: `${actor?.name ?? 'Someone'} reposted your reel`,
+            body: note || reel.caption.slice(0, 60) || 'your reel',
+            linkType: 'reel',
+            linkId: targetId,
+          });
+        }
+      } catch (err) {
+        logger.warn('[social] reel repost notification failed', {
+          targetId, error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
   }
 
-  return event;
+  return { reposted: true };
+}
+
+export async function getBulkRepostStatus(
+  userId: string,
+  targetType: string,
+  targetIds: string[]
+): Promise<Record<string, boolean>> {
+  if (targetIds.length === 0) return {};
+  const events = await prisma.engagementEvent.findMany({
+    where: { userId, eventType: 'repost', targetType, targetId: { in: targetIds } },
+    select: { targetId: true },
+  });
+  const repostedIds = new Set(events.map((e) => e.targetId));
+  return Object.fromEntries(targetIds.map((id) => [id, repostedIds.has(id)]));
 }
 
 // ── COMMENTS ─────────────────────────────────────────────────
@@ -413,13 +592,14 @@ export async function createComment(
     postId?: string;
     beatId?: string;
     releaseId?: string;
+    reelId?: string;
     body: string;
     parentId?: string;
   }
 ): Promise<object> {
   if (!data.body?.trim()) throw new Error('Comment body is required');
   if (data.body.length > 1000) throw new Error('Comment exceeds 1000 characters');
-  if (!data.postId && !data.beatId && !data.releaseId) throw new Error('Target is required');
+  if (!data.postId && !data.beatId && !data.releaseId && !data.reelId) throw new Error('Target is required');
 
   const sanitised = data.body.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '').trim();
 
@@ -431,6 +611,10 @@ export async function createComment(
       releaseId:data.releaseId ?? null,
       body:     sanitised,
       parentId: data.parentId  ?? null,
+      // Reel comments use the generic targetType/targetId columns since
+      // Reel predates a dedicated FK on PostComment (added later, so this
+      // avoids a schema migration for a new nullable column + index).
+      ...(data.reelId ? { targetType: 'reel', targetId: data.reelId } : {}),
     },
   });
 
@@ -440,14 +624,132 @@ export async function createComment(
       data: { commentCount: { increment: 1 } },
     });
   }
+  if (data.reelId) {
+    await prisma.reel.update({
+      where: { id: data.reelId },
+      data: { commentCount: { increment: 1 } },
+    });
+  }
 
   await incrementDailyRollup(userId, 'comments');
+
+  // Notify: the post owner (on top-level or reply) and the parent comment's
+  // author (on a reply), skipping self-notifications and de-duplicating.
+  void (async () => {
+    try {
+      const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      const notifiedAlready = new Set<string>([userId]);
+
+      if (data.parentId) {
+        const parent = await prisma.postComment.findUnique({
+          where: { id: data.parentId },
+          select: { userId: true },
+        });
+        if (parent && !notifiedAlready.has(parent.userId)) {
+          await createNotification({
+            userId: parent.userId,
+            type: 'new_reply',
+            title: `${actor?.name ?? 'Someone'} replied to your comment`,
+            body: sanitised.slice(0, 80),
+            linkType: 'post',
+            linkId: data.postId ?? data.beatId ?? data.releaseId ?? data.reelId ?? '',
+          });
+          notifiedAlready.add(parent.userId);
+        }
+      }
+
+      if (data.postId) {
+        const post = await prisma.artistPost.findUnique({
+          where: { id: data.postId },
+          select: { artist: { select: { userId: true } } },
+        });
+        if (post && !notifiedAlready.has(post.artist.userId)) {
+          await createNotification({
+            userId: post.artist.userId,
+            type: 'new_comment',
+            title: `${actor?.name ?? 'Someone'} commented on your post`,
+            body: sanitised.slice(0, 80),
+            linkType: 'post',
+            linkId: data.postId,
+          });
+        }
+      }
+
+      if (data.reelId) {
+        const reel = await prisma.reel.findUnique({
+          where: { id: data.reelId },
+          select: { artist: { select: { userId: true } } },
+        });
+        if (reel && !notifiedAlready.has(reel.artist.userId)) {
+          await createNotification({
+            userId: reel.artist.userId,
+            type: 'new_comment',
+            title: `${actor?.name ?? 'Someone'} commented on your reel`,
+            body: sanitised.slice(0, 80),
+            linkType: 'reel',
+            linkId: data.reelId,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn('[social] comment notification failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
 
   return comment;
 }
 
+// ── DISCOVER FEED (public posts, not limited to who you follow) ───────
+
+export async function getDiscoverFeed(
+  userId: string | null,
+  cursor?: string,
+  limit = 20
+): Promise<{ items: object[]; nextCursor: string | null }> {
+  const take = Math.min(limit, 50);
+  const dateFilter = cursor ? { lt: new Date(cursor) } : { lte: new Date() };
+
+  const posts = await prisma.artistPost.findMany({
+    where: { isPublished: true, publishedAt: dateFilter },
+    include: {
+      artist: { select: { id: true, name: true, slug: true, photoUrl: true, isVerified: true, userId: true } },
+    },
+    // Recency-weighted discovery: newest first, pinned posts don't leak into
+    // discovery ordering (pinning only matters on an artist's own profile).
+    orderBy: { publishedAt: 'desc' },
+    take,
+  });
+
+  const items = posts.map((p) => ({
+    id: p.id,
+    body: p.body,
+    mediaUrls: p.mediaUrls,
+    linkUrl: p.linkUrl,
+    linkType: p.linkType,
+    linkItemId: p.linkItemId,
+    likeCount: p.likeCount,
+    commentCount: p.commentCount,
+    repostCount: p.repostCount,
+    isPinned: false,
+    publishedAt: p.publishedAt.toISOString(),
+    isOwn: userId ? p.artist.userId === userId : false,
+    artist: {
+      id: p.artist.id,
+      name: p.artist.name,
+      slug: p.artist.slug,
+      photoUrl: p.artist.photoUrl,
+      isVerified: p.artist.isVerified,
+    },
+  }));
+
+  const nextCursor = items.length === take ? items[items.length - 1].publishedAt : null;
+  return { items, nextCursor };
+}
+
 export async function getComments(
-  targetType: 'post' | 'beat' | 'release',
+  targetType: 'post' | 'beat' | 'release' | 'reel',
   targetId: string,
   page = 1,
   limit = 30
@@ -459,7 +761,8 @@ export async function getComments(
     parentId:  null,
     ...(targetType === 'post'    ? { postId: targetId }    :
         targetType === 'beat'   ? { beatId: targetId }    :
-        { releaseId: targetId }),
+        targetType === 'release' ? { releaseId: targetId } :
+        { targetType: 'reel', targetId }),
   };
 
   const [comments, total] = await Promise.all([

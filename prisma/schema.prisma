@@ -40,6 +40,7 @@ model User {
   supportsSent    SupportTxn[]
   wishlist        WishlistItem[]
   follows         Follow[]
+  storyViews      StoryView[]
   memberships     CreatorMembership[]
   marketplaceOrders MarketplaceOrder[] @relation("buyer")
   disputesRaised  MarketplaceDispute[] @relation("disputant")
@@ -112,6 +113,8 @@ model Artist {
   invoices              Invoice[]
   // Phase 3
   posts                 ArtistPost[]
+  stories               Story[]
+  reels                 Reel[]
   pageViews             PageView[]
   dailyRollups          AnalyticsDailyRollup[]
   geoEvents             GeographyEvent[]
@@ -371,6 +374,55 @@ model Follow {
 
   @@unique([userId, artistId])
   @@index([artistId])
+}
+
+// ── STORIES (24h ephemeral updates) ──────────────────────────────
+model Story {
+  id         String      @id @default(cuid())
+  artistId   String
+  artist     Artist      @relation(fields: [artistId], references: [id])
+  mediaUrl   String
+  mediaType  String      @default("image") // image, video
+  caption    String      @default("")
+  viewCount  Int         @default(0)
+  views      StoryView[]
+  createdAt  DateTime    @default(now())
+  expiresAt  DateTime
+
+  @@index([artistId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  viewedAt  DateTime @default(now())
+
+  @@unique([storyId, userId])
+  @@index([storyId])
+}
+
+// ── REELS (short-form vertical video) ────────────────────────────
+model Reel {
+  id            String   @id @default(cuid())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  videoUrl      String
+  thumbnailUrl  String   @default("")
+  caption       String   @default("")
+  likeCount     Int      @default(0)
+  commentCount  Int      @default(0)
+  repostCount   Int      @default(0)
+  viewCount     Int      @default(0)
+  isPublished   Boolean  @default(true)
+  publishedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([artistId, isPublished, publishedAt])
+  @@index([isPublished, publishedAt])
 }
 
 model ArtistPayout {

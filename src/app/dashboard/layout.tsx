@@ -154,11 +154,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             if (me.artist?.planSlug) setPlanSlug(me.artist.planSlug);
             if (me.artist?.planExpiresAt) setPlanExpiresAt(new Date(me.artist.planExpiresAt));
             try {
-              const msgsRes = await fetch('/api/messages/conversations');
-              if (msgsRes.ok) {
-                const md = await msgsRes.json();
-                const convs: any[] = md.conversations || [];
-                setUnreadMsgs(convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0));
+              const countsRes = await fetch('/api/notifications/unread-counts');
+              if (countsRes.ok) {
+                const counts = await countsRes.json();
+                setUnreadMsgs(counts.messages || 0);
               }
             } catch {}
           } else {
@@ -170,6 +169,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setChecking(false);
     });
   }, [router]);
+
+  // Keep the unread-messages badge live without a full reload.
+  useEffect(() => {
+    if (!artistName) return;
+    const poll = () => {
+      if (document.hidden) return;
+      fetch('/api/notifications/unread-counts')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setUnreadMsgs(d.messages || 0); })
+        .catch(() => {});
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', poll); };
+  }, [artistName]);
 
   // Auto-open the section containing the active route
   useEffect(() => {

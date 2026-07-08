@@ -1,12 +1,22 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
-import { followArtist, unfollowArtist, getFollowStatus } from '@/lib/social';
+import { followArtist, unfollowArtist, getFollowStatus, getBulkFollowStatus } from '@/lib/social';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 // GET /api/social/follow?artistId=xxx  — check follow status
+// GET /api/social/follow?artistIds=a,b,c — bulk check (feed follow buttons)
 export async function GET(req: NextRequest) {
   try {
     const user = await getServerUser();
+    const artistIdsParam = req.nextUrl.searchParams.get('artistIds');
+    if (artistIdsParam) {
+      if (!user) return NextResponse.json({ following: {} });
+      const artistIds = artistIdsParam.split(',').filter(Boolean).slice(0, 100);
+      const following = await getBulkFollowStatus(user.id, artistIds);
+      return NextResponse.json({ following });
+    }
+
     if (!user) return NextResponse.json({ isFollowing: false });
 
     const artistId = req.nextUrl.searchParams.get('artistId');
@@ -27,11 +37,15 @@ export async function POST(req: NextRequest) {
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.follow_action, ip);
+    if (limited) return NextResponse.json({ error: 'Too many follow actions — please slow down' }, { status: 429 });
+
     const { artistId } = await req.json();
     if (!artistId) return NextResponse.json({ error: 'artistId required' }, { status: 400 });
 
-    const result = await followArtist(user.id, artistId);
-    return NextResponse.json(result);
+    await followArtist(user.id, artistId);
+    return NextResponse.json({ ok: true, isFollowing: true });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to follow artist';
     return NextResponse.json({ error: msg }, { status: 400 });
@@ -47,8 +61,8 @@ export async function DELETE(req: NextRequest) {
     const artistId = req.nextUrl.searchParams.get('artistId');
     if (!artistId) return NextResponse.json({ error: 'artistId required' }, { status: 400 });
 
-    const result = await unfollowArtist(user.id, artistId);
-    return NextResponse.json(result);
+    await unfollowArtist(user.id, artistId);
+    return NextResponse.json({ ok: true, isFollowing: false });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to unfollow artist';
     return NextResponse.json({ error: msg }, { status: 400 });

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import { createComment, getComments, deleteComment } from '@/lib/social';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 // GET /api/social/comments?targetType=post&targetId=xxx&page=1
 export async function GET(req: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1');
     const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '20'), 50);
 
-    const result = await getComments(targetType as 'post' | 'beat' | 'release', targetId, page, limit);
+    const result = await getComments(targetType as 'post' | 'beat' | 'release' | 'reel', targetId, page, limit);
     return NextResponse.json(result);
   } catch (err) {
     console.error('[Comments] GET error:', err);
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.comment_post, ip);
+    if (limited) return NextResponse.json({ error: 'Too many comments — please slow down' }, { status: 429 });
+
     const body = await req.json();
     const { body: text, targetType, targetId, postId, parentId } = body;
 
@@ -41,6 +46,7 @@ export async function POST(req: NextRequest) {
       postId:    targetType === 'post'    ? targetId : postId,
       beatId:    targetType === 'beat'    ? targetId : undefined,
       releaseId: targetType === 'release' ? targetId : undefined,
+      reelId:    targetType === 'reel'    ? targetId : undefined,
       parentId,
     });
     return NextResponse.json({ comment }, { status: 201 });

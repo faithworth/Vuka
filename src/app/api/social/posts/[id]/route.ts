@@ -3,6 +3,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
+// GET /api/social/posts/[id] — single post (permalink page)
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const post = await prisma.artistPost.findUnique({
+      where: { id: params.id },
+      include: {
+        artist: { select: { id: true, name: true, slug: true, photoUrl: true, isVerified: true } },
+      },
+    });
+    if (!post || !post.isPublished) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ post });
+  } catch (err) {
+    console.error('[Posts/id] GET error:', err);
+    return NextResponse.json({ error: 'Failed to load post' }, { status: 500 });
+  }
+}
+
 // PATCH /api/social/posts/[id] — edit or pin/unpin a post
 export async function PATCH(
   req: NextRequest,

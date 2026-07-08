@@ -221,7 +221,10 @@ export default function IndustryDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientId: artistUserId }),
       });
-      if (res.ok) router.push('/messages');
+      if (res.ok) {
+        const d = await res.json();
+        router.push(`/messages?conv=${d.conversation?.id ?? ''}`);
+      }
     } catch {}
     setMessaging(null);
   }

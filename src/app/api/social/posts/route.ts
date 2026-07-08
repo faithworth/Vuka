@@ -2,8 +2,11 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { createArtistPost } from '@/lib/social';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 const MAX_BODY_LEN = 2000;
+const MAX_MEDIA = 4;
 
 // GET /api/social/posts?artistId=xxx OR ?artistSlug=xxx OR (no filter = own posts if authed)
 export async function GET(req: NextRequest) {
@@ -68,6 +71,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/social/posts — create a post (artist only)
+// Body: { body: string, mediaUrls?: string[], linkUrl?: string, linkType?: string, linkItemId?: string }
 export async function POST(req: NextRequest) {
   try {
     const user = await getServerUser();
@@ -75,55 +79,31 @@ export async function POST(req: NextRequest) {
 
     const artist = await prisma.artist.findUnique({
       where: { userId: user.id },
-      select: { id: true, name: true, slug: true },
+      select: { id: true },
     });
     if (!artist) return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
+
+    const ip = getClientIp(req.headers);
+    const limited = await rateLimit(user.id, RATE_LIMITS.post_create, ip);
+    if (limited) return NextResponse.json({ error: 'You are posting too frequently — try again later' }, { status: 429 });
 
     const body = await req.json();
     const { body: text, mediaUrls = [], linkUrl = '', linkType = '', linkItemId = '' } = body;
 
     if (!text?.trim()) return NextResponse.json({ error: 'Post body required' }, { status: 400 });
     if (text.length > MAX_BODY_LEN) return NextResponse.json({ error: 'Post too long' }, { status: 400 });
-
-    const post = await prisma.artistPost.create({
-      data: {
-        artistId: artist.id,
-        body: text.trim(),
-        mediaUrls,
-        linkUrl,
-        linkType,
-        linkItemId,
-      },
-      include: {
-        artist: { select: { name: true, slug: true, photoUrl: true, isVerified: true } },
-        _count: { select: { comments: true } },
-      },
-    });
-
-    // Notify followers — capped at 500 in-band; larger audiences handled via worker
-    const followers = await prisma.follow.findMany({
-      where:  { artistId: artist.id },
-      select: { userId: true },
-      take:   500,
-    });
-
-    if (followers.length > 0) {
-      await prisma.notification.createMany({
-        data: followers.map((f) => ({
-          userId:   f.userId,
-          type:     'new_post',
-          title:    `${artist.name} posted an update`,
-          body:     text.slice(0, 80),
-          linkType: 'post',
-          linkId:   post.id,
-        })),
-        skipDuplicates: true,
-      });
+    if (!Array.isArray(mediaUrls) || mediaUrls.length > MAX_MEDIA) {
+      return NextResponse.json({ error: `A post can include up to ${MAX_MEDIA} media files` }, { status: 400 });
     }
 
+    // createArtistPost handles sanitisation, batched follower fan-out
+    // (no hard follower cap), and search-index refresh.
+    const post = await createArtistPost(artist.id, { body: text, mediaUrls, linkUrl, linkType, linkItemId });
+
     return NextResponse.json({ post }, { status: 201 });
-  } catch (err) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to create post';
     console.error('[Posts] POST error:', err);
-    return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
