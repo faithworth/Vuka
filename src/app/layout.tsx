@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/components/Providers';
+import CelebrationBadge from '@/components/CelebrationBadge';
 
 export const metadata: Metadata = {
   title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
+        <CelebrationBadge />
       </body>
     </html>
   );

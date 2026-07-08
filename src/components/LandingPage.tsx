@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import VukaShopJourney from '@/components/brand/VukaShopJourney';
 
 export default function LandingPage() {
   return (
@@ -40,6 +41,10 @@ export default function LandingPage() {
               style={{ background: 'rgba(56,182,232,0.1)', border: '1px solid rgba(56,182,232,0.25)', color: 'var(--sky)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--sky)' }} />
               Africa's independent music platform
+            </div>
+
+            <div className="flex justify-center -mb-2 px-2">
+              <VukaShopJourney className="w-full max-w-[720px] h-auto" />
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 tracking-tight" style={{ color: 'var(--text)', lineHeight: 1.05 }}>
