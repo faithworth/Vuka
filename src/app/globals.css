@@ -243,3 +243,12 @@ code, pre, .font-mono, [class*="mono"], .stat-number { font-family: var(--font-m
 .vuka-sweep {
   animation: vuka-sweep 3.6s ease-in-out infinite;
 }
+
+/* ── Scrollable-but-invisible-scrollbar utility (nav overflow safety net) ── */
+.no-scrollbar {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE/Edge legacy */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;               /* Chrome/Safari/Brave */
+}

@@ -22,6 +22,8 @@ export function Navbar() {
   const [mobileOpen,    setMobileOpen]    = useState(false);
   const [storeOpen,     setStoreOpen]     = useState(false);
   const storeRef = useRef<HTMLDivElement>(null);
+  const [socialOpen,    setSocialOpen]    = useState(false);
+  const socialRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -76,6 +78,8 @@ export function Navbar() {
     const handler = (e: MouseEvent) => {
       if (storeRef.current && !storeRef.current.contains(e.target as Node))
         setStoreOpen(false);
+      if (socialRef.current && !socialRef.current.contains(e.target as Node))
+        setSocialOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -153,14 +157,19 @@ export function Navbar() {
     { href: '/store/memberships',  label: 'Memberships' },
   ];
 
-  // Role-specific extra links
-  const roleLinks = user ? [
-    ...(role === 'industry' ? [
-      { href: '/browse-artists', label: 'Find Artists', icon: Users },
-    ] : []),
+  // Feed / Reels / Discover — consolidated into one "Social" dropdown
+  // (used to be 3 separate top-level items, which is what overflowed the
+  // nav once Reels was added — see socialActive below too).
+  const socialDropLinks = [
     { href: '/feed',     label: 'Feed',     icon: Rss },
     { href: '/reels',    label: 'Reels',    icon: Clapperboard },
     { href: '/discover', label: 'Discover', icon: Compass },
+  ];
+  const socialActive = socialDropLinks.some(l => pathname === l.href || pathname.startsWith(l.href));
+
+  // Role-specific extra links (kept flat — rare/role-gated, low nav pressure)
+  const roleLinks = user && role === 'industry' ? [
+    { href: '/browse-artists', label: 'Find Artists', icon: Users },
   ] : [];
 
   const isActive = (href: string) =>
@@ -193,7 +202,7 @@ export function Navbar() {
             style={{ color: isActive('/messages') ? 'var(--green)' : 'var(--text-muted)' }}>
             <MessageSquare size={18} />
             {unreadMsgs > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-black flex items-center justify-center"
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[9px] font-bold text-black flex items-center justify-center leading-none"
                 style={{ background: 'var(--green)' }}>
                 {unreadMsgs > 9 ? '9+' : unreadMsgs}
               </span>
@@ -203,7 +212,7 @@ export function Navbar() {
             style={{ color: isActive('/notifications') ? 'var(--green)' : 'var(--text-muted)' }}>
             <Bell size={18} />
             {unreadNotifs > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[9px] font-bold text-white flex items-center justify-center leading-none"
                 style={{ background: '#e74c3c' }}>
                 {unreadNotifs > 9 ? '9+' : unreadNotifs}
               </span>
@@ -243,12 +252,16 @@ export function Navbar() {
         </Link>
 
         {/* ── DESKTOP CENTER NAV (lg+) ──────────────────────────────────── */}
-        <div className="hidden lg:flex items-center gap-0.5">
+        {/* min-w-0 lets this flex child actually shrink instead of forcing
+            the whole nav row wider than the viewport; overflow-x-auto is a
+            safety net so if it ever gets too tight again it scrolls instead
+            of clipping/pushing the Dashboard button off-screen. */}
+        <div className="hidden lg:flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
           {/* Store dropdown */}
-          <div ref={storeRef} className="relative">
+          <div ref={storeRef} className="relative flex-shrink-0">
             <button
               onClick={() => setStoreOpen(v => !v)}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
               style={lnk(storeActive)}>
               Store
               <ChevronDown size={13} style={{
@@ -263,7 +276,7 @@ export function Navbar() {
                 {storeDropLinks.map(l => (
                   <Link key={l.href} href={l.href}
                     onClick={() => setStoreOpen(false)}
-                    className="block px-4 py-2.5 rounded-lg text-sm transition-colors"
+                    className="block px-4 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
                     style={{ color: isActive(l.href) ? 'var(--green)' : 'var(--text-muted)' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
@@ -277,16 +290,48 @@ export function Navbar() {
           {/* Top-level links */}
           {[{ href: '/campaigns', label: 'Campaigns' }, { href: '/events', label: 'Events' }, { href: '/services', label: 'Services' }, { href: '/industry', label: 'For Industry' }].map(l => (
             <Link key={l.href} href={l.href}
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
               style={lnk(isActive(l.href))}>
               {l.label}
             </Link>
           ))}
 
+          {/* Social dropdown (Feed / Reels / Discover) — logged in only */}
+          {user && (
+            <div ref={socialRef} className="relative flex-shrink-0">
+              <button
+                onClick={() => setSocialOpen(v => !v)}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+                style={lnk(socialActive)}>
+                Social
+                <ChevronDown size={13} style={{
+                  opacity: 0.7,
+                  transform: socialOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.15s',
+                }} />
+              </button>
+              {socialOpen && (
+                <div className="absolute top-full left-0 mt-1 z-50"
+                  style={{ minWidth: 160, background: 'rgba(10,10,10,0.97)', border: '1px solid var(--border)', borderRadius: 12, padding: 6 }}>
+                  {socialDropLinks.map(l => (
+                    <Link key={l.href} href={l.href}
+                      onClick={() => setSocialOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
+                      style={{ color: isActive(l.href) ? 'var(--green)' : 'var(--text-muted)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                      <l.icon size={14} /> {l.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Role links when logged in */}
           {roleLinks.map(l => (
             <Link key={l.href} href={l.href}
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
               style={lnk(isActive(l.href))}>
               {'icon' in l && <l.icon size={13} />}
               {l.label}
@@ -295,7 +340,7 @@ export function Navbar() {
         </div>
 
         {/* ── DESKTOP RIGHT (lg+) ───────────────────────────────────────── */}
-        <div className="hidden lg:flex">
+        <div className="hidden lg:flex flex-shrink-0">
           <RightActions />
         </div>
 
@@ -318,18 +363,18 @@ export function Navbar() {
               <Link href="/notifications" className="relative p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
                 <Bell size={19} />
                 {unreadNotifs > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center leading-none"
                     style={{ background: '#e74c3c' }}>
-                    {unreadNotifs}
+                    {unreadNotifs > 9 ? '9+' : unreadNotifs}
                   </span>
                 )}
               </Link>
               <Link href="/messages" className="relative p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
                 <MessageSquare size={19} />
                 {unreadMsgs > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-black flex items-center justify-center"
+                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full text-[8px] font-bold text-black flex items-center justify-center leading-none"
                     style={{ background: 'var(--green)' }}>
-                    {unreadMsgs}
+                    {unreadMsgs > 9 ? '9+' : unreadMsgs}
                   </span>
                 )}
               </Link>
@@ -412,14 +457,14 @@ export function Navbar() {
             {/* ── Logged-in: discover + account footer ───────────────────── */}
             {user && (
               <>
-                {/* Discover / Feed / role links */}
+                {/* Social (Feed / Reels / Discover) + role links */}
                 <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
                   <p className="text-[11px] font-semibold mb-2 px-1"
                     style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    Discover
+                    Social
                   </p>
                   <div className="flex flex-col gap-0.5">
-                    {roleLinks.map(l => (
+                    {[...socialDropLinks, ...roleLinks].map(l => (
                       <Link key={l.href} href={l.href}
                         onClick={() => setMobileOpen(false)}
                         className="py-2.5 px-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"

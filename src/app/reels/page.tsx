@@ -53,6 +53,16 @@ function ReelSlide({
     }
   }, [active, reel.id]);
 
+  // The `muted` JSX attribute on <video>/<audio> only sets the initial
+  // state at mount — React doesn't keep it in sync with the live DOM
+  // property afterward, so toggling `muted` in state alone doesn't
+  // actually change the audio (the icon flips, the sound doesn't). Has
+  // to be set imperatively via the ref on every change.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) v.muted = muted;
+  }, [muted]);
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
