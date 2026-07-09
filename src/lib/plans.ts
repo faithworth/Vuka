@@ -79,6 +79,64 @@ export const PLANS: VukaPlan[] = [
 
 export const DEFAULT_PLAN_SLUG = 'free';
 
+// ── Plan tier ordering (for "at least Pro" style checks) ──────────────────
+const PLAN_TIER_ORDER = ['free', 'pro', 'label'] as const;
+
+function tierIndex(slug: string): number {
+  const i = PLAN_TIER_ORDER.indexOf(slug as (typeof PLAN_TIER_ORDER)[number]);
+  return i === -1 ? 0 : i;
+}
+
+/** True if the effective plan is at least `minSlug` in the free < pro < label ordering. */
+export function planAtLeast(
+  planSlug: string | null | undefined,
+  expiresAt: Date | null | undefined,
+  minSlug: 'free' | 'pro' | 'label',
+): boolean {
+  const effective = getEffectivePlan(planSlug, expiresAt);
+  return tierIndex(effective.slug) >= tierIndex(minSlug);
+}
+
+// ── Feature caps (Free tier quantity limits — Pro/Label unlimited) ────────
+//
+// These are deliberately NOT hard walls — Free artists keep access to the
+// feature itself, just capped at a small number. Only true Label-exclusive
+// capabilities (multi-artist roster, bulk payouts, white-label storefront)
+// are hard-gated via planAtLeast() instead of a cap.
+
+export const FEATURE_CAPS = {
+  /** Active marketplace service listings an artist can have at once. */
+  marketplaceServiceListings: { free: 5, pro: Infinity, label: Infinity },
+  /** Industry-pro hire inquiries per calendar month. */
+  industryInquiriesPerMonth: { free: 5, pro: Infinity, label: Infinity },
+} as const;
+
+/** Look up a feature cap for a given effective plan slug. */
+export function featureCapFor(
+  feature: keyof typeof FEATURE_CAPS,
+  planSlug: string | null | undefined,
+  expiresAt?: Date | null,
+): number {
+  const plan = getEffectivePlan(planSlug, expiresAt);
+  const caps = FEATURE_CAPS[feature];
+  return (caps as Record<string, number>)[plan.slug] ?? caps.free;
+}
+
+// ── Analytics gating ───────────────────────────────────────────────────────
+
+/** Max lookback days for analytics on the Free plan (Pro/Label get unlimited: 365). */
+export const ANALYTICS_FREE_MAX_DAYS = 30;
+
+/** Clamp a requested analytics day-range to what the effective plan allows. */
+export function clampAnalyticsDays(
+  requestedDays: number,
+  planSlug: string | null | undefined,
+  expiresAt?: Date | null,
+): number {
+  if (planAtLeast(planSlug, expiresAt ?? null, 'pro')) return requestedDays;
+  return Math.min(requestedDays, ANALYTICS_FREE_MAX_DAYS);
+}
+
 /** Look up a plan by slug — falls back to Free if not found */
 export function getPlan(slug: string | null | undefined): VukaPlan {
   return PLANS.find((p) => p.slug === (slug ?? DEFAULT_PLAN_SLUG)) ?? PLANS[0];
