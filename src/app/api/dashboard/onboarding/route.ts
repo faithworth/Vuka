@@ -25,19 +25,27 @@ export async function GET() {
     const hasRelease     = !!(await prisma.release.findFirst({ where: { artistId: a.id } }));
     const hasProfile     = !!(a.bio || a.photoUrl);
     const hasSocials     = hasAnySocialLink(a.socialLinks);
+    // BUGFIX: this previously omitted hasSocials from the completion check,
+    // so the wizard could mark itself "completed" (and disappear from the
+    // dashboard) while the socials step was still unchecked and visibly
+    // showing as incomplete. All four displayed steps must be done.
+    const allDone = hasProfile && hasRelease && hasBankAccount && hasSocials;
     ob = await prisma.artistOnboarding.create({
       data: {
         id: `ob_${Date.now()}`, artistId: a.id,
         hasProfile, hasRelease, hasBankAccount, hasSocials,
-        completedAt: (hasProfile && hasRelease && hasBankAccount) ? new Date() : null,
+        completedAt: allDone ? new Date() : null,
       },
     });
   }
   const steps = [
-    { key: 'hasProfile',     label: 'Complete your profile', desc: 'Add a bio and profile photo', done: ob.hasProfile, href: '/dashboard/profile' },
+    // Profile editing lives entirely on the Settings page now — the old
+    // standalone /dashboard/profile editor has been removed since it
+    // duplicated (and lagged behind) the working Settings form.
+    { key: 'hasProfile',     label: 'Complete your profile', desc: 'Add a bio and profile photo', done: ob.hasProfile, href: '/dashboard/settings' },
     { key: 'hasRelease',     label: 'Upload your first release', desc: 'Get your music live on Vuka Music', done: ob.hasRelease, href: '/dashboard/releases/new' },
     { key: 'hasBankAccount', label: 'Add your bank account', desc: 'So you can receive payouts', done: ob.hasBankAccount, href: '/dashboard/payouts' },
-    { key: 'hasSocials',     label: 'Connect your socials', desc: 'Let fans find you everywhere', done: ob.hasSocials, href: '/dashboard/profile' },
+    { key: 'hasSocials',     label: 'Connect your socials', desc: 'Let fans find you everywhere', done: ob.hasSocials, href: '/dashboard/settings' },
   ];
   const doneCount = steps.filter(s => s.done).length;
   return NextResponse.json({ steps, doneCount, total: steps.length, dismissed: !!ob.dismissedAt, completed: !!ob.completedAt });
@@ -61,7 +69,8 @@ export async function POST(req: NextRequest) {
     const hasRelease     = !!(await prisma.release.findFirst({ where: { artistId: a.id } }));
     const hasProfile     = !!(a.bio || a.photoUrl);
     const hasSocials     = hasAnySocialLink(a.socialLinks);
-    const allDone        = hasProfile && hasRelease && hasBankAccount;
+    // BUGFIX: same fix as above — hasSocials must be part of "all done".
+    const allDone = hasProfile && hasRelease && hasBankAccount && hasSocials;
     await prisma.artistOnboarding.upsert({
       where:  { artistId: a.id },
       update: { hasProfile, hasRelease, hasBankAccount, hasSocials, completedAt: allDone ? new Date() : null },

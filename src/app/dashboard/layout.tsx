@@ -23,7 +23,7 @@ import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
   X, Send, Users, Store, Briefcase, Video, Package,
-  MessageSquare, User, Share2, Trophy, Megaphone, GitFork, Calendar,
+  MessageSquare, Share2, Trophy, Megaphone, GitFork, Calendar,
   Building2, TrendingUp, Sparkles, Rss, Clapperboard, type LucideIcon,
 } from 'lucide-react';
 
@@ -91,7 +91,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'account', label: 'Account', icon: Settings,
     items: [
-      { href: '/dashboard/profile',  label: 'Profile',  icon: User },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],
   },
