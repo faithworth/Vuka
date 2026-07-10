@@ -616,6 +616,14 @@ export async function createComment(
       // avoids a schema migration for a new nullable column + index).
       ...(data.reelId ? { targetType: 'reel', targetId: data.reelId } : {}),
     },
+    // Without this, the comment object handed straight back to whoever
+    // just posted it has no `user` field at all — which is exactly why it
+    // was rendering as "Someone": that's the fallback for a missing name,
+    // not a real default. getComments() (used on reload) already included
+    // this; this create path just never did.
+    include: {
+      user: { select: { id: true, name: true } },
+    },
   });
 
   if (data.postId) {
@@ -717,7 +725,7 @@ export async function createComment(
 // that recency across both sources together.
 const postArtistSelect = {
   id: true, name: true, slug: true, photoUrl: true, isVerified: true,
-};
+} as const;
 
 interface PostWithArtist {
   id: string; body: string; mediaUrls: string[]; linkUrl: string; linkType: string; linkItemId: string;
@@ -765,7 +773,7 @@ export async function getFollowingFeedWithReposts(
   ]);
 
   const repostedPostIds = Array.from(new Set(repostEvents.map((e) => e.targetId)));
-  const reposterIds = Array.from(new Set(repostEvents.map((e) => e.userId)));
+  const reposterIds = Array.from(new Set(repostEvents.map((e) => e.userId).filter((id): id is string => id !== null)));
   const [repostedPosts, reposters] = await Promise.all([
     prisma.artistPost.findMany({
       where: { id: { in: repostedPostIds }, isPublished: true },
@@ -788,7 +796,7 @@ export async function getFollowingFeedWithReposts(
   }
   for (const e of repostEvents) {
     const post = repostedPostsById.get(e.targetId);
-    if (!post) continue;
+    if (!post || !e.userId) continue;
     const reposter = reposterById.get(e.userId);
     const entry = {
       sortDate: e.createdAt,

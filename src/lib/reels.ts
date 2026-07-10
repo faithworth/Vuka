@@ -115,7 +115,7 @@ export async function getReelsFeed(
   ]);
 
   const repostedReelIds = Array.from(new Set(repostEvents.map((e) => e.targetId)));
-  const reposterIds = Array.from(new Set(repostEvents.map((e) => e.userId)));
+  const reposterIds = Array.from(new Set(repostEvents.map((e) => e.userId).filter((id): id is string => id !== null)));
   const [repostedReels, reposters] = await Promise.all([
     prisma.reel.findMany({
       where: { id: { in: repostedReelIds }, isPublished: true }, include: reelInclude,
@@ -133,7 +133,7 @@ export async function getReelsFeed(
   for (const r of reels) merged.set(r.id, { sortDate: r.publishedAt, item: serializeReel(r, userId) });
   for (const e of repostEvents) {
     const reel = repostedReelsById.get(e.targetId);
-    if (!reel) continue;
+    if (!reel || !e.userId) continue;
     const reposter = reposterById.get(e.userId);
     const entry = {
       sortDate: e.createdAt,
