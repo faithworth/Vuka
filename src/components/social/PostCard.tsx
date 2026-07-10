@@ -21,6 +21,15 @@ export interface Post {
     photoUrl: string;
     isVerified: boolean;
   };
+  /** Present when this post is showing up in your feed because someone
+   * you follow reshared it (not because you follow the original poster). */
+  repostedBy?: {
+    id: string;
+    name: string;
+    slug?: string;
+    photoUrl: string;
+    isVerified: boolean;
+  };
 }
 
 export interface CommentUser { id: string; name: string }
@@ -170,6 +179,14 @@ export default function PostCard({
 
   return (
     <div className="rounded-2xl p-4 md:p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      {post.repostedBy && (
+        <Link href={post.repostedBy.slug ? `/artist/${post.repostedBy.slug}` : '#'}
+          className="flex items-center gap-2 mb-3 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+          <Repeat2 size={14} style={{ color: '#22c55e' }} />
+          {post.repostedBy.name} reposted
+          {post.repostedBy.isVerified && <ShieldCheck size={12} style={{ color: 'var(--sky)' }} />}
+        </Link>
+      )}
       {/* Header */}
       <div className="flex items-start gap-3">
         <Link href={`/artist/${post.artist.slug}`}>

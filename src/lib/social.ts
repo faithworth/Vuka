@@ -701,6 +701,144 @@ export async function createComment(
   return comment;
 }
 
+// ── FOLLOWING FEED (with real resharing) ───────────────────────
+//
+// Reposts previously only bumped a counter on the original post and
+// notified its owner — the reshared content never actually appeared
+// anywhere, so "resharing" didn't do anything visible (a real gap).
+// This merges two sources into one timeline, the way an actual
+// retweet/reshare is supposed to work:
+//   1. Original posts from artists you follow
+//   2. Posts *reposted* by artists you follow (regardless of who
+//      originally posted them), tagged "Reposted by X"
+// bucketed into a single Map keyed by post id (so a post that qualifies
+// via both paths — e.g. reposted twice, or original + reposted — only
+// shows once, using whichever occurrence is more recent) and sorted by
+// that recency across both sources together.
+const postArtistSelect = {
+  id: true, name: true, slug: true, photoUrl: true, isVerified: true,
+};
+
+interface PostWithArtist {
+  id: string; body: string; mediaUrls: string[]; linkUrl: string; linkType: string; linkItemId: string;
+  likeCount: number; commentCount: number; repostCount: number; isPinned: boolean; publishedAt: Date;
+  artist: { id: string; name: string; slug: string; photoUrl: string; isVerified: boolean };
+}
+interface ReposterUser {
+  id: string; name: string;
+  artist: { slug: string; photoUrl: string; isVerified: boolean } | null;
+}
+
+export async function getFollowingFeedWithReposts(
+  userId: string,
+  cursor?: string,
+  limit = 20
+): Promise<{ items: object[]; nextCursor: string | null; isEmpty?: boolean }> {
+  const take = Math.min(limit, 50);
+
+  const follows = await prisma.follow.findMany({ where: { userId }, select: { artistId: true } });
+  const artistIds = follows.map((f) => f.artistId);
+  if (artistIds.length === 0) return { items: [], nextCursor: null, isEmpty: true };
+
+  const followedArtists = await prisma.artist.findMany({
+    where: { id: { in: artistIds } },
+    select: { userId: true },
+  });
+  const followedUserIds = followedArtists.map((a) => a.userId);
+
+  const dateFilter = cursor ? { lt: new Date(cursor) } : { lte: new Date() };
+
+  // Overfetch on both sources — after merging + deduping we trim to `take`.
+  const [posts, repostEvents] = await Promise.all([
+    prisma.artistPost.findMany({
+      where: { artistId: { in: artistIds }, isPublished: true, publishedAt: dateFilter },
+      include: { artist: { select: postArtistSelect } },
+      orderBy: { publishedAt: 'desc' },
+      take: take * 2,
+    }) as unknown as Promise<PostWithArtist[]>,
+    prisma.engagementEvent.findMany({
+      where: { eventType: 'repost', targetType: 'post', userId: { in: followedUserIds }, createdAt: dateFilter },
+      orderBy: { createdAt: 'desc' },
+      take: take * 2,
+      select: { targetId: true, createdAt: true, userId: true },
+    }),
+  ]);
+
+  const repostedPostIds = Array.from(new Set(repostEvents.map((e) => e.targetId)));
+  const reposterIds = Array.from(new Set(repostEvents.map((e) => e.userId)));
+  const [repostedPosts, reposters] = await Promise.all([
+    prisma.artistPost.findMany({
+      where: { id: { in: repostedPostIds }, isPublished: true },
+      include: { artist: { select: postArtistSelect } },
+    }) as unknown as Promise<PostWithArtist[]>,
+    prisma.user.findMany({
+      where: { id: { in: reposterIds } },
+      select: { id: true, name: true, artist: { select: { slug: true, photoUrl: true, isVerified: true } } },
+    }) as unknown as Promise<ReposterUser[]>,
+  ]);
+
+  const repostedPostsById = new Map<string, PostWithArtist>(repostedPosts.map((p) => [p.id, p]));
+  const reposterById = new Map<string, ReposterUser>(reposters.map((u) => [u.id, u]));
+
+  type Serialized = ReturnType<typeof serializePost>;
+  const merged = new Map<string, { sortDate: Date; item: Serialized }>();
+
+  for (const p of posts) {
+    merged.set(p.id, { sortDate: p.publishedAt, item: serializePost(p, userId) });
+  }
+  for (const e of repostEvents) {
+    const post = repostedPostsById.get(e.targetId);
+    if (!post) continue;
+    const reposter = reposterById.get(e.userId);
+    const entry = {
+      sortDate: e.createdAt,
+      item: serializePost(post, userId, reposter ? {
+        id: reposter.id,
+        name: reposter.name,
+        slug: reposter.artist?.slug,
+        photoUrl: reposter.artist?.photoUrl ?? '',
+        isVerified: reposter.artist?.isVerified ?? false,
+      } : undefined),
+    };
+    const existing = merged.get(post.id);
+    if (!existing || entry.sortDate > existing.sortDate) merged.set(post.id, entry);
+  }
+
+  const sorted = Array.from(merged.values())
+    .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
+    .slice(0, take);
+
+  const items = sorted.map((s) => s.item);
+  const nextCursor = sorted.length === take ? sorted[sorted.length - 1].sortDate.toISOString() : null;
+  return { items, nextCursor };
+}
+
+function serializePost(
+  p: {
+    id: string; body: string; mediaUrls: string[]; linkUrl: string; linkType: string; linkItemId: string;
+    likeCount: number; commentCount: number; repostCount: number; isPinned: boolean; publishedAt: Date;
+    artist: { id: string; name: string; slug: string; photoUrl: string; isVerified: boolean };
+  },
+  viewerUserId: string,
+  repostedBy?: { id: string; name: string; slug?: string; photoUrl: string; isVerified: boolean }
+) {
+  return {
+    id: p.id,
+    body: p.body,
+    mediaUrls: p.mediaUrls,
+    linkUrl: p.linkUrl,
+    linkType: p.linkType,
+    linkItemId: p.linkItemId,
+    likeCount: p.likeCount,
+    commentCount: p.commentCount,
+    repostCount: p.repostCount,
+    isPinned: p.isPinned,
+    publishedAt: p.publishedAt.toISOString(),
+    artist: p.artist,
+    repostedBy: repostedBy && repostedBy.id !== viewerUserId ? repostedBy : undefined,
+  };
+}
+
 // ── DISCOVER FEED (public posts, not limited to who you follow) ───────
 
 export async function getDiscoverFeed(

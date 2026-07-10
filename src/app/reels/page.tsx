@@ -21,6 +21,7 @@ interface Reel {
   publishedAt: string;
   isOwn: boolean;
   artist: { id: string; name: string; slug: string; photoUrl: string; isVerified: boolean };
+  repostedBy?: { id: string; name: string; slug?: string; photoUrl: string; isVerified: boolean };
 }
 interface CommentUser { id: string; name: string }
 interface Comment { id: string; body: string; userId: string; createdAt: string; user: CommentUser }
@@ -97,6 +98,11 @@ function ReelSlide({
 
       {/* Bottom info */}
       <div className="absolute bottom-0 left-0 right-16 p-4 pb-20 md:pb-6" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
+        {reel.repostedBy && (
+          <p className="flex items-center gap-1.5 text-white/70 text-xs font-semibold mb-1.5">
+            <Repeat2 size={13} /> {reel.repostedBy.name} reposted
+          </p>
+        )}
         <Link href={`/artist/${reel.artist.slug}`} className="flex items-center gap-2 mb-2">
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center font-bold text-white text-xs flex-shrink-0" style={{ background: 'var(--sky)' }}>
             {reel.artist.photoUrl ? <img src={reel.artist.photoUrl} alt="" className="w-full h-full object-cover" /> : initials(reel.artist.name)}
@@ -220,6 +226,8 @@ export default function ReelsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [tab, setTab] = useState<'following' | 'discover'>('discover');
+  const [followingIsEmpty, setFollowingIsEmpty] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [myArtist, setMyArtist] = useState<{ id: string; name: string; slug: string; photoUrl: string; isVerified: boolean } | null>(null);
@@ -243,16 +251,16 @@ export default function ReelsPage() {
         const meRes = await fetch('/api/auth/me');
         if (meRes.ok) { const me = await meRes.json(); if (me.artist) setMyArtist(me.artist); }
       } catch {}
-      await load(null, true);
+      await load('discover', null, true);
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  async function load(cursor: string | null, replace: boolean) {
+  async function load(whichTab: 'following' | 'discover', cursor: string | null, replace: boolean) {
     if (replace) setLoading(true); else setLoadingMore(true);
     try {
-      const qs = new URLSearchParams({ tab: 'discover' });
+      const qs = new URLSearchParams({ tab: whichTab });
       if (cursor) qs.set('cursor', cursor);
       const res = await fetch(`/api/social/reels?${qs}`);
       if (res.ok) {
@@ -260,6 +268,7 @@ export default function ReelsPage() {
         const items: Reel[] = d.items || [];
         setReels(prev => replace ? items : [...prev, ...items]);
         setNextCursor(d.nextCursor ?? null);
+        setFollowingIsEmpty(!!d.isEmpty);
         const ids = items.map(r => r.id);
         if (ids.length) {
           fetch(`/api/social/likes?targetType=reel&targetIds=${ids.join(',')}`)
@@ -273,15 +282,22 @@ export default function ReelsPage() {
     setLoadingMore(false);
   }
 
+  function switchTab(next: 'following' | 'discover') {
+    if (next === tab) return;
+    setTab(next);
+    setActiveIndex(0);
+    load(next, null, true);
+  }
+
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     const idx = Math.round(el.scrollTop / el.clientHeight);
     setActiveIndex(idx);
     if (idx >= reels.length - 2 && nextCursor && !loadingMore) {
-      load(nextCursor, false);
+      load(tab, nextCursor, false);
     }
-  }, [reels.length, nextCursor, loadingMore]);
+  }, [reels.length, nextCursor, loadingMore, tab]);
 
   async function toggleLike(id: string) {
     const prev = !!likedMap[id];
@@ -344,10 +360,18 @@ export default function ReelsPage() {
 
   return (
     <div className="fixed inset-0" style={{ background: 'black' }}>
-      <div className="flex items-center justify-between px-4 py-3 absolute top-0 left-0 right-0 z-10" style={{ background: 'linear-gradient(rgba(0,0,0,0.6), transparent)' }}>
-        <h1 className="text-white font-bold text-lg">Reels</h1>
+      <div className="flex items-center justify-between px-4 py-3 absolute top-0 left-0 right-0 z-10 pointer-events-none" style={{ background: 'linear-gradient(rgba(0,0,0,0.6), transparent)' }}>
+        <div className="flex gap-1 p-0.5 rounded-full pointer-events-auto" style={{ background: 'rgba(255,255,255,0.1)' }}>
+          {(['following', 'discover'] as const).map(t => (
+            <button key={t} onClick={() => switchTab(t)}
+              className="px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-colors"
+              style={{ background: tab === t ? 'white' : 'transparent', color: tab === t ? 'black' : 'white' }}>
+              {t}
+            </button>
+          ))}
+        </div>
         {myArtist && (
-          <button onClick={() => setUploadOpen(true)} className="text-white flex items-center gap-1 text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-full">
+          <button onClick={() => setUploadOpen(true)} className="text-white flex items-center gap-1 text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-full pointer-events-auto">
             <Plus size={16} /> New
           </button>
         )}
@@ -355,12 +379,22 @@ export default function ReelsPage() {
 
       {reels.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center px-6">
-          <p className="text-white font-semibold">No reels yet</p>
-          <p className="text-white/60 text-sm mt-1">
-            {myArtist ? 'Be the first to post one.' : 'Check back soon.'}
-          </p>
-          {myArtist && (
-            <button onClick={() => setUploadOpen(true)} className="btn btn-primary text-sm px-4 py-2 mt-4">Post a Reel</button>
+          {tab === 'following' && followingIsEmpty ? (
+            <>
+              <p className="text-white font-semibold">Follow some artists to build this feed</p>
+              <p className="text-white/60 text-sm mt-1 mb-4">Or see what's trending across Vuka</p>
+              <button onClick={() => switchTab('discover')} className="btn btn-primary text-sm px-4 py-2">Discover Reels</button>
+            </>
+          ) : (
+            <>
+              <p className="text-white font-semibold">No reels yet</p>
+              <p className="text-white/60 text-sm mt-1">
+                {myArtist ? 'Be the first to post one.' : 'Check back soon.'}
+              </p>
+              {myArtist && (
+                <button onClick={() => setUploadOpen(true)} className="btn btn-primary text-sm px-4 py-2 mt-4">Post a Reel</button>
+              )}
+            </>
           )}
         </div>
       ) : (

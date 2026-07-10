@@ -30,26 +30,28 @@ export async function createStory(artistId: string, input: CreateStoryInput) {
 }
 
 /**
- * Active stories bar for the feed: one entry per artist (their most recent
- * unexpired stories), for artists the viewer follows plus their own —
- * mirrors Instagram's "people you follow first" story-ring ordering.
+ * Active stories bar for the feed: every artist with an unexpired story,
+ * platform-wide — not just people you follow. Artist stories here are
+ * public promotional content (not private social posts), so there's no
+ * privacy reason to hide them from someone who hasn't followed that artist
+ * yet; hiding them was actively counter-productive since it meant a fan
+ * following nobody (i.e. most new accounts) saw an empty bar with nothing
+ * to discover. Ordering still favors your network: followed-with-unseen
+ * first, then anyone else with unseen, then already-seen.
  */
 export async function getStoriesBar(userId: string) {
-  const followedArtistIds = (
-    await prisma.follow.findMany({ where: { userId }, select: { artistId: true } })
-  ).map((f) => f.artistId);
-
-  const myArtist = await prisma.artist.findUnique({ where: { userId }, select: { id: true } });
-  const artistIds = Array.from(new Set([...followedArtistIds, ...(myArtist ? [myArtist.id] : [])]));
-  if (artistIds.length === 0) return [];
+  const followedArtistIds = new Set(
+    (await prisma.follow.findMany({ where: { userId }, select: { artistId: true } })).map((f) => f.artistId)
+  );
 
   const stories = await prisma.story.findMany({
-    where: { artistId: { in: artistIds }, expiresAt: { gt: new Date() } },
+    where: { expiresAt: { gt: new Date() } },
     include: {
       artist: { select: { id: true, name: true, slug: true, photoUrl: true, isVerified: true } },
       views: { where: { userId }, select: { id: true } },
     },
     orderBy: { createdAt: 'asc' },
+    take: 500, // generous cap; this is a discovery bar, not a full listing
   });
 
   // Group by artist, preserving chronological order within each group.
@@ -62,6 +64,7 @@ export async function getStoriesBar(userId: string) {
 
   return Array.from(byArtist.values()).map((group) => ({
     artist: group[0].artist,
+    isFollowing: followedArtistIds.has(group[0].artistId),
     hasUnseen: group.some((s) => s.views.length === 0),
     stories: group.map((s) => ({
       id: s.id,
@@ -73,7 +76,12 @@ export async function getStoriesBar(userId: string) {
       expiresAt: s.expiresAt.toISOString(),
       viewedByMe: s.views.length > 0,
     })),
-  })).sort((a, b) => (a.hasUnseen === b.hasUnseen ? 0 : a.hasUnseen ? -1 : 1));
+  })).sort((a, b) => {
+    // Followed-with-unseen > anyone-with-unseen > followed-seen > seen
+    const score = (g: { isFollowing: boolean; hasUnseen: boolean }) =>
+      (g.hasUnseen ? 2 : 0) + (g.isFollowing ? 1 : 0);
+    return score(b) - score(a);
+  });
 }
 
 export async function getMyStories(artistId: string) {

@@ -65,7 +65,6 @@ model Artist {
   userId           String               @unique
   user             User                 @relation(fields: [userId], references: [id])
   slug             String               @unique
-  slugHistory      ArtistSlugHistory[]
   name             String
   bio              String               @default("")
   city             String               @default("")
@@ -116,6 +115,7 @@ model Artist {
   posts                 ArtistPost[]
   stories               Story[]
   reels                 Reel[]
+  slugHistory      ArtistSlugHistory[]
   pageViews             PageView[]
   dailyRollups          AnalyticsDailyRollup[]
   geoEvents             GeographyEvent[]
@@ -134,19 +134,6 @@ model Artist {
   onboarding            ArtistOnboarding?
   fanReferrals          FanReferral[]
   createdAt             DateTime             @default(now())
-}
-
-// Tracks every slug an artist has ever used so old /artist/<slug> store
-// links keep working (301 redirect to the current slug) after someone
-// changes their display name in Settings and their slug auto-updates.
-model ArtistSlugHistory {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  oldSlug   String   @unique
-  createdAt DateTime @default(now())
-
-  @@index([artistId])
 }
 
 // ── CONTENT MODELS ──────────────────────────────────────────
@@ -437,6 +424,19 @@ model Reel {
 
   @@index([artistId, isPublished, publishedAt])
   @@index([isPublished, publishedAt])
+}
+
+// Tracks every slug an artist has ever used so old /artist/<slug> store
+// links keep working (301 redirect to the current slug) after someone
+// changes their display name in Settings and their slug auto-updates.
+model ArtistSlugHistory {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  oldSlug   String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([artistId])
 }
 
 model ArtistPayout {
