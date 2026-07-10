@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import { Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock, Wallet } from 'lucide-react';
 import { getEffectivePlan } from '@/lib/plans';
 import Link from 'next/link';
 import VukaLoader from '@/components/brand/VukaLoader';
@@ -32,12 +32,71 @@ export default function LabelPage() {
 
   const [planError, setPlanError] = useState(false);
 
+  // ── Bulk payouts (Label plan exclusive) ──────────────────────
+  interface BulkPayoutArtist {
+    artistId: string; name: string; slug: string; photoUrl?: string;
+    available: number; bankAccountId: string | null; bankLabel: string | null; payable: boolean;
+  }
+  const [bulkArtists, setBulkArtists] = useState<BulkPayoutArtist[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ succeeded: number; failed: number; results: { artistId: string; ok: boolean; amount?: number; error?: string }[] } | null>(null);
+
+  async function loadBulkPayouts() {
+    setBulkLoading(true);
+    try {
+      const r = await fetch('/api/label/payouts/bulk');
+      if (r.ok) {
+        const d = await r.json();
+        const artists: BulkPayoutArtist[] = d.artists ?? [];
+        setBulkArtists(artists);
+        // Default-select artists that are actually payable
+        setSelectedIds(new Set(artists.filter(a => a.payable).map(a => a.artistId)));
+      }
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  function toggleSelected(artistId: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(artistId) ? next.delete(artistId) : next.add(artistId);
+      return next;
+    });
+  }
+
+  async function runBulkPayout() {
+    if (selectedIds.size === 0) return;
+    setBulkRunning(true);
+    setBulkResult(null);
+    try {
+      const r = await fetch('/api/label/payouts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artistIds: Array.from(selectedIds) }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        setBulkResult({ succeeded: d.succeeded, failed: d.failed, results: d.results });
+        loadBulkPayouts(); // refresh balances after requesting
+      } else {
+        setError(d.error || 'Bulk payout failed');
+      }
+    } catch {
+      setError('Bulk payout failed');
+    } finally {
+      setBulkRunning(false);
+    }
+  }
+
   async function load() {
     setLoading(true);
     try {
       const r = await fetch('/api/label');
       if (r.status === 403) { setPlanError(true); setLoading(false); return; }
-      if (r.ok) { const d = await r.json(); setLabel(d.label); }
+      if (r.ok) { const d = await r.json(); setLabel(d.label); if (d.label) loadBulkPayouts(); }
     } catch {}
     setLoading(false);
   }
@@ -208,6 +267,72 @@ export default function LabelPage() {
             <div className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>{s.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Bulk Payouts — Label plan exclusive */}
+      <div className="rounded-2xl p-4 mb-6" style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Wallet size={16} style={{ color:'var(--gold)' }} />
+            <h2 className="text-sm font-bold" style={{ color:'var(--text)' }}>Bulk Payouts</h2>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'var(--gold)', color:'#000' }}>LABEL</span>
+          </div>
+          {selectedIds.size > 0 && (
+            <button onClick={runBulkPayout} disabled={bulkRunning} className="btn btn-primary text-xs px-3 py-1.5 disabled:opacity-50">
+              {bulkRunning ? <VukaLoader size={12} /> : `Request ${selectedIds.size} Payout${selectedIds.size > 1 ? 's' : ''}`}
+            </button>
+          )}
+        </div>
+
+        {bulkLoading ? (
+          <div className="py-6 flex justify-center"><VukaLoader size={20} /></div>
+        ) : bulkArtists.length === 0 ? (
+          <p className="text-xs" style={{ color:'var(--text-muted)' }}>No active roster artists to pay out yet.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {bulkArtists.map(a => (
+              <label key={a.artistId} className="flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer"
+                     style={{ background:'var(--surface2)', opacity: a.payable ? 1 : 0.5 }}>
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(a.artistId)}
+                    disabled={!a.payable}
+                    onChange={() => toggleSelected(a.artistId)}
+                  />
+                  {a.photoUrl ? <img src={a.photoUrl} alt={a.name} className="w-7 h-7 rounded-lg object-cover"/> : <div className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs" style={{ background:'var(--surface)', color:'var(--text-muted)' }}>{a.name[0]}</div>}
+                  <div>
+                    <div className="text-xs font-bold" style={{ color:'var(--text)' }}>{a.name}</div>
+                    <div className="text-[11px]" style={{ color:'var(--text-muted)' }}>
+                      {a.bankLabel ?? 'No bank account on file'}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-bold" style={{ color: a.payable ? 'var(--green)' : 'var(--text-muted)' }}>R{a.available.toFixed(2)}</div>
+                  {!a.payable && <div className="text-[10px]" style={{ color:'var(--text-muted)' }}>Below R50 min or no bank</div>}
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+
+        {bulkResult && (
+          <div className="mt-3 p-3 rounded-xl text-xs" style={{ background:'rgba(56,182,232,0.08)', border:'1px solid rgba(56,182,232,0.2)' }}>
+            <p className="font-semibold" style={{ color:'var(--text)' }}>
+              {bulkResult.succeeded} payout{bulkResult.succeeded !== 1 ? 's' : ''} requested
+              {bulkResult.failed > 0 && `, ${bulkResult.failed} skipped`}
+            </p>
+            {bulkResult.results.filter(r => !r.ok).map(r => {
+              const artist = bulkArtists.find(a => a.artistId === r.artistId);
+              return (
+                <p key={r.artistId} className="mt-1" style={{ color:'var(--text-muted)' }}>
+                  {artist?.name ?? r.artistId}: {r.error}
+                </p>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Roster */}

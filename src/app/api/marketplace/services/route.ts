@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
+import { checkFeatureCap, countActiveServiceListings } from '@/lib/planGates';
 
 // GET — list marketplace services (public, with filters)
 export async function GET(req: NextRequest) {
@@ -65,6 +66,11 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized — no artist profile found' }, { status: 401 });
+
+    // Free-tier cap: 5 active service listings. Pro/Label are unlimited.
+    const currentCount = await countActiveServiceListings(user.artist.id);
+    const capCheck = await checkFeatureCap(user.artist.id, 'marketplaceServiceListings', currentCount);
+    if (!capCheck.ok) return capCheck.response;
 
     const body = await req.json();
     const { title, description, category, packages, portfolioUrls, requirements } = body;
@@ -146,6 +152,15 @@ export async function PATCH(req: NextRequest) {
       where: { id: serviceId, artistId: user.artist.id },
     });
     if (!service) return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+
+    // Reactivating a previously-deactivated service counts against the cap
+    // the same as creating a new one — otherwise Free artists could dodge
+    // the limit by deactivating/reactivating instead of deleting.
+    if (updates.isActive === true && !service.isActive) {
+      const currentCount = await countActiveServiceListings(user.artist.id);
+      const capCheck = await checkFeatureCap(user.artist.id, 'marketplaceServiceListings', currentCount);
+      if (!capCheck.ok) return capCheck.response;
+    }
 
     const allowed = ['title','description','category','packages','portfolioUrls','requirements','isActive'] as const;
     const data: any = {};

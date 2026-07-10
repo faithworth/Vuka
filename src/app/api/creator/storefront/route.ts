@@ -20,12 +20,19 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { planAtLeast } from '@/lib/plans';
 
 // GET — get caller's storefront (returns the page's expected shape)
 export async function GET() {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const artist = await prisma.artist.findUnique({
+      where: { id: user.artist.id },
+      select: { planSlug: true, planExpiresAt: true },
+    });
+    const isLabel = planAtLeast(artist?.planSlug, artist?.planExpiresAt ?? null, 'label');
 
     const raw = await prisma.creatorStorefront.upsert({
       where:  { artistId: user.artist.id },
@@ -48,6 +55,11 @@ export async function GET() {
       showSupport:     sections.showSupport !== false,
       socialLinks:     sections.socialLinks || {},
       featuredBeatIds: sections.featuredBeatIds || [],
+      // White-label: only meaningful (and only ever true) on the Label plan.
+      // Always reported as false for non-Label so the dashboard toggle never
+      // shows a stale "on" state the plan can't actually honor anymore.
+      hideBranding:    isLabel ? sections.hideBranding === true : false,
+      isLabelPlan:     isLabel,
     };
 
     return NextResponse.json({ storefront });
@@ -66,10 +78,21 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const {
       tagline, bioLong, accentColor,
-      showSupport, socialLinks, featuredBeatIds,
+      showSupport, socialLinks, featuredBeatIds, hideBranding,
       // Legacy field names too
       headline, description, theme,
     } = body;
+
+    // White-label toggle is Label-plan-only. Re-check fresh from the DB —
+    // never trust the client's plan claim — and silently force it to false
+    // for anyone below Label rather than erroring, so a downgraded artist's
+    // dashboard doesn't break, it just quietly stops taking effect.
+    const artist = await prisma.artist.findUnique({
+      where: { id: user.artist.id },
+      select: { planSlug: true, planExpiresAt: true },
+    });
+    const isLabel = planAtLeast(artist?.planSlug, artist?.planExpiresAt ?? null, 'label');
+    const safeHideBranding = hideBranding !== undefined ? (isLabel ? !!hideBranding : false) : undefined;
 
     // Read existing sections so we can merge
     const existing = await prisma.creatorStorefront.findUnique({
@@ -89,6 +112,7 @@ export async function PATCH(req: NextRequest) {
       ...(showSupport !== undefined && { showSupport }),
       ...(socialLinks !== undefined && { socialLinks }),
       ...(featuredBeatIds !== undefined && { featuredBeatIds }),
+      ...(safeHideBranding !== undefined && { hideBranding: safeHideBranding }),
     };
 
     const updatedStorefront = await prisma.creatorStorefront.upsert({
@@ -128,6 +152,8 @@ export async function PATCH(req: NextRequest) {
       showSupport:     responseSections.showSupport !== false,
       socialLinks:     responseSections.socialLinks || {},
       featuredBeatIds: responseSections.featuredBeatIds || [],
+      hideBranding:    isLabel ? responseSections.hideBranding === true : false,
+      isLabelPlan:     isLabel,
     };
 
     return NextResponse.json({ storefront });

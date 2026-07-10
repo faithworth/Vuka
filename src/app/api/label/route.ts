@@ -3,24 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/utils';
-import { getEffectivePlan } from '@/lib/plans';
+import { requirePlanAtLeast } from '@/lib/planGates';
 
 async function requireLabelPlan() {
   const user = await requireArtist();
   if (!user) return { user: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  const artist = user.artist
-    ? await prisma.artist.findUnique({ where: { id: user.artist.id }, select: { planSlug: true, planExpiresAt: true } })
-    : null;
-  const plan = getEffectivePlan(artist?.planSlug, artist?.planExpiresAt ?? null);
-  if (plan.slug !== 'label') {
-    return {
-      user: null,
-      error: NextResponse.json(
-        { error: 'The Label feature requires a Vuka Music Label plan. Upgrade at /pricing.' },
-        { status: 403 },
-      ),
-    };
-  }
+  if (!user.artist) return { user: null, error: NextResponse.json({ error: 'Artist profile required' }, { status: 403 }) };
+  const gate = await requirePlanAtLeast(user.artist.id, 'label');
+  if (!gate.ok) return { user: null, error: gate.response };
   return { user, error: null };
 }
 

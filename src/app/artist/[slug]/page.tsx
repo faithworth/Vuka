@@ -1,6 +1,6 @@
 import { Navbar } from '@/components/Navbar';
 import { Instagram, Twitter, Youtube, Music2, Radio } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import FollowButton from './FollowButton';
 import MessageButton from './MessageButton';
 import ArtistTabs from './ArtistTabs';
@@ -14,6 +14,9 @@ async function getArtist(slug: string) {
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const artist = await getArtist(params.slug);
+  // Redirect case: no point building real metadata for a page that's about
+  // to 308 elsewhere — a neutral placeholder is fine here.
+  if (artist?.redirectTo) return { title: 'Vuka Music' };
   if (!artist) return { title: 'Artist not found' };
   return {
     title: `${artist.name} on Vuka Music — Buy beats & music`,
@@ -28,6 +31,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function ArtistProfilePage({ params }: { params: { slug: string } }) {
   const artist = await getArtist(params.slug);
+  // Artist changed their display name in Settings since this link was
+  // shared — their slug auto-updated. Permanently redirect (308) rather
+  // than 404ing, and rather than a temporary redirect, so search engines
+  // transfer ranking to the new URL instead of keeping the dead one indexed.
+  if (artist?.redirectTo) permanentRedirect(`/artist/${artist.redirectTo}`);
   if (!artist) notFound();
 
   // Accent colour from storefront (falls back to sky blue)
@@ -230,11 +238,24 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         )}
       </div>
 
-      <div className="mt-4 mb-10 text-center">
+      <div className="mt-4 mb-4 text-center">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Vuka Music retains {artist.platformFeePct ?? 15}% of each sale to cover platform costs. The artist receives {artist.artistSharePct ?? 85}%.
         </p>
       </div>
+
+      {/* White-label: Label-plan artists can hide this via Storefront settings */}
+      {!artist.storefront?.hideBranding && (
+        <div className="mb-10 text-center">
+          <a
+            href="https://vukamusic.com"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold opacity-70 hover:opacity-100 transition-opacity"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            Powered by <span style={{ color: accent }}>Vuka Music</span>
+          </a>
+        </div>
+      )}
     </div>
   );
 }

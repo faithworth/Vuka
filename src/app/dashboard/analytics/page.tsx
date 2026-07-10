@@ -9,8 +9,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  TrendingUp, Users, Play, BarChart2, Globe, RefreshCw, Download, Music, Heart, Repeat2, MessageCircle, DollarSign, Eye, Activity,
+  TrendingUp, Users, Play, BarChart2, Globe, RefreshCw, Download, Music, Heart, Repeat2, MessageCircle, DollarSign, Eye, Activity, Lock,
 } from 'lucide-react';
+import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart } from '@/components/analytics/LineChart';
 import { BarChart } from '@/components/analytics/BarChart';
@@ -94,12 +95,12 @@ function pc(name: string) {
 
 type Tab = 'overview' | 'streams' | 'revenue' | 'audience' | 'engagement';
 
-const TABS: { id: Tab; label: string; icon: typeof BarChart2 }[] = [
+const TABS: { id: Tab; label: string; icon: typeof BarChart2; proOnly?: boolean }[] = [
   { id: 'overview',   label: 'Overview',   icon: BarChart2   },
-  { id: 'streams',    label: 'Streams',    icon: Play        },
-  { id: 'revenue',    label: 'Revenue',    icon: DollarSign  },
-  { id: 'audience',   label: 'Audience',   icon: Users       },
-  { id: 'engagement', label: 'Engagement', icon: Heart       },
+  { id: 'streams',    label: 'Streams',    icon: Play,        proOnly: true },
+  { id: 'revenue',    label: 'Revenue',    icon: DollarSign,  proOnly: true },
+  { id: 'audience',   label: 'Audience',   icon: Users,       proOnly: true },
+  { id: 'engagement', label: 'Engagement', icon: Heart,       proOnly: true },
 ];
 
 // ── Section wrapper ───────────────────────────────────────────
@@ -148,6 +149,30 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
+  // Plan gating — Streams/Revenue/Audience/Engagement tabs and the 90D/12M
+  // period options are Pro+/Label only. Resolved from /api/auth/me, same
+  // source dashboard/layout.tsx uses for its own plan-based nav gating.
+  const [isProOrAbove, setIsProOrAbove] = useState(true); // optimistic default avoids a flash of "locked" before this resolves
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(me => {
+        const slug = me?.artist?.planSlug ?? 'free';
+        const expiresAt = me?.artist?.planExpiresAt ? new Date(me.artist.planExpiresAt) : null;
+        const effectiveSlug = expiresAt && new Date() > expiresAt ? 'free' : slug;
+        setIsProOrAbove(effectiveSlug === 'pro' || effectiveSlug === 'label');
+      })
+      .catch(() => setIsProOrAbove(false));
+  }, []);
+  const visibleTabs = TABS.filter(t => !t.proOnly || isProOrAbove);
+  // If the plan check resolves to Free after the optimistic default already
+  // landed the user on a gated tab, snap back to Overview.
+  useEffect(() => {
+    if (!isProOrAbove && TABS.find(t => t.id === tab)?.proOnly) setTab('overview');
+  }, [isProOrAbove, tab]);
+  useEffect(() => {
+    if (!isProOrAbove && (period === '90d' || period === '12m')) { setPeriod('30d'); setDays(30); }
+  }, [isProOrAbove, period]);
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [audience, setAudience] = useState<AudienceData | null>(null);
@@ -549,7 +574,11 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <PeriodSelector value={period} onChange={(p, d) => { setPeriod(p); setDays(d); }} />
+          <PeriodSelector
+            value={period}
+            onChange={(p, d) => { setPeriod(p); setDays(d); }}
+            lockedPeriods={isProOrAbove ? [] : ['90d', '12m']}
+          />
           <button onClick={load} disabled={loading} style={{
             padding: '8px 10px', borderRadius: 10,
             background: 'var(--surface)', border: '1px solid var(--border)',
@@ -560,12 +589,12 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Tab bar */}
+      {/* Tab bar — Streams/Revenue/Audience/Engagement hidden entirely on Free */}
       <div style={{
-        display: 'flex', gap: 4, marginBottom: 24,
+        display: 'flex', gap: 4, marginBottom: 12,
         borderBottom: '1px solid var(--border)', paddingBottom: 0,
       }}>
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', fontSize: 13, fontWeight: 600,
@@ -580,6 +609,18 @@ export default function AnalyticsPage() {
           </button>
         ))}
       </div>
+
+      {!isProOrAbove && (
+        <Link href="/pricing" style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20,
+          padding: '10px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+          background: 'rgba(56,182,232,0.08)', border: '1px solid rgba(56,182,232,0.2)',
+          color: 'var(--sky)', textDecoration: 'none', width: 'fit-content',
+        }}>
+          <Lock size={13} />
+          Upgrade to Pro for Streams, Revenue, Audience & Engagement breakdowns, plus 90D/12M history
+        </Link>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -600,14 +641,14 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Tab content */}
+      {/* Tab content — gated tabs only render when the plan check confirms access */}
       {!loading && creator && (
         <>
           {tab === 'overview'   && <OverviewTab   />}
-          {tab === 'streams'    && <StreamsTab    />}
-          {tab === 'revenue'    && <RevenueTab    />}
-          {tab === 'audience'   && <AudienceTab   />}
-          {tab === 'engagement' && <EngagementTab />}
+          {tab === 'streams'    && isProOrAbove && <StreamsTab    />}
+          {tab === 'revenue'    && isProOrAbove && <RevenueTab    />}
+          {tab === 'audience'   && isProOrAbove && <AudienceTab   />}
+          {tab === 'engagement' && isProOrAbove && <EngagementTab />}
         </>
       )}
 

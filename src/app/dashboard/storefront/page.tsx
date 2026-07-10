@@ -17,6 +17,8 @@ interface StorefrontData {
   socialLinks?: SocialLinks;
   bioLong?: string;
   showSupport?: boolean;
+  hideBranding?: boolean;
+  isLabelPlan?: boolean;
 }
 
 interface StorefrontResponse {
@@ -245,6 +247,37 @@ export default function StorefrontPage() {
             </button>
           </div>
         </section>
+
+        {/* White-label — Label plan exclusive. Hidden entirely (not just
+            disabled) for Free/Pro, consistent with how the Label nav item
+            itself is hidden rather than shown-locked. */}
+        {data.isLabelPlan && (
+          <section className="card p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Store size={16} style={{ color: 'var(--gold)' }} />
+                <div>
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                    Hide "Powered by Vuka Music" badge
+                    <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--gold)', color: '#000' }}>LABEL</span>
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    White-label your public storefront — removes the Vuka Music badge from your artist page footer
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => update('hideBranding', !data.hideBranding)}
+                className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+                style={{ background: data.hideBranding ? 'var(--sky)' : 'var(--border)' }}>
+                <span
+                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+                  style={{ transform: data.hideBranding ? 'translateX(22px)' : 'translateX(2px)' }}
+                />
+              </button>
+            </div>
+          </section>
+        )}
 
       </div>
 

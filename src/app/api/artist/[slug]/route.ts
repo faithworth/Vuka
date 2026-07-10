@@ -55,7 +55,19 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       },
     });
 
-    if (!artist) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!artist) {
+      // The slug may have changed (someone updated their display name in
+      // Settings, which auto-updates their slug). Check history before
+      // giving up, so old shared links keep working instead of 404ing.
+      const history = await prisma.artistSlugHistory.findUnique({
+        where: { oldSlug: params.slug },
+        include: { artist: { select: { slug: true } } },
+      });
+      if (history?.artist) {
+        return NextResponse.json({ redirectTo: history.artist.slug }, { status: 200 });
+      }
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     const distributionReleases = await prisma.distributionRelease.findMany({
       where: { artistId: artist.id, status: 'live' },
@@ -112,6 +124,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
         showSupport:     sections.showSupport !== false,
         socialLinks:     sections.socialLinks || {},
         featuredBeatIds: sections.featuredBeatIds || [],
+        _hideBrandingRequested: sections.hideBranding === true, // resolved below once plan is known
       };
     }
 
@@ -119,6 +132,16 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
       (artist as any).planSlug ?? 'free',
       (artist as any).planExpiresAt ?? null,
     );
+
+    // White-label only ever takes effect on an active Label plan — recomputed
+    // fresh on every request (not read from a stored "is label" flag) so a
+    // lapsed/downgraded plan shows the "Powered by Vuka" badge again
+    // automatically without anyone needing to touch the stored toggle.
+    if (storefront) {
+      const requested = (storefront as any)._hideBrandingRequested;
+      delete (storefront as any)._hideBrandingRequested;
+      storefront.hideBranding = effectivePlan.slug === 'label' && requested;
+    }
 
     return NextResponse.json({
       ...artist,

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { checkFeatureCap, countIndustryInquiriesThisMonth } from '@/lib/planGates';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +14,11 @@ export async function POST(req: NextRequest) {
 
     const artist = await prisma.artist.findUnique({ where: { userId: user.id } });
     if (!artist) return NextResponse.json({ error: 'Artist profile required' }, { status: 403 });
+
+    // Free-tier cap: 5 industry inquiries per calendar month. Pro/Label unlimited.
+    const inquiriesThisMonth = await countIndustryInquiriesThisMonth(artist.id);
+    const capCheck = await checkFeatureCap(artist.id, 'industryInquiriesPerMonth', inquiriesThisMonth);
+    if (!capCheck.ok) return capCheck.response;
 
     const { serviceId, message } = await req.json();
     if (!serviceId) return NextResponse.json({ error: 'serviceId required' }, { status: 400 });
