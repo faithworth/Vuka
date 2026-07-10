@@ -40,17 +40,35 @@ interface NavGroup { key: string; label: string; icon: LucideIcon; items: NavIte
 
 const OVERVIEW: NavItem = { href: '/dashboard', label: 'Overview', icon: BarChart2, exact: true };
 
-const NAV_GROUPS: NavGroup[] = [
+/**
+ * The Create group's item order (and the "Upload" quick-action's target)
+ * differs by creator type: producers land on Beats/Services first since
+ * beats+production services are their primary product, while artists see
+ * Releases first. Everything else in the nav is identical for both.
+ */
+function getNavGroups(isProducer: boolean): NavGroup[] {
+  const createItems: NavItem[] = isProducer
+    ? [
+        { href: '/dashboard/beats',        label: 'Beats',    icon: Music },
+        { href: '/dashboard/services',     label: 'Services', icon: Briefcase },
+        { href: '/dashboard/uploads',       label: 'Upload',   icon: Upload, highlight: true },
+        { href: '/dashboard/videos',       label: 'Videos',   icon: Video },
+        { href: '/dashboard/merch',         label: 'Merch',    icon: Package },
+        { href: '/dashboard/releases',     label: 'Releases', icon: Disc },
+      ]
+    : [
+        { href: '/dashboard/releases',     label: 'Releases', icon: Disc },
+        { href: '/dashboard/releases/new', label: 'Upload',   icon: Upload, highlight: true },
+        { href: '/dashboard/beats',        label: 'Beats',    icon: Music },
+        { href: '/dashboard/videos',       label: 'Videos',   icon: Video },
+        { href: '/dashboard/merch',         label: 'Merch',    icon: Package },
+        { href: '/dashboard/services',     label: 'Services', icon: Briefcase },
+      ];
+
+  return [
   {
     key: 'create', label: 'Create', icon: Sparkles,
-    items: [
-      { href: '/dashboard/beats',        label: 'Beats',    icon: Music },
-      { href: '/dashboard/releases',     label: 'Releases', icon: Disc },
-      { href: '/dashboard/releases/new', label: 'Upload',   icon: Upload, highlight: true },
-      { href: '/dashboard/videos',       label: 'Videos',   icon: Video },
-      { href: '/dashboard/merch',         label: 'Merch',    icon: Package },
-      { href: '/dashboard/services',     label: 'Services', icon: Briefcase },
-    ],
+    items: createItems,
   },
   {
     key: 'engage', label: 'Engage', icon: Users,
@@ -94,7 +112,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],
   },
-];
+  ];
+}
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   if (exact) return pathname === href;
@@ -120,6 +139,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Plan state — resolved via getEffectivePlan once /api/auth/me returns
   const [planSlug, setPlanSlug]         = useState<string>('free');
   const [planExpiresAt, setPlanExpiresAt] = useState<Date | null>(null);
+  // Producer vs Artist — reorders the Create group (see getNavGroups)
+  const [isProducer, setIsProducer] = useState(false);
 
   // Desktop: which category sections are expanded
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -129,7 +150,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Build the set of visible nav items after plan is known
   const isLabelPlan = getEffectivePlan(planSlug, planExpiresAt).slug === 'label';
 
-  const visibleGroups: NavGroup[] = NAV_GROUPS.map(g => ({
+  const visibleGroups: NavGroup[] = getNavGroups(isProducer).map(g => ({
     ...g,
     items: g.items.filter(i => !i.labelPlanOnly || isLabelPlan),
   }));
@@ -151,6 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
           if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
+            setIsProducer(me.role === 'producer');
             // Store plan info from the artist payload
             if (me.artist?.planSlug) setPlanSlug(me.artist.planSlug);
             if (me.artist?.planExpiresAt) setPlanExpiresAt(new Date(me.artist.planExpiresAt));

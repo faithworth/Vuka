@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Music, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
+import { Music, Disc3, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
 import VukaLogo from '@/components/brand/VukaLogo';
@@ -16,13 +16,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
-type Role = 'fan' | 'artist' | 'industry';
+type Role = 'fan' | 'artist' | 'producer' | 'industry';
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawRole = searchParams.get('role') || 'artist';
-  const validRoles: Role[] = ['fan', 'artist', 'industry'];
+  const validRoles: Role[] = ['fan', 'artist', 'producer', 'industry'];
   const defaultRole: Role = validRoles.includes(rawRole as Role) ? (rawRole as Role) : 'artist';
   const refCode = searchParams.get('ref') || '';  // referral code from ?ref=
 
@@ -96,7 +96,7 @@ function RegisterForm() {
         }
       } catch {}
       // Fallback using chosen role
-      if (role === 'artist') { router.push('/dashboard'); return; }
+      if (role === 'artist' || role === 'producer') { router.push('/dashboard'); return; }
       if (role === 'industry') { router.push('/industry-dashboard'); return; }
       router.push('/fan');
       return;
@@ -119,7 +119,8 @@ function RegisterForm() {
   };
 
   const roleOptions: { value: Role; label: string; description: string; icon: React.ReactNode }[] = [
-    { value: 'artist',   label: 'Artist / Producer', description: 'Sell beats, releases, videos & more', icon: <Music size={16} /> },
+    { value: 'artist',   label: 'Artist',    description: 'Sell releases, videos, merch & more', icon: <Music size={16} /> },
+    { value: 'producer', label: 'Producer',  description: 'Sell beats, sample packs & services',  icon: <Disc3 size={16} /> },
     { value: 'fan',      label: 'Fan / Listener',     description: 'Discover & support African artists',  icon: '🎧' },
     { value: 'industry', label: 'Industry',            description: 'Labels, managers & A&R professionals', icon: <Briefcase size={16} /> },
   ];
@@ -138,7 +139,7 @@ function RegisterForm() {
 
         <form onSubmit={handleRegister} className="space-y-4">
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {roleOptions.map(opt => (
               <button
                 key={opt.value}

@@ -45,6 +45,8 @@ const SA_BANKS = [
 function SettingsContent() {
   const searchParams = useSearchParams();
   const [artist, setArtist]             = useState<any>(null);
+  const [role, setRole]                 = useState<string>('artist');
+  const [slugChangeNotice, setSlugChangeNotice] = useState<string | null>(null);
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
   const [saved, setSaved]               = useState(false);
@@ -71,7 +73,7 @@ function SettingsContent() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard/settings').then(r => r.json()).then(d => setArtist(d.artist || d)),
+      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); if (d.role) setRole(d.role); }),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
@@ -181,11 +183,21 @@ function SettingsContent() {
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch('/api/dashboard/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(artist),
-    }).catch(() => {});
+    try {
+      const res = await fetch('/api/dashboard/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(artist),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.artist) {
+        // Pull the server's copy back in — critically including the new
+        // slug if the name change triggered one, so the store-link preview
+        // below updates immediately instead of showing a stale URL.
+        setArtist(data.artist);
+        setSlugChangeNotice(data.slugChanged ? data.artist.slug : null);
+      }
+    } catch {}
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -423,13 +435,22 @@ function SettingsContent() {
       {/* Profile Form */}
       <form onSubmit={saveProfile} className="space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-lg" style={{ color: 'var(--text)' }}>Artist Profile</h2>
+          <h2 className="font-bold text-lg" style={{ color: 'var(--text)' }}>
+            {role === 'producer' ? 'Producer Profile' : 'Artist Profile'}
+          </h2>
           <a href={`/artist/${artist.slug}`} target="_blank" rel="noopener noreferrer"
             className="text-xs flex items-center gap-1 underline"
             style={{ color: 'var(--sky)' }}>
             View public page <ExternalLink size={11} />
           </a>
         </div>
+
+        {slugChangeNotice && (
+          <div className="p-3 rounded-xl text-xs" style={{ background: 'rgba(56,182,232,0.08)', border: '1px solid rgba(56,182,232,0.2)', color: 'var(--text)' }}>
+            Your store link updated to <strong>/artist/{slugChangeNotice}</strong> to match your new name.
+            Your old link still works and redirects here automatically, so nothing you've shared before is broken.
+          </div>
+        )}
 
         {/* Photo Upload */}
         <div>
