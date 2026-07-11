@@ -171,8 +171,17 @@ export async function POST(req: NextRequest) {
     resolvedUserId = buyer?.id ?? null;
   }
 
-  await prisma.purchase.update({
-    where: { id: purchase.id },
+  // ── Atomic claim ──────────────────────────────────────────────────────
+  // FIX: two concurrent webhook deliveries for the same reference (Paystack
+  // retries on any non-2xx, or genuinely duplicate deliveries) could both
+  // pass the `purchase.status !== 'pending'` check above before either had
+  // written 'confirmed' back — a classic check-then-act race that could
+  // double-run every side effect below (double payout, double plaque
+  // check, double split disbursement). The update is now conditioned on
+  // status still being 'pending' at write time; only the delivery that
+  // wins the race gets claim.count === 1 and proceeds past this point.
+  const claim = await prisma.purchase.updateMany({
+    where: { id: purchase.id, status: 'pending' },
     data: {
       status: 'confirmed',
       platformFee: platformFeeAmt,
@@ -180,6 +189,11 @@ export async function POST(req: NextRequest) {
       ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
     },
   });
+
+  if (claim.count === 0) {
+    logger.info('[paystack/webhook] Lost claim race — already confirmed by a concurrent delivery', { traceId, reference });
+    return NextResponse.json({ ok: true });
+  }
 
   // ── Auto-stepping fee: increment Artist.lifetimeGrossSales ──
   // Resolved lazily below once we know the artistId. Moved to after artist resolution.
@@ -195,6 +209,16 @@ export async function POST(req: NextRequest) {
   let artworkUrl  = '';
   let artistId    = '';
   let licenseUrl  = '';
+
+  // FIX: the item-sales counter, the payout record, and the lifetime
+  // gross-sales counter used to be written as five+ independent,
+  // sequential prisma calls. A crash or timeout between any two of them
+  // left the ledger inconsistent — e.g. a purchase marked 'confirmed'
+  // with an incremented sales counter but no ArtistPayout row, so the
+  // artist was never paid for a sale the buyer was charged for. These are
+  // collected into txOps and committed together in one prisma.$transaction
+  // below, so they either all land or none do.
+  const txOps: any[] = [];
 
   if (purchase.itemType === 'beat' && purchase.beatId) {
     const beat = await prisma.beat.findUnique({ where: { id: purchase.beatId }, include: { artist: { include: { user: true } } } });
@@ -212,7 +236,7 @@ export async function POST(req: NextRequest) {
         await prisma.beat.update({ where: { id: beat.id }, data: { isExclusive: true, isActive: false } });
         await auditLog.exclusiveLocked(beat.id, beat.title, purchase.id);
       }
-      await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
+      txOps.push(prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'beatSales').catch(() => {});
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
@@ -221,7 +245,7 @@ export async function POST(req: NextRequest) {
     if (release) {
       itemName = release.title; artistEmail = release.artist.user.email;
       artistName = release.artist.name; artworkUrl = release.artworkUrl || ''; artistId = release.artist.id;
-      await prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } });
+      txOps.push(prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
@@ -230,7 +254,7 @@ export async function POST(req: NextRequest) {
     if (video) {
       itemName = video.title; artistEmail = video.artist.user.email;
       artistName = video.artist.name; artworkUrl = video.thumbnailUrl || ''; artistId = video.artist.id;
-      await prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } });
+      txOps.push(prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
   } else if (purchase.itemType === 'sample' && purchase.sampleId) {
@@ -238,7 +262,7 @@ export async function POST(req: NextRequest) {
     if (sample) {
       itemName = sample.title; artistEmail = sample.artist.user.email;
       artistName = sample.artist.name; artworkUrl = sample.artworkUrl || ''; artistId = sample.artist.id;
-      await prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } });
+      txOps.push(prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
   } else if (purchase.itemType === 'merch' && (purchase as any).merchId) {
@@ -246,24 +270,45 @@ export async function POST(req: NextRequest) {
     if (merch) {
       itemName = merch.title; artistEmail = merch.artist.user.email;
       artistName = merch.artist.name; artworkUrl = merch.imageUrl || ''; artistId = merch.artist.id;
-      await prisma.merch.update({ where: { id: merch.id }, data: { stock: { decrement: 1 } } }).catch(() => {});
+      txOps.push(prisma.merch.update({ where: { id: merch.id }, data: { stock: { decrement: 1 } } }));
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
   }
 
   if (artistId) {
-    await prisma.artistPayout.create({
+    txOps.push(prisma.artistPayout.create({
       data: { artistId, purchaseId: purchase.id, amount: netAmount, method: 'paystack', currency: purchase.currency, status: 'pending', reference, notes: `${purchase.itemType} sale via Paystack — ${itemName}` },
-    });
+    }));
 
     // ── Auto-stepping fee: update lifetime gross sales counter ──
     // This drives the Free-tier rate reduction in platformFeeRate().
     if (pendingLifetimeSalesIncrement > 0) {
-      await prisma.artist.update({
+      txOps.push(prisma.artist.update({
         where: { id: artistId },
         data:  { lifetimeGrossSales: { increment: pendingLifetimeSalesIncrement } },
-      }).catch(e => logger.error('[paystack/webhook] lifetimeGrossSales increment failed', { error: String(e) }));
+      }));
+    }
+  }
 
+  // ── Commit the ledger atomically ────────────────────────────────────
+  // Everything financially load-bearing (item sales/stock counter, payout
+  // record, lifetime gross-sales counter) lands together or not at all.
+  // If this throws, the purchase itself is already durably 'confirmed'
+  // (claimed above) — we log loudly and alert so ops can reconcile the
+  // payout manually, but we do NOT fail the webhook response, since a
+  // 5xx here would make Paystack retry the whole webhook (including the
+  // amount-verification API call) for a purchase that is, from the
+  // buyer's perspective, already correctly charged and confirmed.
+  if (txOps.length > 0) {
+    try {
+      await prisma.$transaction(txOps);
+    } catch (e) {
+      logger.error('[paystack/webhook] Ledger transaction failed — purchase confirmed but payout/counters may be incomplete', { traceId, purchaseId: purchase.id, artistId, error: String(e) });
+      await auditLog.securityEvent('security.invalid_download_attempt', `Ledger transaction failed for purchaseId=${purchase.id}, artistId=${artistId}: ${String(e)}`, 'paystack').catch(() => {});
+    }
+  }
+
+  if (artistId && pendingLifetimeSalesIncrement > 0) {
       // ── Check for new plaques earned ──
       checkAndAwardPlaques(artistId).catch(e =>
         logger.error('[paystack/webhook] plaque check failed', { error: String(e) })
@@ -297,7 +342,6 @@ export async function POST(req: NextRequest) {
           logger.error('[paystack/webhook] split disburse failed', { error: String(e) })
         );
       }
-    }
   }
 
   await auditLog.purchaseConfirmed(purchase.id, itemName, purchase.amount, purchase.currency, purchase.buyerEmail);

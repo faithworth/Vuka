@@ -110,10 +110,19 @@ export async function verifyTransaction(reference: string): Promise<VerifyTransa
 // ── Webhook Signature Verification ───────────────────────────────────────────
 
 export function verifyPaystackWebhook(rawBody: string, signature: string): boolean {
-  if (!SECRET_KEY) return false;
+  if (!SECRET_KEY || !signature) return false;
   const expected = crypto
     .createHmac('sha512', SECRET_KEY)
     .update(rawBody)
     .digest('hex');
-  return expected === signature;
+  // FIX: `expected === signature` short-circuits on the first differing
+  // character, which leaks timing information an attacker can use to
+  // guess the signature byte-by-byte. crypto.timingSafeEqual compares in
+  // constant time. Buffers must be equal length before that call (it
+  // throws otherwise), so check length first — a length mismatch is
+  // itself a safe, non-secret-dependent signal to reject immediately.
+  const expectedBuf  = Buffer.from(expected, 'hex');
+  const signatureBuf = Buffer.from(signature, 'hex');
+  if (expectedBuf.length !== signatureBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, signatureBuf);
 }

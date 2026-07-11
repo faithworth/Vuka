@@ -31,7 +31,7 @@ export async function POST() {
     select: { paystackReference: true },
   });
 
-  const references = [...new Set(pending.map(p => p.paystackReference!).filter(Boolean))];
+  const references = [...new Set(pending.map(p => p.paystackReference).filter((r): r is string => Boolean(r)))];
 
   const results: { reference: string; status: 'confirmed' | 'still_pending' | 'error'; error?: string }[] = [];
 

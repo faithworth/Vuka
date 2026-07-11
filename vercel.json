@@ -78,7 +78,7 @@
     "src/app/api/admin/**": {
       "maxDuration": 30
     },
-    "src/app/api/checkout/payfast/notify/route.ts": {
+    "src/app/api/checkout/paystack/webhook/route.ts": {
       "maxDuration": 30
     },
     "src/app/api/purchase/**": {

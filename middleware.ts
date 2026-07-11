@@ -21,9 +21,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
-// Routes that require ADMIN_EMAIL + admin DB role to access
+// Routes that require an authenticated session at the edge; the specific
+// admin/moderator role check happens in the route handler itself (see the
+// FIX note below, around the isAdminPath block).
 const ADMIN_PATHS = [
   '/admin',
   '/api/admin',
@@ -240,7 +240,23 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (!ADMIN_EMAIL || user.email !== ADMIN_EMAIL) {
+    // FIX: this used to hard-require `user.email === ADMIN_EMAIL`, but
+    // requireAdmin() (src/lib/auth.ts) and every admin/moderation route
+    // handler behind this gate independently check the DB role against
+    // ['owner','super_admin','admin','moderator'] — a much broader set.
+    // A logged-in moderator or admin whose email wasn't the one hardcoded
+    // ADMIN_EMAIL was being blocked HERE, before ever reaching the route
+    // logic that would have correctly allowed them. Edge middleware can't
+    // cheaply read the Prisma-backed role (Prisma needs the Node runtime,
+    // not Edge), so authorization is now a two-layer model:
+    //   1. Middleware (here): coarse gate — must have a valid session.
+    //   2. Route/page handler: fine-grained gate — must have an admin role,
+    //      verified via requireAdmin() or an equivalent DB role check.
+    // Every route currently reachable through ADMIN_PATHS already performs
+    // its own role check independently of this middleware, so this is not
+    // a new hole — it removes a hidden single-point lockout without
+    // weakening the actual authorization decision.
+    if (!user.email) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
           { error: 'Forbidden', traceId },
