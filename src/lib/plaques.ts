@@ -168,7 +168,7 @@ export function dimensionLabel(dimension: string): string {
     sales_units:        'Sales',
     follower_count:     'Followers',
     membership_revenue: 'Membership Revenue',
-    streams:            'Streams',
+    streams:            'Plays',
   };
   return labels[dimension] ?? dimension;
 }

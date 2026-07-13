@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest) {
     // isn't enough since it could've been sent unchanged.
     const current = await prisma.artist.findUnique({
       where: { id: user.artist.id },
-      select: { name: true, slug: true },
+      select: { name: true, slug: true, userId: true },
     });
 
     let newSlug: string | undefined;
@@ -68,6 +68,15 @@ export async function PATCH(req: NextRequest) {
         await tx.artistSlugHistory.create({
           data: { id: `slughist_${Date.now()}`, artistId: user.artist!.id, oldSlug: current.slug },
         });
+      }
+      // Artist.name (public stage name, edited here) and User.name (set once
+      // at signup, used for the dashboard greeting, referral codes, emails,
+      // etc.) are two separate fields that previously never stayed in sync —
+      // someone could change their stage name here and every other part of
+      // the app would keep showing the real name they typed at signup. Keep
+      // them mirrored from now on whenever the stage name actually changes.
+      if (nameChanged && current) {
+        await tx.user.update({ where: { id: current.userId }, data: { name: name.trim() } });
       }
       return tx.artist.update({
         where: { id: user.artist!.id },

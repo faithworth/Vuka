@@ -54,7 +54,7 @@ export async function GET() {
     // Founding artist status
     const isFoundingArtist = user.artist.isFoundingArtist ?? false;
 
-    const referralLink = `${APP_URL}/register?ref=${referralCode}`;
+    const referralLink = `${APP_URL}/auth/register?ref=${referralCode}`;
 
     return NextResponse.json({
       referralCode,

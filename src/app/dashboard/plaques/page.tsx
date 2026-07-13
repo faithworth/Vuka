@@ -3,7 +3,7 @@
 // Artist achievements dashboard — multi-dimensional milestone plaques.
 
 import { useEffect, useState } from 'react';
-import { Share2, Copy, Check, Trophy, TrendingUp } from 'lucide-react';
+import { Share2, Copy, Check, Trophy, TrendingUp, Download, FileText } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 const DIMENSION_ICONS: Record<string, string> = {
@@ -66,11 +66,50 @@ export default function PlaquesPage() {
 
   async function shareLink(url: string, tier: string, dim: string) {
     const text = `I just earned the ${tier.replace('_', ' ')} plaque on Vuka Music — ${dim.replace('_', ' ')} milestone 🏆`;
+    // Prefer sharing the actual image file when the platform supports it —
+    // a shared link makes someone tap through to see the image; a shared
+    // file drops straight into their Instagram/WhatsApp story composer
+    // ready to post, which is the whole point of a plaque.
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const file = new File([blob], 'vuka-plaque.png', { type: blob.type || 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: 'Vuka Music Plaque', text, files: [file] });
+        return;
+      }
+    } catch {}
+    // Fall back to a plain link share, then to copying the link
     if (navigator.share) {
       await navigator.share({ title: 'Vuka Music Plaque', text, url });
     } else {
       copyLink(url, tier + dim);
     }
+  }
+
+  async function downloadImage(url: string, tier: string, dim: string) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `vuka-${tier}-${dim}-plaque.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {}
+  }
+
+  async function downloadPdf(tier: string, dim: string) {
+    try {
+      const res = await fetch(`/api/dashboard/plaques/pdf?tier=${tier}&dim=${dim}`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `vuka-${tier}-${dim}-certificate.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {}
   }
 
   if (loading) {
@@ -108,7 +147,7 @@ export default function PlaquesPage() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {totalPlaques === 0
               ? 'Make your first sale to earn your first plaque. Every milestone is shareable.'
-              : `${totalPlaques} plaque${totalPlaques !== 1 ? 's' : ''} earned across sales, streams, fans and memberships.`}
+              : `${totalPlaques} plaque${totalPlaques !== 1 ? 's' : ''} earned across sales, plays, fans and memberships.`}
           </p>
         </div>
       </div>
@@ -207,11 +246,23 @@ export default function PlaquesPage() {
                         </div>
 
                         {/* Share controls */}
-                        <div className="flex gap-1.5">
+                        <div className="flex flex-wrap gap-1.5">
                           <button onClick={() => shareLink(plaque.shareableUrl, plaque.tier, plaque.dimension)}
                             className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold"
                             style={{ background: `${plaque.meta.color}20`, color: plaque.meta.color }}>
                             <Share2 size={11} /> Share
+                          </button>
+                          <button onClick={() => downloadImage(plaque.shareableUrl, plaque.tier, plaque.dimension)}
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
+                            title="Download PNG — post directly to Instagram, Twitter, etc.">
+                            <Download size={11} /> PNG
+                          </button>
+                          <button onClick={() => downloadPdf(plaque.tier, plaque.dimension)}
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
+                            title="Download a printable certificate PDF">
+                            <FileText size={11} /> PDF
                           </button>
                           <button onClick={() => copyLink(plaque.shareableUrl, plaque.id)}
                             className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg"
