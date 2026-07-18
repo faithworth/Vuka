@@ -93,6 +93,7 @@ export async function GET() {
       id: dbUser.id,
       email: dbUser.email,
       name: dbUser.name,
+      legalName: dbUser.legalName ?? null,
       role,
       isAdmin,
       isArtist: !!dbUser.artist,
