@@ -1,4 +1,5 @@
 
+
 // app/api/[transport]/route.ts
 
 import { createMcpHandler } from "mcp-handler";
@@ -752,6 +753,52 @@ const handler = createMcpHandler(
               text: `Pull request opened: #${pr.number} — ${pr.title}\nURL: ${pr.html_url}\n${head_branch} → ${base_branch}\n\nThis is NOT deployed yet — review and merge on GitHub (or ask me to check it) when ready.`,
             },
           ],
+        };
+      }
+    );
+
+    // --- Check GitHub Actions CI status ---
+    server.tool(
+      "get_ci_status",
+      "Check recent GitHub Actions workflow runs (tests, type-check) for a branch. Use this after committing code to confirm it actually passes tests, instead of assuming a commit is safe just because it went through.",
+      {
+        branch: z.string().optional().default("main").describe("Branch to check runs for, defaults to main"),
+        limit: z.number().int().min(1).max(10).optional().default(5).describe("How many recent runs to return, max 10"),
+      },
+      async ({ branch, limit }) => {
+        const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=${limit}`;
+        const res = await fetch(url, { headers: githubHeaders() });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return { content: [{ type: "text", text: `GitHub Actions API error (${res.status}): ${errText}` }], isError: true };
+        }
+
+        const data = await res.json();
+        if (!data.workflow_runs || data.workflow_runs.length === 0) {
+          return { content: [{ type: "text", text: `No workflow runs found for branch '${branch}'. If this is the first commit since adding CI, it may still be starting.` }] };
+        }
+
+        const runs = data.workflow_runs.map((r: any) => ({
+          workflow: r.name,
+          status: r.status, // queued | in_progress | completed
+          conclusion: r.conclusion, // success | failure | cancelled | null
+          commit: r.head_sha.slice(0, 7),
+          commitMessage: r.display_title,
+          startedAt: r.run_started_at,
+          url: r.html_url,
+        }));
+
+        const latest = runs[0];
+        const summaryLine =
+          latest.status !== "completed"
+            ? `Latest run is still ${latest.status}.`
+            : latest.conclusion === "success"
+            ? "Latest run passed."
+            : `Latest run ${latest.conclusion}.`;
+
+        return {
+          content: [{ type: "text", text: `${summaryLine}\n\n${JSON.stringify(runs, null, 2)}` }],
         };
       }
     );
