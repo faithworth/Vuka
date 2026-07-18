@@ -9,6 +9,13 @@
 // PLAN-GATING: The "Label" item inside Grow is only shown
 // to artists on the 'label' plan (getEffectivePlan checks
 // planSlug + planExpiresAt so expired label plans are hidden).
+//
+// LEGAL NAME GATE: artists/producers whose legalName is still
+// null (mainly Google OAuth signups, which skip the registration
+// form) see a one-time-per-session prompt asking for it. Not a
+// hard block — payout enforcement already requires a verified
+// bank account regardless, so this is just closing the data gap,
+// not a security boundary.
 // ============================================================
 
 'use client';
@@ -19,6 +26,7 @@ import { createClient } from '@/lib/supabase';
 import { getEffectivePlan } from '@/lib/plans';
 import VukaLoader from '@/components/brand/VukaLoader';
 import VukaLogo from '@/components/brand/VukaLogo';
+import LegalNameGate from '@/components/LegalNameGate';
 import {
   BarChart2, Music, Disc, Upload, ShoppingBag, Heart, Target,
   Wallet, Settings, LogOut, Music2, ChevronRight, ChevronDown,
@@ -141,6 +149,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [planExpiresAt, setPlanExpiresAt] = useState<Date | null>(null);
   // Producer vs Artist — reorders the Create group (see getNavGroups)
   const [isProducer, setIsProducer] = useState(false);
+  // Legal name gate — null until we know, then a string ('' means missing)
+  const [legalName, setLegalName] = useState<string | null>(null);
 
   // Desktop: which category sections are expanded
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -173,6 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (me.isArtist || me.role === 'artist' || me.role === 'producer') {
             setArtistName(me.name || '');
             setIsProducer(me.role === 'producer');
+            setLegalName(me.legalName ?? '');
             // Store plan info from the artist payload
             if (me.artist?.planSlug) setPlanSlug(me.artist.planSlug);
             if (me.artist?.planExpiresAt) setPlanExpiresAt(new Date(me.artist.planExpiresAt));
@@ -242,6 +253,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
+
+      {/* Prompt for missing legalName — only after we've actually loaded
+          the user (legalName === '' means "checked, and it's missing";
+          null means "haven't checked yet", so we don't flash it early). */}
+      {legalName === '' && (
+        <LegalNameGate onSaved={(saved) => setLegalName(saved)} />
+      )}
 
       {/* ── Desktop Sidebar ─────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-64 min-h-screen flex-shrink-0"
