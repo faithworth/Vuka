@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendWelcome } from '@/lib/emails';
@@ -6,14 +7,18 @@ import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { z } from 'zod';
 
 const registerSchema = z.object({
-  name:     z.string().min(2).max(100).trim(),
-  email:    z.string().email().max(254).trim().toLowerCase(),
-  role:     z.enum(['artist', 'producer', 'industry', 'fan']).default('fan'),
-  slug:     z.string().max(60).optional(),
-  company:  z.string().max(200).optional(),
-  position: z.string().max(100).optional(),
-  ref:      z.string().max(30).optional(), // referral code from ?ref= param
-});
+  name:      z.string().min(2).max(100).trim(),
+  legalName: z.string().min(2).max(150).trim().optional(),
+  email:     z.string().email().max(254).trim().toLowerCase(),
+  role:      z.enum(['artist', 'producer', 'industry', 'fan']).default('fan'),
+  slug:      z.string().max(60).optional(),
+  company:   z.string().max(200).optional(),
+  position:  z.string().max(100).optional(),
+  ref:       z.string().max(30).optional(), // referral code from ?ref= param
+}).refine(
+  (data) => (data.role !== 'artist' && data.role !== 'producer') || !!data.legalName,
+  { message: 'Legal name is required for artist and producer accounts (used to verify payouts).', path: ['legalName'] }
+);
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, role: rawRole, slug: rawSlug, company, position, ref } = parsed.data;
+    const { name, legalName, email, role: rawRole, slug: rawSlug, company, position, ref } = parsed.data;
     const validRole = rawRole;
 
     // Validate referral code if provided (don't hard-fail — just ignore if invalid)
@@ -59,22 +64,31 @@ export async function POST(req: NextRequest) {
       const existingRank = ROLE_RANK[user.role] ?? 0;
       const requestedRank = ROLE_RANK[validRole] ?? 0;
 
-      if (requestedRank > existingRank) {
+      // Backfill legalName if it's newly provided and wasn't already on file —
+      // never overwrite an existing legalName silently.
+      const legalNameUpdate = (legalName && !user.legalName) ? { legalName } : {};
+
+      if (requestedRank > existingRank || Object.keys(legalNameUpdate).length > 0) {
         user = await prisma.user.update({
           where: { email },
-          data: { role: validRole },
+          data: {
+            ...(requestedRank > existingRank ? { role: validRole } : {}),
+            ...legalNameUpdate,
+          },
           include: { artist: true, industryUser: true },
         });
       }
-      // else: keep existing role, fall through to Artist/IndustryUser record checks
+      // else: keep existing role/legalName, fall through to Artist/IndustryUser record checks
     } else {
       user = await prisma.user.create({
-        data: { name, email, role: validRole, referredBy: validatedRef ?? null },
+        data: { name, legalName: legalName ?? null, email, role: validRole, referredBy: validatedRef ?? null },
         include: { artist: true, industryUser: true },
       });
     }
 
     // Ensure Artist record exists for artist role
+    // Note: `name` here is intentionally the public stage name — it is
+    // separate from User.legalName, which is the payout/KYC identity.
     if ((validRole === 'artist' || validRole === 'producer') && !user.artist) {
       let slug = slugify(rawSlug || name);
       let suffix = 0;
