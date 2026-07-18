@@ -1,6 +1,10 @@
 /**
  * GET  /api/admin/payouts?status=pending|approved|paid|rejected|all&page=1
  * POST /api/admin/payouts { requestId, action: approve|reject|mark_paid, notes?, reference? }
+ *
+ * Payout security: approve and mark_paid are gated on the destination
+ * bank account being verified and past its 48h eligibility cooldown.
+ * See /api/admin/bank-accounts/verify for how accounts get verified.
  */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -92,9 +96,32 @@ export async function POST(req: NextRequest) {
 
     const request = await prisma.payoutRequest.findUnique({
       where: { id: requestId },
-      include: { artist: { select: { name: true, user: { select: { email: true } } } } },
+      include: {
+        artist: { select: { name: true, user: { select: { email: true } } } },
+        bankAccount: true,
+      },
     });
     if (!request) return NextResponse.json({ error: 'Payout request not found' }, { status: 404 });
+
+    // Gate on bank account verification + cooldown for bank-transfer payouts.
+    // Paystack-method requests (no bankAccountId) are unaffected.
+    if ((action === 'approve' || action === 'mark_paid') && request.bankAccountId) {
+      const acct = request.bankAccount;
+      if (!acct?.isVerified) {
+        return NextResponse.json(
+          { error: 'Cannot process payout: bank account is not verified.' },
+          { status: 409 }
+        );
+      }
+      if (acct.eligibleForPayoutAt && acct.eligibleForPayoutAt > new Date()) {
+        return NextResponse.json(
+          {
+            error: `Cannot process payout: bank account is still in its 48h cooldown until ${acct.eligibleForPayoutAt.toISOString()}.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
 
     switch (action) {
       case 'approve': {
