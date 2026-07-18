@@ -23,6 +23,20 @@ function githubHeaders() {
   };
 }
 
+async function writeAdminLog(action: string, targetType: string, targetId: string, notes: string) {
+  await supabase.from("AdminLog").insert({
+    id: crypto.randomUUID(),
+    action,
+    targetType,
+    targetId,
+    actorId: "mcp-employee",
+    ipAddress: "",
+    severity: "info",
+    notes,
+    createdAt: new Date().toISOString(),
+  });
+}
+
 const handler = createMcpHandler(
   (server) => {
     // --- Health check ---
@@ -146,6 +160,85 @@ const handler = createMcpHandler(
         };
 
         return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+      }
+    );
+
+    // --- Verify (or unverify) an artist's bank account ---
+    server.tool(
+      "verify_bank_account",
+      "Verify or unverify an artist's bank account by artist name/slug, enabling their payouts to that account once past the 48h cooldown. If the artist has multiple bank accounts, this returns a list asking you to specify bank_account_id.",
+      {
+        artist_query: z.string().describe("Artist name or slug to search for"),
+        verified: z.boolean().describe("true to verify, false to unverify"),
+        bank_account_id: z.string().optional().describe("Specific bank account id, required only if the artist has multiple accounts"),
+        method: z.string().optional().describe("Verification method, e.g. 'manual_admin_review', 'micro_deposit'"),
+        notes: z.string().optional().describe("Optional notes for the audit log"),
+      },
+      async ({ artist_query, verified, bank_account_id, method, notes }) => {
+        const { data: artists, error: artistError } = await supabase
+          .from("Artist")
+          .select("id, name, slug")
+          .or(`slug.eq.${artist_query},name.ilike.%${artist_query}%`)
+          .limit(5);
+
+        if (artistError) return { content: [{ type: "text", text: `Error looking up artist: ${artistError.message}` }], isError: true };
+        if (!artists || artists.length === 0) return { content: [{ type: "text", text: `No artist found matching "${artist_query}".` }] };
+        if (artists.length > 1) {
+          const list = artists.map((a) => `- ${a.name} (slug: ${a.slug})`).join("\n");
+          return { content: [{ type: "text", text: `Multiple artists matched "${artist_query}":\n${list}\n\nAsk again with the exact slug.` }] };
+        }
+
+        const artist = artists[0];
+
+        const { data: accounts, error: acctError } = await supabase
+          .from("ArtistBankAccount")
+          .select("id, bankName, maskedNumber, accountHolder, isVerified, isDefault")
+          .eq("artistId", artist.id);
+
+        if (acctError) return { content: [{ type: "text", text: `Error loading bank accounts: ${acctError.message}` }], isError: true };
+        if (!accounts || accounts.length === 0) return { content: [{ type: "text", text: `${artist.name} has no bank accounts on file.` }] };
+
+        let target = accounts[0];
+        if (accounts.length > 1) {
+          if (!bank_account_id) {
+            const list = accounts
+              .map((a) => `- id: ${a.id} — ${a.bankName} ${a.maskedNumber} (${a.accountHolder}) — currently ${a.isVerified ? "verified" : "unverified"}${a.isDefault ? ", default" : ""}`)
+              .join("\n");
+            return { content: [{ type: "text", text: `${artist.name} has multiple bank accounts:\n${list}\n\nRe-run with bank_account_id set to the one you want.` }] };
+          }
+          const match = accounts.find((a) => a.id === bank_account_id);
+          if (!match) return { content: [{ type: "text", text: `bank_account_id "${bank_account_id}" doesn't belong to ${artist.name}.` }] };
+          target = match;
+        }
+
+        const { data: updated, error: updateError } = await supabase
+          .from("ArtistBankAccount")
+          .update({
+            isVerified: verified,
+            verifiedAt: verified ? new Date().toISOString() : null,
+            verificationMethod: verified ? (method || "manual_admin_review") : null,
+          })
+          .eq("id", target.id)
+          .select()
+          .single();
+
+        if (updateError) return { content: [{ type: "text", text: `Error updating bank account: ${updateError.message}` }], isError: true };
+
+        await writeAdminLog(
+          "payment.bank_account_verified",
+          "ArtistBankAccount",
+          target.id,
+          `artist=${artist.name} verified=${verified} method=${method || "manual_admin_review"} ${notes || ""}`
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${verified ? "Verified" : "Unverified"} bank account for ${artist.name}: ${target.bankName} ${target.maskedNumber}.\nverifiedAt: ${updated.verifiedAt ?? "null"}\n\nNote: verification doesn't bypass the 48h eligibility cooldown — payouts still check both.`,
+            },
+          ],
+        };
       }
     );
 
