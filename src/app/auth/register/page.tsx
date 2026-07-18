@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -27,6 +28,7 @@ function RegisterForm() {
   const refCode = searchParams.get('ref') || '';  // referral code from ?ref=
 
   const [name, setName]           = useState('');
+  const [legalName, setLegalName] = useState('');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [company, setCompany]     = useState('');
@@ -38,10 +40,15 @@ function RegisterForm() {
   const [error, setError]         = useState('');
 
   const isIndustry = role === 'industry';
+  const needsLegalName = role === 'artist' || role === 'producer';
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Please enter your name'); return; }
+    if (needsLegalName && !legalName.trim()) {
+      setError('Please enter your legal name — this is what we verify your bank account against before paying you out.');
+      return;
+    }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setLoading(true);
     setError('');
@@ -72,6 +79,7 @@ function RegisterForm() {
         email,
         role,
         slug: slugify(name),
+        ...(needsLegalName && { legalName }),
         ...(isIndustry && { company, position }),
         ...(refCode && { ref: refCode }),
       }),
@@ -167,9 +175,25 @@ function RegisterForm() {
             </div>
           )}
 
+          {needsLegalName && (
+            <div className="p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(30,144,255,0.08)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              <p className="text-xs">
+                We ask for two names below: your <strong>stage name</strong> (public, shown on your profile) and your{' '}
+                <strong>legal name</strong> (private, must match your bank account — used to verify payouts before we send you money).
+              </p>
+            </div>
+          )}
+
           <input className="input" type="text"
-            placeholder={isIndustry ? 'Your full name' : 'Your name'}
+            placeholder={needsLegalName ? 'Stage / artist name' : (isIndustry ? 'Your full name' : 'Your name')}
             value={name} onChange={e => setName(e.target.value)} required />
+
+          {needsLegalName && (
+            <input className="input" type="text"
+              placeholder="Legal name (as it appears on your bank account)"
+              value={legalName} onChange={e => setLegalName(e.target.value)} required />
+          )}
 
           {isIndustry && (
             <div className="grid grid-cols-2 gap-3">
