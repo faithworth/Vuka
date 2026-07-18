@@ -7,6 +7,10 @@
 //   - On POST: encrypt with AES-256-CBC + HMAC (lib/encryption.ts)
 //   - On GET:  only maskedNumber and safe display fields are returned
 //   - On admin payout processing: decrypt only in worker, never here
+//
+// Payout security: new accounts get a 48h eligibility cooldown
+// (eligibleForPayoutAt) and start unverified. See
+// /api/admin/bank-accounts/verify and /api/admin/payouts for enforcement.
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
@@ -153,6 +157,7 @@ export async function POST(req: NextRequest) {
           accountType,
           isDefault: isDefault || existingCount === 0,
           isVerified: false,
+          eligibleForPayoutAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
         },
       });
     });
