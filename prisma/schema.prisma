@@ -24,6 +24,7 @@ model User {
   id              String               @id @default(cuid())
   email           String               @unique
   name            String
+  legalName       String?              // full legal name for payout/KYC identity — distinct from public display name
   role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
   isSuspended     Boolean              @default(false)
   suspendedAt     DateTime?
@@ -130,7 +131,7 @@ model Artist {
   splitSheets           SplitSheet[]
   events                Event[]
   nominations           AwardNomination[]
-  labelRoster           LabelArtist[]
+  labelRoster            LabelArtist[]
   onboarding            ArtistOnboarding?
   fanReferrals          FanReferral[]
   createdAt             DateTime             @default(now())
@@ -807,9 +808,9 @@ model DSPDelivery {
   submittedAt           DateTime?
   liveAt                DateTime?
   failedAt              DateTime?
-  lastRetryAt           DateTime?
-  rolledBackAt          DateTime?
-  createdAt             DateTime            @default(now())
+  lastRetryAt            DateTime?
+  rolledBackAt            DateTime?
+  createdAt              DateTime            @default(now())
 
   @@index([distributionReleaseId, status])
   @@index([dsp, status])
@@ -852,6 +853,10 @@ model ArtistBankAccount {
   paystackAccountCode String?  // Paystack transfer recipient code
   isDefault           Boolean       @default(false)
   isVerified          Boolean       @default(false)
+  verifiedAt          DateTime?     // set only after accountHolder is confirmed to match the real bank account
+  verificationMethod  String        @default("") // e.g. "paystack_resolve", "manual_admin_review"
+  eligibleForPayoutAt DateTime?     // cooldown: account can't receive a payout until this timestamp,
+                                    // set to now()+48h whenever the account is newly added or bank details change
   payoutRequests      PayoutRequest[]
   createdAt           DateTime      @default(now())
 }
