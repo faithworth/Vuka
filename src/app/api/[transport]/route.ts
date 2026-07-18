@@ -308,6 +308,93 @@ const handler = createMcpHandler(
       }
     );
 
+    // --- Platform-wide metrics dashboard ---
+    server.tool(
+      "get_platform_metrics",
+      "Get a one-call snapshot of platform health: artist counts by plan tier, gross merchandise value (GMV) for the current calendar month across all revenue sources, total pending payouts awaiting admin action, and new signups in the last 7 days. Use this for any 'how's the business doing' or dashboard-style question.",
+      {},
+      async () => {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        const [artists, purchases, tips, backers, marketOrders, pendingPayouts, newUsers] = await Promise.all([
+          supabase.from("Artist").select("planSlug"),
+          supabase.from("Purchase").select("amount, status, createdAt").gte("createdAt", startOfMonth.toISOString()),
+          supabase.from("SupportTxn").select("amount, status, createdAt").gte("createdAt", startOfMonth.toISOString()),
+          supabase.from("campaign_backers").select("amount, status, createdAt").gte("createdAt", startOfMonth.toISOString()),
+          supabase.from("MarketplaceOrder").select("packagePrice, status, createdAt").gte("createdAt", startOfMonth.toISOString()),
+          supabase.from("PayoutRequest").select("amount, status").eq("status", "pending"),
+          supabase.from("User").select("id, createdAt").gte("createdAt", sevenDaysAgo.toISOString()),
+        ]);
+
+        for (const [label, res] of Object.entries({ artists, purchases, tips, backers, marketOrders, pendingPayouts, newUsers })) {
+          if ((res as any).error) {
+            return { content: [{ type: "text", text: `Error loading ${label}: ${(res as any).error.message}` }], isError: true };
+          }
+        }
+
+        const artistsByPlan: Record<string, number> = {};
+        for (const a of artists.data ?? []) {
+          artistsByPlan[a.planSlug] = (artistsByPlan[a.planSlug] ?? 0) + 1;
+        }
+
+        const gmv =
+          (purchases.data ?? []).filter((p) => p.status === "confirmed").reduce((s, p) => s + (p.amount ?? 0), 0) +
+          (tips.data ?? []).filter((t) => t.status === "confirmed").reduce((s, t) => s + (t.amount ?? 0), 0) +
+          (backers.data ?? []).filter((b) => b.status === "confirmed").reduce((s, b) => s + (b.amount ?? 0), 0) +
+          (marketOrders.data ?? []).filter((o) => o.status === "active" || o.status === "completed").reduce((s, o) => s + (o.packagePrice ?? 0), 0);
+
+        const summary = {
+          artistsByPlan,
+          totalArtists: (artists.data ?? []).length,
+          gmvThisMonth: Math.round(gmv * 100) / 100,
+          pendingPayouts: {
+            count: (pendingPayouts.data ?? []).length,
+            totalAmount: (pendingPayouts.data ?? []).reduce((s, p) => s + (p.amount ?? 0), 0),
+          },
+          newSignupsLast7Days: (newUsers.data ?? []).length,
+          asOf: new Date().toISOString(),
+        };
+
+        return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+      }
+    );
+
+    // --- Search users/accounts ---
+    server.tool(
+      "search_users",
+      "Search Vuka Music user accounts by name or email (partial match). Returns account status, role, and linked artist plan/verification info if they have an artist profile. Use this to look up any account — fan, artist, admin — not just artists.",
+      { query: z.string().describe("Name or email substring to search for") },
+      async ({ query }) => {
+        const { data: users, error } = await supabase
+          .from("User")
+          .select("id, email, name, legalName, role, isSuspended, suspendedReason, createdAt")
+          .or(`email.ilike.%${query}%,name.ilike.%${query}%`)
+          .limit(10);
+
+        if (error) return { content: [{ type: "text", text: `Error searching users: ${error.message}` }], isError: true };
+        if (!users || users.length === 0) return { content: [{ type: "text", text: `No users found matching "${query}".` }] };
+
+        const userIds = users.map((u) => u.id);
+        const { data: artistLinks } = await supabase
+          .from("Artist")
+          .select("userId, name, slug, planSlug, isVerified")
+          .in("userId", userIds);
+
+        const results = users.map((u) => {
+          const artist = artistLinks?.find((a) => a.userId === u.id);
+          return {
+            ...u,
+            artistProfile: artist ? { name: artist.name, slug: artist.slug, plan: artist.planSlug, verified: artist.isVerified } : null,
+          };
+        });
+
+        return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+      }
+    );
+
     // --- Read a file from the repo ---
     server.tool(
       "github_read_file",
