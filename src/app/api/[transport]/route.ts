@@ -230,6 +230,65 @@ const handler = createMcpHandler(
       }
     );
 
+    // --- List files/directories in the repo ---
+    server.tool(
+      "github_list_files",
+      "List files and subdirectories at a given path in the Vuka Music GitHub repository. Use this to browse the repo structure and find the correct file path before reading or editing, instead of guessing paths.",
+      {
+        path: z.string().optional().default("").describe("Directory path in the repo, e.g. 'src/app/api'. Empty string for repo root."),
+        branch: z.string().optional().default("main").describe("Branch to list from, defaults to main"),
+      },
+      async ({ path, branch }) => {
+        const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const res = await fetch(url, { headers: githubHeaders() });
+
+        if (res.status === 404) {
+          return { content: [{ type: "text", text: `Path not found: '${path}' on branch ${branch}` }] };
+        }
+        if (!res.ok) {
+          const errText = await res.text();
+          return { content: [{ type: "text", text: `GitHub API error (${res.status}): ${errText}` }], isError: true };
+        }
+
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+          return { content: [{ type: "text", text: `'${path}' is a file, not a directory. Use github_read_file instead.` }] };
+        }
+
+        const dirs = data.filter((i: any) => i.type === "dir").map((i: any) => `📁 ${i.name}/`);
+        const files = data.filter((i: any) => i.type === "file").map((i: any) => `📄 ${i.name}`);
+        const listing = [...dirs.sort(), ...files.sort()].join("\n") || "(empty directory)";
+
+        return { content: [{ type: "text", text: `Contents of '${path || "/"}' on ${branch}:\n\n${listing}` }] };
+      }
+    );
+
+    // --- Search code across the repo ---
+    server.tool(
+      "github_search_code",
+      "Search for a code snippet, function name, or string across the entire Vuka Music GitHub repository. Use this to find which files reference something (e.g. a model field, an env var, a function) instead of guessing paths.",
+      {
+        query: z.string().describe("Code search query, e.g. 'eligibleForPayoutAt' or 'requireAdmin'"),
+      },
+      async ({ query }) => {
+        const url = `${GITHUB_API}/search/code?q=${encodeURIComponent(query)}+repo:${GITHUB_OWNER}/${GITHUB_REPO}`;
+        const res = await fetch(url, { headers: githubHeaders() });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return { content: [{ type: "text", text: `GitHub search error (${res.status}): ${errText}` }], isError: true };
+        }
+
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) {
+          return { content: [{ type: "text", text: `No matches for "${query}".` }] };
+        }
+
+        const results = data.items.slice(0, 20).map((i: any) => `- ${i.path}`).join("\n");
+        return { content: [{ type: "text", text: `${data.total_count} match(es) for "${query}" (showing up to 20):\n\n${results}` }] };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
