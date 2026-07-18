@@ -2,6 +2,7 @@
 
 import { createMcpHandler } from "mcp-handler";
 import { createClient } from "@supabase/supabase-js";
+import { Client } from "pg";
 import { z } from "zod";
 
 const supabase = createClient(
@@ -37,6 +38,48 @@ async function writeAdminLog(action: string, targetType: string, targetId: strin
   });
 }
 
+// ── run_sql_query guardrails ──────────────────────────────────
+// This tool runs with full DB credentials under the hood (same connection
+// Prisma uses), so "read-only" has to be enforced in code, not assumed.
+// Rules: must start with SELECT or WITH, no semicolon-chaining to a second
+// statement, no dangerous keywords anywhere in the string, row cap, and a
+// hard statement_timeout so nothing runs away.
+
+const FORBIDDEN_KEYWORDS =
+  /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CREATE|COPY|EXECUTE|CALL|MERGE|VACUUM|REINDEX|REFRESH)\b/i;
+
+function validateReadOnlyQuery(query: string): string | null {
+  const trimmed = query.trim();
+  if (!/^(SELECT|WITH)\s/i.test(trimmed)) {
+    return "Only SELECT or WITH (CTE) queries are allowed.";
+  }
+  // Disallow a second statement after a semicolon (allow one optional trailing semicolon)
+  const withoutTrailingSemi = trimmed.replace(/;\s*$/, "");
+  if (withoutTrailingSemi.includes(";")) {
+    return "Multiple statements are not allowed — one SELECT per call.";
+  }
+  if (FORBIDDEN_KEYWORDS.test(trimmed)) {
+    return "Query contains a forbidden keyword (only reads are allowed).";
+  }
+  return null;
+}
+
+async function runReadOnlyQuery(query: string, rowLimit: number) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+  await client.connect();
+  try {
+    await client.query("SET statement_timeout = 5000"); // 5s hard cap
+    const result = await client.query(query);
+    const rows = result.rows.slice(0, rowLimit);
+    return { rows, rowCount: result.rowCount, truncated: (result.rowCount ?? 0) > rowLimit };
+  } finally {
+    await client.end();
+  }
+}
+
 const handler = createMcpHandler(
   (server) => {
     // --- Health check ---
@@ -54,6 +97,32 @@ const handler = createMcpHandler(
           },
         ],
       })
+    );
+
+    // --- Read-only SQL access ---
+    server.tool(
+      "run_sql_query",
+      "Run a read-only SQL query (SELECT or WITH only) directly against the Vuka Music production Postgres database. Use this for any data question not already covered by a dedicated tool — ad-hoc lookups, aggregates, joins across tables. Writes, DDL, and multi-statement queries are blocked. Results capped at 200 rows and a 5-second timeout.",
+      {
+        query: z.string().describe("A single SELECT or WITH query. No semicolons chaining multiple statements."),
+        row_limit: z.number().int().min(1).max(200).optional().default(50).describe("Max rows to return, capped at 200"),
+      },
+      async ({ query, row_limit }) => {
+        const validationError = validateReadOnlyQuery(query);
+        if (validationError) {
+          return { content: [{ type: "text", text: `Query rejected: ${validationError}` }], isError: true };
+        }
+
+        try {
+          const { rows, rowCount, truncated } = await runReadOnlyQuery(query, row_limit);
+          const summary = `${rowCount ?? rows.length} row(s) matched${truncated ? `, showing first ${row_limit}` : ""}.`;
+          return {
+            content: [{ type: "text", text: `${summary}\n\n${JSON.stringify(rows, null, 2)}` }],
+          };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Query failed: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
     );
 
     // --- Artist revenue summary ---
@@ -84,9 +153,6 @@ const handler = createMcpHandler(
         const artist = artists[0];
         const id = artist.id;
 
-        // NOTE: status values vary by table in this schema — Purchase/SupportTxn/
-        // campaign_backers use "confirmed", not "completed". Verified directly
-        // against live data on 2026-07-18.
         const [purchases, tips, campaignData, marketOrders] = await Promise.all([
           supabase.from("Purchase").select("amount, netAmount, platformFee, status").eq("artistId", id),
           supabase.from("SupportTxn").select("amount, status").eq("artistId", id),
