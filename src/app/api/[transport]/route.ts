@@ -9,8 +9,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Set these to match your actual repo if the defaults are wrong — check
+// the URL on github.com, it's github.com/<OWNER>/<REPO>
+const GITHUB_OWNER = process.env.GITHUB_REPO_OWNER ?? "faithworth";
+const GITHUB_REPO = process.env.GITHUB_REPO_NAME ?? "Vuka";
+const GITHUB_API = "https://api.github.com";
+
+function githubHeaders() {
+  return {
+    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
 const handler = createMcpHandler(
   (server) => {
+    // --- Health check ---
     server.tool(
       "ping",
       "Simple health-check tool. Returns a confirmation message with the current server time.",
@@ -27,6 +42,7 @@ const handler = createMcpHandler(
       })
     );
 
+    // --- Artist revenue summary ---
     server.tool(
       "get_artist_summary",
       "Look up a Vuka Music artist by name or slug and return their full revenue picture (beat/release sales, tips, crowdfunding, marketplace orders), payout status, and plan status. Use this whenever the user asks about a specific artist's performance, earnings, or account status.",
@@ -130,6 +146,87 @@ const handler = createMcpHandler(
         };
 
         return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+      }
+    );
+
+    // --- Read a file from the repo ---
+    server.tool(
+      "github_read_file",
+      "Read the current contents of a file from the Vuka Music GitHub repository. Use this before editing a file, to see what's currently there and get context.",
+      {
+        path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
+        branch: z.string().optional().default("main").describe("Branch to read from, defaults to main"),
+      },
+      async ({ path, branch }) => {
+        const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const res = await fetch(url, { headers: githubHeaders() });
+
+        if (res.status === 404) {
+          return { content: [{ type: "text", text: `File not found: ${path} on branch ${branch}` }] };
+        }
+        if (!res.ok) {
+          const errText = await res.text();
+          return { content: [{ type: "text", text: `GitHub API error (${res.status}): ${errText}` }], isError: true };
+        }
+
+        const data = await res.json();
+        const content = Buffer.from(data.content, "base64").toString("utf-8");
+
+        return {
+          content: [{ type: "text", text: `--- ${path} (sha: ${data.sha}) ---\n\n${content}` }],
+        };
+      }
+    );
+
+    // --- Commit a file change to the repo ---
+    server.tool(
+      "github_commit_file",
+      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration. Use with care — this pushes real code to the live repo.",
+      {
+        path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
+        content: z.string().describe("The full new content of the file"),
+        commit_message: z.string().describe("Clear, specific commit message describing the change"),
+        branch: z.string().optional().default("main").describe("Branch to commit to, defaults to main"),
+      },
+      async ({ path, content, commit_message, branch }) => {
+        const getUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const getRes = await fetch(getUrl, { headers: githubHeaders() });
+
+        let sha: string | undefined;
+        if (getRes.ok) {
+          const existing = await getRes.json();
+          sha = existing.sha;
+        } else if (getRes.status !== 404) {
+          const errText = await getRes.text();
+          return { content: [{ type: "text", text: `Error checking existing file: ${errText}` }], isError: true };
+        }
+
+        const putUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
+        const putRes = await fetch(putUrl, {
+          method: "PUT",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: commit_message,
+            content: Buffer.from(content, "utf-8").toString("base64"),
+            branch,
+            ...(sha ? { sha } : {}),
+          }),
+        });
+
+        if (!putRes.ok) {
+          const errText = await putRes.text();
+          return { content: [{ type: "text", text: `GitHub commit failed (${putRes.status}): ${errText}` }], isError: true };
+        }
+
+        const result = await putRes.json();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Committed successfully.\nFile: ${path}\nBranch: ${branch}\nCommit: ${result.commit?.sha}\nURL: ${result.commit?.html_url}\n\nVercel should pick this up and start a new deployment automatically if this is on main.`,
+            },
+          ],
+        };
       }
     );
 
