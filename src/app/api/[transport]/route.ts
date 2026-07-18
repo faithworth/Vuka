@@ -1,3 +1,4 @@
+
 // app/api/[transport]/route.ts
 
 import { createMcpHandler } from "mcp-handler";
@@ -395,6 +396,150 @@ const handler = createMcpHandler(
       }
     );
 
+    // --- Monthly revenue trend report ---
+    server.tool(
+      "get_revenue_report",
+      "Get a month-by-month revenue trend across all sources (purchases, tips, crowdfunding, marketplace) for the last N months. Use this for 'how's revenue trending', bookkeeping summaries, or growth/decline questions — unlike get_platform_metrics, which only covers the current month.",
+      {
+        months_back: z.number().int().min(1).max(24).optional().default(6).describe("How many months of history to include, max 24"),
+      },
+      async ({ months_back }) => {
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - months_back);
+        startDate.setDate(1);
+        startDate.setHours(0, 0, 0, 0);
+
+        const [purchases, tips, backers, marketOrders] = await Promise.all([
+          supabase.from("Purchase").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("SupportTxn").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("campaign_backers").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("MarketplaceOrder").select("packagePrice, status, createdAt").gte("createdAt", startDate.toISOString()),
+        ]);
+
+        for (const [label, res] of Object.entries({ purchases, tips, backers, marketOrders })) {
+          if ((res as any).error) {
+            return { content: [{ type: "text", text: `Error loading ${label}: ${(res as any).error.message}` }], isError: true };
+          }
+        }
+
+        const monthKey = (d: string) => d.slice(0, 7); // YYYY-MM
+        const byMonth: Record<string, { purchases: number; tips: number; crowdfunding: number; marketplace: number }> = {};
+
+        const bump = (date: string, field: "purchases" | "tips" | "crowdfunding" | "marketplace", amount: number) => {
+          const k = monthKey(date);
+          if (!byMonth[k]) byMonth[k] = { purchases: 0, tips: 0, crowdfunding: 0, marketplace: 0 };
+          byMonth[k][field] += amount ?? 0;
+        };
+
+        for (const p of purchases.data ?? []) if (p.status === "confirmed") bump(p.createdAt, "purchases", p.amount);
+        for (const t of tips.data ?? []) if (t.status === "confirmed") bump(t.createdAt, "tips", t.amount);
+        for (const b of backers.data ?? []) if (b.status === "confirmed") bump(b.createdAt, "crowdfunding", b.amount);
+        for (const o of marketOrders.data ?? []) if (o.status === "active" || o.status === "completed") bump(o.createdAt, "marketplace", o.packagePrice);
+
+        const months = Object.keys(byMonth).sort();
+        const report = months.map((m) => {
+          const row = byMonth[m];
+          const total = row.purchases + row.tips + row.crowdfunding + row.marketplace;
+          return { month: m, ...row, total: Math.round(total * 100) / 100 };
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                { monthsIncluded: months.length, report, note: "Only confirmed/completed transactions counted. Currency assumed ZAR unless mixed." },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+    );
+
+    // --- Signup-to-first-sale funnel ---
+    server.tool(
+      "get_conversion_funnel",
+      "Get a snapshot of the platform funnel: total users, how many have created an artist profile, and how many of those artists have made at least one confirmed sale. Use this for growth/marketing questions about drop-off and conversion, not for individual artist lookups (use get_artist_summary for that).",
+      {},
+      async () => {
+        const [totalUsers, artists, purchases] = await Promise.all([
+          supabase.from("User").select("id", { count: "exact", head: true }),
+          supabase.from("Artist").select("id"),
+          supabase.from("Purchase").select("artistId, status").eq("status", "confirmed"),
+        ]);
+
+        if (totalUsers.error) return { content: [{ type: "text", text: `Error counting users: ${totalUsers.error.message}` }], isError: true };
+        if (artists.error) return { content: [{ type: "text", text: `Error loading artists: ${artists.error.message}` }], isError: true };
+        if (purchases.error) return { content: [{ type: "text", text: `Error loading purchases: ${purchases.error.message}` }], isError: true };
+
+        const artistIds = new Set((artists.data ?? []).map((a) => a.id));
+        const artistsWithSaleIds = new Set((purchases.data ?? []).map((p) => p.artistId));
+        const artistsWithSale = [...artistsWithSaleIds].filter((id) => artistIds.has(id)).length;
+
+        const totalUserCount = totalUsers.count ?? 0;
+        const totalArtistCount = artistIds.size;
+
+        const funnel = {
+          totalUsers: totalUserCount,
+          usersWithArtistProfile: totalArtistCount,
+          artistsWithAtLeastOneConfirmedSale: artistsWithSale,
+          conversionRates: {
+            userToArtistPct: totalUserCount ? Math.round((totalArtistCount / totalUserCount) * 1000) / 10 : 0,
+            artistToFirstSalePct: totalArtistCount ? Math.round((artistsWithSale / totalArtistCount) * 1000) / 10 : 0,
+          },
+        };
+
+        return { content: [{ type: "text", text: JSON.stringify(funnel, null, 2) }] };
+      }
+    );
+
+    // --- Verification queue for fraud/risk review ---
+    server.tool(
+      "list_verification_queue",
+      "List all artist bank accounts that are not yet verified, showing whether they're still in the 48h cooldown or already eligible for review. Use this to work through the verification backlog instead of checking artists one at a time.",
+      {},
+      async () => {
+        const { data: accounts, error } = await supabase
+          .from("ArtistBankAccount")
+          .select("id, artistId, bankName, maskedNumber, accountHolder, isVerified, eligibleForPayoutAt, createdAt")
+          .eq("isVerified", false)
+          .order("createdAt", { ascending: true });
+
+        if (error) return { content: [{ type: "text", text: `Error loading verification queue: ${error.message}` }], isError: true };
+        if (!accounts || accounts.length === 0) return { content: [{ type: "text", text: "Verification queue is empty — nothing pending." }] };
+
+        const artistIds = [...new Set(accounts.map((a) => a.artistId))];
+        const { data: artists } = await supabase.from("Artist").select("id, name, slug").in("id", artistIds);
+        const artistById = new Map((artists ?? []).map((a) => [a.id, a]));
+
+        const now = new Date();
+        const queue = accounts.map((a) => {
+          const artist = artistById.get(a.artistId);
+          const eligible = a.eligibleForPayoutAt ? new Date(a.eligibleForPayoutAt) <= now : false;
+          return {
+            bankAccountId: a.id,
+            artist: artist ? `${artist.name} (${artist.slug})` : a.artistId,
+            bank: `${a.bankName} ${a.maskedNumber}`,
+            accountHolder: a.accountHolder,
+            readyForReview: eligible,
+            eligibleForPayoutAt: a.eligibleForPayoutAt,
+            addedAt: a.createdAt,
+          };
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${queue.length} account(s) pending verification (${queue.filter((q) => q.readyForReview).length} past cooldown, ready to review):\n\n${JSON.stringify(queue, null, 2)}`,
+            },
+          ],
+        };
+      }
+    );
+
     // --- Read a file from the repo ---
     server.tool(
       "github_read_file",
@@ -427,7 +572,7 @@ const handler = createMcpHandler(
     // --- Commit a file change to the repo ---
     server.tool(
       "github_commit_file",
-      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration. Use with care — this pushes real code to the live repo.",
+      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration if committed to main. Use with care — this pushes real code to the live repo. Prefer github_create_branch + create_pull_request for anything non-trivial, so changes get reviewed before going live.",
       {
         path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
         content: z.string().describe("The full new content of the file"),
@@ -532,6 +677,82 @@ const handler = createMcpHandler(
 
         const results = data.items.slice(0, 20).map((i: any) => `- ${i.path}`).join("\n");
         return { content: [{ type: "text", text: `${data.total_count} match(es) for "${query}" (showing up to 20):\n\n${results}` }] };
+      }
+    );
+
+    // --- Create a new branch off an existing one ---
+    server.tool(
+      "github_create_branch",
+      "Create a new branch in the Vuka Music repo, branching off an existing branch (default: main). Use this before making a non-trivial code change, so the change can go through create_pull_request instead of committing straight to main.",
+      {
+        branch_name: z.string().describe("Name for the new branch, e.g. 'fix/payout-cooldown-edge-case'"),
+        from_branch: z.string().optional().default("main").describe("Branch to base the new branch on, defaults to main"),
+      },
+      async ({ branch_name, from_branch }) => {
+        const refUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/${from_branch}`;
+        const refRes = await fetch(refUrl, { headers: githubHeaders() });
+        if (!refRes.ok) {
+          const errText = await refRes.text();
+          return { content: [{ type: "text", text: `Couldn't read base branch '${from_branch}': ${errText}` }], isError: true };
+        }
+        const refData = await refRes.json();
+        const baseSha = refData.object.sha;
+
+        const createUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`;
+        const createRes = await fetch(createUrl, {
+          method: "POST",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ ref: `refs/heads/${branch_name}`, sha: baseSha }),
+        });
+
+        if (!createRes.ok) {
+          const errText = await createRes.text();
+          return { content: [{ type: "text", text: `Couldn't create branch '${branch_name}': ${errText}` }], isError: true };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Branch '${branch_name}' created from '${from_branch}' at ${baseSha.slice(0, 7)}.\nUse github_commit_file with branch: '${branch_name}' to make changes, then create_pull_request to open it for review.`,
+            },
+          ],
+        };
+      }
+    );
+
+    // --- Open a pull request ---
+    server.tool(
+      "create_pull_request",
+      "Open a pull request from a feature branch into main (or another base branch), for human review before merging. Use this after github_create_branch + github_commit_file, instead of committing straight to main, for anything beyond a trivial one-line fix.",
+      {
+        title: z.string().describe("PR title"),
+        head_branch: z.string().describe("The branch with your changes (created via github_create_branch)"),
+        base_branch: z.string().optional().default("main").describe("Branch to merge into, defaults to main"),
+        body: z.string().optional().describe("PR description — what changed and why"),
+      },
+      async ({ title, head_branch, base_branch, body }) => {
+        const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ title, head: head_branch, base: base_branch, body: body ?? "" }),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return { content: [{ type: "text", text: `Couldn't create PR: ${errText}` }], isError: true };
+        }
+
+        const pr = await res.json();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Pull request opened: #${pr.number} — ${pr.title}\nURL: ${pr.html_url}\n${head_branch} → ${base_branch}\n\nThis is NOT deployed yet — review and merge on GitHub (or ask me to check it) when ready.`,
+            },
+          ],
+        };
       }
     );
 
