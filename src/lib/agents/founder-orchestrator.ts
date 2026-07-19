@@ -2,15 +2,16 @@
  * Founder Orchestrator
  * ---------------------------------------------------------------------------
  * A single entry point that delegates to read-only "department" sub-agents
- * (Data, Dev — add more as departments come online) and returns one digest.
+ * (Data, Dev, Finance — add more as departments come online) and returns
+ * one digest.
  *
  * SAFETY BOUNDARY (do not remove):
  *   Every tool listed below is read-only. Nothing in this file can commit
- *   code, verify a bank account, approve a payout, or post publicly. Those
- *   stay explicit, one-off actions triggered by a human in a real
- *   conversation — never something this script (or a future cron job)
- *   reaches on its own. If you extend a department's tool list, keep write
- *   tools out of it.
+ *   code, verify a bank account, approve a payout, send a DMCA notice, or
+ *   post publicly. Those stay explicit, one-off actions triggered by a
+ *   human in a real conversation — never something this script (or a
+ *   future cron job) reaches on its own. If you extend a department's tool
+ *   list, keep write/draft-send tools out of it.
  *
  * RUN NOW (manual):
  *   npm run agents:founder
@@ -62,6 +63,20 @@ commit code — you report what a human should look at.`,
     allowedTools: ['get_ci_status', 'github_search_code', 'github_list_files', 'github_read_file'],
     task: `Check current CI status on main. If anything is failing, say
 what and why in one or two sentences — don't just say "it's broken."`,
+  },
+  {
+    name: 'finance',
+    systemPrompt: `You are the Finance department agent for Vuka Music.
+You only have read-only/draft-only tools — nothing here sends money, sends
+a notice, or files anything. Report facts a founder should know: revenue
+trend, VAT working estimate, and any bank accounts sitting in the
+verification queue longer than expected. You never take action — you
+report and flag for a human.`,
+    allowedTools: ['get_platform_metrics', 'get_vat_summary', 'list_verification_queue', 'get_revenue_report'],
+    task: `Give a short financial status check: this month's revenue and
+VAT estimate, and whether anything is sitting in the bank-account
+verification queue that looks like it needs admin attention. Be concrete
+with numbers, not vague.`,
   },
 ];
 
