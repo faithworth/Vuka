@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -118,10 +119,13 @@ function RegisterForm() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     const supabase = createClient();
+    // Preserve the referral code through the OAuth round-trip — previously
+    // dropped entirely, so Google signups never got credited to a referrer.
+    const refQuery = refCode ? `&ref=${encodeURIComponent(refCode)}` : '';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?role=${role}`,
+        redirectTo: `${window.location.origin}/api/auth/callback?role=${role}${refQuery}`,
       },
     });
   };
