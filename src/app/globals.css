@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -148,10 +149,11 @@ code, pre, .font-mono, [class*="mono"], .stat-number { font-family: var(--font-m
  * it was most visually obvious.
  *
  * Wrapping this in `@layer components` puts it in Tailwind's intended
- * position — BEFORE the utilities layer — so any pl-*/pr-* utility on
- * an element correctly overrides this base padding again, as designed.
- * No component markup needs to change; this is a single cascade-order
- * fix that corrects every affected input at once.
+ * position — BEFORE the utilities layer — so any padding-left or
+ * padding-right utility class on an element correctly overrides this
+ * base padding again, as designed. No component markup needs to
+ * change; this is a single cascade-order fix that corrects every
+ * affected input at once.
  */
 @layer components {
   .input {
