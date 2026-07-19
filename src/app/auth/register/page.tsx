@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -118,10 +119,18 @@ function RegisterForm() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     const supabase = createClient();
+    // FIX: `ref` (referral code) used to be dropped entirely here — only
+    // `role` was passed through. That meant every Google OAuth signup via
+    // a referral link silently failed to count toward the referrer's
+    // reward goal, with no error and no way to tell from the UI. The
+    // email/password path already forwarded `ref` via the /api/auth/register
+    // POST body; this brings the Google path to parity.
+    const callbackParams = new URLSearchParams({ role });
+    if (refCode) callbackParams.set('ref', refCode);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?role=${role}`,
+        redirectTo: `${window.location.origin}/api/auth/callback?${callbackParams.toString()}`,
       },
     });
   };
