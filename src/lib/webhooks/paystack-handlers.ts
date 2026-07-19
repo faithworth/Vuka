@@ -324,6 +324,26 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
 
 // ── ISO_ — industry service order (artist pays an industry professional) ──
 // Platform takes a fixed 10% fee from this transaction type (not plan-based).
+//
+// FIX (was crediting the wrong party): this handler used to create an
+// ArtistPayout for `o.artistId` — but `artistId` on IndustryServiceOrder is
+// the artist who PAID for the service, not the industry professional who
+// delivered it. That meant every industry service purchase silently
+// deposited the industry pro's earnings into the paying artist's own
+// dashboard/payout queue, while the industry account's balance stayed at
+// R0 forever. There is currently no ArtistPayout-equivalent ledger for
+// IndustryUser, so — matching the schema's existing (previously unused)
+// IndustryUser.totalEarnings column — this now increments that running
+// total instead of misrouting the money into ArtistPayout.
+//
+// KNOWN GAP (flagged, not silently solved here): incrementing
+// totalEarnings correctly stops the money going to the wrong account, but
+// there is still no way for an industry user to actually withdraw it —
+// no bank account model, no payout request flow, and the Earnings tab UI
+// only shows referral commission today. That's a separate, larger build
+// (mirrors ArtistBankAccount + PayoutRequest + verification for artists)
+// and needs its own pass before industry earnings can actually reach a
+// real bank account.
 const INDUSTRY_PLATFORM_FEE_PCT = 0.10;
 
 export async function handleIndustryOrderEvent(event: PaystackChargeEvent, traceId = 'no-trace') {
@@ -367,20 +387,24 @@ export async function handleIndustryOrderEvent(event: PaystackChargeEvent, trace
         platformFeeAmt, netAmount, o.id,
       );
 
-      await tx.artistPayout.create({
-        data: {
-          artistId: o.artistId,
-          amount:   netAmount,
-          method:   'paystack',
-          currency: 'ZAR',
-          status:   'pending',
-          reference,
-          notes:    `Industry service: ${o.serviceTitle} | industry_user:${o.industryUserId} | order:${o.id} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka Music)`,
-        },
-      });
+      // Credit the INDUSTRY account that delivered the service, not the
+      // artist who paid for it. IndustryUser has no payout ledger yet, so
+      // this is the running total — see the KNOWN GAP note above.
+      await tx.$executeRawUnsafe(
+        `UPDATE "IndustryUser" SET "totalEarnings" = "totalEarnings" + $1 WHERE id = $2`,
+        netAmount, o.industryUserId,
+      );
     });
 
-    logger.info('[industry/notify] Order paid', { traceId, orderId: o.id, gross: amountGross, fee: platformFeeAmt, net: netAmount });
+    await auditLog.adminAction(
+      'industry_order.paid',
+      'IndustryServiceOrder',
+      o.id,
+      'system',
+      `Industry service "${o.serviceTitle}" paid by artist ${o.artistId} — R${netAmount.toFixed(2)} credited to industry_user:${o.industryUserId} (fee: R${platformFeeAmt.toFixed(2)} kept by Vuka Music). No withdrawal mechanism exists yet for this balance.`,
+    );
+
+    logger.info('[industry/notify] Order paid — credited industry account', { traceId, orderId: o.id, industryUserId: o.industryUserId, gross: amountGross, fee: platformFeeAmt, net: netAmount });
   } catch (err) {
     logger.error('[industry/notify] Error', { traceId, orderId, error: err instanceof Error ? err.message : String(err) });
   }
