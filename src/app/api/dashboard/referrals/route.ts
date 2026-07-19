@@ -54,7 +54,17 @@ export async function GET() {
     // Founding artist status
     const isFoundingArtist = user.artist.isFoundingArtist ?? false;
 
-    const referralLink = `${APP_URL}/auth/register?ref=${referralCode}`;
+    // FIX: this link used to be `${APP_URL}/auth/register?ref=${referralCode}`
+    // with no `role` param. /auth/register defaults an unspecified role to
+    // 'artist' as a fallback — not necessarily wrong, but it meant a
+    // producer's referral link pre-selected "Artist" for whoever they
+    // referred instead of "Producer". Carrying the referrer's own role
+    // through the link makes the pre-selected role match who's actually
+    // sharing it — a producer's link opens with Producer pre-selected, an
+    // artist's link opens with Artist pre-selected. The visitor can still
+    // change it before submitting; this only fixes the default.
+    const referralRole = user.role === 'producer' ? 'producer' : 'artist';
+    const referralLink = `${APP_URL}/auth/register?ref=${referralCode}&role=${referralRole}`;
 
     return NextResponse.json({
       referralCode,
