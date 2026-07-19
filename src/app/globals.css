@@ -128,21 +128,48 @@ code, pre, .font-mono, [class*="mono"], .stat-number { font-family: var(--font-m
 }
 
 /* ── Inputs ─────────────────────────────────────────────────── */
-.input {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 4px;
-  padding: 12px 16px;
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: 14px;
-  width: 100%;
-  transition: border-color 0.2s ease;
-  outline: none;
-  min-height: 44px;
+/*
+ * FIX: .input was a plain CSS rule sitting textually AFTER
+ * `@tailwind utilities;` in this file. Since Tailwind's @tailwind
+ * directives expand in place, that meant .input's own
+ * `padding: 12px 16px` compiled into the stylesheet AFTER the entire
+ * utilities layer — so on any input styled `className="input pl-7"`
+ * (or pl-9/pl-10 for a search icon, currency prefix, etc.), this rule's
+ * 16px left padding won the cascade tie over the utility's intended
+ * 28px/36px/40px, because same-specificity rules resolve by source
+ * order, not by which one "looks more specific" in the markup.
+ *
+ * Concretely: any icon or "R" prefix positioned with `left-3` (12px)
+ * or `left-4` (16px) rendered UNDER the actual input text/placeholder
+ * instead of clearing it — the exact "R sits on top of the 0" bug.
+ * This wasn't a price-input-specific bug; it silently affected every
+ * pl-* input in the app (search bars, the password show/hide icon,
+ * every currency-prefixed price field) — price fields were just where
+ * it was most visually obvious.
+ *
+ * Wrapping this in `@layer components` puts it in Tailwind's intended
+ * position — BEFORE the utilities layer — so any pl-*/pr-* utility on
+ * an element correctly overrides this base padding again, as designed.
+ * No component markup needs to change; this is a single cascade-order
+ * fix that corrects every affected input at once.
+ */
+@layer components {
+  .input {
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 4px;
+    padding: 12px 16px;
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.2s ease;
+    outline: none;
+    min-height: 44px;
+  }
+  .input:focus { border-color: var(--color-accent-green); }
+  .input::placeholder { color: var(--color-text-tertiary); }
 }
-.input:focus { border-color: var(--color-accent-green); }
-.input::placeholder { color: var(--color-text-tertiary); }
 
 /* ── Badges ─────────────────────────────────────────────────── */
 .badge {
