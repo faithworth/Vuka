@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, TrendingUp, Music, Disc, Users } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface Artist { slug: string; name: string; photoUrl: string; bio: string; genreTags: string[]; isVerified: boolean; totalPlays: number; }
 interface Beat { id: string; slug: string; title: string; artworkUrl: string; basicPrice: number; artist: { name: string; slug: string }; genre: string; }
@@ -130,7 +131,7 @@ export default function DiscoverPage() {
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate flex items-center gap-1" style={{ color: 'var(--text)' }}>
                         {a.name}
-                        {a.isVerified && <span className="badge badge-sky text-[10px]">✓</span>}
+                        {a.isVerified && <VerifiedBadge size={14} />}
                       </p>
                       {a.genreTags?.length > 0 && (
                         <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
