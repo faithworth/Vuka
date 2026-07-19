@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   // roleParam is ONLY used for brand-new users who just registered
   const roleParam = searchParams.get('role') || 'fan';
+  // refParam carries the referral code through the OAuth round-trip — only
+  // used for brand-new users, validated against a real referralCode below.
+  const refParam = searchParams.get('ref') || '';
 
   if (!code) {
     return NextResponse.redirect(new URL('/auth/login?error=no_code', req.url));
@@ -60,8 +64,17 @@ export async function GET(req: NextRequest) {
     if (!dbUser) {
       // Brand-new user — assign role from registration param
       const assignedRole = isAdminEmail ? 'owner' : roleParam;
+
+      // Validate referral code if provided (don't hard-fail — just ignore if invalid),
+      // same pattern as the email/password registration path.
+      let validatedRef: string | undefined;
+      if (refParam) {
+        const referrer = await prisma.user.findUnique({ where: { referralCode: refParam } });
+        if (referrer) validatedRef = refParam;
+      }
+
       dbUser = await prisma.user.create({
-        data: { name, email: email!, role: assignedRole },
+        data: { name, email: email!, role: assignedRole, referredBy: validatedRef ?? null },
         include: { artist: true, industryUser: true },
       });
 
