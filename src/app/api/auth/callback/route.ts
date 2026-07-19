@@ -14,6 +14,12 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   // roleParam is ONLY used for brand-new users who just registered
   const roleParam = searchParams.get('role') || 'fan';
+  // FIX: this was read nowhere before — Google OAuth signups from a
+  // referral link (?ref=xxx passed through from /auth/register) silently
+  // never counted toward the referrer's goal, with no error surfaced
+  // anywhere. The email/password path already validates+writes this via
+  // /api/auth/register; this brings the OAuth path to parity with it.
+  const refParam = searchParams.get('ref') || '';
 
   if (!code) {
     return NextResponse.redirect(new URL('/auth/login?error=no_code', req.url));
@@ -60,8 +66,18 @@ export async function GET(req: NextRequest) {
     if (!dbUser) {
       // Brand-new user — assign role from registration param
       const assignedRole = isAdminEmail ? 'owner' : roleParam;
+
+      // Validate the referral code before trusting it — don't hard-fail
+      // signup if it's invalid/stale, just don't attribute the referral.
+      // Mirrors the same check in /api/auth/register.
+      let validatedRef: string | undefined;
+      if (refParam) {
+        const referrer = await prisma.user.findUnique({ where: { referralCode: refParam } });
+        if (referrer) validatedRef = refParam;
+      }
+
       dbUser = await prisma.user.create({
-        data: { name, email: email!, role: assignedRole },
+        data: { name, email: email!, role: assignedRole, referredBy: validatedRef ?? null },
         include: { artist: true, industryUser: true },
       });
 
