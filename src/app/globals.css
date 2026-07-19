@@ -244,6 +244,33 @@ code, pre, .font-mono, [class*="mono"], .stat-number { font-family: var(--font-m
   animation: vuka-sweep 3.6s ease-in-out infinite;
 }
 
+/* ── Editorial redesign utilities (landing page) ─────────────────────── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.hairline-t { border-top: 1px solid var(--color-border); }
+.hairline-b { border-bottom: 1px solid var(--color-border); }
+
+.lp-marquee-wrap { overflow: hidden; }
+.lp-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: lpMarqueeScroll 30s linear infinite;
+}
+@keyframes lpMarqueeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-marquee-track { animation: none; }
+}
+
 /* ── Scrollable-but-invisible-scrollbar utility (nav overflow safety net) ── */
 .no-scrollbar {
   scrollbar-width: none;       /* Firefox */
