@@ -459,6 +459,57 @@ const handler = createMcpHandler(
       }
     );
 
+    // --- VAT summary over a period ---
+    server.tool(
+      "get_vat_summary",
+      "Get a VAT breakdown for a given period, based on confirmed revenue across all sources (purchases, tips, crowdfunding, marketplace). Assumes standard South African VAT (15%, VAT-inclusive pricing) unless a different rate is passed — this is a working estimate from platform data only, not a filing. Use this for bookkeeping prep, not as a substitute for an accountant or SARS submission.",
+      {
+        months_back: z.number().int().min(1).max(24).optional().default(1).describe("How many months back to include, max 24"),
+        vat_rate: z.number().min(0).max(1).optional().default(0.15).describe("VAT rate as a decimal, defaults to South Africa's standard 15%"),
+      },
+      async ({ months_back, vat_rate }) => {
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - months_back);
+        startDate.setDate(1);
+        startDate.setHours(0, 0, 0, 0);
+
+        const [purchases, tips, backers, marketOrders] = await Promise.all([
+          supabase.from("Purchase").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("SupportTxn").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("campaign_backers").select("amount, status, createdAt").gte("createdAt", startDate.toISOString()),
+          supabase.from("MarketplaceOrder").select("packagePrice, status, createdAt").gte("createdAt", startDate.toISOString()),
+        ]);
+
+        for (const [label, res] of Object.entries({ purchases, tips, backers, marketOrders })) {
+          if ((res as any).error) {
+            return { content: [{ type: "text", text: `Error loading ${label}: ${(res as any).error.message}` }], isError: true };
+          }
+        }
+
+        const grossRevenue =
+          (purchases.data ?? []).filter((p) => p.status === "confirmed").reduce((s, p) => s + (p.amount ?? 0), 0) +
+          (tips.data ?? []).filter((t) => t.status === "confirmed").reduce((s, t) => s + (t.amount ?? 0), 0) +
+          (backers.data ?? []).filter((b) => b.status === "confirmed").reduce((s, b) => s + (b.amount ?? 0), 0) +
+          (marketOrders.data ?? []).filter((o) => o.status === "active" || o.status === "completed").reduce((s, o) => s + (o.packagePrice ?? 0), 0);
+
+        // Assumes prices are VAT-inclusive: gross = net * (1 + vat_rate)
+        const netOfVat = grossRevenue / (1 + vat_rate);
+        const vatPortion = grossRevenue - netOfVat;
+
+        const summary = {
+          periodMonthsBack: months_back,
+          vatRateUsed: vat_rate,
+          grossRevenue: Math.round(grossRevenue * 100) / 100,
+          netOfVat: Math.round(netOfVat * 100) / 100,
+          vatPortion: Math.round(vatPortion * 100) / 100,
+          assumptions:
+            "Prices assumed VAT-inclusive. This is a working estimate from platform revenue data only — it does not account for input VAT (deductible expenses), does not know whether Vuka is actually VAT-registered, and is not a SARS submission. Confirm with an accountant before filing anything.",
+        };
+
+        return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
+      }
+    );
+
     // --- Signup-to-first-sale funnel ---
     server.tool(
       "get_conversion_funnel",
@@ -493,6 +544,66 @@ const handler = createMcpHandler(
         };
 
         return { content: [{ type: "text", text: JSON.stringify(funnel, null, 2) }] };
+      }
+    );
+
+    // --- Draft a DMCA takedown notice (does not send) ---
+    server.tool(
+      "draft_dmca_notice",
+      "Draft (does not send) a DMCA-style takedown notice for a Vuka Music release, using the release and artist info on file. Returns text for a human to review, fill in contact details, and send themselves via whatever submission process the target platform actually requires. This tool never sends anything and never contacts the target platform.",
+      {
+        release_query: z.string().describe("Release title or id to search for"),
+        infringing_url: z.string().describe("URL where the infringing content was found"),
+        platform_name: z.string().optional().describe("Name of the platform hosting the infringing content, e.g. 'YouTube', 'SoundCloud'"),
+      },
+      async ({ release_query, infringing_url, platform_name }) => {
+        const { data: releases, error } = await supabase
+          .from("Release")
+          .select("id, title, artistId, createdAt")
+          .ilike("title", `%${release_query}%`)
+          .limit(5);
+
+        if (error) return { content: [{ type: "text", text: `Error looking up release: ${error.message}` }], isError: true };
+        if (!releases || releases.length === 0) return { content: [{ type: "text", text: `No release found matching "${release_query}".` }] };
+        if (releases.length > 1) {
+          const list = releases.map((r) => `- ${r.title} (id: ${r.id})`).join("\n");
+          return { content: [{ type: "text", text: `Multiple releases matched "${release_query}":\n${list}\n\nAsk again with the exact id.` }] };
+        }
+
+        const release = releases[0];
+        const { data: artist, error: artistError } = await supabase
+          .from("Artist")
+          .select("id, name")
+          .eq("id", release.artistId)
+          .single();
+        if (artistError) return { content: [{ type: "text", text: `Error loading artist: ${artistError.message}` }], isError: true };
+
+        const today = new Date().toISOString().slice(0, 10);
+
+        const notice = `DMCA TAKEDOWN NOTICE — DRAFT (review before sending)
+
+Date: ${today}
+To: ${platform_name || "[Platform legal/copyright team]"}
+
+I am submitting this notice as the rights holder (or authorized representative) of the copyrighted work described below, released via Vuka Music.
+
+Copyrighted work: "${release.title}" by ${artist.name}
+Original release location: https://vukamusic.com (release id: ${release.id})
+Copyright owner of record: [LEGAL RIGHTS HOLDER NAME — confirm against the artist's registered legal name before sending]
+
+Infringing material located at: ${infringing_url}
+
+I have a good faith belief that use of the copyrighted material described above is not authorized by the copyright owner, its agent, or the law.
+
+I swear, under penalty of perjury, that the information in this notification is accurate and that I am the copyright owner or authorized to act on the copyright owner's behalf.
+
+Signature: [YOUR FULL LEGAL NAME]
+Contact: [YOUR CONTACT EMAIL]
+
+---
+This is a draft only. Verify the target platform's actual DMCA submission process — many require their own web form rather than email — fill in every bracketed field, and have the real rights holder review before sending. Nothing has been sent by generating this draft.`;
+
+        return { content: [{ type: "text", text: notice }] };
       }
     );
 
