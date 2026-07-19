@@ -13,6 +13,11 @@
  *   future cron job) reaches on its own. If you extend a department's tool
  *   list, keep write/draft-send tools out of it.
  *
+ * COST NOTE: every call to runFounderDigest() makes real Anthropic API
+ * calls billed to ANTHROPIC_API_KEY — there is no free tier. Cheap
+ * (roughly a few cents per run at current Sonnet pricing) but not zero.
+ * Be deliberate about the cron cadence if/when this gets scheduled.
+ *
  * RUN NOW (manual):
  *   npm run agents:founder
  *
@@ -29,6 +34,13 @@
  *     3. add 'founder_digest' to Vercel Cron config on whatever cadence you want.
  *   No other changes needed — the auth/secret handling in that route already
  *   covers it.
+ *
+ * NOT YET A DEPARTMENT: Marketing/Sales and Legal/HR have no genuine
+ * read-only reporting tools built yet (Marketing/Social was deliberately
+ * not built — see decision to hire humans for that instead. Legal only has
+ * draft_dmca_notice, a draft/generate tool, which stays out of the
+ * automated digest per the safety boundary above). Add real departments
+ * here once real read-only tools exist for them, not before.
  * ---------------------------------------------------------------------------
  */
 
@@ -49,11 +61,19 @@ const DEPARTMENTS: DepartmentConfig[] = [
     systemPrompt: `You are the Data & Admin department agent for Vuka Music.
 You only have read-only tools. Report facts and flag anything that looks
 wrong (stalled payouts, unverified bank accounts sitting past cooldown,
-unusual signup/GMV movement). You never take action — you report.`,
-    allowedTools: ['run_sql_query', 'get_platform_metrics', 'search_users'],
-    task: `Give a short status check: current platform metrics, and whether
-anything in payouts or bank account verification looks stuck or needs
-admin attention. Be concrete with numbers, not vague.`,
+unusual signup/GMV movement, or a signup→first-sale funnel that looks
+unusually leaky). You never take action — you report.`,
+    allowedTools: [
+      'run_sql_query',
+      'get_platform_metrics',
+      'search_users',
+      'get_conversion_funnel',
+      'get_artist_summary',
+    ],
+    task: `Give a short status check: current platform metrics, the
+signup-to-first-sale conversion funnel, and whether anything in payouts or
+bank account verification looks stuck or needs admin attention. Be
+concrete with numbers, not vague.`,
   },
   {
     name: 'dev',
