@@ -1,3 +1,4 @@
+
 // ROOT schema.prisma — kept in sync with prisma/schema.prisma.
 // SOURCE OF TRUTH is prisma/schema.prisma. This file exists only
 // for tooling (Prisma Studio etc) run from the project root.
@@ -514,10 +515,61 @@ model IndustryUser {
   role        String             @default("")
   website     String             @default("")
   verified    Boolean            @default(false)
-  services    IndustryService[]
-  deals       Deal[]
-  referrals   IndustryReferral[]
-  createdAt   DateTime           @default(now())
+  // ── Earnings / payout ── running totals credited by handleIndustryOrderEvent
+  // (industry service order webhook) and debited as withdrawals are paid out.
+  totalEarnings  Float           @default(0)
+  totalWithdrawn Float           @default(0)
+  services       IndustryService[]
+  deals          Deal[]
+  referrals      IndustryReferral[]
+  bankAccounts   IndustryBankAccount[]
+  payoutRequests IndustryPayoutRequest[]
+  createdAt      DateTime           @default(now())
+}
+
+model IndustryBankAccount {
+  id                  String        @id @default(cuid())
+  industryUserId      String
+  industryUser        IndustryUser  @relation(fields: [industryUserId], references: [id])
+  bankName            String        @default("")
+  accountHolder       String        @default("")
+  accountNumber       String        @default("")  // encrypted at rest, mirrors ArtistBankAccount
+  maskedNumber        String        @default("")
+  branchCode          String        @default("")
+  accountType         String        @default("current")
+  paypalEmail         String?
+  paystackAccountCode String?
+  isDefault           Boolean       @default(false)
+  isVerified          Boolean       @default(false)
+  verifiedAt          DateTime?
+  verificationMethod  String        @default("")
+  eligibleForPayoutAt DateTime?     // 48h cooldown, same as ArtistBankAccount
+  payoutRequests      IndustryPayoutRequest[]
+  createdAt           DateTime      @default(now())
+
+  @@index([industryUserId])
+}
+
+model IndustryPayoutRequest {
+  id                 String    @id @default(cuid())
+  industryUserId     String
+  industryUser       IndustryUser @relation(fields: [industryUserId], references: [id])
+  amount             Float
+  currency           String    @default("ZAR")
+  bankAccountId      String?
+  bankAccount        IndustryBankAccount? @relation(fields: [bankAccountId], references: [id])
+  status             String    @default("pending") // pending, approved, processing, paid, rejected
+  method             String    @default("bank_transfer")
+  paypalEmail        String?
+  paystackReference  String?
+  adminNotes         String    @default("")
+  notes              String    @default("")
+  approvedAt         DateTime?
+  processedAt        DateTime?
+  createdAt          DateTime  @default(now())
+
+  @@index([industryUserId, status])
+  @@index([status])
 }
 
 model IndustryReferral {
@@ -1894,6 +1946,4 @@ model ArtistOnboarding {
   completedAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  @@map("artist_onboarding")
 }
