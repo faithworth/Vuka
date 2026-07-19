@@ -780,6 +780,7 @@ const handler = createMcpHandler(
         }
 
         const runs = data.workflow_runs.map((r: any) => ({
+          id: r.id,
           workflow: r.name,
           status: r.status, // queued | in_progress | completed
           conclusion: r.conclusion, // success | failure | cancelled | null
@@ -795,10 +796,57 @@ const handler = createMcpHandler(
             ? `Latest run is still ${latest.status}.`
             : latest.conclusion === "success"
             ? "Latest run passed."
-            : `Latest run ${latest.conclusion}.`;
+            : `Latest run ${latest.conclusion}. Run id: ${latest.id} — pass this to get_workflow_logs to see why.`;
 
         return {
           content: [{ type: "text", text: `${summaryLine}\n\n${JSON.stringify(runs, null, 2)}` }],
+        };
+      }
+    );
+
+    // --- Pull real failure output from a workflow run ---
+    server.tool(
+      "get_workflow_logs",
+      "Get the actual log output for a GitHub Actions workflow run, focused on the first failed job/step. Use this after get_ci_status shows a failure, instead of guessing at the cause — pass the run id from get_ci_status's output.",
+      {
+        run_id: z.string().describe("The workflow run id, from get_ci_status output"),
+      },
+      async ({ run_id }) => {
+        const jobsUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${run_id}/jobs`;
+        const jobsRes = await fetch(jobsUrl, { headers: githubHeaders() });
+        if (!jobsRes.ok) {
+          const errText = await jobsRes.text();
+          return { content: [{ type: "text", text: `Couldn't load jobs for run ${run_id}: ${errText}` }], isError: true };
+        }
+        const jobsData = await jobsRes.json();
+        const jobs = jobsData.jobs ?? [];
+        if (jobs.length === 0) {
+          return { content: [{ type: "text", text: `No jobs found for run ${run_id}.` }] };
+        }
+
+        const failedJob = jobs.find((j: any) => j.conclusion === "failure") ?? jobs[0];
+
+        const logsUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/jobs/${failedJob.id}/logs`;
+        const logsRes = await fetch(logsUrl, { headers: githubHeaders() });
+        if (!logsRes.ok) {
+          const errText = await logsRes.text();
+          return { content: [{ type: "text", text: `Couldn't fetch logs for job '${failedJob.name}': ${errText}` }], isError: true };
+        }
+
+        const fullLog = await logsRes.text();
+        // Logs can be huge — return the tail, which is where the actual error almost always lives.
+        const lines = fullLog.split("\n");
+        const tail = lines.slice(-150).join("\n");
+
+        const failedStep = (failedJob.steps ?? []).find((s: any) => s.conclusion === "failure");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Job: ${failedJob.name} (${failedJob.conclusion})\n${failedStep ? `Failed step: ${failedStep.name}\n` : ""}\n--- Last ${Math.min(150, lines.length)} lines of log ---\n\n${tail}`,
+            },
+          ],
         };
       }
     );
