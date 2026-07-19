@@ -54,7 +54,17 @@ export async function GET() {
     // Founding artist status
     const isFoundingArtist = user.artist.isFoundingArtist ?? false;
 
-    const referralLink = `${APP_URL}/auth/register?ref=${referralCode}`;
+    // FIX: was `?ref=${referralCode}` with no role param. The register page
+    // (src/app/auth/register/page.tsx) currently falls back to 'artist'
+    // when no ?role= is present, so this worked by coincidence — but it's
+    // a silent dependency on an implicit default in a different file, and
+    // if that default ever changes (e.g. to 'fan' for general safety),
+    // every referral link ever shared would start signing people up as
+    // fans with zero warning. Setting role explicitly here removes that
+    // fragile coupling. This is the referral programme for bringing in
+    // other ARTISTS specifically (see REWARD_THRESHOLD copy below), so
+    // 'artist' is the correct explicit value — not a guess.
+    const referralLink = `${APP_URL}/auth/register?ref=${referralCode}&role=artist`;
 
     return NextResponse.json({
       referralCode,
