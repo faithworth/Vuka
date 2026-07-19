@@ -178,6 +178,36 @@ const payoutRequest = z.object({
   { message: 'paypalEmail is required for PayPal payouts', path: ['paypalEmail'] }
 );
 
+// ── Industry payout (mirrors artist payout above) ─────────────────────────
+
+const industryBankAccountAdd = z.object({
+  accountHolder: safeText(100).min(2, 'Account holder name required'),
+  bankName:      safeText(60).min(2, 'Bank name required'),
+  branchCode:    z.string().max(10).trim().default(''),
+  accountNumber: z
+    .string()
+    .min(6, 'Account number too short')
+    .max(20, 'Account number too long')
+    .regex(/^\d+$/, 'Account number must be digits only')
+    .trim(),
+  accountType:   z.enum(['current', 'savings', 'transmission', 'credit']).default('current'),
+  isDefault:     z.boolean().default(false),
+});
+
+const industryPayoutRequest = z.object({
+  amount:        money({ min: 100, minMessage: 'Minimum payout is R100' }),
+  currency:      z.enum(['ZAR', 'USD']).default('ZAR'),
+  method:        z.enum(['bank_transfer', 'paystack', 'paypal']),
+  bankAccountId: cuid().optional(),
+  paypalEmail:   z.string().email().max(254).optional(),
+}).refine(
+  (d) => d.method !== 'bank_transfer' || !!d.bankAccountId,
+  { message: 'bankAccountId is required for bank transfers', path: ['bankAccountId'] }
+).refine(
+  (d) => d.method !== 'paypal' || !!d.paypalEmail,
+  { message: 'paypalEmail is required for PayPal payouts', path: ['paypalEmail'] }
+);
+
 // ── Admin actions ─────────────────────────────────────────────────────────
 
 const adminPayoutAction = z.object({
@@ -329,6 +359,10 @@ export const schemas = {
   payout: {
     bankAccountAdd,
     request:  payoutRequest,
+  },
+  industryPayout: {
+    bankAccountAdd: industryBankAccountAdd,
+    request:        industryPayoutRequest,
   },
   admin: {
     payoutAction:   adminPayoutAction,
