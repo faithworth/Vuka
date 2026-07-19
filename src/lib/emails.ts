@@ -1,3 +1,4 @@
+
 /**
  * VUKA — Email System (Phase 9 Complete)
  * All 16 templates from spec + existing templates retained.
@@ -1022,7 +1023,7 @@ export async function sendRedownloadLinks({
   to, buyerName, purchases,
 }: {
   to: string; buyerName: string;
-  purchases: { itemName: string; downloadUrl: string }[];
+  purchases: { itemName: string; downloadUrl: string; licenseUrl?: string; licenseType?: string }[];
 }) {
   const subject = `Your Vuka download links`;
 
@@ -1033,9 +1034,11 @@ export async function sendRedownloadLinks({
           <tr>
             <td style="vertical-align:middle;">
               <p style="margin:0;font-size:15px;font-weight:600;color:#F5F5F5;">${p.itemName}</p>
+              ${p.licenseType ? `<p style="margin:2px 0 0;font-size:12px;text-transform:capitalize;color:#A0A0A0;">${p.licenseType} License</p>` : ''}
             </td>
             <td style="text-align:right;vertical-align:middle;white-space:nowrap;padding-left:16px;">
               <a href="${p.downloadUrl}" style="display:inline-block;background:linear-gradient(135deg,#A0E87C,#6BB84A);color:#0A0A0A;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;letter-spacing:0.3px;">&#8659; Download</a>
+              ${p.licenseUrl ? `<a href="${p.licenseUrl}" style="display:inline-block;background:#1A1A1A;color:#A0E87C;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;letter-spacing:0.3px;margin-left:8px;">📄 License</a>` : ''}
             </td>
           </tr>
         </table>
