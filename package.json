@@ -30,7 +30,7 @@
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@prisma/client": "^5.15.0",
     "@supabase/ssr": "^0.4.0",
-    "@supabase/supabase-js": "^2.44.0",
+    "@supabase/supabase-js": "^2.45.0",
     "@upstash/ratelimit": "^2.0.0",
     "@upstash/redis": "^1.31.0",
     "clsx": "^2.1.1",
@@ -54,8 +54,7 @@
     "wavesurfer.js": "^7.7.14",
     "zod": "^3.23.8",
     "mcp-handler": "^1.0.2",
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "@supabase/supabase-js": "^2.45.0"
+    "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "devDependencies": {
     "@types/node": "^20",
