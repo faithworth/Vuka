@@ -23,7 +23,8 @@
     "env:validate": "ts-node --compiler-options {\"module\":\"CommonJS\"} -e \"const {validateEnv} = require('./src/lib/env'); const r = validateEnv(); console.log(JSON.stringify(r, null, 2));\"",
     "cf:deploy": "cd cloudflare && npx wrangler deploy audio-worker.js --name vuka-audio",
     "cf:dev": "cd cloudflare && npx wrangler dev audio-worker.js",
-    "paypal:verify": "ts-node --compiler-options {\"module\":\"CommonJS\"} -e \"const p = require('./src/lib/paypal'); p.paypal.orders.get('test').catch(e => console.log(e.message));\""
+    "paypal:verify": "ts-node --compiler-options {\"module\":\"CommonJS\"} -e \"const p = require('./src/lib/paypal'); p.paypal.orders.get('test').catch(e => console.log(e.message));\"",
+    "agents:founder": "ts-node --compiler-options {\"module\":\"CommonJS\"} src/lib/agents/founder-orchestrator.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
