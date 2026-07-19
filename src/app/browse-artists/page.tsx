@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import VukaLoader from '@/components/brand/VukaLoader';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 const GENRES = [
   '', 'Amapiano', 'Afrobeats', 'Gqom', 'Hip Hop', 'Kwaito',
@@ -242,9 +243,7 @@ function ArtistCard({ artist, userRole, isOfferOpen, offerForm, sending, sent, o
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="font-black text-sm leading-tight" style={{ color: 'var(--text)' }}>{artist.name}</h3>
-              {artist.isVerified && (
-                <span className="text-[10px] font-bold" style={{ color: 'var(--sky)' }}>✓</span>
-              )}
+              {artist.isVerified && <VerifiedBadge size={14} />}
             </div>
             {artist.genreTags?.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
