@@ -79,6 +79,13 @@ export async function POST(req: NextRequest) {
                ?? p.sample?.title
                ?? 'Purchase',
     downloadUrl: `${appUrl}/download/${p.downloadToken}`,
+    // FIX: licenseUrl/licenseType are already scalar fields on Purchase
+    // (returned by default alongside the `include`d relations above) —
+    // they were just never mapped into the email payload, so beat buyers
+    // using the re-download portal always got a download link with no
+    // license PDF link, even though the PDF existed in R2.
+    licenseUrl:  p.licenseUrl || undefined,
+    licenseType: p.licenseType || undefined,
   }));
 
   // ── Send email ────────────────────────────────────────────────────────
