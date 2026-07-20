@@ -1,3 +1,4 @@
+
 /**
  * POST /api/checkout/paystack/webhook
  *
@@ -210,6 +211,36 @@ export async function POST(req: NextRequest) {
   let artistId    = '';
   let licenseUrl  = '';
 
+  // Generates + uploads a license PDF for any item type (previously
+  // beat-only). Sales/purchase pages let buyers pick a licenseType for
+  // release/video/sample purchases too (schemas.checkout.paystackInitialize
+  // applies licenseType to every itemType), so those buyers were charged
+  // for a license but never received the document.
+  async function issueLicensePdf(itemTitle: string, itemArtistName: string, itemKind: 'beat' | 'release' | 'video' | 'sample') {
+    try {
+      const pdfBuffer = await generateLicensePDF({
+        licenseId:   purchase.licenseId,
+        licenseType: purchase.licenseType || 'standard',
+        beatTitle:   itemTitle,
+        artistName:  itemArtistName,
+        buyerName:   purchase.buyerName,
+        buyerEmail:  purchase.buyerEmail,
+        amount:      purchase.amount,
+        currency:    purchase.currency,
+        date:        new Date(),
+        itemKind,
+      });
+      const pdfKey = r2Keys.license(purchase.licenseId);
+      await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
+      const url = getPublicUrl(pdfKey);
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: url } });
+      return url;
+    } catch (e) {
+      logger.error('[paystack/webhook] PDF failed', { traceId, error: String(e) });
+      return '';
+    }
+  }
+
   // FIX: the item-sales counter, the payout record, and the lifetime
   // gross-sales counter used to be written as five+ independent,
   // sequential prisma calls. A crash or timeout between any two of them
@@ -225,13 +256,7 @@ export async function POST(req: NextRequest) {
     if (beat) {
       itemName = beat.title; artistEmail = beat.artist.user.email;
       artistName = beat.artist.name; artworkUrl = beat.artworkUrl || ''; artistId = beat.artist.id;
-      try {
-        const pdfBuffer = await generateLicensePDF({ licenseId: purchase.licenseId, licenseType: purchase.licenseType, beatTitle: beat.title, artistName: beat.artist.name, buyerName: purchase.buyerName, buyerEmail: purchase.buyerEmail, amount: purchase.amount, currency: purchase.currency, date: new Date() });
-        const pdfKey = r2Keys.license(purchase.licenseId);
-        await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-        licenseUrl = getPublicUrl(pdfKey);
-        await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl } });
-      } catch (e) { logger.error('[paystack/webhook] PDF failed', { traceId, error: String(e) }); }
+      licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
       if (purchase.licenseType === 'exclusive') {
         await prisma.beat.update({ where: { id: beat.id }, data: { isExclusive: true, isActive: false } });
         await auditLog.exclusiveLocked(beat.id, beat.title, purchase.id);
@@ -245,6 +270,7 @@ export async function POST(req: NextRequest) {
     if (release) {
       itemName = release.title; artistEmail = release.artist.user.email;
       artistName = release.artist.name; artworkUrl = release.artworkUrl || ''; artistId = release.artist.id;
+      licenseUrl = await issueLicensePdf(release.title, release.artist.name, 'release');
       txOps.push(prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
@@ -254,6 +280,7 @@ export async function POST(req: NextRequest) {
     if (video) {
       itemName = video.title; artistEmail = video.artist.user.email;
       artistName = video.artist.name; artworkUrl = video.thumbnailUrl || ''; artistId = video.artist.id;
+      licenseUrl = await issueLicensePdf(video.title, video.artist.name, 'video');
       txOps.push(prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
@@ -262,6 +289,7 @@ export async function POST(req: NextRequest) {
     if (sample) {
       itemName = sample.title; artistEmail = sample.artist.user.email;
       artistName = sample.artist.name; artworkUrl = sample.artworkUrl || ''; artistId = sample.artist.id;
+      licenseUrl = await issueLicensePdf(sample.title, sample.artist.name, 'sample');
       txOps.push(prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } }));
       await incrementDailyRollup(artistId, 'revenue').catch(() => {});
     }
