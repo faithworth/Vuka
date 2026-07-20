@@ -1,4 +1,5 @@
 
+
 // ROOT schema.prisma — kept in sync with prisma/schema.prisma.
 // SOURCE OF TRUTH is prisma/schema.prisma. This file exists only
 // for tooling (Prisma Studio etc) run from the project root.
@@ -305,6 +306,8 @@ model Purchase {
   licenseId          String       @unique @default(cuid())
   stripePaymentId    String?
   paystackReference  String?
+  paypalCaptureId    String?      // PayPal capture ID (from captureResult), stored at capture-order time so
+                                   // the refund webhook can match the exact purchase instead of guessing
   status             String       @default("pending") // pending, confirmed, refunded
   licenseUrl         String?
   receiptUrl         String?
@@ -321,6 +324,7 @@ model Purchase {
   @@index([downloadToken])
   @@index([artistId])
   @@index([distributionReleaseId])
+  @@index([paypalCaptureId])
 }
 
 model SupportTxn {
