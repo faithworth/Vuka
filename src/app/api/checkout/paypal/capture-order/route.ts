@@ -1,3 +1,4 @@
+
 /**
  * POST /api/checkout/paypal/capture-order
  *
@@ -12,7 +13,9 @@
  * Side effects (same as Paystack webhook):
  *   ✓ Purchase confirmed with platformFee + netAmount
  *   ✓ userId resolved from email if not already set
- *   ✓ Beat: PDF license generated + uploaded to R2, licenseUrl stored
+ *   ✓ PDF license generated + uploaded to R2 for ALL item types (beat,
+ *     release, video, sample), licenseUrl stored — previously beat-only,
+ *     same gap fixed in the Paystack webhook via issueLicensePdf(itemKind)
  *   ✓ Beat exclusive: isExclusive=true, isActive=false
  *   ✓ Sales counter incremented on item
  *   ✓ Artist lifetimeGrossSales incremented
@@ -20,7 +23,7 @@
  *   ✓ DailyRollup incremented
  *   ✓ SplitSheet disbursed if one exists
  *   ✓ Plaques checked
- *   ✓ Buyer confirmation email sent (with license PDF link for beats)
+ *   ✓ Buyer confirmation email sent (with license PDF link for all types)
  *   ✓ Artist sale notification email sent
  *   ✓ Audit log written
  */
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vukamusic.com';
 
   // ── Load the pending Purchase created by create-order ──────────────────
-  const purchase = await prisma.purchase.findFirst({
+  const purchaseOrNull = await prisma.purchase.findFirst({
     where: {
       OR: [
         { id: purchaseId },
@@ -86,10 +89,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  if (!purchase) {
+  if (!purchaseOrNull) {
     logger.error('[PayPal capture] Purchase not found', { traceId, orderId, purchaseId });
     return NextResponse.json({ error: 'Purchase record not found. Contact support.' }, { status: 404 });
   }
+
+  // Narrowed, non-null purchase reference — used everywhere below,
+  // including inside the nested issueLicensePdf closure, to avoid TS18047
+  // (same pattern as the Paystack webhook fix).
+  const purchase = purchaseOrNull;
 
   // ── Idempotency ─────────────────────────────────────────────────────────
   if (purchase.status === 'confirmed') {
@@ -228,6 +236,36 @@ export async function POST(req: NextRequest) {
   let   artworkUrl  = '';
   let   licenseUrl  = '';
 
+  // Generates + uploads a license PDF for any item type (previously
+  // beat-only, mirroring the same fix already applied to the Paystack
+  // webhook). Buyers can pick a licenseType for release/video/sample
+  // purchases too, so those PayPal buyers were charged for a license but
+  // never received the document.
+  async function issueLicensePdf(title: string, itemArtistName: string, itemKind: 'beat' | 'release' | 'video' | 'sample') {
+    try {
+      const pdfBuffer = await generateLicensePDF({
+        licenseId:   purchase.licenseId,
+        licenseType: purchase.licenseType || 'standard',
+        beatTitle:   title,
+        artistName:  itemArtistName,
+        buyerName:   purchase.buyerName,
+        buyerEmail:  purchase.buyerEmail,
+        amount:      purchase.amount,
+        currency:    purchase.currency,
+        date:        new Date(),
+        itemKind,
+      });
+      const pdfKey = r2Keys.license(purchase.licenseId);
+      await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
+      const url = getPublicUrl(pdfKey);
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: url } });
+      return url;
+    } catch (e) {
+      logger.error('[PayPal capture] PDF generation failed', { traceId, error: String(e) });
+      return '';
+    }
+  }
+
   try {
     // ── Beat-specific: PDF license + exclusive lock ───────────────────────
     if (purchase.itemType === 'beat' && purchase.beatId) {
@@ -238,27 +276,7 @@ export async function POST(req: NextRequest) {
       if (beat) {
         itemTitle  = `${beat.title} (${purchase.licenseType || 'Basic'} License)`;
         artworkUrl = beat.artworkUrl || '';
-
-        // Generate license PDF
-        try {
-          const pdfBuffer = await generateLicensePDF({
-            licenseId:   purchase.licenseId,
-            licenseType: purchase.licenseType,
-            beatTitle:   beat.title,
-            artistName:  beat.artist.name,
-            buyerName:   purchase.buyerName,
-            buyerEmail:  purchase.buyerEmail,
-            amount:      purchase.amount,
-            currency:    purchase.currency,
-            date:        new Date(),
-          });
-          const pdfKey = r2Keys.license(purchase.licenseId);
-          await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-          licenseUrl = getPublicUrl(pdfKey);
-          await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl } });
-        } catch (e) {
-          logger.error('[PayPal capture] PDF generation failed', { traceId, error: String(e) });
-        }
+        licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
 
         // Lock exclusive beat
         if (purchase.licenseType === 'exclusive') {
@@ -278,11 +296,12 @@ export async function POST(req: NextRequest) {
     if (purchase.itemType === 'release' && purchase.releaseId) {
       const release = await prisma.release.findUnique({
         where:   { id: purchase.releaseId },
-        select:  { title: true, artworkUrl: true },
+        select:  { title: true, artworkUrl: true, artist: { select: { name: true } } },
       });
       if (release) {
         itemTitle  = release.title;
         artworkUrl = release.artworkUrl || '';
+        licenseUrl = await issueLicensePdf(release.title, release.artist.name, 'release');
         await prisma.release.update({ where: { id: purchase.releaseId }, data: { sales: { increment: 1 } } });
         await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
       }
@@ -292,11 +311,12 @@ export async function POST(req: NextRequest) {
     if (purchase.itemType === 'video' && purchase.videoId) {
       const video = await prisma.video.findUnique({
         where:  { id: purchase.videoId },
-        select: { title: true, thumbnailUrl: true },
+        select: { title: true, thumbnailUrl: true, artist: { select: { name: true } } },
       });
       if (video) {
         itemTitle  = video.title;
         artworkUrl = video.thumbnailUrl || '';
+        licenseUrl = await issueLicensePdf(video.title, video.artist.name, 'video');
         await prisma.video.update({ where: { id: purchase.videoId }, data: { sales: { increment: 1 } } });
       }
     }
@@ -305,11 +325,12 @@ export async function POST(req: NextRequest) {
     if (purchase.itemType === 'sample' && purchase.sampleId) {
       const sample = await prisma.sample.findUnique({
         where:  { id: purchase.sampleId },
-        select: { title: true, artworkUrl: true },
+        select: { title: true, artworkUrl: true, artist: { select: { name: true } } },
       });
       if (sample) {
         itemTitle  = sample.title;
         artworkUrl = sample.artworkUrl || '';
+        licenseUrl = await issueLicensePdf(sample.title, sample.artist.name, 'sample');
         await prisma.sample.update({ where: { id: purchase.sampleId }, data: { sales: { increment: 1 } } });
       }
     }
