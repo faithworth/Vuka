@@ -10,6 +10,7 @@ export async function generateLicensePDF({
   amount,
   currency,
   date,
+  itemKind = 'beat',
 }: {
   licenseId: string;
   licenseType: string;
@@ -20,6 +21,8 @@ export async function generateLicensePDF({
   amount: number;
   currency: string;
   date: Date;
+  /** 'beat' | 'release' | 'video' | 'sample' — controls header/field labels only. Defaults to 'beat' for backward compatibility with existing callers. */
+  itemKind?: 'beat' | 'release' | 'video' | 'sample';
 }): Promise<Buffer> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([595, 842]); // A4
@@ -33,13 +36,28 @@ export async function generateLicensePDF({
   const dark = rgb(0.051, 0.043, 0.078);
   const muted = rgb(0.545, 0.49, 0.667);
 
+  const kindLabel: Record<string, string> = {
+    beat: 'BEAT',
+    release: 'RELEASE',
+    video: 'VIDEO',
+    sample: 'SAMPLE',
+  };
+  const titleFieldLabel: Record<string, string> = {
+    beat: 'Beat Title:',
+    release: 'Release Title:',
+    video: 'Video Title:',
+    sample: 'Sample Title:',
+  };
+  const headerKind = kindLabel[itemKind] || 'BEAT';
+  const titleField = titleFieldLabel[itemKind] || 'Beat Title:';
+
   // Background
   page.drawRectangle({ x: 0, y: 0, width, height, color: dark });
 
   // Header bar
   page.drawRectangle({ x: 0, y: height - 100, width, height: 100, color: purple });
   page.drawText('VUKA', { x: 40, y: height - 65, size: 36, font: bold, color: white });
-  page.drawText('BEAT LICENSE AGREEMENT', { x: 40, y: height - 90, size: 11, font: regular, color: rgb(0.8, 0.7, 1) });
+  page.drawText(`${headerKind} LICENSE AGREEMENT`, { x: 40, y: height - 90, size: 11, font: regular, color: rgb(0.8, 0.7, 1) });
 
   // License type badge
   const badgeX = width - 160;
@@ -63,8 +81,8 @@ export async function generateLicensePDF({
     y -= lineH;
   };
 
-  section('BEAT DETAILS');
-  row('Beat Title:', beatTitle);
+  section(`${headerKind} DETAILS`);
+  row(titleField, beatTitle);
   row('Artist / Producer:', artistName);
   row('License Type:', licenseType.charAt(0).toUpperCase() + licenseType.slice(1));
   y -= 10;
@@ -106,9 +124,15 @@ export async function generateLicensePDF({
       '✓ Radio, TV and film licensing',
       '✓ Songwriter credit: 50% to buyer',
     ],
+    standard: [
+      '✓ Personal and commercial use of the purchased content',
+      '✓ Unlimited streams and downloads by the buyer',
+      '✓ Credit to the original artist/producer required',
+      '✗ Resale or redistribution of the original files',
+    ],
   };
 
-  const selectedRights = rights[licenseType.toLowerCase()] || rights.basic;
+  const selectedRights = rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard);
   for (const right of selectedRights) {
     const color = right.startsWith('✗') ? rgb(0.7, 0.3, 0.3) : rgb(0.2, 0.8, 0.5);
     page.drawText(right, { x: left, y, size: 9.5, font: regular, color });
@@ -121,7 +145,7 @@ export async function generateLicensePDF({
     'The artist retains all publishing and master rights.',
     'Buyer must credit the producer in all commercial releases.',
     'This license is non-transferable and non-sub-licensable.',
-    'Resale of this beat is strictly prohibited.',
+    'Resale of the original purchased files is strictly prohibited.',
     'This agreement is governed by applicable South African and international copyright law.',
   ];
   for (const t of terms) {
