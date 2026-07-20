@@ -1,8 +1,11 @@
+
+
 'use client';
 import { useEffect, useState } from 'react';
 import {
-  Plus, Pencil, Trash2, Eye, EyeOff, Briefcase, DollarSign, Calendar, Star,
+  Plus, Pencil, Trash2, Eye, EyeOff, Briefcase, DollarSign, Calendar, Star, Lock, Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 const CATEGORIES = [
@@ -26,6 +29,11 @@ const emptyForm = {
   packages: [{ ...emptyPkg, name: 'Basic' }, { ...emptyPkg, name: 'Standard' }],
 };
 
+// Mirrors FEATURE_CAPS.marketplaceServiceListings in src/lib/plans.ts —
+// duplicated here only for the UI lock display; the real enforcement is
+// server-side in /api/marketplace/services (checkFeatureCap).
+const FREE_LISTING_CAP = 5;
+
 export default function ArtistServicesPage() {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,14 +44,29 @@ export default function ArtistServicesPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState('');
 
+  // Plan state — used to show a real lock instead of a silent 403 after
+  // the artist has already filled out the whole form.
+  const [planSlug, setPlanSlug] = useState<string>('free');
+  const [planChecked, setPlanChecked] = useState(false);
+
   useEffect(() => {
     fetch('/api/marketplace/services')
       .then(r => r.ok ? r.json() : { services: [] })
       .then(d => { setServices(d.services || []); setLoading(false); })
       .catch(() => setLoading(false));
+
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(me => { if (me?.artist?.planSlug) setPlanSlug(me.artist.planSlug); setPlanChecked(true); })
+      .catch(() => setPlanChecked(true));
   }, []);
 
+  const isFreePlan = planChecked && planSlug === 'free';
+  const activeCount = services.filter(s => s.isActive).length;
+  const atCap = isFreePlan && activeCount >= FREE_LISTING_CAP;
+
   function openCreate() {
+    if (atCap) return; // guarded by disabled button too, belt-and-suspenders
     setEditId(null);
     setForm({ ...emptyForm, packages: emptyForm.packages.map(p => ({ ...p })) });
     setError('');
@@ -123,6 +146,12 @@ export default function ArtistServicesPage() {
   }
 
   async function toggleActive(svc: any) {
+    // Reactivating counts against the cap server-side — surface that here
+    // too instead of letting the request silently 403.
+    if (!svc.isActive && atCap) {
+      setError(`You've reached the Free plan limit of ${FREE_LISTING_CAP} active listings. Upgrade to Pro for unlimited listings.`);
+      return;
+    }
     const res = await fetch('/api/marketplace/services', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -131,6 +160,9 @@ export default function ArtistServicesPage() {
     if (res.ok) {
       const d = await res.json();
       setServices(prev => prev.map(s => s.id === svc.id ? d.service : s));
+    } else {
+      const d = await res.json().catch(() => ({}));
+      if (d.error) setError(d.error);
     }
   }
 
@@ -143,7 +175,7 @@ export default function ArtistServicesPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
             My Services
@@ -152,10 +184,34 @@ export default function ArtistServicesPage() {
             Offer mixing, features, production and more — fans and artists can hire you directly.
           </p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary gap-2">
-          <Plus size={16} /> Add Service
-        </button>
+        {atCap ? (
+          <Link href="/pricing"
+            className="btn btn-primary gap-2"
+            style={{ background: 'var(--gold)', color: '#0a0a0a' }}>
+            <Lock size={14} /> Upgrade to add more
+          </Link>
+        ) : (
+          <button onClick={openCreate} className="btn btn-primary gap-2">
+            <Plus size={16} /> Add Service
+          </button>
+        )}
       </div>
+
+      {/* Plan usage indicator — only shown on Free, where the cap is real */}
+      {isFreePlan && (
+        <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm"
+          style={{
+            background: atCap ? 'rgba(232,200,124,0.08)' : 'var(--surface)',
+            border: `1px solid ${atCap ? 'rgba(232,200,124,0.3)' : 'var(--border)'}`,
+          }}>
+          <span style={{ color: atCap ? 'var(--gold)' : 'var(--text-muted)' }}>
+            {activeCount} of {FREE_LISTING_CAP} active listings used (Free plan)
+          </span>
+          <Link href="/pricing" className="font-semibold flex items-center gap-1" style={{ color: 'var(--gold)' }}>
+            <Sparkles size={12} /> Go Pro for unlimited
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -231,6 +287,12 @@ export default function ArtistServicesPage() {
             );
           })}
         </div>
+      )}
+
+      {error && !showForm && (
+        <p className="mt-4 text-sm px-4 py-3 rounded-xl" style={{ background: 'rgba(204,26,26,0.1)', color: 'var(--red)' }}>
+          {error}
+        </p>
       )}
 
       {/* Service Form Modal */}
