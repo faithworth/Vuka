@@ -58,10 +58,10 @@ const nextConfig = {
     ];
   },
 
+  // Next.js 15: stable top-level option (was experimental.serverComponentsExternalPackages in 14.x)
+  serverExternalPackages: ['@prisma/client', 'prisma'],
+
   experimental: {
-    // Silence Prisma edge-runtime warning (we use Node runtime for all DB routes)
-    // Next.js 14: this lives under experimental (moved to top-level in Next.js 15)
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
     optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
 
