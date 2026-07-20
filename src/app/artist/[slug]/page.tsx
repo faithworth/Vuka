@@ -1,5 +1,5 @@
 import { Navbar } from '@/components/Navbar';
-import { Instagram, Twitter, Youtube, Music2, Radio } from 'lucide-react';
+import { Camera, AtSign, Video, Music2, Radio } from 'lucide-react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import FollowButton from './FollowButton';
 import MessageButton from './MessageButton';
@@ -110,9 +110,9 @@ export default async function ArtistProfilePage({ params }: { params: { slug: st
         {(() => {
           const links = artist.socialLinks || artist.storefront?.socialLinks || {};
           const icons: Record<string, any> = {
-            instagram: { icon: Instagram, label: 'Instagram', base: 'https://instagram.com/' },
-            twitter:   { icon: Twitter,   label: 'Twitter',   base: 'https://twitter.com/' },
-            youtube:   { icon: Youtube,   label: 'YouTube',   base: '' },
+            instagram: { icon: Camera,    label: 'Instagram', base: 'https://instagram.com/' },
+            twitter:   { icon: AtSign,    label: 'Twitter',   base: 'https://twitter.com/' },
+            youtube:   { icon: Video,     label: 'YouTube',   base: '' },
             spotify:   { icon: Music2,    label: 'Spotify',   base: '' },
             soundcloud:{ icon: Radio,     label: 'SoundCloud',base: '' },
           };
