@@ -1,4 +1,5 @@
 
+
 /**
  * POST /api/checkout/paystack/webhook
  *
@@ -101,14 +102,22 @@ export async function POST(req: NextRequest) {
   }
 
   // Find purchase by stored reference
-  const purchase = await prisma.purchase.findFirst({
+  const purchaseOrNull = await prisma.purchase.findFirst({
     where: { paystackReference: reference },
   });
 
-  if (!purchase) {
+  if (!purchaseOrNull) {
     logger.warn('[paystack/webhook] Purchase not found for reference', { traceId, reference });
     return NextResponse.json({ ok: true });
   }
+
+  // Narrowed, non-null purchase reference. Using this (instead of the
+  // original `purchaseOrNull`/`purchase` binding) everywhere below —
+  // including inside the nested `issueLicensePdf` closure — because
+  // TypeScript does not carry a null-check narrowing of an outer const
+  // into a nested function body (TS18047), even though the value can't
+  // actually change here.
+  const purchase = purchaseOrNull;
 
   if (purchase.status !== 'pending') {
     logger.info('[paystack/webhook] Duplicate — already processed', { traceId, reference });
