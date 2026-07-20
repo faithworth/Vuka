@@ -100,16 +100,17 @@ export const VALID_GENRES = [
 
 const beatUpload = z.object({
   title:        safeText(200).min(1, 'Title required'),
-  price:        z.number().min(0, 'Price cannot be negative'),
-  bpm:          z.number().int().min(40).max(300).optional(),
-  key:          z.string().max(10).optional(),
+  bpm:          z.coerce.number().int().min(40).max(300).optional(),
+  keySignature: z.string().max(10).optional(),
+  genre:        safeText(50).optional(),
   mood:         safeText(50).optional(),
   tags:         z.array(safeText(50)).max(15).default([]),
-  genres:       z.array(z.enum(VALID_GENRES)).min(1).max(3),
-  audioFileKey: z.string().max(500).min(1, 'Audio file is required'),
-  coverUrl:     httpsUrl().optional(),
-  isExclusive:  z.boolean().default(false),
-  description:  safeText(2000).optional(),
+  basicPrice:   z.coerce.number().min(0).optional(),
+  premiumPrice: z.coerce.number().min(0).optional(),
+  exclPrice:    z.coerce.number().min(0).optional(),
+  hasWav:       z.boolean().default(false),
+  hasMp3:       z.boolean().default(false),
+  artworkType:  z.enum(['image/png', 'image/jpeg']).optional(),
 });
 
 // ── Release (selling music directly — no distribution) ───────────────────
@@ -212,22 +213,31 @@ const industryPayoutRequest = z.object({
 
 const adminPayoutAction = z.object({
   requestId: cuid(),
-  action:    z.enum(['approve', 'reject']),
+  action:    z.enum(['approve', 'reject', 'mark_paid']),
   notes:     safeText(500).optional(),
+  reference: safeText(120).optional(),
 });
 
 const adminUserAction = z.object({
   userId: cuid(),
-  action: z.enum(['suspend', 'unsuspend', 'verify', 'unverify', 'promote', 'demote']),
+  action: z.enum(['suspend', 'unsuspend', 'verify', 'unverify', 'set_role', 'delete', 'set_plan']),
   reason: safeText(500).optional(),
-  role:   z.enum(['artist', 'industry', 'admin', 'moderator', 'fan']).optional(),
+  // `value` holds the role name for set_role or the plan slug for set_plan —
+  // kept as a loose string here and checked against the real allow-list
+  // (ROLE/PLAN enums) in the route handler itself, since that list is
+  // sourced from src/lib/plans.ts and shouldn't be duplicated/drifted here.
+  value:  safeText(40).optional(),
+  months: z.number().int().positive().max(120).optional(),
 });
 
 const adminReleaseAction = z.object({
   releaseId: cuid(),
-  action:    z.enum(['approve', 'reject', 'takedown', 'restore']),
-  reason:    safeText(1000).optional(),
-});
+  action:    z.enum(['activate', 'deactivate', 'delete']),
+  notes:     safeText(1000).optional(),
+}).refine(
+  (v) => v.action !== 'deactivate' || !!v.notes?.trim(),
+  { message: 'A reason is required to unpublish a release', path: ['notes'] },
+);
 
 // ── Social ────────────────────────────────────────────────────────────────
 
@@ -279,11 +289,17 @@ const searchQuery = z.object({
 // ── Checkout ──────────────────────────────────────────────────────────────
 
 const paystackInitialize = z.object({
-  itemType:   z.enum(['beat', 'release', 'video', 'sample', 'subscription', 'membership']),
+  itemType:   z.enum(['beat', 'release', 'video', 'sample', 'merch', 'subscription', 'membership']),
   itemId:     z.string().min(1),
   buyerName:  safeText(200).min(1),
   buyerEmail: z.string().email().max(254).trim().toLowerCase(),
-  licenseType: z.enum(['standard', 'exclusive', 'sync']).default('standard').optional(),
+  licenseType:  z.enum(['basic', 'premium', 'exclusive', 'standard', 'sync']).optional(),
+  currency:     z.enum(['ZAR', 'USD']).default('ZAR').optional(),
+  // Pay-what-you-want / custom-price releases send this as a string from the
+  // form input — coerce rather than reject, then re-derive/clamp server-side
+  // against the item's own minPrice exactly as this route already does.
+  customAmount: z.coerce.number().positive().optional(),
+  userId:       cuid().optional(),
 });
 
 const paypalCreateOrder = z.object({
