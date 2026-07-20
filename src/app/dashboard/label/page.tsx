@@ -1,12 +1,26 @@
+
+
 'use client';
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock, Wallet } from 'lucide-react';
+import { Building2, Plus, Users, Copy, Check, Trash2, AlertCircle, UserPlus, ChevronDown, ChevronUp, Lock, Wallet, TrendingUp, BarChart2 } from 'lucide-react';
 import { getEffectivePlan } from '@/lib/plans';
 import Link from 'next/link';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 interface RosterArtist { id: string; name: string; slug: string; photoUrl?: string; revenueShare: number; status: string; joinedAt: string | null }
 interface LabelData { id: string; name: string; slug: string; logoUrl: string; description: string; website: string; roster: RosterArtist[] }
+
+// ── Roster Analytics types (Label-exclusive) ──────────────────
+interface RosterAnalyticsArtist {
+  artistId: string; name: string; slug: string; photoUrl?: string;
+  revenueShare: number; lifetimeGross: number;
+  revenue30d: number; sales30d: number; plays30d: number; newFollowers30d: number;
+}
+interface RosterAnalytics {
+  totals: { revenue30d: number; sales30d: number; plays30d: number; newFollowers30d: number; lifetimeGross: number };
+  perArtist: RosterAnalyticsArtist[];
+  trend: { date: string; revenue: number }[];
+}
 
 export default function LabelPage() {
   const [label,    setLabel]    = useState<LabelData | null>(null);
@@ -31,6 +45,20 @@ export default function LabelPage() {
   const [inviteLink,    setInvLink] = useState('');
 
   const [planError, setPlanError] = useState(false);
+
+  // ── Roster Analytics (Label plan exclusive) ───────────────────
+  const [analytics, setAnalytics] = useState<RosterAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  async function loadRosterAnalytics() {
+    setAnalyticsLoading(true);
+    try {
+      const r = await fetch('/api/label/roster-analytics');
+      if (r.ok) setAnalytics(await r.json());
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }
 
   // ── Bulk payouts (Label plan exclusive) ──────────────────────
   interface BulkPayoutArtist {
@@ -96,7 +124,11 @@ export default function LabelPage() {
     try {
       const r = await fetch('/api/label');
       if (r.status === 403) { setPlanError(true); setLoading(false); return; }
-      if (r.ok) { const d = await r.json(); setLabel(d.label); if (d.label) loadBulkPayouts(); }
+      if (r.ok) {
+        const d = await r.json();
+        setLabel(d.label);
+        if (d.label) { loadBulkPayouts(); loadRosterAnalytics(); }
+      }
     } catch {}
     setLoading(false);
   }
@@ -144,7 +176,8 @@ export default function LabelPage() {
         </div>
         <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--text)' }}>Label Plan Required</h2>
         <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          The Label feature lets you manage multiple artists, set revenue splits, and issue invite links — all under one roof.
+          The Label feature lets you manage multiple artists, set revenue splits, issue invite links, and see aggregated
+          roster analytics no other plan offers — all under one roof.
           It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Music Label plan</strong> (R999/mo, 5% platform fee).
         </p>
         <Link href="/pricing"
@@ -204,6 +237,8 @@ export default function LabelPage() {
 
   const active  = label.roster.filter(r => r.status === 'active');
   const pending = label.roster.filter(r => r.status === 'pending');
+  const maxTrendRevenue = Math.max(1, ...(analytics?.trend.map(t => t.revenue) ?? [1]));
+  const maxArtistRevenue = Math.max(1, ...(analytics?.perArtist.map(a => a.revenue30d) ?? [1]));
 
   return (
     <div className="p-6 md:p-10 max-w-2xl">
@@ -267,6 +302,68 @@ export default function LabelPage() {
             <div className="text-xs mt-0.5" style={{ color:'var(--text-muted)' }}>{s.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Roster Analytics — Label plan exclusive */}
+      <div className="rounded-2xl p-4 mb-6" style={{ background:'var(--surface)', border:'1px solid var(--border)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BarChart2 size={16} style={{ color:'var(--gold)' }} />
+            <h2 className="text-sm font-bold" style={{ color:'var(--text)' }}>Roster Analytics</h2>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'var(--gold)', color:'#000' }}>LABEL</span>
+          </div>
+          <span className="text-[11px]" style={{ color:'var(--text-muted)' }}>Last 30 days</span>
+        </div>
+
+        {analyticsLoading ? (
+          <div className="py-6 flex justify-center"><VukaLoader size={20} /></div>
+        ) : !analytics || analytics.perArtist.length === 0 ? (
+          <p className="text-xs" style={{ color:'var(--text-muted)' }}>No active roster artists to report on yet.</p>
+        ) : (
+          <>
+            {/* Combined totals across every artist on the roster */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[
+                { label: 'Revenue',    value: `R${analytics.totals.revenue30d.toFixed(0)}`, color: 'var(--green)' },
+                { label: 'Sales',      value: analytics.totals.sales30d,                      color: 'var(--sky)' },
+                { label: 'Plays',      value: analytics.totals.plays30d,                       color: 'var(--gold)' },
+                { label: 'Followers',  value: `+${analytics.totals.newFollowers30d}`,           color: 'var(--text)' },
+              ].map(s => (
+                <div key={s.label} className="text-center px-1">
+                  <div className="text-sm font-black" style={{ color: s.color }}>{s.value}</div>
+                  <div className="text-[10px]" style={{ color:'var(--text-muted)' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 30-day roster-wide revenue trend, sparkline via CSS bars */}
+            <div className="flex items-end gap-[2px] h-12 mb-4 px-1">
+              {analytics.trend.map(t => (
+                <div key={t.date} title={`${t.date}: R${t.revenue.toFixed(2)}`}
+                  className="flex-1 rounded-sm"
+                  style={{
+                    height: `${Math.max(4, (t.revenue / maxTrendRevenue) * 100)}%`,
+                    background: 'linear-gradient(180deg, var(--gold), rgba(212,160,0,0.25))',
+                    minWidth: 2,
+                  }} />
+              ))}
+            </div>
+
+            {/* Per-artist breakdown, sorted highest revenue first */}
+            <div className="space-y-1.5">
+              {analytics.perArtist.map(a => (
+                <div key={a.artistId} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg" style={{ background:'var(--surface2)' }}>
+                  {a.photoUrl ? <img src={a.photoUrl} alt={a.name} className="w-6 h-6 rounded-md object-cover flex-shrink-0"/> : <div className="w-6 h-6 rounded-md flex items-center justify-center font-black text-[10px] flex-shrink-0" style={{ background:'var(--surface)', color:'var(--text-muted)' }}>{a.name[0]}</div>}
+                  <span className="text-xs font-semibold truncate flex-shrink-0" style={{ color:'var(--text)', width: 90 }}>{a.name}</span>
+                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.max(2, (a.revenue30d / maxArtistRevenue) * 100)}%`, background:'var(--green)' }} />
+                  </div>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color:'var(--green)' }}>R{a.revenue30d.toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Bulk Payouts — Label plan exclusive */}
