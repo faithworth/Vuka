@@ -32,7 +32,9 @@ const schema = z.object({
 });
 
 async function getAdminUser(req: NextRequest) {
-  const cookieStore = cookies();
+  // Next.js 15: cookies() returns a Promise now — must be awaited before
+  // calling any method on it (getAll, get, etc).
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
