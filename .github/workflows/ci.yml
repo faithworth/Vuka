@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # NOTE: using `npm install` not `npm ci` for now — package-lock.json
+      # has not yet been regenerated against the Next 15 / React 19 bump in
+      # this same batch. Once someone runs `npm install` locally with a real
+      # network/npm registry and commits the resulting package-lock.json,
+      # switch this back to `npm ci` (stricter, reproducible, faster).
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test -- run
+
+      - name: Audit (non-blocking)
+        run: npm audit --audit-level=critical || true
+        # NOTE: non-blocking on purpose for now — see .env.example / CHANGES.md
+        # for the currently-accepted Next.js 14.x and Cloudflare-Wrangler-toolchain
+        # findings that need a major-version migration, not a quick patch.
+        # Once those are scheduled, flip this to a hard gate (remove `|| true`).
