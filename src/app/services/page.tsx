@@ -1,3 +1,5 @@
+
+
 'use client';
 // src/app/services/page.tsx
 // Unified public services hub — shows BOTH:
@@ -227,7 +229,16 @@ export default function ServicesPage() {
   }
 
   const cats = tab === 'industry' ? INDUSTRY_CATS : MKTPLACE_CATS;
-  const canAct = userRole === 'artist' || userRole === 'fan' || userRole === 'producer';
+  // FIX: 'verified_artist' is a distinct role value from 'artist' (see
+  // src/app/api/auth/register/route.ts ROLE_RANK and auth/callback's own
+  // redirect logic, which both treat it as a real, separate artist role).
+  // This check omitted it, so any artist whose role had been elevated to
+  // verified_artist got `canAct = false` and the entire Order/Inquire
+  // button block silently rendered nothing (fell through to the final
+  // `: null` case) — while their plan tier was irrelevant, this is exactly
+  // why some artists could order services and others, with no visible
+  // error, simply saw no button at all.
+  const canAct = userRole === 'artist' || userRole === 'fan' || userRole === 'producer' || userRole === 'verified_artist';
 
   // Filter by search
   const filteredIndustry = industrySvcs.filter(s => {
