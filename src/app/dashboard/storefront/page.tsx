@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Save, ExternalLink, Store, Palette, Type, Globe, Instagram, Twitter, Youtube } from 'lucide-react';
+import { Save, ExternalLink, Store, Palette, Type, Globe, Camera, AtSign, Video } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 interface SocialLinks {
@@ -200,9 +200,9 @@ export default function StorefrontPage() {
           <div className="space-y-3">
             {(
               [
-                { key: 'instagram' as const, icon: Instagram, placeholder: 'https://instagram.com/yourhandle', label: 'INSTAGRAM' },
-                { key: 'twitter'   as const, icon: Twitter,   placeholder: 'https://twitter.com/yourhandle',   label: 'X / TWITTER' },
-                { key: 'youtube'   as const, icon: Youtube,   placeholder: 'https://youtube.com/@yourchannel', label: 'YOUTUBE' },
+                { key: 'instagram' as const, icon: Camera, placeholder: 'https://instagram.com/yourhandle', label: 'INSTAGRAM' },
+                { key: 'twitter'   as const, icon: AtSign,   placeholder: 'https://twitter.com/yourhandle',   label: 'X / TWITTER' },
+                { key: 'youtube'   as const, icon: Video,     placeholder: 'https://youtube.com/@yourchannel', label: 'YOUTUBE' },
                 { key: 'website'   as const, icon: Globe,     placeholder: 'https://yourwebsite.com',          label: 'WEBSITE' },
               ] as const
             ).map(({ key, icon: Icon, placeholder, label }) => (
