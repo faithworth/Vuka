@@ -659,7 +659,7 @@ function TrackRow({ index, track, onChange, onRemove, canRemove }: {
 // ── HELPER COMPONENTS ──
 function FileDropzone({ label, sublabel, accept, onFile, file, inputRef, required, icon }: {
   label: string; sublabel?: string; accept: string; onFile: (f: File) => void;
-  file?: File; inputRef: React.RefObject<HTMLInputElement>; required?: boolean; icon?: React.ReactNode;
+  file?: File; inputRef: React.RefObject<HTMLInputElement | null>; required?: boolean; icon?: React.ReactNode;
 }) {
   return (
     <div>
