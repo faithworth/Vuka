@@ -38,7 +38,7 @@ export default function StorePage({ defaultFilter }: { defaultFilter?: string })
   const [buyBeat,  setBuyBeat]  = useState<any>(null);
   const [buyMerch, setBuyMerch] = useState<any>(null);
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
-  const searchTimer = useRef<NodeJS.Timeout>();
+  const searchTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/wishlist').then(r => r.ok ? r.json() : null).then(d => {
