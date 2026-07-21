@@ -182,7 +182,7 @@ export default function StoreMembershipsPage() {
   const [joiningId,setJoiningId]= useState<string | null>(null);
   const [joinError, setJoinError] = useState('');
 
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchTiers = useCallback((currentQ: string, currentSort: SortOption, currentPage: number) => {
     setLoading(true);
