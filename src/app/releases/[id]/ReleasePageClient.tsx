@@ -10,7 +10,7 @@ import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency } from '@/lib/utils';
 import {
   ShoppingCart, Calendar, Music,
-  Share2, Twitter, Link2, Check,
+  Share2, AtSign, Link2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
@@ -168,7 +168,7 @@ export default function ReleasePageClient({ release }: { release: any }) {
               <button onClick={shareTwitter}
                 className="p-3 rounded-xl transition-colors"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                <Twitter size={16} />
+                <AtSign size={16} />
               </button>
               <button onClick={copyLink}
                 className="p-3 rounded-xl transition-colors"
