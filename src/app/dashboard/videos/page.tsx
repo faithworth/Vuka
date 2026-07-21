@@ -586,7 +586,7 @@ export default function VideosPage() {
 
 function FileBtn({ label, sublabel, accept, onFile, file, inputRef, icon }: {
   label: string; sublabel?: string; accept: string; onFile: (f: File) => void;
-  file: File | null; inputRef: React.RefObject<HTMLInputElement>; icon?: React.ReactNode;
+  file: File | null; inputRef: React.RefObject<HTMLInputElement | null>; icon?: React.ReactNode;
 }) {
   return (
     <div>
