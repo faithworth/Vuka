@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const to = req.nextUrl.searchParams.get('to');
   const template = req.nextUrl.searchParams.get('template') || 'test';
 
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
+  if (!secret || !process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (!to) return NextResponse.json({ error: 'Missing ?to=' }, { status: 400 });
@@ -187,7 +187,7 @@ export async function GET(req: NextRequest) {
 // POST: send bulk test of all 16 templates at once
 export async function POST(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret');
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
+  if (!secret || !process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
     try {
       const url = new URL(`${base}/api/admin/test-email`);
       url.searchParams.set('to', to);
-      url.searchParams.set('secret', process.env.ADMIN_SECRET!);
+      url.searchParams.set('secret', process.env.CRON_SECRET!);
       url.searchParams.set('template', t);
       await fetch(url.toString());
       results[t] = 'sent';
