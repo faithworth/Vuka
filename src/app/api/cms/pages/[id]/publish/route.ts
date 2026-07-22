@@ -12,7 +12,8 @@ const STATUS_MAP: Record<string, string> = {
   review: 'review', approve: 'approved', draft: 'draft',
 };
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
