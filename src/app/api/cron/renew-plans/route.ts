@@ -31,11 +31,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { auditLog } from '@/lib/audit';
-import { chargeAuthorization, generateReference } from '@/lib/paystack';
-import { PLANS } from '@/lib/plans';
-
-const GRACE_PERIOD_DAYS = 3;
+import { renewSubscription } from '@/lib/renew-plans';
 
 export async function GET(req: NextRequest) {
   const auth   = req.headers.get('authorization') ?? '';
@@ -60,86 +56,8 @@ export async function GET(req: NextRequest) {
     });
 
     for (const sub of due) {
-      const plan = PLANS.find(p => p.slug === sub.planSlug);
-      const email = sub.artist?.user?.email;
-
-      if (!plan || plan.priceZAR === 0 || !email) {
-        results.skipped++;
-        continue;
-      }
-
-      const reference = generateReference('RENEW');
-
-      try {
-        const charge = await chargeAuthorization({
-          email,
-          amountZAR:         plan.priceZAR,
-          authorizationCode: sub.paystackToken,
-          reference,
-          metadata: { artistId: sub.artistId, planSlug: sub.planSlug, type: 'plan_renewal' },
-        });
-
-        if (charge.status === 'success') {
-          const newPeriodEnd = new Date(now);
-          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
-
-          await prisma.$transaction([
-            (prisma as any).artistPlanSubscription.update({
-              where: { id: sub.id },
-              data: {
-                currentPeriodStart: now,
-                currentPeriodEnd:   newPeriodEnd,
-                paystackReference:  reference,
-                failedAt:           null,
-                failReason:         null,
-              },
-            }),
-            prisma.artist.update({
-              where: { id: sub.artistId },
-              data:  { planExpiresAt: newPeriodEnd },
-            }),
-          ]);
-
-          await auditLog.adminAction(
-            'plan.auto_renewed', 'Artist', sub.artistId, 'system',
-            `Auto-renewed ${sub.planSlug} via saved Paystack authorization (${reference})`,
-          );
-          results.renewed++;
-          continue;
-        }
-
-        // Charge attempted but declined (not a network/API error) — falls
-        // through to the failure handling below.
-        throw new Error(charge.gatewayResponse || `Charge status: ${charge.status}`);
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-
-        if (sub.failedAt) {
-          // Already failed once — give up, let expire-plans downgrade it.
-          await (prisma as any).artistPlanSubscription.update({
-            where: { id: sub.id },
-            data:  { status: 'expired', failReason: reason },
-          });
-          await auditLog.adminAction(
-            'plan.auto_renew_failed_final', 'Artist', sub.artistId, 'system',
-            `Auto-renewal failed twice for ${sub.planSlug} — expiring, artist will drop to Free: ${reason}`,
-          );
-          results.expired++;
-        } else {
-          // First failure — grace window, try again next run.
-          const graceEnd = new Date(sub.currentPeriodEnd);
-          graceEnd.setDate(graceEnd.getDate() + GRACE_PERIOD_DAYS);
-          await (prisma as any).artistPlanSubscription.update({
-            where: { id: sub.id },
-            data:  { currentPeriodEnd: graceEnd, failedAt: now, failReason: reason },
-          });
-          await auditLog.adminAction(
-            'plan.auto_renew_failed_grace', 'Artist', sub.artistId, 'system',
-            `Auto-renewal failed for ${sub.planSlug}, granting ${GRACE_PERIOD_DAYS}-day grace: ${reason}`,
-          );
-          results.grace++;
-        }
-      }
+      const { outcome } = await renewSubscription(sub, now);
+      results[outcome]++;
     }
 
     logger.info('[cron/renew-plans] Complete', results);
