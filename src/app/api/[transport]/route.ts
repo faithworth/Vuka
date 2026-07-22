@@ -1824,6 +1824,164 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- Additional dev-efficiency tools ---
+    server.tool(
+      "batch_read_files",
+      "Read multiple files from the repo in one call instead of one github_read_file call per file — cuts round-trips when reviewing several related files at once. Files over ~30KB are skipped with a note to use github_read_file_range instead.",
+      { paths: z.array(z.string()).min(1).max(15), branch: z.string().optional().default("main") },
+      async ({ paths, branch }) => {
+        const sections: string[] = [];
+        for (const path of paths) {
+          const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`, { headers: githubHeaders() });
+          if (!res.ok) { sections.push(`--- ${path} ---\n(couldn't read: ${res.status})`); continue; }
+          const data = await res.json();
+          if (data.size > 30000) { sections.push(`--- ${path} ---\n(${data.size} bytes, too large — use github_read_file_range)`); continue; }
+          const content = Buffer.from(data.content, "base64").toString("utf-8");
+          sections.push(`--- ${path} ---\n${content}`);
+        }
+        return { content: [{ type: "text", text: sections.join("\n\n") }] };
+      }
+    );
+
+    server.tool(
+      "list_recent_commits",
+      "List the N most recent commits on a branch with messages and authors — lighter than get_changelog when you just need a quick recent-activity view.",
+      { branch: z.string().optional().default("main"), limit: z.number().int().min(1).max(50).optional().default(10) },
+      async ({ branch, limit }) => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits?sha=${branch}&per_page=${limit}`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Failed: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        return { content: [{ type: "text", text: data.map((c: any) => `${c.sha.slice(0,7)} ${c.commit.message.split("\n")[0]} (${c.commit.author.name}, ${c.commit.author.date})`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "list_open_prs",
+      "List open pull requests — what's waiting for review/merge without opening GitHub.",
+      {},
+      async () => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls?state=open&per_page=20`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Failed: ${await res.text()}` }], isError: true };
+        const prs = await res.json();
+        if (prs.length === 0) return { content: [{ type: "text", text: "No open pull requests." }] };
+        return { content: [{ type: "text", text: prs.map((p: any) => `#${p.number} ${p.title} (${p.head.ref} -> ${p.base.ref}), updated ${p.updated_at}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "search_known_issues",
+      "Search all known issues (open or resolved) by keyword across title/description/area — unlike get_project_briefing, which only shows open ones.",
+      { query: z.string() },
+      async ({ query }) => {
+        const { data, error } = await supabase.from("KnownIssue").select("id, title, description, severity, area, status").or(`title.ilike.%${query}%,description.ilike.%${query}%,area.ilike.%${query}%`).limit(20);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: `No issues matched "${query}".` }] };
+        return { content: [{ type: "text", text: data.map((i: any) => `[${i.status}/${i.severity}] ${i.title} (${i.area}) — id:${i.id}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "memory_bulk_set",
+      "Store or update several project-memory facts in one call instead of multiple memory_set calls — use when logging several related facts at once (e.g. end of a big session).",
+      { entries: z.array(z.object({ key: z.string(), category: z.string(), value: z.string() })).min(1).max(20) },
+      async ({ entries }) => {
+        const now = new Date().toISOString();
+        let updated = 0, created = 0;
+        for (const e of entries) {
+          const { data: existing } = await supabase.from("ProjectMemory").select("id").eq("key", e.key).maybeSingle();
+          if (existing) {
+            await supabase.from("ProjectMemory").update({ category: e.category, value: e.value, updatedAt: now }).eq("id", (existing as any).id);
+            updated++;
+          } else {
+            await supabase.from("ProjectMemory").insert({ id: crypto.randomUUID(), key: e.key, category: e.category, value: e.value, createdAt: now, updatedAt: now });
+            created++;
+          }
+        }
+        return { content: [{ type: "text", text: `Saved ${entries.length} memory entries (${created} new, ${updated} updated).` }] };
+      }
+    );
+
+    server.tool(
+      "get_deployment_drift",
+      "Check whether main has commits that haven't been through a completed CI run yet — flags if code is ahead of what's been verified.",
+      {},
+      async () => {
+        const commitsRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits?sha=main&per_page=1`, { headers: githubHeaders() });
+        const runsRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs?branch=main&per_page=1&status=completed`, { headers: githubHeaders() });
+        if (!commitsRes.ok || !runsRes.ok) return { content: [{ type: "text", text: "Couldn't check drift (GitHub API error)." }], isError: true };
+        const commits = await commitsRes.json();
+        const runs = await runsRes.json();
+        const latestSha = commits[0]?.sha;
+        const lastVerifiedSha = runs.workflow_runs?.[0]?.head_sha;
+        const drift = latestSha !== lastVerifiedSha;
+        return { content: [{ type: "text", text: `Latest commit on main: ${latestSha?.slice(0,7)}\nLast completed CI run was for: ${lastVerifiedSha?.slice(0,7) ?? "unknown"}\n${drift ? "DRIFT: newer commit(s) may not be CI-verified yet." : "In sync — latest commit has a completed CI run."}` }] };
+      }
+    );
+
+    server.tool(
+      "check_migration_drift",
+      "Compare migration folders in prisma/migrations against rows in _prisma_migrations to catch a migration that exists in the repo but was never applied to the live DB, or vice versa.",
+      {},
+      async () => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/prisma/migrations`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Couldn't list migrations folder: ${await res.text()}` }], isError: true };
+        const dirs = await res.json();
+        const repoMigrations = (Array.isArray(dirs) ? dirs : []).filter((d: any) => d.type === "dir").map((d: any) => d.name);
+        try {
+          const { rows } = await runReadOnlyQuery(`SELECT migration_name FROM _prisma_migrations`, 300);
+          const appliedNames = (rows as any[]).map((r) => r.migration_name);
+          const notApplied = repoMigrations.filter((m) => !appliedNames.includes(m));
+          const appliedNotInRepo = appliedNames.filter((m) => !repoMigrations.includes(m));
+          return { content: [{ type: "text", text: `In repo but not applied to DB: ${notApplied.join(", ") || "none"}\nApplied to DB but not in repo (drift): ${appliedNotInRepo.join(", ") || "none"}` }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "get_table_row_counts",
+      "Fast approximate row counts for every public table in one call (pg_class estimates, not exact COUNT(*)) — cheap overview of data scale across the whole schema.",
+      {},
+      async () => {
+        try {
+          const { rows } = await runReadOnlyQuery(
+            `SELECT relname AS table_name, reltuples::bigint AS approx_rows FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname='public' AND c.relkind='r' ORDER BY reltuples DESC`, 300
+          );
+          return { content: [{ type: "text", text: (rows as any[]).map((r) => `${r.table_name}: ~${r.approx_rows}`).join("\n") }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "diff_file_between_refs",
+      "Show whether a specific file differs between two refs (branches/SHAs) and a compact diff if so — cheaper than pulling both full files into context.",
+      { path: z.string(), base: z.string(), head: z.string().optional().default("main") },
+      async ({ path, base, head }) => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/compare/${base}...${head}`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Compare failed: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        const file = (data.files ?? []).find((f: any) => f.filename === path);
+        if (!file) return { content: [{ type: "text", text: `"${path}" is unchanged between ${base} and ${head}.` }] };
+        return { content: [{ type: "text", text: `${file.status}, +${file.additions}/-${file.deletions}\n\n${file.patch ?? "(no inline patch available, file may be too large or binary)"}` }] };
+      }
+    );
+
+    server.tool(
+      "list_stale_open_issues",
+      "List open known issues older than N days (default 14) — a prioritization aid so nothing sits forgotten.",
+      { days: z.number().optional().default(14) },
+      async ({ days }) => {
+        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase.from("KnownIssue").select("id, title, severity, area, createdAt").eq("status", "open").lt("createdAt", cutoff).order("createdAt");
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: `No open issues older than ${days} days.` }] };
+        return { content: [{ type: "text", text: data.map((i: any) => `[${i.severity}] ${i.title} (${i.area}) — open since ${i.createdAt}`).join("\n") }] };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
