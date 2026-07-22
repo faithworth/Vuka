@@ -52,27 +52,12 @@ export async function POST(req: NextRequest) {
         include: { artist: { include: { user: true } } },
       }).catch(() => null);
 
-      if (storeRelease?.isActive) {
-        amount = parseFloat(customAmount) || storeRelease.price;
-        if (storeRelease.minPrice > 0 && amount < storeRelease.minPrice)
-          return NextResponse.json({ error: `Minimum price is R${storeRelease.minPrice}` }, { status: 400 });
-        itemName    = storeRelease.title;
-        artistEmail = storeRelease.artist.user.email;
-      } else {
-        const distRelease = await prisma.distributionRelease.findUnique({
-          where: { id: itemId },
-          include: { artist: { include: { user: true } } },
-        }).catch(() => null);
-        if (!distRelease || distRelease.status !== 'live')
-          return NextResponse.json({ error: 'Release not found or not available' }, { status: 404 });
-        const payWYW = (distRelease as any).payWhatYouWant ?? false;
-        const minP   = (distRelease as any).minPrice ?? 0;
-        amount = payWYW ? (parseFloat(customAmount) || minP) : ((distRelease as any).price ?? 0);
-        if (minP > 0 && amount < minP)
-          return NextResponse.json({ error: `Minimum price is R${minP}` }, { status: 400 });
-        itemName    = distRelease.title;
-        artistEmail = distRelease.artist.user.email;
-      }
+      if (!storeRelease?.isActive) return NextResponse.json({ error: 'Release not found or inactive' }, { status: 404 });
+      amount = parseFloat(customAmount) || storeRelease.price;
+      if (storeRelease.minPrice > 0 && amount < storeRelease.minPrice)
+        return NextResponse.json({ error: `Minimum price is R${storeRelease.minPrice}` }, { status: 400 });
+      itemName    = storeRelease.title;
+      artistEmail = storeRelease.artist.user.email;
 
     } else if (itemType === 'video') {
       const video = await prisma.video.findUnique({ where: { id: itemId }, include: { artist: { include: { user: true } } } });
@@ -99,14 +84,12 @@ export async function POST(req: NextRequest) {
 
     // ── FREE item ───────────────────────────────────────────────────────────
     if (amount === 0) {
-      const isDistrib = itemType === 'release' && !(await prisma.release.findUnique({ where: { id: itemId } }).catch(() => null));
       const purchase  = await prisma.purchase.create({
         data: {
           userId:                userId || null,
           buyerEmail, buyerName, itemType,
-          beatId:                itemType === 'beat'    && !isDistrib ? itemId : null,
-          releaseId:             itemType === 'release' && !isDistrib ? itemId : null,
-          distributionReleaseId: itemType === 'release' && isDistrib  ? itemId : null,
+          beatId:                itemType === 'beat'    ? itemId : null,
+          releaseId:             itemType === 'release' ? itemId : null,
           videoId:               itemType === 'video'   ? itemId : null,
           sampleId:              itemType === 'sample'  ? itemId : null,
           merchId:               itemType === 'merch'   ? itemId : null,
@@ -128,14 +111,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ── PAID item ───────────────────────────────────────────────────────────
-    const isDistribPaid = itemType === 'release' && !(await prisma.release.findUnique({ where: { id: itemId } }).catch(() => null));
     const purchase = await prisma.purchase.create({
       data: {
         userId:                userId || null,
         buyerEmail, buyerName, itemType,
-        beatId:                itemType === 'beat'    && !isDistribPaid ? itemId : null,
-        releaseId:             itemType === 'release' && !isDistribPaid ? itemId : null,
-        distributionReleaseId: itemType === 'release' && isDistribPaid  ? itemId : null,
+        beatId:                itemType === 'beat'    ? itemId : null,
+        releaseId:             itemType === 'release' ? itemId : null,
         videoId:               itemType === 'video'   ? itemId : null,
         sampleId:              itemType === 'sample'  ? itemId : null,
         merchId:               itemType === 'merch'   ? itemId : null,
