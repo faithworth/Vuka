@@ -6,7 +6,8 @@ import { canAccessCms, canDelete, canPublish, getCmsPage, createRevision } from 
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -16,7 +17,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   } catch (e) { console.error('[cms/pages/[id] GET]', e); return NextResponse.json({ error: 'Server error' }, { status: 500 }); }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -41,7 +43,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   } catch (e) { console.error('[cms/pages/[id] PATCH]', e); return NextResponse.json({ error: 'Server error' }, { status: 500 }); }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canDelete(user.role)) return NextResponse.json({ error: 'Only owner/super_admin can delete pages.' }, { status: 403 });
