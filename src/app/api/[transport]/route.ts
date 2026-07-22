@@ -1252,6 +1252,197 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- Project memory: persistent context across sessions/chats ---
+    server.tool(
+      "get_project_briefing",
+      "Read this FIRST at the start of any Vuka Music work session, before re-reading code or docs. Returns the full persistent project memory (architecture, stack, business rules, conventions, gotchas) grouped by category, the 5 most recent session summaries, and all open known issues. Replaces re-deriving context from scratch.",
+      {},
+      async () => {
+        const [memRes, sessionsRes, issuesRes] = await Promise.all([
+          supabase.from("ProjectMemory").select("key, category, value, updatedAt").order("category"),
+          supabase.from("SessionLog").select("summary, filesChanged, decisions, openItems, createdAt").order("createdAt", { ascending: false }).limit(5),
+          supabase.from("KnownIssue").select("title, description, severity, area, status").neq("status", "resolved").order("severity"),
+        ]);
+        if (memRes.error) return { content: [{ type: "text", text: `Error loading memory: ${memRes.error.message}` }], isError: true };
+
+        const byCategory: Record<string, string[]> = {};
+        for (const row of memRes.data ?? []) {
+          const cat = row.category || "general";
+          byCategory[cat] = byCategory[cat] ?? [];
+          byCategory[cat].push(`- ${row.key}: ${row.value}`);
+        }
+        const memoryText = Object.keys(byCategory).length
+          ? Object.entries(byCategory).map(([cat, lines]) => `## ${cat}\n${lines.join("\n")}`).join("\n\n")
+          : "(no memory entries stored yet — use memory_set to start building this up)";
+
+        const sessionsText = (sessionsRes.data ?? []).length
+          ? (sessionsRes.data ?? []).map((s: any) => `- [${s.createdAt}] ${s.summary}${s.openItems ? ` | Open: ${s.openItems}` : ""}`).join("\n")
+          : "(no session logs yet — use log_session_summary at the end of a work session)";
+
+        const issuesText = (issuesRes.data ?? []).length
+          ? (issuesRes.data ?? []).map((i: any) => `- [${i.severity}/${i.area}] ${i.title}: ${i.description}`).join("\n")
+          : "(no open known issues on record)";
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `# Vuka Music — Project Briefing\n\n${memoryText}\n\n# Recent Sessions\n${sessionsText}\n\n# Open Known Issues\n${issuesText}`,
+            },
+          ],
+        };
+      }
+    );
+
+    server.tool(
+      "memory_set",
+      "Store or update a durable fact about the Vuka Music project (architecture decision, business rule, convention, gotcha) so future sessions don't have to rediscover it. Upserts by key.",
+      {
+        key: z.string().describe("Short unique identifier, e.g. 'plan-tiers' or 'payout-cooldown-rule'"),
+        category: z.string().describe("Grouping label, e.g. 'architecture', 'business-rules', 'conventions', 'gotchas'"),
+        value: z.string().describe("The fact itself, in plain language"),
+      },
+      async ({ key, category, value }) => {
+        const { data: existing } = await supabase.from("ProjectMemory").select("id").eq("key", key).maybeSingle();
+        const now = new Date().toISOString();
+        if (existing) {
+          const { error } = await supabase.from("ProjectMemory").update({ category, value, updatedAt: now }).eq("id", existing.id);
+          if (error) return { content: [{ type: "text", text: `Error updating memory: ${error.message}` }], isError: true };
+          return { content: [{ type: "text", text: `Updated memory "${key}".` }] };
+        }
+        const { error } = await supabase.from("ProjectMemory").insert({ id: crypto.randomUUID(), key, category, value, createdAt: now, updatedAt: now });
+        if (error) return { content: [{ type: "text", text: `Error saving memory: ${error.message}` }], isError: true };
+        return { content: [{ type: "text", text: `Saved memory "${key}".` }] };
+      }
+    );
+
+    server.tool(
+      "memory_get",
+      "Fetch a specific stored project-memory fact by its exact key. Use memory_search instead if you don't know the exact key.",
+      { key: z.string() },
+      async ({ key }) => {
+        const { data, error } = await supabase.from("ProjectMemory").select("key, category, value, updatedAt").eq("key", key).maybeSingle();
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data) return { content: [{ type: "text", text: `No memory found for key "${key}".` }] };
+        return { content: [{ type: "text", text: `[${data.category}] ${data.key}: ${data.value}\n(updated ${data.updatedAt})` }] };
+      }
+    );
+
+    server.tool(
+      "memory_search",
+      "Search stored project-memory facts by keyword across key, category, and value. Use when you don't know the exact key.",
+      { query: z.string() },
+      async ({ query }) => {
+        const { data, error } = await supabase
+          .from("ProjectMemory")
+          .select("key, category, value")
+          .or(`key.ilike.%${query}%,category.ilike.%${query}%,value.ilike.%${query}%`)
+          .limit(20);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: `No memory matched "${query}".` }] };
+        return { content: [{ type: "text", text: data.map((d: any) => `[${d.category}] ${d.key}: ${d.value}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "log_session_summary",
+      "Record a summary of the current work session — what changed, key decisions made, and what's left open — so the next session (any Claude, any chat) can pick up context in one call via get_project_briefing/get_recent_changes instead of re-reading the whole conversation history.",
+      {
+        summary: z.string().describe("2-5 sentence plain-language summary of what happened this session"),
+        files_changed: z.string().optional().describe("Comma-separated list of files touched"),
+        decisions: z.string().optional().describe("Key decisions made and why"),
+        open_items: z.string().optional().describe("What's left unfinished or needs follow-up"),
+      },
+      async ({ summary, files_changed, decisions, open_items }) => {
+        const { error } = await supabase.from("SessionLog").insert({
+          id: crypto.randomUUID(),
+          summary,
+          filesChanged: files_changed ?? "",
+          decisions: decisions ?? "",
+          openItems: open_items ?? "",
+          createdAt: new Date().toISOString(),
+        });
+        if (error) return { content: [{ type: "text", text: `Error logging session: ${error.message}` }], isError: true };
+        return { content: [{ type: "text", text: "Session summary logged." }] };
+      }
+    );
+
+    server.tool(
+      "get_recent_changes",
+      "Get the N most recent session-summary log entries — a lightweight changelog of what's been done recently across all chats, without reading commit history or transcripts.",
+      { limit: z.number().int().min(1).max(50).optional().default(10) },
+      async ({ limit }) => {
+        const { data, error } = await supabase.from("SessionLog").select("summary, filesChanged, decisions, openItems, createdAt").order("createdAt", { ascending: false }).limit(limit);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: "No session logs recorded yet." }] };
+        const text = data.map((s: any) => `[${s.createdAt}]\n${s.summary}${s.filesChanged ? `\nFiles: ${s.filesChanged}` : ""}${s.decisions ? `\nDecisions: ${s.decisions}` : ""}${s.openItems ? `\nOpen: ${s.openItems}` : ""}`).join("\n\n");
+        return { content: [{ type: "text", text }] };
+      }
+    );
+
+    server.tool(
+      "known_issue_action",
+      "Create, update, or resolve a known-issue record — persistent tracking of bugs/gaps/tech-debt across sessions so they don't get silently forgotten or rediscovered from scratch.",
+      {
+        action: z.enum(["create", "update", "resolve"]),
+        id: z.string().optional().describe("Required for update/resolve — the issue id"),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+        area: z.string().optional().describe("e.g. 'payments', 'auth', 'ci', 'testing'"),
+      },
+      async ({ action, id, title, description, severity, area }) => {
+        const now = new Date().toISOString();
+        if (action === "create") {
+          if (!title) return { content: [{ type: "text", text: "title is required to create an issue." }], isError: true };
+          const newId = crypto.randomUUID();
+          const { error } = await supabase.from("KnownIssue").insert({
+            id: newId, title, description: description ?? "", severity: severity ?? "medium", area: area ?? "general", status: "open", createdAt: now,
+          });
+          if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+          return { content: [{ type: "text", text: `Created known issue "${title}" (id: ${newId}).` }] };
+        }
+        if (!id) return { content: [{ type: "text", text: `id is required for action "${action}".` }], isError: true };
+        if (action === "resolve") {
+          const { error } = await supabase.from("KnownIssue").update({ status: "resolved", resolvedAt: now }).eq("id", id);
+          if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+          return { content: [{ type: "text", text: `Marked issue ${id} as resolved.` }] };
+        }
+        const updates: Record<string, any> = {};
+        if (title) updates.title = title;
+        if (description) updates.description = description;
+        if (severity) updates.severity = severity;
+        if (area) updates.area = area;
+        if (Object.keys(updates).length === 0) return { content: [{ type: "text", text: "No fields provided to update." }] };
+        const { error } = await supabase.from("KnownIssue").update(updates).eq("id", id);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        return { content: [{ type: "text", text: `Updated issue ${id}.` }] };
+      }
+    );
+
+    server.tool(
+      "repo_map",
+      "Get a live top-level map of the Vuka Music repo (root files/dirs plus API route groups) in one call instead of browsing with multiple github_list_files calls. Cheap orientation tool for 'what exists' questions.",
+      {},
+      async () => {
+        async function listDir(path: string) {
+          const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, { headers: githubHeaders() });
+          if (!res.ok) return [] as string[];
+          const data = await res.json();
+          return Array.isArray(data) ? data.map((d: any) => `${d.type === "dir" ? "📁" : "📄"} ${d.name}`) : [];
+        }
+        const [root, apiRoutes] = await Promise.all([listDir(""), listDir("src/app/api")]);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `# Repo root\n${root.join("\n")}\n\n# API route groups (src/app/api)\n${apiRoutes.join("\n")}`,
+            },
+          ],
+        };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
