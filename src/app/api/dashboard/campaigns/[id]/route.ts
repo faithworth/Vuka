@@ -1,3 +1,4 @@
+
 // GET    /api/dashboard/campaigns/[id] — single campaign detail
 // PATCH  /api/dashboard/campaigns/[id] — update (draft only) or publish
 // DELETE /api/dashboard/campaigns/[id] — delete (draft only)
@@ -7,15 +8,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const campaign = await prisma.campaign.findFirst({
-      where:   { id: params.id, artistId: user.artist.id },
+      where:   { id, artistId: user.artist.id },
       include: {
         tiers:   { orderBy: { amount: 'asc' } },
         backers: { where: { status: 'confirmed' }, orderBy: { createdAt: 'desc' }, take: 50 },
@@ -36,11 +38,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const campaign = await prisma.campaign.findFirst({
-      where: { id: params.id, artistId: user.artist.id },
+      where: { id, artistId: user.artist.id },
     });
     if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -52,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: 'Only draft campaigns can be published' }, { status: 400 });
       }
       const updated = await prisma.campaign.update({
-        where: { id: params.id },
+        where: { id },
         data:  { status: 'active' },
         include: {
           tiers:   { orderBy: { amount: 'asc' } },
@@ -70,7 +73,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const { title, description, coverUrl, targetAmount, deadline, campaignType } = body;
     const updated = await prisma.campaign.update({
-      where: { id: params.id },
+      where: { id },
       data:  {
         ...(title         && { title: title.trim() }),
         ...(description !== undefined && { description }),
@@ -94,11 +97,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const campaign = await prisma.campaign.findFirst({
-      where: { id: params.id, artistId: user.artist.id },
+      where: { id, artistId: user.artist.id },
     });
     if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -106,7 +110,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Only draft campaigns can be deleted.' }, { status: 400 });
     }
 
-    await prisma.campaign.delete({ where: { id: params.id } });
+    await prisma.campaign.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[campaign/DELETE]', err);
