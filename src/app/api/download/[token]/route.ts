@@ -1,3 +1,4 @@
+
 // ============================================================
 // PATCH 03 — src/app/api/download/[token]/route.ts
 // REPLACE entire file.
@@ -12,10 +13,11 @@ import prisma from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   const purchase = await prisma.purchase.findUnique({
-    where: { downloadToken: params.token },
+    where: { downloadToken: token },
     include: {
       beat: true,
       release: { include: { tracks: { orderBy: { trackNumber: 'asc' } } } },
@@ -38,7 +40,7 @@ export async function GET(
   // It is incremented in /api/download/[token]/file/[index] per actual file served.
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-  const base = `${appUrl}/api/download/${params.token}/file`;
+  const base = `${appUrl}/api/download/${token}/file`;
 
   const downloads: Array<{ name: string; url: string }> = [];
 
