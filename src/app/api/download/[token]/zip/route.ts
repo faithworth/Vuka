@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { r2, r2Keys } from '@/lib/r2';
@@ -24,10 +25,11 @@ async function fetchR2Buffer(key: string): Promise<Buffer | null> {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   const purchase = await prisma.purchase.findUnique({
-    where: { downloadToken: params.token },
+    where: { downloadToken: token },
     include: {
       beat: { include: { artist: true } },
       release: { include: { tracks: true, artist: true } },
