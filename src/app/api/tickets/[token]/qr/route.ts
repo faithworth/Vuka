@@ -1,11 +1,13 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
 import prisma from '@/lib/prisma';
 
-export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
   const purchase = await prisma.ticketPurchase.findUnique({
-    where: { qrToken: params.token },
+    where: { qrToken: token },
     select: { qrToken: true },
   });
   if (!purchase) return NextResponse.json({ error: 'Not found' }, { status: 404 });
