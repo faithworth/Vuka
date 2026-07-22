@@ -167,6 +167,8 @@ model Beat {
   purchases    Purchase[]
   licenses     BeatLicense[]
   createdAt    DateTime     @default(now())
+
+  @@index([artistId])
 }
 
 model Release {
@@ -189,6 +191,8 @@ model Release {
   tracks      Track[]
   purchases   Purchase[]
   createdAt   DateTime     @default(now())
+
+  @@index([artistId])
 }
 
 model Track {
@@ -201,6 +205,8 @@ model Track {
   previewUrl   String
   fullUrl      String
   waveformData Float[]
+
+  @@index([releaseId])
 }
 
 model Video {
@@ -221,6 +227,8 @@ model Video {
   isActive     Boolean    @default(true)
   purchases    Purchase[]
   createdAt    DateTime   @default(now())
+
+  @@index([artistId])
 }
 
 model Sample {
@@ -243,6 +251,8 @@ model Sample {
   isActive     Boolean    @default(true)
   purchases    Purchase[]
   createdAt    DateTime   @default(now())
+
+  @@index([artistId])
 }
 
 model Subscription {
@@ -257,6 +267,8 @@ model Subscription {
   isActive    Boolean    @default(true)
   purchases   Purchase[]
   createdAt   DateTime   @default(now())
+
+  @@index([artistId])
 }
 
 model Merch {
@@ -273,6 +285,8 @@ model Merch {
   isActive    Boolean    @default(true)
   purchases   Purchase[]
   createdAt   DateTime   @default(now())
+
+  @@index([artistId])
 }
 
 // ── TRANSACTIONS ─────────────────────────────────────────────
@@ -325,6 +339,11 @@ model Purchase {
   @@index([artistId])
   @@index([distributionReleaseId])
   @@index([paypalCaptureId])
+  @@index([userId])
+  @@index([beatId])
+  @@index([videoId])
+  @@index([sampleId])
+  @@index([subscriptionId])
 }
 
 model SupportTxn {
@@ -344,6 +363,9 @@ model SupportTxn {
   paystackReference  String?
   status             String   @default("pending")
   createdAt        DateTime @default(now())
+
+  @@index([fanUserId])
+  @@index([artistId])
 }
 
 model Goal {
@@ -358,6 +380,8 @@ model Goal {
   deadline      DateTime?
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
+
+  @@index([artistId])
 }
 
 model WishlistItem {
@@ -491,6 +515,9 @@ model ServiceInquiry {
   industryService  IndustryService? @relation(fields: [serviceId], references: [id])
   status           String          @default("pending")
   createdAt        DateTime        @default(now())
+
+  @@index([artistId])
+  @@index([serviceId])
 }
 
 // ── ADMIN ────────────────────────────────────────────────────
@@ -574,6 +601,7 @@ model IndustryPayoutRequest {
 
   @@index([industryUserId, status])
   @@index([status])
+  @@index([bankAccountId])
 }
 
 model IndustryReferral {
@@ -610,6 +638,8 @@ model IndustryService {
   isActive       Boolean           @default(true)
   inquiries      ServiceInquiry[]
   createdAt      DateTime          @default(now())
+
+  @@index([industryUserId])
 }
 
 model Deal {
@@ -624,6 +654,8 @@ model Deal {
   currency       String       @default("ZAR")
   status         String       @default("open") // open, closed
   createdAt      DateTime     @default(now())
+
+  @@index([industryUserId])
 }
 
 // ── PHASE 2: CREATOR ECONOMY ──────────────────────────────────
@@ -769,6 +801,8 @@ model MarketplaceDispute {
   reason        String
   status        String           @default("open") // open, resolved, closed
   createdAt     DateTime         @default(now())
+
+  @@index([raisedByUserId])
 }
 
 model ServiceReview {
@@ -782,6 +816,9 @@ model ServiceReview {
   rating         Int
   comment        String           @default("")
   createdAt      DateTime         @default(now())
+
+  @@index([serviceId])
+  @@index([reviewerUserId])
 }
 
 model DistributionRelease {
@@ -849,6 +886,8 @@ model DistributionTrack {
   lyricists        String[]            @default([])
   language         String              @default("en")
   createdAt        DateTime            @default(now())
+
+  @@index([releaseId])
 }
 
 model DSPDelivery {
@@ -893,6 +932,7 @@ model PayoutRequest {
   @@index([artistId, status])
   @@index([method])
   @@index([status])
+  @@index([bankAccountId])
 }
 
 model ArtistBankAccount {
@@ -1142,6 +1182,7 @@ model PageView {
 
   @@index([artistId, createdAt])
   @@index([targetType, targetId])
+  @@index([userId])
 }
 
 model AnalyticsDailyRollup {
@@ -1215,6 +1256,7 @@ model SearchIndex {
 
   @@unique([entityType, entityId])
   @@index([entityType, isActive, score])
+  @@index([artistId])
 }
 
 model TrendingSnapshot {
@@ -1677,6 +1719,7 @@ model CampaignBacker {
 
   @@index([campaignId, status])
   @@index([backerEmail])
+  @@index([tierId])
   @@map("campaign_backers")
 }
 
@@ -1800,6 +1843,7 @@ model TicketPurchase {
 
   @@index([eventId, status])
   @@index([buyerEmail])
+  @@index([ticketId])
   @@map("ticket_purchases")
 }
 
