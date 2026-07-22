@@ -1,3 +1,4 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
@@ -6,11 +7,12 @@ import prisma from '@/lib/prisma';
 // GET /api/social/posts/[id] — single post (permalink page)
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const post = await prisma.artistPost.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         artist: { select: { id: true, name: true, slug: true, photoUrl: true, isVerified: true } },
       },
@@ -26,14 +28,15 @@ export async function GET(
 // PATCH /api/social/posts/[id] — edit or pin/unpin a post
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const post = await prisma.artistPost.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { artist: { select: { userId: true } } },
     });
     if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -41,7 +44,7 @@ export async function PATCH(
 
     const body = await req.json();
     const updated = await prisma.artistPost.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.body !== undefined ? { body: body.body.slice(0, 2000) } : {}),
         ...(body.isPinned !== undefined ? { isPinned: body.isPinned } : {}),
@@ -59,14 +62,15 @@ export async function PATCH(
 // DELETE /api/social/posts/[id]
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const post = await prisma.artistPost.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { artist: { select: { userId: true } } },
     });
     if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -76,7 +80,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await prisma.artistPost.delete({ where: { id: params.id } });
+    await prisma.artistPost.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[Posts/id] DELETE error:', err);
