@@ -6,7 +6,8 @@ import { canAccessCms, defaultBlockContent, BlockType } from '@/lib/cms';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -15,7 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   } catch (e) { return NextResponse.json({ error: 'Server error' }, { status: 500 }); }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -42,7 +44,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 // Reorder blocks — receives { order: [{id, order}] }
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
