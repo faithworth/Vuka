@@ -1,3 +1,4 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
@@ -6,9 +7,10 @@ import { resolveAbuseReport } from '@/lib/moderation';
 // PATCH /api/moderation/reports/[id] — admin resolves a report
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getServerUser();
     if (!user || !['owner','super_admin','admin','moderator'].includes(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -18,7 +20,7 @@ export async function PATCH(
     if (!resolution) return NextResponse.json({ error: 'resolution required' }, { status: 400 });
 
     const updated = await resolveAbuseReport(
-      params.id,
+      id,
       user.email,
       resolution,
       adminNotes ?? actionTaken
