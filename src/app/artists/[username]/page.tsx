@@ -1,3 +1,4 @@
+
 // ============================================================
 // VUKA — /artists/[username] canonical public profile route
 // Redirects to /artist/[slug] which has the full implementation.
@@ -9,17 +10,19 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
 interface Props {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { username } = await params;
   return {
-    title: `${params.username} — Vuka Music`,
-    description: `Listen to ${params.username} on Vuka Music`,
+    title: `${username} — Vuka Music`,
+    description: `Listen to ${username} on Vuka Music`,
   };
 }
 
-export default function ArtistUsernameRedirect({ params }: Props) {
+export default async function ArtistUsernameRedirect({ params }: Props) {
+  const { username } = await params;
   // Canonical redirect: /artists/username → /artist/slug
-  redirect(`/artist/${params.username}`);
+  redirect(`/artist/${username}`);
 }
