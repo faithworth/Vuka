@@ -2307,6 +2307,91 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    server.tool(
+      "get_revenue_dashboard",
+      "Revenue snapshot from the Purchase table: gross, platform fee, net, broken down by itemType (plan/marketplace/membership/ticket/campaign/support), for an optional date range (defaults to last 30 days).",
+      { startDate: z.string().optional(), endDate: z.string().optional() },
+      async ({ startDate, endDate }) => {
+        const start = startDate ?? new Date(Date.now() - 30 * 86400000).toISOString();
+        const end = endDate ?? new Date().toISOString();
+        const { data, error } = await supabase
+          .from("Purchase")
+          .select("itemType, amount, platformFee, netAmount, status")
+          .gte("createdAt", start)
+          .lte("createdAt", end);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        const byType: Record<string, { gross: number; fee: number; net: number; count: number }> = {};
+        let totals = { gross: 0, fee: 0, net: 0, count: 0 };
+        for (const p of data ?? []) {
+          if (p.status !== "confirmed") continue;
+          const t = byType[p.itemType] ?? { gross: 0, fee: 0, net: 0, count: 0 };
+          t.gross += p.amount; t.fee += p.platformFee; t.net += p.netAmount; t.count += 1;
+          byType[p.itemType] = t;
+          totals.gross += p.amount; totals.fee += p.platformFee; totals.net += p.netAmount; totals.count += 1;
+        }
+        const lines = Object.entries(byType).map(([k, v]) => `${k}: ${v.count} txns, gross R${v.gross.toFixed(2)}, fee R${v.fee.toFixed(2)}, net R${v.net.toFixed(2)}`);
+        lines.push(`TOTAL: ${totals.count} txns, gross R${totals.gross.toFixed(2)}, fee R${totals.fee.toFixed(2)}, net R${totals.net.toFixed(2)}`);
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "get_payout_queue_status",
+      "Pending ArtistPayout rows — count, total value, and how many are older than daysThreshold (default 3) and worth chasing.",
+      { daysThreshold: z.number().optional().default(3) },
+      async ({ daysThreshold }) => {
+        const { data, error } = await supabase.from("ArtistPayout").select("id, artistId, amount, currency, createdAt, notes").eq("status", "pending").order("createdAt", { ascending: true });
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data?.length) return { content: [{ type: "text", text: "No pending payouts." }] };
+        const cutoff = Date.now() - daysThreshold * 86400000;
+        const stale = data.filter((d: any) => new Date(d.createdAt).getTime() < cutoff);
+        const total = data.reduce((s: number, d: any) => s + d.amount, 0);
+        const lines = [`${data.length} pending payouts, total R${total.toFixed(2)}. ${stale.length} older than ${daysThreshold} days:`];
+        for (const s of stale.slice(0, 20)) lines.push(`  ${s.id} — artist ${s.artistId} — R${s.amount.toFixed(2)} — since ${s.createdAt} — ${s.notes}`);
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "find_at_risk_subscriptions",
+      "Plan subscriptions that are either missing a saved payment token (can't auto-renew at all) or currently in a failed/grace state — the artists most likely to silently drop to Free soon.",
+      {},
+      async () => {
+        const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+        await client.connect();
+        try {
+          const res = await client.query(
+            `SELECT aps.id, aps."artistId", a.name, aps."planSlug", aps.status, aps."paystackToken" IS NULL AS no_token, aps."failedAt", aps."currentPeriodEnd"
+             FROM artist_plan_subscriptions aps JOIN "Artist" a ON a.id = aps."artistId"
+             WHERE aps.status = 'active' AND (aps."paystackToken" IS NULL OR aps."failedAt" IS NOT NULL)
+             ORDER BY aps."currentPeriodEnd" ASC LIMIT 50`
+          );
+          if (!res.rows.length) return { content: [{ type: "text", text: "No at-risk subscriptions found." }] };
+          const lines = res.rows.map((r: any) => `${r.name} (${r.planSlug}) — ${r.no_token ? "NO SAVED CARD" : "in grace/failed"} — renews/expires ${r.currentPeriodEnd}`);
+          return { content: [{ type: "text", text: lines.join("\n") }] };
+        } finally {
+          await client.end();
+        }
+      }
+    );
+
+    server.tool(
+      "get_artist_health_snapshot",
+      "One artist's status in one call: plan, subscription health, lifetime sales, and recent purchase activity. Pass artistId or slug.",
+      { artistIdOrSlug: z.string() },
+      async ({ artistIdOrSlug }) => {
+        const { data: artist, error } = await supabase
+          .from("Artist")
+          .select("id, name, slug, planSlug, planExpiresAt, lifetimeGrossSales, isSuspended:isVerified")
+          .or(`id.eq.${artistIdOrSlug},slug.eq.${artistIdOrSlug}`)
+          .maybeSingle();
+        if (error || !artist) return { content: [{ type: "text", text: `Artist not found: ${error?.message ?? artistIdOrSlug}` }], isError: true };
+        const { data: purchases } = await supabase.from("Purchase").select("itemType, amount, createdAt").eq("artistId", (artist as any).id).order("createdAt", { ascending: false }).limit(10);
+        const recent = (purchases ?? []).map((p: any) => `  ${p.createdAt} — ${p.itemType} — R${p.amount}`).join("\n");
+        return { content: [{ type: "text", text: `${(artist as any).name} (${(artist as any).slug})\nPlan: ${(artist as any).planSlug}, expires ${(artist as any).planExpiresAt}\nLifetime gross: R${(artist as any).lifetimeGrossSales}\nRecent activity:\n${recent || "  none"}` }] };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
