@@ -1,15 +1,16 @@
 /**
- * GET  /api/admin/db-repair  — list all users + their current roles (requires CRON_SECRET)
- * POST /api/admin/db-repair  — fix a specific user's role (requires CRON_SECRET)
+ * GET  /api/admin/db-repair  — list all users + their current roles
+ * POST /api/admin/db-repair  — fix a specific user's role
  *
- * Protected by CRON_SECRET (same as /api/migrate) so you can hit it even before
- * admin login is working. Never exposed to the public — requires the secret.
+ * This is a ONE-TIME repair tool with the power to grant admin/owner roles,
+ * so it is disabled by default. To use it:
+ *   1. Set ENABLE_DB_REPAIR=true in the environment
+ *   2. Call with header  x-cron-secret: <CRON_SECRET>  (or Authorization: Bearer <CRON_SECRET>)
+ *   3. Set ENABLE_DB_REPAIR back to false/unset when done
  *
- * Query / body params:
- *   GET  ?secret=<CRON_SECRET>
- *   POST ?secret=<CRON_SECRET>  body: { userId, role, ensureArtistRecord? }
- *
- * This is a ONE-TIME repair tool. Once roles are fixed it becomes a no-op.
+ * The secret is only accepted via headers now (not a ?secret= query param),
+ * since query params can end up in server logs, browser history, and
+ * Referer headers.
  */
 export const dynamic = 'force-dynamic';
 
