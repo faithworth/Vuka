@@ -82,6 +82,11 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
         billingInterval:    'monthly',
         currentPeriodStart: now,
         currentPeriodEnd:   periodEnd,
+        // Only set when Paystack actually returned a reusable authorization
+        // (card channel; some banks opt out). If null, auto-renew cannot
+        // charge this subscription and it will fall through to manual
+        // renewal via expire-plans, same as today.
+        paystackToken: verification.authorizationReusable ? verification.authorizationCode : null,
       },
     });
 
