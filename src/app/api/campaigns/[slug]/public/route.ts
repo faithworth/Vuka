@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-type P = { params: { slug: string } };
-export async function GET(_: NextRequest, { params }: P) {
+type P = { params: Promise<{ slug: string }> };
+export async function GET(_: NextRequest, props: P) {
+  const params = await props.params;
   const campaign = await prisma.campaign.findUnique({
     where: { slug: params.slug },
     include: { tiers: { orderBy: { amount: 'asc' } }, artist: { select: { name: true, slug: true, photoUrl: true } }, _count: { select: { backers: { where: { status: 'confirmed' } } } } },
