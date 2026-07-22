@@ -1,3 +1,4 @@
+
 import { Navbar } from '@/components/Navbar';
 import { Camera, AtSign, Video, Music2, Radio } from 'lucide-react';
 import { notFound, permanentRedirect } from 'next/navigation';
@@ -12,8 +13,9 @@ async function getArtist(slug: string) {
   return res.json();
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const artist = await getArtist(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const artist = await getArtist(slug);
   // Redirect case: no point building real metadata for a page that's about
   // to 308 elsewhere — a neutral placeholder is fine here.
   if (artist?.redirectTo) return { title: 'Vuka Music' };
@@ -29,8 +31,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ArtistProfilePage({ params }: { params: { slug: string } }) {
-  const artist = await getArtist(params.slug);
+export default async function ArtistProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const artist = await getArtist(slug);
   // Artist changed their display name in Settings since this link was
   // shared — their slug auto-updated. Permanently redirect (308) rather
   // than 404ing, and rather than a temporary redirect, so search engines
