@@ -36,6 +36,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyTransaction, generateReference } from '@/lib/paystack';
 import { PLANS } from '@/lib/plans';
+import { renewSubscription } from '@/lib/renew-plans';
 
 const TEST_EMAIL = 'internal-test+paystack-harness@vukamusic.com';
 const TEST_SLUG  = 'internal-test-paystack-harness';
@@ -156,6 +157,24 @@ export async function POST(req: NextRequest) {
         failReason: sub.failReason,
       },
     });
+  }
+
+  if (mode === 'trigger-renew') {
+    const user = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });
+    const artist = user ? await prisma.artist.findFirst({ where: { userId: user.id } }) : null;
+    if (!artist) return NextResponse.json({ error: 'No test subscription found — run mode=charge first.' }, { status: 400 });
+
+    const sub = await (prisma as any).artistPlanSubscription.findFirst({
+      where: { artistId: artist.id },
+      include: { artist: { include: { user: { select: { email: true } } } } },
+    });
+    if (!sub) return NextResponse.json({ error: 'No test subscription found — run mode=charge first.' }, { status: 400 });
+
+    // Runs the exact same per-subscription logic the real daily cron uses,
+    // in-process, scoped to ONLY this one test subscription — never queries
+    // or touches any other subscription in the table.
+    const result = await renewSubscription(sub);
+    return NextResponse.json({ ok: true, mode, ...result });
   }
 
   if (mode !== 'charge' && mode !== 'decline') {
