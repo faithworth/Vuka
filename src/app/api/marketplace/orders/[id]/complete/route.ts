@@ -1,3 +1,4 @@
+
 // ============================================================
 // PHASE 2 — src/app/api/marketplace/orders/[id]/complete/route.ts
 // Buyer marks order as complete — triggers seller payout
@@ -9,14 +10,15 @@ import { requireAuth } from '@/lib/auth';
 import { completeOrder } from '@/lib/marketplace';
 import { createInvoiceFromOrder } from '@/lib/invoices';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const order = await completeOrder(params.id, user.id);
+    const order = await completeOrder(id, user.id);
 
     // Generate invoice for the completed order (non-blocking)
     createInvoiceFromOrder(order.id).catch(err =>
