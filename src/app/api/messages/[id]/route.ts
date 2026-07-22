@@ -1,3 +1,4 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
@@ -8,16 +9,17 @@ import prisma from '@/lib/prisma';
 // GET /api/messages/[id]?cursor=ISO_DATE&limit=50
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const cursor = req.nextUrl.searchParams.get('cursor') ?? undefined;
     const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '50'), 100);
 
-    const result = await getMessages(params.id, user.id, cursor, limit);
+    const result = await getMessages(id, user.id, cursor, limit);
     return NextResponse.json(result);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to load messages';
@@ -30,9 +32,10 @@ export async function GET(
 // Body: { body: string, attachments?: [...] }
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -41,7 +44,7 @@ export async function POST(
     if (limited) return NextResponse.json({ error: 'Too many messages — please slow down' }, { status: 429 });
 
     // Resolve the recipient from the conversation
-    const conv = await prisma.messageConversation.findUnique({ where: { id: params.id } });
+    const conv = await prisma.messageConversation.findUnique({ where: { id } });
     if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
 
     const c = conv as { participant1: string; participant2: string };
@@ -68,9 +71,10 @@ export async function POST(
 // DELETE /api/messages/[id]?messageId=xxx
 export async function DELETE(
   req: NextRequest,
-  { params: _params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await paramsPromise;
     const user = await getServerUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
