@@ -23,3 +23,12 @@ Added persistent project-memory tools, backed by the (previously empty/unused) P
 - `known_issue_action` — create/update/resolve tracked issues.
 - `repo_map` — live top-level repo listing in one call instead of multiple github_list_files round-trips.
 Seeded ProjectMemory with core architecture/business facts so get_project_briefing is useful immediately.
+
+Also added 20 IT-ops diagnostic tools in the same session:
+Schema/data integrity: `get_schema_map`, `check_missing_indexes`, `check_rls_policies`, `find_orphaned_records`, `diff_schema_vs_prisma`
+Finance/business: `audit_plan_gating`, `verify_payout_integrity`, `get_billing_status`, `check_webhook_health`
+Ops/security: `get_admin_audit_log`, `get_recent_errors`, `check_env_vars`, `check_dependency_vulnerabilities`
+Code health: `find_todos_and_fixmes`, `find_large_files`, `get_test_coverage_snapshot`, `search_repo_batch`, `get_changelog`
+Performance: `explain_query`
+Meta: `health_check_full` (one-call rollup of DB/issues/subscriptions/CI status)
+Note: `get_billing_status` documents the real gap — no cron currently re-charges artist_plan_subscriptions.paystackToken on renewal; expire-plans only downgrades.
