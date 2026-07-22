@@ -1,11 +1,13 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-type P = { params: { slug: string } };
+type P = { params: Promise<{ slug: string }> };
 
 export async function GET(_: NextRequest, { params }: P) {
+  const { slug } = await params;
   const event = await prisma.event.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     include: {
       artist: { select: { name: true, slug: true, photoUrl: true } },
       tickets: { orderBy: { price: 'asc' } },
