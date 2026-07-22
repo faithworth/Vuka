@@ -80,6 +80,12 @@ export interface VerifyTransactionResult {
   channel:       string;
   metadata:      Record<string, unknown>;
   customerEmail: string;
+  // Paystack returns a reusable authorization_code for card payments unless
+  // the customer's bank/card doesn't support it. This is what recurring
+  // billing charges against later — it is NOT a stored card number (PCI
+  // scope stays with Paystack). Only present + reusable on card channel.
+  authorizationCode?: string;
+  authorizationReusable?: boolean;
 }
 
 export async function verifyTransaction(reference: string): Promise<VerifyTransactionResult> {
@@ -104,6 +110,64 @@ export async function verifyTransaction(reference: string): Promise<VerifyTransa
     channel:       d.channel,
     metadata:      d.metadata ?? {},
     customerEmail: d.customer?.email ?? '',
+    authorizationCode:     d.authorization?.authorization_code,
+    authorizationReusable: d.authorization?.reusable === true,
+  };
+}
+
+// ── Charge a saved (reusable) authorization ──────────────────────────────────
+// Used by the recurring-billing cron to renew a plan subscription without the
+// artist re-entering card details. Only call this with an authorizationCode
+// that came from a VerifyTransactionResult where authorizationReusable was
+// true — Paystack will reject anything else.
+
+export interface ChargeAuthorizationInput {
+  email:             string;
+  amountZAR:         number;
+  authorizationCode: string;
+  reference:         string;
+  metadata?:         Record<string, unknown>;
+}
+
+export interface ChargeAuthorizationResult {
+  status:    string; // 'success' | 'failed' | other Paystack status strings
+  reference: string;
+  amountZAR: number;
+  gatewayResponse: string;
+}
+
+export async function chargeAuthorization(
+  input: ChargeAuthorizationInput,
+): Promise<ChargeAuthorizationResult> {
+  const { email, amountZAR, authorizationCode, reference, metadata } = input;
+
+  const res = await fetch('https://api.paystack.co/transaction/charge_authorization', {
+    method:  'POST',
+    headers: {
+      Authorization:  `Bearer ${SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      amount:             Math.round(amountZAR * 100),
+      authorization_code: authorizationCode,
+      reference,
+      currency:           'ZAR',
+      ...(metadata ? { metadata } : {}),
+    }),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Paystack chargeAuthorization failed: ${(json as any).message ?? res.status}`);
+  }
+
+  const d = (json as any).data ?? {};
+  return {
+    status:          d.status,
+    reference:       d.reference ?? reference,
+    amountZAR:       (d.amount ?? 0) / 100,
+    gatewayResponse: d.gateway_response ?? '',
   };
 }
 
