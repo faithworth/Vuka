@@ -215,3 +215,8 @@ export async function POST(req: NextRequest) {
     note: 'currentPeriodEnd set to now — call the renew-plans cron next to see it actually renew or enter grace/dunning.',
   });
 }
+
+// Alias so this is callable from tools that can only issue GET requests.
+// Identical auth (CRON_SECRET) and test-mode (sk_test_ only) gates apply —
+// this doesn't loosen anything, it just changes the HTTP verb.
+export const GET = POST;
