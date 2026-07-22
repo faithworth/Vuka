@@ -1,3 +1,4 @@
+
 // ============================================================
 // VUKA — Public Release Page
 // /releases/[id] — supports BOTH Release (beat store) AND
@@ -113,9 +114,10 @@ async function getRelease(id: string) {
 // ── Metadata ──────────────────────────────────────────────────
 
 export async function generateMetadata(
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
-  const release = await getRelease(params.id);
+  const { id } = await params;
+  const release = await getRelease(id);
   if (!release) return { title: 'Release not found — Vuka Music' };
 
   const artistName = release.artist?.name ?? 'Unknown Artist';
@@ -144,8 +146,9 @@ export async function generateMetadata(
 
 // ── Page ──────────────────────────────────────────────────────
 
-export default async function ReleasePage({ params }: { params: { id: string } }) {
-  const release = await getRelease(params.id);
+export default async function ReleasePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const release = await getRelease(id);
   if (!release) notFound();
 
   return <ReleasePageClient release={release} />;
