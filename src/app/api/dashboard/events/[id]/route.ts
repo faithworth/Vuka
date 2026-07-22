@@ -1,14 +1,16 @@
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-type P = { params: { id: string } };
+type P = { params: Promise<{ id: string }> };
 
 export async function GET(_: NextRequest, { params }: P) {
+  const { id } = await params;
   const user = await requireArtist();
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const event = await prisma.event.findFirst({
-    where: { id: params.id, artistId: user.artist.id },
+    where: { id, artistId: user.artist.id },
     include: {
       tickets: true,
       purchases: { where: { status: 'confirmed' }, orderBy: { createdAt: 'desc' }, take: 100 },
@@ -21,14 +23,15 @@ export async function GET(_: NextRequest, { params }: P) {
 }
 
 export async function PATCH(req: NextRequest, { params }: P) {
+  const { id } = await params;
   const user = await requireArtist();
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const ev = await prisma.event.findFirst({ where: { id: params.id, artistId: user.artist.id } });
+  const ev = await prisma.event.findFirst({ where: { id, artistId: user.artist.id } });
   if (!ev) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const body = await req.json();
   if (body.action === 'publish') {
     const updated = await prisma.event.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: 'published' },
       include: { tickets: true, _count: { select: { purchases: { where: { status: 'confirmed' } } } } },
     });
@@ -36,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: P) {
   }
   if (body.action === 'cancel') {
     const updated = await prisma.event.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: 'cancelled' },
       include: { tickets: true, _count: { select: { purchases: { where: { status: 'confirmed' } } } } },
     });
@@ -45,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: P) {
   if (ev.status !== 'draft') return NextResponse.json({ error: 'Only draft events can be edited' }, { status: 400 });
   const { title, description, venue, city, province, startDate, endDate, coverUrl } = body;
   const updated = await prisma.event.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(title       && { title: title.trim() }),
       ...(description !== undefined && { description }),
@@ -62,11 +65,12 @@ export async function PATCH(req: NextRequest, { params }: P) {
 }
 
 export async function DELETE(_: NextRequest, { params }: P) {
+  const { id } = await params;
   const user = await requireArtist();
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const ev = await prisma.event.findFirst({ where: { id: params.id, artistId: user.artist.id } });
+  const ev = await prisma.event.findFirst({ where: { id, artistId: user.artist.id } });
   if (!ev) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (ev.status !== 'draft') return NextResponse.json({ error: 'Only drafts can be deleted' }, { status: 400 });
-  await prisma.event.delete({ where: { id: params.id } });
+  await prisma.event.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
