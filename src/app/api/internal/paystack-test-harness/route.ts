@@ -46,12 +46,17 @@ const TEST_PLAN  = 'pro';
 const DEFAULT_SUCCESS_CARD = { cardNumber: '4084084084084081', cvv: '408', expiryMonth: '12', expiryYear: '2030' };
 const DEFAULT_DECLINE_CARD = { cardNumber: '4084080000005408', cvv: '408', expiryMonth: '12', expiryYear: '2030' };
 
+// Dedicated to this harness only — deliberately NOT CRON_SECRET, so this
+// route never needs to know or expose the real production cron secret.
+// This is a convenience gate against stray/accidental hits, not the real
+// safety boundary — that's the sk_test_-only check below plus the fact
+// this only ever touches one disposable test identity.
+const HARNESS_KEY = 'OH7KjDuLDF7hA6hTuhZK8wrb-t4lmMBM';
+
 function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET ?? '';
-  if (!secret) return false;
   const header = req.headers.get('authorization') ?? '';
   const key    = req.nextUrl.searchParams.get('key') ?? '';
-  return header === `Bearer ${secret}` || key === secret;
+  return header === `Bearer ${HARNESS_KEY}` || key === HARNESS_KEY;
 }
 
 function isTestMode(): boolean {
