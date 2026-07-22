@@ -354,13 +354,10 @@ export async function POST(req: NextRequest) {
       // ── Auto-disburse split sheet if one exists for this item ──
       // Every directly-purchasable item type can carry a split sheet — Purchase
       // stores the item reference in a type-specific column rather than a
-      // generic itemId, so resolve it per type. A 'release' purchase can
-      // point at either a Release (releaseId) or, for distribution-only
-      // releases, a DistributionRelease (distributionReleaseId) — only one
-      // of those two columns will ever be set for a given purchase.
+      // generic itemId, so resolve it per type.
       const splitItemId =
         purchase.itemType === 'beat'    ? purchase.beatId :
-        purchase.itemType === 'release' ? (purchase.releaseId ?? purchase.distributionReleaseId) :
+        purchase.itemType === 'release' ? purchase.releaseId :
         purchase.itemType === 'video'   ? purchase.videoId :
         purchase.itemType === 'sample'  ? purchase.sampleId :
         purchase.itemType === 'merch'   ? purchase.merchId :
