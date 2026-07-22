@@ -6,7 +6,11 @@ import { canAccessCms, createRevision } from '@/lib/cms';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string; revId: string } }) {
+export async function POST(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string; revId: string }> }
+) {
+  const params = await props.params;
   try {
     const user = await requireAdmin();
     if (!user || !canAccessCms(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
