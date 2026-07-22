@@ -1,3 +1,4 @@
+
 // ============================================================
 // PHASE 2 — src/app/api/marketplace/orders/[id]/deliver/route.ts
 // Seller delivers an order — uploads deliverables
@@ -8,10 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { deliverOrder } from '@/lib/marketplace';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'At least one deliverable file required' }, { status: 400 });
     }
 
-    const order = await deliverOrder(params.id, user.artist.id, Array.isArray(deliverables) ? deliverables.map((d: any) => typeof d === "string" ? d : d.url || JSON.stringify(d)) : []);
+    const order = await deliverOrder(id, user.artist.id, Array.isArray(deliverables) ? deliverables.map((d: any) => typeof d === "string" ? d : d.url || JSON.stringify(d)) : []);
     return NextResponse.json({ order });
   } catch (err: any) {
     console.error('[marketplace/orders/deliver] POST error:', err?.message);
