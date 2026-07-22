@@ -1,3 +1,4 @@
+
 // ============================================================
 // PATCH 04 — src/app/api/download/[token]/file/[index]/route.ts
 // REPLACE entire file.
@@ -43,12 +44,13 @@ async function fetchR2Buffer(key: string): Promise<Buffer | null> {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { token: string; index: string } }
+  { params }: { params: Promise<{ token: string; index: string }> }
 ) {
-  const idx = parseInt(params.index);
+  const { token, index: indexParam } = await params;
+  const idx = parseInt(indexParam);
 
   const purchase = await prisma.purchase.findUnique({
-    where: { downloadToken: params.token },
+    where: { downloadToken: token },
     include: {
       beat: { include: { artist: true } },
       release: { include: { tracks: { orderBy: { trackNumber: 'asc' } }, artist: true } },
@@ -165,8 +167,8 @@ export async function GET(
     const tracks = distRelease.tracks;
 
     // Index is encoded as "distrib-N"
-    const distribIdx = typeof params.index === 'string' && params.index.startsWith('distrib-')
-      ? parseInt(params.index.replace('distrib-', ''))
+    const distribIdx = typeof indexParam === 'string' && indexParam.startsWith('distrib-')
+      ? parseInt(indexParam.replace('distrib-', ''))
       : idx;
 
     const track = tracks[distribIdx];
