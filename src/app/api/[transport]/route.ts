@@ -1,5 +1,3 @@
-
-
 // app/api/[transport]/route.ts
 
 import { createMcpHandler } from "mcp-handler";
@@ -684,7 +682,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Commit a file change to the repo ---
     server.tool(
       "github_commit_file",
-      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration if committed to main. Use with care — this pushes real code to the live repo. Prefer github_create_branch + create_pull_request for anything non-trivial, so changes get reviewed before going live.",
+      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration if committed to main. Use with care — this pushes real code to the live repo. Prefer github_create_branch + create_pull_request for anything non-trivial, so changes get reviewed before going live. For editing part of a large existing file, prefer github_patch_file instead — it's much cheaper and safer than resending the whole file.",
       {
         path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
         content: z.string().describe("The full new content of the file"),
@@ -962,10 +960,302 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- Patch a file with targeted find/replace edits — no full-file content needed ---
+    server.tool(
+      "github_patch_file",
+      "Edit a file in the repo using one or more targeted find/replace edits, without supplying the full file content. Fetches the current file, applies each edit in order (each old_str must match exactly once or the whole patch is rejected before anything is committed), and pushes the result. Use this instead of github_commit_file for any change to a large file — it's dramatically cheaper than retyping the whole file, and safer since a non-unique or missing old_str fails loudly instead of silently corrupting content. Files over ~1MB aren't supported by this endpoint — use github_read_file_range to inspect, and fall back to github_commit_file for those.",
+      {
+        path: z.string().describe("File path in the repo"),
+        edits: z
+          .array(
+            z.object({
+              old_str: z.string().describe("Exact text to find — must appear exactly once in the current file"),
+              new_str: z.string().describe("Text to replace it with"),
+            })
+          )
+          .min(1)
+          .describe("One or more find/replace edits, applied in order against the same file"),
+        commit_message: z.string(),
+        branch: z.string().optional().default("main"),
+      },
+      async ({ path, edits, commit_message, branch }) => {
+        const getUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const getRes = await fetch(getUrl, { headers: githubHeaders() });
+        if (!getRes.ok) {
+          return { content: [{ type: "text", text: `Couldn't read ${path}: ${await getRes.text()}` }], isError: true };
+        }
+        const existing = await getRes.json();
+        let content = Buffer.from(existing.content, "base64").toString("utf-8");
+
+        const applied: string[] = [];
+        for (const [i, edit] of edits.entries()) {
+          const count = content.split(edit.old_str).length - 1;
+          if (count === 0) {
+            return {
+              content: [{ type: "text", text: `Edit ${i + 1} of ${edits.length} failed: old_str not found in ${path}. No changes were committed (all-or-nothing). old_str was:\n\n${edit.old_str}` }],
+              isError: true,
+            };
+          }
+          if (count > 1) {
+            return {
+              content: [{ type: "text", text: `Edit ${i + 1} of ${edits.length} failed: old_str matches ${count} times in ${path}, must be unique. No changes were committed. old_str was:\n\n${edit.old_str}` }],
+              isError: true,
+            };
+          }
+          content = content.replace(edit.old_str, edit.new_str);
+          applied.push(`Edit ${i + 1}: ${edit.old_str.length} chars → ${edit.new_str.length} chars`);
+        }
+
+        const putRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, {
+          method: "PUT",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: commit_message,
+            content: Buffer.from(content, "utf-8").toString("base64"),
+            branch,
+            sha: existing.sha,
+          }),
+        });
+        if (!putRes.ok) {
+          return { content: [{ type: "text", text: `All ${edits.length} edit(s) validated but the commit itself failed: ${await putRes.text()}` }], isError: true };
+        }
+        const result = await putRes.json();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Patched ${path} (${edits.length} edit(s), no full-file content sent):\n${applied.join("\n")}\n\nCommit: ${result.commit?.sha}\nURL: ${result.commit?.html_url}`,
+            },
+          ],
+        };
+      }
+    );
+
+    // --- Delete a file for real, not just neutralize it ---
+    server.tool(
+      "github_delete_file",
+      "Delete a file from the repo. Use this instead of overwriting a file with a disabled/410 stub when the file should actually be removed from the tree.",
+      {
+        path: z.string(),
+        commit_message: z.string(),
+        branch: z.string().optional().default("main"),
+      },
+      async ({ path, commit_message, branch }) => {
+        const getUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const getRes = await fetch(getUrl, { headers: githubHeaders() });
+        if (getRes.status === 404) {
+          return { content: [{ type: "text", text: `${path} doesn't exist on ${branch} — nothing to delete.` }] };
+        }
+        if (!getRes.ok) {
+          return { content: [{ type: "text", text: `Couldn't look up ${path}: ${await getRes.text()}` }], isError: true };
+        }
+        const existing = await getRes.json();
+        const delRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, {
+          method: "DELETE",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ message: commit_message, sha: existing.sha, branch }),
+        });
+        if (!delRes.ok) {
+          return { content: [{ type: "text", text: `Delete failed: ${await delRes.text()}` }], isError: true };
+        }
+        const result = await delRes.json();
+        return { content: [{ type: "text", text: `Deleted ${path} from ${branch}.\nCommit: ${result.commit?.sha}` }] };
+      }
+    );
+
+    // --- Read only a line range from a large file ---
+    server.tool(
+      "github_read_file_range",
+      "Read only a specific line range from a file in the repo, instead of the whole thing. Use this for large files when only a section near an error or a known area needs inspecting — much cheaper than github_read_file on a multi-hundred-line file.",
+      {
+        path: z.string(),
+        start_line: z.number().int().min(1),
+        end_line: z.number().int().min(1),
+        branch: z.string().optional().default("main"),
+      },
+      async ({ path, start_line, end_line, branch }) => {
+        const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`;
+        const res = await fetch(url, { headers: githubHeaders() });
+        if (!res.ok) {
+          return { content: [{ type: "text", text: `Couldn't read ${path}: ${await res.text()}` }], isError: true };
+        }
+        const data = await res.json();
+        const lines = Buffer.from(data.content, "base64").toString("utf-8").split("\n");
+        const slice = lines
+          .slice(Math.max(0, start_line - 1), end_line)
+          .map((l: string, i: number) => `${start_line + i}\t${l}`)
+          .join("\n");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${path} — lines ${start_line}-${Math.min(end_line, lines.length)} of ${lines.length} total (sha: ${data.sha}):\n\n${slice}`,
+            },
+          ],
+        };
+      }
+    );
+
+    // --- Atomic multi-file commit ---
+    server.tool(
+      "github_batch_commit",
+      "Commit changes to multiple files at once as a single atomic commit, using the Git Data API (blob → tree → commit → ref update). Use this when one logical change spans several files, instead of N separate github_commit_file calls — one commit, one deploy trigger, clearer history. Each file's full new content still has to be provided (this doesn't reduce per-file size cost — use github_patch_file for that), it just groups multiple files into one commit instead of many.",
+      {
+        files: z
+          .array(
+            z.object({
+              path: z.string(),
+              content: z.string().optional().describe("New content — omit only when action is 'delete'"),
+              action: z.enum(["create", "update", "delete"]).default("update"),
+            })
+          )
+          .min(1)
+          .max(20),
+        commit_message: z.string(),
+        branch: z.string().optional().default("main"),
+      },
+      async ({ files, commit_message, branch }) => {
+        const refRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/${branch}`, { headers: githubHeaders() });
+        if (!refRes.ok) return { content: [{ type: "text", text: `Couldn't read branch ${branch}: ${await refRes.text()}` }], isError: true };
+        const refData = await refRes.json();
+        const baseCommitSha = refData.object.sha;
+
+        const baseCommitRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits/${baseCommitSha}`, { headers: githubHeaders() });
+        if (!baseCommitRes.ok) return { content: [{ type: "text", text: `Couldn't read base commit: ${await baseCommitRes.text()}` }], isError: true };
+        const baseCommitData = await baseCommitRes.json();
+        const baseTreeSha = baseCommitData.tree.sha;
+
+        const treeEntries: any[] = [];
+        for (const f of files) {
+          if (f.action === "delete") {
+            treeEntries.push({ path: f.path, mode: "100644", type: "blob", sha: null });
+            continue;
+          }
+          if (f.content === undefined) {
+            return { content: [{ type: "text", text: `File ${f.path} has action '${f.action}' but no content was provided.` }], isError: true };
+          }
+          const blobRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/blobs`, {
+            method: "POST",
+            headers: { ...githubHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ content: f.content, encoding: "utf-8" }),
+          });
+          if (!blobRes.ok) return { content: [{ type: "text", text: `Blob creation failed for ${f.path}: ${await blobRes.text()}` }], isError: true };
+          const blobData = await blobRes.json();
+          treeEntries.push({ path: f.path, mode: "100644", type: "blob", sha: blobData.sha });
+        }
+
+        const treeRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees`, {
+          method: "POST",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries }),
+        });
+        if (!treeRes.ok) return { content: [{ type: "text", text: `Tree creation failed: ${await treeRes.text()}` }], isError: true };
+        const treeData = await treeRes.json();
+
+        const commitRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits`, {
+          method: "POST",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ message: commit_message, tree: treeData.sha, parents: [baseCommitSha] }),
+        });
+        if (!commitRes.ok) return { content: [{ type: "text", text: `Commit creation failed: ${await commitRes.text()}` }], isError: true };
+        const commitData = await commitRes.json();
+
+        const updateRefRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${branch}`, {
+          method: "PATCH",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ sha: commitData.sha }),
+        });
+        if (!updateRefRes.ok) return { content: [{ type: "text", text: `Files were committed but the branch ref update failed (branch may be behind): ${await updateRefRes.text()}` }], isError: true };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Committed ${files.length} file(s) in one atomic commit.\nCommit: ${commitData.sha}\nURL: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/commit/${commitData.sha}\n\n${files.map((f) => `${f.action}: ${f.path}`).join("\n")}`,
+            },
+          ],
+        };
+      }
+    );
+
+    // --- Regenerate package-lock.json server-side, without routing its content through the model ---
+    server.tool(
+      "github_regenerate_lockfile",
+      "Regenerate package-lock.json by running `npm install --package-lock-only` inside this serverless function against the repo's current package.json, then commit the result directly to GitHub. This solves the specific problem where a lockfile is too large to paste as a tool call argument — its content never passes through the calling model at all. Experimental: depends on npm being invocable and network-reachable inside this runtime, and on the install finishing inside the function's time limit. If it errors, the fallback is running `npm install` on a real machine and committing the file from there.",
+      {
+        branch: z.string().optional().default("main"),
+        commit_message: z.string().optional().default("chore: regenerate package-lock.json"),
+      },
+      async ({ branch, commit_message }) => {
+        const pkgRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/package.json?ref=${branch}`, { headers: githubHeaders() });
+        if (!pkgRes.ok) return { content: [{ type: "text", text: `Couldn't read package.json: ${await pkgRes.text()}` }], isError: true };
+        const pkgData = await pkgRes.json();
+        const pkgContent = Buffer.from(pkgData.content, "base64").toString("utf-8");
+
+        const os = await import("os");
+        const fs = await import("fs/promises");
+        const nodePath = await import("path");
+        const { execFile } = await import("child_process");
+        const { promisify } = await import("util");
+        const execFileAsync = promisify(execFile);
+
+        const tmpDir = await fs.mkdtemp(nodePath.join(os.tmpdir(), "vuka-lock-"));
+        await fs.writeFile(nodePath.join(tmpDir, "package.json"), pkgContent);
+
+        try {
+          await execFileAsync("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"], {
+            cwd: tmpDir,
+            timeout: 100_000,
+          });
+        } catch (err: any) {
+          await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+          return {
+            content: [
+              {
+                type: "text",
+                text: `npm install failed inside this serverless sandbox: ${err?.message ?? String(err)}\n\nIf npm isn't invocable here (likely on some serverless runtimes), this has to be done on a real machine (developer laptop or a separate CI job with shell access) instead — this endpoint isn't the only path to a valid lockfile.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const lockContent = await fs.readFile(nodePath.join(tmpDir, "package-lock.json"), "utf-8");
+        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+
+        const getUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/package-lock.json?ref=${branch}`;
+        const getRes = await fetch(getUrl, { headers: githubHeaders() });
+        const sha = getRes.ok ? (await getRes.json()).sha : undefined;
+
+        const putRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/package-lock.json`, {
+          method: "PUT",
+          headers: { ...githubHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: commit_message,
+            content: Buffer.from(lockContent, "utf-8").toString("base64"),
+            branch,
+            ...(sha ? { sha } : {}),
+          }),
+        });
+        if (!putRes.ok) {
+          return { content: [{ type: "text", text: `Lockfile generated (${lockContent.length} bytes) but the commit failed: ${await putRes.text()}` }], isError: true };
+        }
+        const result = await putRes.json();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Regenerated package-lock.json (${lockContent.length} bytes, never sent through the model) and committed it.\nCommit: ${result.commit?.sha}\n\nCI can now be switched from 'npm install' back to 'npm ci'.`,
+            },
+          ],
+        };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
-  { basePath: "/api", maxDuration: 60, verboseLogs: true }
+  { basePath: "/api", maxDuration: 120, verboseLogs: true }
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
