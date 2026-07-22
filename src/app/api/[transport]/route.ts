@@ -1443,6 +1443,387 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- IT-ops diagnostic tools ---
+    server.tool(
+      "get_schema_map",
+      "Get the full database schema map in one call: every table's columns/types, or just one table if specified, plus foreign keys. Replaces multiple information_schema round-trips.",
+      { table: z.string().optional().describe("Optional: limit to one table name") },
+      async ({ table }) => {
+        if (table && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) return { content: [{ type: "text", text: "Invalid table name." }], isError: true };
+        const tableFilter = table ? `AND c.table_name = '${table}'` : "";
+        const fkFilter = table ? `AND tc.table_name='${table}'` : "";
+        try {
+          const { rows: columns } = await runReadOnlyQuery(
+            `SELECT c.table_name, c.column_name, c.data_type, c.is_nullable FROM information_schema.columns c WHERE c.table_schema='public' ${tableFilter} ORDER BY c.table_name, c.ordinal_position`, 500
+          );
+          const { rows: fks } = await runReadOnlyQuery(
+            `SELECT tc.table_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name WHERE tc.constraint_type='FOREIGN KEY' AND tc.table_schema='public' ${fkFilter}`, 300
+          );
+          const byTable: Record<string, string[]> = {};
+          for (const c of columns as any[]) {
+            byTable[c.table_name] = byTable[c.table_name] ?? [];
+            byTable[c.table_name].push(`${c.column_name} (${c.data_type}${c.is_nullable === "NO" ? ", not null" : ""})`);
+          }
+          const fkText = (fks as any[]).map((f) => `${f.table_name}.${f.column_name} -> ${f.foreign_table}.${f.foreign_column}`).join("\n") || "(none)";
+          const tableText = Object.entries(byTable).map(([t, cols]) => `## ${t}\n${cols.join(", ")}`).join("\n\n");
+          return { content: [{ type: "text", text: `${tableText}\n\n# Foreign keys\n${fkText}` }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "check_missing_indexes",
+      "Find foreign-key columns in the public schema without a covering index — a common source of full-table-scan slowdowns on joins/webhooks.",
+      {},
+      async () => {
+        try {
+          const { rows } = await runReadOnlyQuery(
+            `SELECT tc.table_name, kcu.column_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='public' AND NOT EXISTS (SELECT 1 FROM pg_indexes pi WHERE pi.tablename = tc.table_name AND pi.indexdef ILIKE '%' || kcu.column_name || '%') ORDER BY tc.table_name`, 200
+          );
+          if (rows.length === 0) return { content: [{ type: "text", text: "No missing FK indexes found." }] };
+          return { content: [{ type: "text", text: (rows as any[]).map((r) => `${r.table_name}.${r.column_name}`).join("\n") }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "check_rls_policies",
+      "List public-schema tables with Row Level Security disabled, or enabled but with zero policies — a security gap since Supabase's anon/service-role split relies on RLS.",
+      {},
+      async () => {
+        try {
+          const { rows } = await runReadOnlyQuery(
+            `SELECT c.relname AS table_name, c.relrowsecurity AS rls_enabled, (SELECT count(*) FROM pg_policies p WHERE p.tablename = c.relname) AS policy_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname='public' AND c.relkind='r' ORDER BY c.relname`, 300
+          );
+          const gaps = (rows as any[]).filter((r) => !r.rls_enabled || Number(r.policy_count) === 0);
+          if (gaps.length === 0) return { content: [{ type: "text", text: "All public tables have RLS enabled with at least one policy." }] };
+          return { content: [{ type: "text", text: gaps.map((r) => `${r.table_name}: RLS ${r.rls_enabled ? "enabled" : "DISABLED"}, ${r.policy_count} polic${Number(r.policy_count) === 1 ? "y" : "ies"}`).join("\n") }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "find_orphaned_records",
+      "Find rows in a child table whose foreign key doesn't match any row in the parent table — a targeted data-integrity check for a relationship you specify.",
+      { child_table: z.string(), child_fk_column: z.string(), parent_table: z.string(), parent_pk_column: z.string().optional().default("id") },
+      async ({ child_table, child_fk_column, parent_table, parent_pk_column }) => {
+        const ident = /^[A-Za-z_][A-Za-z0-9_]*$/;
+        for (const v of [child_table, child_fk_column, parent_table, parent_pk_column]) {
+          if (!ident.test(v)) return { content: [{ type: "text", text: `Invalid identifier: ${v}` }], isError: true };
+        }
+        try {
+          const { rows, rowCount } = await runReadOnlyQuery(
+            `SELECT ct.${child_fk_column}, count(*) FROM "${child_table}" ct LEFT JOIN "${parent_table}" pt ON ct.${child_fk_column} = pt.${parent_pk_column} WHERE ct.${child_fk_column} IS NOT NULL AND pt.${parent_pk_column} IS NULL GROUP BY ct.${child_fk_column} LIMIT 50`, 50
+          );
+          if (rows.length === 0) return { content: [{ type: "text", text: `No orphaned rows found (${child_table}.${child_fk_column} -> ${parent_table}.${parent_pk_column}).` }] };
+          return { content: [{ type: "text", text: `${rowCount} distinct orphaned ${child_fk_column} value(s):\n${JSON.stringify(rows, null, 2)}` }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "audit_plan_gating",
+      "Find artists whose paid plan has expired (planExpiresAt in the past) but who are still on a non-free planSlug — a sign the expire-plans cron missed them or hasn't run.",
+      {},
+      async () => {
+        const { data, error } = await supabase.from("Artist").select("id, name, slug, planSlug, planExpiresAt").neq("planSlug", "free").not("planExpiresAt", "is", null).lt("planExpiresAt", new Date().toISOString()).limit(50);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: "No plan-gating drift found — all expired plans have been downgraded." }] };
+        return { content: [{ type: "text", text: data.map((a: any) => `${a.name} (${a.slug}): still on ${a.planSlug}, expired ${a.planExpiresAt}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "verify_payout_integrity",
+      "Flag artists who have confirmed revenue but no corresponding payout record at all — a sign money is owed but hasn't entered the payout pipeline.",
+      { min_revenue: z.number().optional().default(100).describe("Minimum confirmed revenue to flag") },
+      async ({ min_revenue }) => {
+        const { data: purchases, error: pErr } = await supabase.from("Purchase").select("artistId, netAmount, status").eq("status", "confirmed");
+        if (pErr) return { content: [{ type: "text", text: `Error: ${pErr.message}` }], isError: true };
+        const revenueByArtist: Record<string, number> = {};
+        for (const p of (purchases ?? []) as any[]) revenueByArtist[p.artistId] = (revenueByArtist[p.artistId] ?? 0) + (p.netAmount ?? 0);
+        const artistIds = Object.keys(revenueByArtist).filter((id) => revenueByArtist[id] >= min_revenue);
+        if (artistIds.length === 0) return { content: [{ type: "text", text: "No artists above the revenue threshold." }] };
+        const { data: payouts, error: payErr } = await supabase.from("ArtistPayout").select("artistId").in("artistId", artistIds);
+        if (payErr) return { content: [{ type: "text", text: `Error: ${payErr.message}` }], isError: true };
+        const paidOut = new Set((payouts ?? []).map((p: any) => p.artistId));
+        const flagged = artistIds.filter((id) => !paidOut.has(id));
+        if (flagged.length === 0) return { content: [{ type: "text", text: "Every artist above the threshold has at least one payout record." }] };
+        const { data: names } = await supabase.from("Artist").select("id, name, slug").in("id", flagged);
+        const nameMap: Record<string, string> = {};
+        for (const n of (names ?? []) as any[]) nameMap[n.id] = `${n.name} (${n.slug})`;
+        return { content: [{ type: "text", text: flagged.map((id) => `${nameMap[id] ?? id}: R${revenueByArtist[id].toFixed(2)} confirmed revenue, zero payout records`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "get_billing_status",
+      "Snapshot of subscription/billing state: active/cancelled/failed counts, plus an explanation of whether automatic recurring re-charging exists (currently it does not).",
+      {},
+      async () => {
+        const { data, error } = await supabase.from("artist_plan_subscriptions").select("status, planSlug, failReason");
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        const counts: Record<string, number> = {};
+        for (const s of (data ?? []) as any[]) counts[s.status] = (counts[s.status] ?? 0) + 1;
+        const failReasons = (data ?? []).filter((s: any) => s.failReason).map((s: any) => s.failReason);
+        return { content: [{ type: "text", text: `Subscription status counts: ${JSON.stringify(counts)}\nRecorded failure reasons: ${failReasons.length ? failReasons.join(", ") : "none"}\n\nGap: no automated cron currently re-charges artist_plan_subscriptions.paystackToken when currentPeriodEnd passes. src/app/api/cron/expire-plans only downgrades to Free — it never attempts a renewal charge. True auto-billing needs a cron that: (1) finds subscriptions with currentPeriodEnd <= now and status='active', (2) charges paystackToken via Paystack's charge-authorization API, (3) on success extends currentPeriodEnd, (4) on failure sets failedAt/failReason and retries or downgrades after N attempts.` }] };
+      }
+    );
+
+    server.tool(
+      "get_admin_audit_log",
+      "Get recent admin action log entries (who did what, when, severity) from AdminLog.",
+      { limit: z.number().int().min(1).max(100).optional().default(20) },
+      async ({ limit }) => {
+        const { data, error } = await supabase.from("AdminLog").select("action, targetType, targetId, actorId, severity, notes, createdAt").order("createdAt", { ascending: false }).limit(limit);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: "No admin log entries." }] };
+        return { content: [{ type: "text", text: data.map((d: any) => `[${d.createdAt}] ${d.severity}/${d.action} on ${d.targetType}:${d.targetId} by ${d.actorId}${d.notes ? ` - ${d.notes}` : ""}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "get_recent_errors",
+      "Get recent error/critical-severity entries from AdminLog — a lightweight incident feed without leaving chat.",
+      { limit: z.number().int().min(1).max(100).optional().default(20) },
+      async ({ limit }) => {
+        const { data, error } = await supabase.from("AdminLog").select("action, targetType, targetId, severity, notes, createdAt").in("severity", ["error", "critical"]).order("createdAt", { ascending: false }).limit(limit);
+        if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+        if (!data || data.length === 0) return { content: [{ type: "text", text: "No error/critical severity log entries recorded." }] };
+        return { content: [{ type: "text", text: data.map((d: any) => `[${d.createdAt}] ${d.action} on ${d.targetType}:${d.targetId}${d.notes ? ` - ${d.notes}` : ""}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "check_webhook_health",
+      "Proxy for webhook/payment-processing health: counts of failed Purchase, MarketplaceOrder, and subscription records in the last 7 days, to spot a webhook silently failing.",
+      {},
+      async () => {
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const [purchases, orders, subs] = await Promise.all([
+          supabase.from("Purchase").select("id", { count: "exact", head: true }).eq("status", "failed").gte("createdAt", since),
+          supabase.from("MarketplaceOrder").select("id", { count: "exact", head: true }).eq("status", "failed").gte("createdAt", since),
+          supabase.from("artist_plan_subscriptions").select("id", { count: "exact", head: true }).eq("status", "failed").gte("createdAt", since),
+        ]);
+        return { content: [{ type: "text", text: `Last 7 days — failed Purchases: ${purchases.count ?? 0}, failed MarketplaceOrders: ${orders.count ?? 0}, failed subscription charges: ${subs.count ?? 0}.` }] };
+      }
+    );
+
+    server.tool(
+      "check_env_vars",
+      "Read .env.example from the repo and report, for each required variable name, whether it's currently set in this server's runtime environment (names only, never values).",
+      {},
+      async () => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/.env.example`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Couldn't read .env.example: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        const content = Buffer.from(data.content, "base64").toString("utf-8");
+        const names = content.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#") && l.includes("=")).map((l) => l.split("=")[0].trim());
+        const missing = names.filter((n) => !process.env[n]);
+        const present = names.filter((n) => !!process.env[n]);
+        return { content: [{ type: "text", text: `Set (${present.length}): ${present.join(", ") || "none"}\n\nMISSING (${missing.length}): ${missing.join(", ") || "none"}` }] };
+      }
+    );
+
+    server.tool(
+      "check_dependency_vulnerabilities",
+      "Check package.json dependencies against the OSV.dev vulnerability database and report any with known CVEs.",
+      {},
+      async () => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/package.json`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Couldn't read package.json: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        const pkg = JSON.parse(Buffer.from(data.content, "base64").toString("utf-8"));
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        const entries = Object.entries(deps).slice(0, 60);
+        try {
+          const osvRes = await fetch("https://api.osv.dev/v1/querybatch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ queries: entries.map(([name, version]) => ({ package: { name, ecosystem: "npm" }, version: String(version).replace(/^[\^~]/, "") })) }),
+          });
+          if (!osvRes.ok) return { content: [{ type: "text", text: `OSV query failed: ${await osvRes.text()}` }], isError: true };
+          const result = await osvRes.json();
+          const flagged: string[] = [];
+          (result.results ?? []).forEach((r: any, i: number) => {
+            if (r.vulns && r.vulns.length > 0) flagged.push(`${entries[i][0]}@${entries[i][1]}: ${r.vulns.map((v: any) => v.id).join(", ")}`);
+          });
+          return { content: [{ type: "text", text: flagged.length ? flagged.join("\n") : `No known vulnerabilities found across ${entries.length} checked dependencies.` }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `OSV check failed (network?): ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "find_todos_and_fixmes",
+      "Search the repo for TODO, FIXME, HACK, and XXX comments — a quick tech-debt inventory without browsing file by file.",
+      {},
+      async () => {
+        const markers = ["TODO", "FIXME", "HACK", "XXX"];
+        const results: string[] = [];
+        for (const marker of markers) {
+          const res = await fetch(`${GITHUB_API}/search/code?q=${encodeURIComponent(marker)}+repo:${GITHUB_OWNER}/${GITHUB_REPO}`, { headers: githubHeaders() });
+          if (!res.ok) continue;
+          const data = await res.json();
+          for (const item of (data.items ?? []).slice(0, 15)) results.push(`[${marker}] ${item.path}`);
+        }
+        if (results.length === 0) return { content: [{ type: "text", text: "No TODO/FIXME/HACK/XXX markers found (or GitHub code search unavailable)." }] };
+        return { content: [{ type: "text", text: results.join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "find_large_files",
+      "List repo files above a size threshold (default 100KB) using the git tree API — useful for spotting accidentally-committed binaries or bloated generated files.",
+      { min_kb: z.number().optional().default(100) },
+      async ({ min_kb }) => {
+        const branchRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/branches/main`, { headers: githubHeaders() });
+        if (!branchRes.ok) return { content: [{ type: "text", text: `Couldn't read branch: ${await branchRes.text()}` }], isError: true };
+        const branchData = await branchRes.json();
+        const treeSha = branchData.commit.commit.tree.sha;
+        const treeRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees/${treeSha}?recursive=1`, { headers: githubHeaders() });
+        if (!treeRes.ok) return { content: [{ type: "text", text: `Couldn't read tree: ${await treeRes.text()}` }], isError: true };
+        const treeData = await treeRes.json();
+        const big = (treeData.tree ?? []).filter((t: any) => t.type === "blob" && t.size && t.size >= min_kb * 1024).sort((a: any, b: any) => b.size - a.size).slice(0, 40);
+        if (big.length === 0) return { content: [{ type: "text", text: `No files >= ${min_kb}KB found.` }] };
+        return { content: [{ type: "text", text: big.map((f: any) => `${(f.size / 1024).toFixed(0)}KB — ${f.path}`).join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "explain_query",
+      "Run EXPLAIN ANALYZE on a read-only SELECT/WITH query against production, to diagnose slow queries before optimizing. Same read-only guardrails as run_sql_query.",
+      { query: z.string() },
+      async ({ query }) => {
+        const validationError = validateReadOnlyQuery(query);
+        if (validationError) return { content: [{ type: "text", text: `Query rejected: ${validationError}` }], isError: true };
+        try {
+          const { rows } = await runReadOnlyQuery(`EXPLAIN (ANALYZE, FORMAT TEXT) ${query}`, 200);
+          const plan = (rows as any[]).map((r) => Object.values(r)[0]).join("\n");
+          return { content: [{ type: "text", text: plan }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "diff_schema_vs_prisma",
+      "Compare a Prisma model's declared fields (from prisma/schema.prisma) against the live database table's actual columns, to catch schema drift after manual migrations.",
+      { model_name: z.string().describe("Prisma model name, e.g. 'Artist'"), table_name: z.string().describe("Actual DB table name") },
+      async ({ model_name, table_name }) => {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table_name)) return { content: [{ type: "text", text: "Invalid table name." }], isError: true };
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/prisma/schema.prisma`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Couldn't read schema.prisma: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        const schema = Buffer.from(data.content, "base64").toString("utf-8");
+        const modelMatch = schema.match(new RegExp(`model\\s+${model_name}\\s*{([\\s\\S]*?)}\\n`));
+        if (!modelMatch) return { content: [{ type: "text", text: `Model "${model_name}" not found in schema.prisma.` }] };
+        const fieldLines = modelMatch[1].split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("//") && !l.startsWith("@@"));
+        const prismaFields = fieldLines.map((l) => l.split(/\s+/)[0]);
+        try {
+          const { rows } = await runReadOnlyQuery(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='${table_name}'`, 200);
+          const dbColumns = (rows as any[]).map((r) => r.column_name);
+          const missingInDb = prismaFields.filter((f) => !dbColumns.some((c: string) => c.toLowerCase() === f.toLowerCase()));
+          const missingInPrisma = dbColumns.filter((c: string) => !prismaFields.some((f) => f.toLowerCase() === c.toLowerCase()));
+          return { content: [{ type: "text", text: `In schema.prisma but not in DB: ${missingInDb.join(", ") || "none"}\nIn DB but not in schema.prisma: ${missingInPrisma.join(", ") || "none"}` }] };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "search_repo_batch",
+      "Run multiple code-search queries against the repo in a single call instead of one github_search_code call per term — cuts round-trips when checking several symbols/patterns at once.",
+      { queries: z.array(z.string()).min(1).max(10) },
+      async ({ queries }) => {
+        const sections: string[] = [];
+        for (const q of queries) {
+          const res = await fetch(`${GITHUB_API}/search/code?q=${encodeURIComponent(q)}+repo:${GITHUB_OWNER}/${GITHUB_REPO}`, { headers: githubHeaders() });
+          if (!res.ok) { sections.push(`"${q}": search failed`); continue; }
+          const data = await res.json();
+          const paths = (data.items ?? []).slice(0, 10).map((i: any) => i.path);
+          sections.push(`"${q}" (${data.total_count ?? 0} total): ${paths.join(", ") || "no matches"}`);
+        }
+        return { content: [{ type: "text", text: sections.join("\n") }] };
+      }
+    );
+
+    server.tool(
+      "get_changelog",
+      "Get a real changelog between two git refs (branches/tags/SHAs) via GitHub's compare API — commit messages and files touched, without pulling full diffs into context.",
+      { base: z.string().describe("Older ref"), head: z.string().optional().default("main") },
+      async ({ base, head }) => {
+        const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/compare/${base}...${head}`, { headers: githubHeaders() });
+        if (!res.ok) return { content: [{ type: "text", text: `Compare failed: ${await res.text()}` }], isError: true };
+        const data = await res.json();
+        const commits = (data.commits ?? []).map((c: any) => `- ${c.commit.message.split("\n")[0]} (${c.sha.slice(0, 7)})`).join("\n");
+        const files = (data.files ?? []).slice(0, 30).map((f: any) => `${f.status}: ${f.filename}`).join("\n");
+        return { content: [{ type: "text", text: `${data.ahead_by} commits ahead, ${data.behind_by} behind.\n\nCommits:\n${commits}\n\nFiles changed (first 30):\n${files}` }] };
+      }
+    );
+
+    server.tool(
+      "get_test_coverage_snapshot",
+      "Proxy for test coverage: counts route.ts files under src/app/api vs test files found repo-wide, and lists up to 20 API route files. Cheaper than running a real coverage report.",
+      {},
+      async () => {
+        async function listRecursive(path: string): Promise<string[]> {
+          const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, { headers: githubHeaders() });
+          if (!res.ok) return [];
+          const data = await res.json();
+          if (!Array.isArray(data)) return [];
+          let out: string[] = [];
+          for (const item of data) {
+            if (item.type === "dir") out = out.concat(await listRecursive(item.path));
+            else out.push(item.path);
+          }
+          return out;
+        }
+        const apiFiles = (await listRecursive("src/app/api")).filter((p) => p.endsWith("route.ts"));
+        const testSearchRes = await fetch(`${GITHUB_API}/search/code?q=extension:test.ts+repo:${GITHUB_OWNER}/${GITHUB_REPO}`, { headers: githubHeaders() });
+        const testCount = testSearchRes.ok ? (await testSearchRes.json()).total_count ?? 0 : "unknown";
+        return { content: [{ type: "text", text: `API route files: ${apiFiles.length}. Test files found (repo-wide search): ${testCount}.\n\nSample route files (first 20):\n${apiFiles.slice(0, 20).join("\n")}` }] };
+      }
+    );
+
+    server.tool(
+      "health_check_full",
+      "One-call project health check: DB connectivity, open critical/high known issues, subscription status counts, and latest CI run status. Run this instead of several separate diagnostic calls when starting a session or after a big change.",
+      {},
+      async () => {
+        const [dbPing, issues, subs, ciRes] = await Promise.allSettled([
+          supabase.from("Artist").select("id", { count: "exact", head: true }),
+          supabase.from("KnownIssue").select("title, severity").in("severity", ["high", "critical"]).eq("status", "open"),
+          supabase.from("artist_plan_subscriptions").select("status"),
+          fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs?branch=main&per_page=1`, { headers: githubHeaders() }),
+        ]);
+        const dbOk = dbPing.status === "fulfilled" && !(dbPing.value as any).error;
+        const issuesText = issues.status === "fulfilled" && (issues.value as any).data ? ((issues.value as any).data.map((i: any) => `${i.severity}: ${i.title}`).join("; ") || "none") : "unknown";
+        const subCounts: Record<string, number> = {};
+        if (subs.status === "fulfilled" && (subs.value as any).data) {
+          for (const s of (subs.value as any).data) subCounts[s.status] = (subCounts[s.status] ?? 0) + 1;
+        }
+        let ciText = "unknown";
+        if (ciRes.status === "fulfilled" && (ciRes.value as any).ok) {
+          const data = await (ciRes.value as any).json();
+          const run = data.workflow_runs?.[0];
+          if (run) ciText = `${run.name}: ${run.status}/${run.conclusion ?? "pending"} (${run.head_commit?.message?.split("\n")[0] ?? ""})`;
+        }
+        return { content: [{ type: "text", text: `DB connectivity: ${dbOk ? "OK" : "FAILED"}\nOpen high/critical issues: ${issuesText}\nSubscription status counts: ${JSON.stringify(subCounts)}\nLatest CI run: ${ciText}` }] };
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
