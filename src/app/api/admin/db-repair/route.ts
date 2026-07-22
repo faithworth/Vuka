@@ -20,10 +20,16 @@ import { slugify } from '@/lib/utils';
 const CRON_SECRET   = process.env.CRON_SECRET;
 const ADMIN_EMAIL   = (process.env.ADMIN_EMAIL ?? '').toLowerCase().trim();
 
+// This is a one-time repair tool with the power to grant admin/owner roles.
+// It stays fully inert unless someone deliberately flips ENABLE_DB_REPAIR=true
+// in the environment, so a leaked CRON_SECRET alone can't be used to escalate
+// privileges once the repair has been run.
+const REPAIR_ENABLED = process.env.ENABLE_DB_REPAIR === 'true';
+
 function authorized(req: NextRequest): boolean {
+  if (!REPAIR_ENABLED) return false;
   if (!CRON_SECRET) return false;
   const secret =
-    req.nextUrl.searchParams.get('secret') ??
     req.headers.get('x-cron-secret') ??
     req.headers.get('authorization')?.replace('Bearer ', '');
   return secret === CRON_SECRET;
