@@ -146,7 +146,7 @@ export async function sendWelcome({
       ${icon('🎵')}
       <div style="text-align:center;">
         ${heading(`Sharp, ${displayName}! Welcome to Vuka.`)}
-        ${sub('You\'re joining Africa\'s independent music platform. Verify your email to unlock your dashboard and start distributing.')}
+        ${sub('You\'re joining Africa\'s independent music platform. Verify your email to unlock your dashboard and start selling directly to fans.')}
         ${btn(verifyUrl, 'Verify Email →')}
         <p style="color:#6B6B6B;font-size:12px;margin-top:16px;">Link expires in 24 hours. If you didn't sign up, ignore this email.</p>
       </div>
