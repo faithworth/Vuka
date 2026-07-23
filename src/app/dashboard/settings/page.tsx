@@ -563,7 +563,7 @@ function SettingsContent() {
           Upgrade to keep more of every sale and unlock unlimited releases.
         </p>
         <p className="text-xs mb-5" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>
-          Paid plans renew automatically every month using your saved card until you cancel. If a renewal fails, you'll get {GRACE_PERIOD_DAYS_LABEL} to update your payment details before dropping to Free.
+          Paid plans renew automatically every month using your saved card until you cancel. If a renewal fails, you'll get 3 days to update your payment details before dropping to Free.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-4">
