@@ -1,7 +1,8 @@
 'use client';
 // ============================================================
-// VUKA — Release Page Client (Phase 4)
-// Waveform mini-players, DSP "Listen On" buttons, share tools.
+// VUKA — Release Page Client
+// Waveform mini-players, share tools. Direct-to-fan sales only —
+// Vuka Music does not distribute to DSPs (Spotify, Apple Music, etc).
 // ============================================================
 
 import { useState } from 'react';
