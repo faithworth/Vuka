@@ -1,11 +1,8 @@
 
 // ============================================================
 // VUKA — Public Release Page
-// /releases/[id] — supports BOTH Release (beat store) AND
-// DistributionRelease (artist distribution uploads).
-// Tries store Release first (by slug, then id), then falls
-// back to DistributionRelease by id. Admin "Public Page"
-// links and artist profile links both resolve correctly.
+// /releases/[id] — Vuka Music is direct-to-fan only, so this
+// resolves against the Release model (by slug, then id).
 // ============================================================
 
 import { notFound } from 'next/navigation';
@@ -46,69 +43,8 @@ async function getStoreRelease(id: string) {
   return null;
 }
 
-async function getDistributionRelease(id: string) {
-  const release = await prisma.distributionRelease.findUnique({
-    where: { id },
-    include: {
-      artist: { select: { name: true, slug: true, photoUrl: true, genreTags: true } },
-      tracks: { orderBy: { trackNumber: 'asc' } },
-      dspDeliveries: true,
-    },
-  }).catch(() => null);
-
-  if (!release || release.status !== 'live') return null;
-
-  // Build playable URL — fileUrl (new uploads) is already a full URL.
-  // masterFileUrl on older tracks may be a relative R2 key — build full URL.
-  const r2Base = process.env.CLOUDFLARE_R2_PUBLIC_URL || '';
-  function toPlayableUrl(url: string | null | undefined): string | null {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    if (r2Base) return `${r2Base}/${url}`;
-    return null;
-  }
-
-  // Normalise to the shape ReleasePageClient expects
-  return {
-    _source: 'distribution' as const,
-    id: release.id,
-    slug: release.id,          // use id as slug for canonical URL
-    title: release.title,
-    releaseType: release.releaseType,
-    artworkUrl: release.artworkUrl,
-    description: null,
-    price: (release as any).price ?? 0,
-    payWhatWant: (release as any).payWhatYouWant ?? false,
-    minPrice: (release as any).minPrice ?? 0,
-    plays: 0,
-    artist: release.artist,
-    // Map DistributionTrack → track shape the client expects
-    tracks: release.tracks.map(t => ({
-      id: t.id,
-      title: t.title,
-      trackNumber: t.trackNumber,
-      duration: t.duration ?? 0,
-      previewUrl: toPlayableUrl(t.fileUrl || t.masterFileUrl),
-      featuredArtists: t.featuredArtists ?? [],
-      isrc: t.isrc,
-    })),
-    dspDeliveries: release.dspDeliveries,
-    releaseDate: release.scheduledDate || release.originalReleaseDate || release.createdAt,
-    credits: release.pLine || release.cLine
-      ? [release.pLine, release.cLine].filter(Boolean).join('\n')
-      : null,
-    copyrightHolder: release.copyrightHolder || null,
-    copyrightYear: release.copyrightYear ?? null,
-    upc: release.upc,
-    distributor: release.distributor,
-    labelName: release.labelName,
-  };
-}
-
 async function getRelease(id: string) {
-  const store = await getStoreRelease(id);
-  if (store) return store;
-  return getDistributionRelease(id);
+  return getStoreRelease(id);
 }
 
 // ── Metadata ──────────────────────────────────────────────────
