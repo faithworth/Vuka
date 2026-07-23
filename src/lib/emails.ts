@@ -8,10 +8,8 @@
  *  2.  verify-email        - Email verification
  *  3.  magic-link          - Magic link login
  *  4.  new-device-alert    - Login from new device
- *  5.  release-submitted   - Artist submits release
- *  6.  release-approved    - Admin approves
  *  7.  release-rejected    - Admin rejects with reason
- *  8.  release-live        - Release goes live on DSPs
+ *  8.  release-live        - Release goes live
  *  9.  earnings-available  - Monthly earnings posted
  *  10. payout-requested    - Artist requests payout
  *  11. payout-approved     - Admin approves payout
