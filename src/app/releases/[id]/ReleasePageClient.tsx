@@ -40,11 +40,6 @@ export default function ReleasePageClient({ release }: { release: any }) {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 
-  // Filter DSP links — only show if release has a matching distribution URL
-  const dspLinks = DSP_LINKS.filter(d =>
-    release.dspDeliveries?.some((del: any) => del.dsp?.toLowerCase().includes(d.slug) && del.storeUrl)
-  );
-
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
