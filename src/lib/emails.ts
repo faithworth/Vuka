@@ -289,41 +289,7 @@ export const sendNewLoginAlert = sendNewDeviceAlert;
 // 6. RELEASE APPROVED
 // ═══════════════════════════════════════════════════════════════
 
-export async function sendReleaseApproved({
-  to,
-  artistName,
-  releaseTitle,
-  releaseType,
-  platforms,
-  expectedLiveDate,
-  releaseUrl,
-}: {
-  to: string;
-  artistName: string;
-  releaseTitle: string;
-  releaseType: string;
-  platforms: string[];
-  expectedLiveDate: string;
-  releaseUrl: string;
-}) {
-  const subject = `✅ "${releaseTitle}" approved — distribution starting`;
-  const platformList = platforms.slice(0, 8).join(', ') + (platforms.length > 8 ? ` +${platforms.length - 8} more` : '');
-  const html = layout(
-    card(`
-      ${icon('✅')}
-      ${heading('Release approved!')}
-      ${sub(`Sharp, ${artistName}! "${releaseTitle}" has been approved and distribution is starting now.`)}
-      ${infoTable(`
-        ${row('Release', `<strong>${releaseTitle}</strong>`)}
-        ${row('Type', releaseType)}
-        ${row('Platforms', platformList)}
-        ${row('Expected Live', `<span style="color:#A0E87C;">${expectedLiveDate}</span>`)}
-      `)}
-      ${btn(releaseUrl, 'Track Distribution →')}
-    `)
-  );
-  return getResend().emails.send({ from: FROM(), to, subject, html });
-}
+
 
 // ═══════════════════════════════════════════════════════════════
 // 7. RELEASE REJECTED
