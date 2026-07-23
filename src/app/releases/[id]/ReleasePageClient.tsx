@@ -15,17 +15,6 @@ import {
 import Link from 'next/link';
 import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
-const DSP_LINKS = [
-  { name: 'Spotify',     slug: 'spotify',       color: '#1db954', icon: '🎵' },
-  { name: 'Apple Music', slug: 'apple-music',   color: '#fa243c', icon: '🍎' },
-  { name: 'YouTube Music', slug: 'youtube-music', color: '#ff0000', icon: '▶' },
-  { name: 'Boomplay',   slug: 'boomplay',       color: '#f57c00', icon: '🎧' },
-  { name: 'Audiomack',  slug: 'audiomack',      color: '#ff6600', icon: '🎶' },
-  { name: 'Deezer',     slug: 'deezer',         color: '#a238ff', icon: '🎼' },
-  { name: 'Tidal',      slug: 'tidal',          color: '#00cccb', icon: '🌊' },
-  { name: 'SoundCloud', slug: 'soundcloud',     color: '#ff5500', icon: '☁' },
-];
-
 export default function ReleasePageClient({ release }: { release: any }) {
   const [buyOpen, setBuyOpen]       = useState(false);
   const [copied, setCopied]         = useState(false);
