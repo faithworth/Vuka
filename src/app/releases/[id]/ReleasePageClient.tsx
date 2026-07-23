@@ -230,28 +230,6 @@ export default function ReleasePageClient({ release }: { release: any }) {
           </div>
         )}
 
-        {/* DSP "Listen On" buttons */}
-        {dspLinks.length > 0 && (
-          <div className="mb-10">
-            <h2 className="text-xl font-black mb-4" style={{ color: 'var(--text)' }}>Listen On</h2>
-            <div className="flex flex-wrap gap-3">
-              {dspLinks.map(dsp => {
-                const delivery = release.dspDeliveries?.find((d: any) =>
-                  d.dsp?.toLowerCase().includes(dsp.slug)
-                );
-                return (
-                  <a key={dsp.name} href={delivery?.storeUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105"
-                    style={{ background: dsp.color }}>
-                    <span>{dsp.icon}</span>
-                    {dsp.name}
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Credits */}
         {(release.credits || release.copyrightHolder) && (
           <div className="p-5 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
