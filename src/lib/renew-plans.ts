@@ -11,6 +11,9 @@ import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
 import { chargeAuthorization, generateReference } from '@/lib/paystack';
 import { PLANS } from '@/lib/plans';
+import { sendBroadcast } from '@/lib/emails';
+
+const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
 export const GRACE_PERIOD_DAYS = 3;
 
@@ -80,6 +83,17 @@ export async function renewSubscription(sub: any, now: Date = new Date()): Promi
         'plan.auto_renew_failed_final', 'Artist', sub.artistId, 'system',
         `Auto-renewal failed twice for ${sub.planSlug} — expiring, artist will drop to Free: ${reason}`,
       );
+      if (email) {
+        sendBroadcast({
+          to: email,
+          displayName: sub.artist?.name || 'there',
+          subject: `Your Vuka ${sub.planSlug} plan has ended`,
+          title: 'Your plan has moved to Free',
+          body: `We tried twice to renew your ${sub.planSlug} plan and both charges failed, so your account has moved to the Free plan.\n\nUpdate your payment details any time to upgrade again — nothing else about your account or releases has changed.`,
+          ctaLabel: 'Update payment details →',
+          ctaUrl: `${APP_URL()}/dashboard/settings#billing`,
+        }).catch(e => logger.error('[renew-plans] final-expiry email failed', { artistId: sub.artistId, error: String(e) }));
+      }
       return { outcome: 'expired', detail: reason };
     }
 
@@ -93,6 +107,17 @@ export async function renewSubscription(sub: any, now: Date = new Date()): Promi
       'plan.auto_renew_failed_grace', 'Artist', sub.artistId, 'system',
       `Auto-renewal failed for ${sub.planSlug}, granting ${GRACE_PERIOD_DAYS}-day grace: ${reason}`,
     );
+    if (email) {
+      sendBroadcast({
+        to: email,
+        displayName: sub.artist?.name || 'there',
+        subject: `Payment issue with your Vuka ${sub.planSlug} plan`,
+        title: 'We couldn\u2019t renew your plan',
+        body: `Your card was declined when we tried to renew your ${sub.planSlug} plan.\n\nYou have ${GRACE_PERIOD_DAYS} days to update your payment details before your account moves to the Free plan.`,
+        ctaLabel: 'Update payment details →',
+        ctaUrl: `${APP_URL()}/dashboard/settings#billing`,
+      }).catch(e => logger.error('[renew-plans] grace email failed', { artistId: sub.artistId, error: String(e) }));
+    }
     return { outcome: 'grace', detail: reason };
   }
 }
