@@ -9,8 +9,6 @@ import {
   sendVerifyEmail,
   sendMagicLink,
   sendNewDeviceAlert,
-  sendReleaseSubmitted,
-  sendReleaseApproved,
   sendReleaseRejected,
   sendReleaseLive,
   sendEarningsAvailable,
@@ -65,22 +63,6 @@ export async function GET(req: NextRequest) {
           securityUrl: `${base}/dashboard/settings#sessions`,
         });
         break;
-      case 'release-submitted':
-        result = await sendReleaseSubmitted({
-          to, artistName: 'Test Artist', releaseTitle: 'Test Single',
-          releaseType: 'SINGLE', trackCount: 1,
-          releaseUrl: `${base}/dashboard/releases/test-id`,
-        });
-        break;
-      case 'release-approved':
-        result = await sendReleaseApproved({
-          to, artistName: 'Test Artist', releaseTitle: 'Test Single',
-          releaseType: 'SINGLE',
-          platforms: ['Spotify', 'Apple Music', 'YouTube Music', 'Boomplay', 'Audiomack'],
-          expectedLiveDate: '5–7 business days',
-          releaseUrl: `${base}/dashboard/releases/test-id`,
-        });
-        break;
       case 'release-rejected':
         result = await sendReleaseRejected({
           to, artistName: 'Test Artist', releaseTitle: 'Test Single',
@@ -92,7 +74,6 @@ export async function GET(req: NextRequest) {
       case 'release-live':
         result = await sendReleaseLive({
           to, artistName: 'Test Artist', releaseTitle: 'Test Single',
-          platforms: ['Spotify', 'Apple Music', 'YouTube Music', 'Boomplay', 'Audiomack', 'Deezer'],
           shareUrl: `${base}/releases/test-id`,
           releaseUrl: `${base}/dashboard/releases/test-id`,
         });
@@ -197,7 +178,7 @@ export async function POST(req: NextRequest) {
 
   const templates = [
     'welcome', 'verify-email', 'magic-link', 'new-device-alert',
-    'release-submitted', 'release-approved', 'release-rejected', 'release-live',
+    'release-rejected', 'release-live',
     'earnings-available', 'payout-requested', 'payout-approved', 'payout-processed',
     'payout-failed', 'account-suspended', 'new-login-alert', 'broadcast',
   ];
