@@ -283,39 +283,7 @@ export const sendNewLoginAlert = sendNewDeviceAlert;
 // 5. RELEASE SUBMITTED
 // ═══════════════════════════════════════════════════════════════
 
-export async function sendReleaseSubmitted({
-  to,
-  artistName,
-  releaseTitle,
-  releaseType,
-  trackCount,
-  releaseUrl,
-}: {
-  to: string;
-  artistName: string;
-  releaseTitle: string;
-  releaseType: string;
-  trackCount: number;
-  releaseUrl: string;
-}) {
-  const subject = `"${releaseTitle}" submitted for review — Vuka`;
-  const html = layout(
-    card(`
-      ${icon('📤')}
-      ${heading('Release submitted!')}
-      ${sub(`Sharp, ${artistName}! Your ${releaseType.toLowerCase()} is now in the review queue. We'll notify you once it's approved.`)}
-      ${infoTable(`
-        ${row('Release', `<strong>${releaseTitle}</strong>`)}
-        ${row('Type', releaseType)}
-        ${row('Tracks', String(trackCount))}
-        ${row('Status', '<span style="color:#E8C87C;">Pending Review</span>')}
-        ${row('Expected Review', '2–5 business days')}
-      `)}
-      ${btn(releaseUrl, 'View Release →', 'secondary')}
-    `)
-  );
-  return getResend().emails.send({ from: FROM(), to, subject, html });
-}
+
 
 // ═══════════════════════════════════════════════════════════════
 // 6. RELEASE APPROVED
