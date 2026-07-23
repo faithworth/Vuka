@@ -559,8 +559,11 @@ function SettingsContent() {
           <Crown size={18} style={{ color: 'var(--sky)' }} />
           <h2 className="font-bold text-base" style={{ color: 'var(--text)' }}>Your Plan</h2>
         </div>
-        <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>
           Upgrade to keep more of every sale and unlock unlimited releases.
+        </p>
+        <p className="text-xs mb-5" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>
+          Paid plans renew automatically every month using your saved card until you cancel. If a renewal fails, you'll get {GRACE_PERIOD_DAYS_LABEL} to update your payment details before dropping to Free.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-4">
