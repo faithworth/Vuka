@@ -1,4 +1,9 @@
-'PLACEHOLDER_NEVER_MATCHES'
+'use client';
+// ============================================================
+// VUKA — Release Page Client
+// Waveform mini-players, share tools. Direct-to-fan sales only —
+// Vuka Music does not distribute to DSPs (Spotify, Apple Music, etc).
+// ============================================================
 // Waveform mini-players, share tools. Direct-to-fan sales only —
 // Vuka Music does not distribute to DSPs (Spotify, Apple Music, etc).
 // ============================================================
