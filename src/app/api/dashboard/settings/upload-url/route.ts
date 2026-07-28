@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
       case 'audio':
         key = `uploads/audio/${artistId}-${ts}.${ext}`;
         break;
+      case 'eventCover':
+        key = `events/covers/${artistId}-${ts}.${ext}`;
+        break;
       default:
         return NextResponse.json({ error: `Unknown fileType: ${fileType}` }, { status: 400 });
     }
