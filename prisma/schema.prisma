@@ -114,6 +114,7 @@ model Artist {
   taxRecords            TaxRecord[]
   beatLicenses          BeatLicense[]
   invoices              Invoice[]
+  beatBundles           BeatBundle[]
   // Phase 3
   posts                 ArtistPost[]
   stories               Story[]
@@ -656,6 +657,33 @@ model Deal {
   createdAt      DateTime     @default(now())
 
   @@index([industryUserId])
+}
+
+// ── AI BEAT BUNDLER ───────────────────────────────────────────────────────────
+// Artist uploads one source WAV; an external stem/variation AI service
+// generates N variations. Each finished variation becomes its own draft
+// Beat row (see generatedBeatIds) that the artist reviews, prices, and
+// activates individually through the existing beat-upload flow — this
+// deliberately reuses Purchase/BeatLicense/download instead of a parallel
+// ZIP-bundle checkout path.
+
+model BeatBundle {
+  id             String   @id @default(cuid())
+  artistId       String
+  artist         Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  title          String   @default("")
+  sourceWavUrl   String   @default("")
+  status         String   @default("pending") // pending, processing, ready, failed
+  provider       String   @default("")        // e.g. soundraw, splitter — set from STEM_AI_PROVIDER
+  providerJobId  String   @default("")
+  variantCount   Int      @default(50)
+  generatedBeatIds String[] @default([])
+  errorMessage   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([artistId, status])
+  @@map("beat_bundles")
 }
 
 // ── PHASE 2: CREATOR ECONOMY ──────────────────────────────────
