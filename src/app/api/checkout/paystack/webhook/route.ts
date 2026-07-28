@@ -36,6 +36,7 @@ import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
 import { issueBeatLicense } from '@/lib/licensing';
+import { createInvoiceFromPurchase } from '@/lib/invoices';
 import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent, handleTicketEvent, handleCampaignEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
@@ -390,6 +391,14 @@ export async function POST(req: NextRequest) {
   }
 
   await auditLog.purchaseConfirmed(purchase.id, itemName, purchase.amount, purchase.currency, purchase.buyerEmail);
+
+  // Generate an invoice record for beat/release sales — fire-and-forget,
+  // never blocks the buyer's confirmation/download.
+  if (purchase.itemType === 'beat' || purchase.itemType === 'release') {
+    createInvoiceFromPurchase(purchase.id).catch(e =>
+      logger.error('[paystack/webhook] invoice creation failed', { traceId, error: String(e) })
+    );
+  }
 
   const freshPurchase = await prisma.purchase.findUnique({ where: { id: purchase.id }, select: { receiptUrl: true } });
   if (freshPurchase?.receiptUrl !== 'email:sent') {
