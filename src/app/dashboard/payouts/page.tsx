@@ -86,6 +86,7 @@ export default function PayoutsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: summary.totalPending,
+          method: 'bank_transfer',
           bankAccountId: defaultBank?.id,
           currency: 'ZAR',
         }),
