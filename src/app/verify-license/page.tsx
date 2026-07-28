@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 
-export default function VerifyLicensePage() {
+function VerifyLicenseInner() {
   const searchParams = useSearchParams();
   const [key, setKey] = useState(searchParams.get('key') || '');
   const [result, setResult] = useState<any>(null);
@@ -103,5 +103,18 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt style={{ color: 'var(--text-muted)' }}>{label}</dt>
       <dd className="font-medium" style={{ color: 'var(--text)' }}>{value}</dd>
     </div>
+  );
+}
+
+export default function VerifyLicensePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+        <Navbar />
+        <div className="max-w-lg mx-auto px-4 py-16 text-center" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+      </div>
+    }>
+      <VerifyLicenseInner />
+    </Suspense>
   );
 }
