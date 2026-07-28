@@ -36,6 +36,10 @@ export async function GET(
 
   if (purchase.downloadCount >= 10) return NextResponse.json({ error: 'Download limit reached — visit /redownload' }, { status: 429 });
 
+  const beatLicense = purchase.itemType === 'beat'
+    ? await prisma.beatLicense.findUnique({ where: { purchaseId: purchase.id }, select: { licenseKey: true } }).catch(() => null)
+    : null;
+
   // NOTE: downloadCount is NOT incremented here anymore.
   // It is incremented in /api/download/[token]/file/[index] per actual file served.
 
@@ -76,6 +80,7 @@ export async function GET(
     itemName: purchase.beat?.title || purchase.release?.title || (purchase as any).distributionRelease?.title || purchase.video?.title || purchase.sample?.title || 'Your Purchase',
     downloadsLeft: 10 - purchase.downloadCount,
     licenseUrl: purchase.licenseUrl,
+    licenseKey: beatLicense?.licenseKey || null,
     itemType: purchase.itemType,
   });
 }
