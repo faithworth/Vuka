@@ -23,6 +23,8 @@ export const r2Keys = {
   trackFullWav: (id: string) => `private/tracks/${id}.wav`,
   license: (id: string) => `licenses/${id}.pdf`,
   receipt: (id: string) => `receipts/${id}.pdf`,
+  beatBundleSource: (id: string) => `private/beat-bundles/${id}/source.wav`,
+  beatBundleVariant: (id: string, n: number) => `private/beat-bundles/${id}/variant-${n}.mp3`,
 };
 
 export function getPublicUrl(key: string): string {
