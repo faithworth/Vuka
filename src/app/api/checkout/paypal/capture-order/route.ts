@@ -46,6 +46,7 @@ import { captureException } from '@/lib/monitoring/sentry';
 import { incrementDailyRollup } from '@/lib/social';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
+import { issueBeatLicense } from '@/lib/licensing';
 import crypto from 'crypto';
 
 const schema = z.object({
@@ -277,6 +278,13 @@ export async function POST(req: NextRequest) {
         itemTitle  = `${beat.title} (${purchase.licenseType || 'Basic'} License)`;
         artworkUrl = beat.artworkUrl || '';
         licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
+        issueBeatLicense({
+          purchaseId: purchase.id,
+          buyerName:  purchase.buyerName,
+          buyerEmail: purchase.buyerEmail,
+          artistName: beat.artist.name,
+          songTitle:  beat.title,
+        }).catch(e => logger.error('[PayPal capture] beat license key issuance failed', { traceId, error: String(e) }));
 
         // Lock exclusive beat
         if (purchase.licenseType === 'exclusive') {
