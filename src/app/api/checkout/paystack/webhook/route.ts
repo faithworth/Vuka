@@ -35,6 +35,7 @@ import { incrementDailyRollup } from '@/lib/social';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
+import { issueBeatLicense } from '@/lib/licensing';
 import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent, handleTicketEvent, handleCampaignEvent } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
@@ -266,6 +267,16 @@ export async function POST(req: NextRequest) {
       itemName = beat.title; artistEmail = beat.artist.user.email;
       artistName = beat.artist.name; artworkUrl = beat.artworkUrl || ''; artistId = beat.artist.id;
       licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
+      // Issues a verifiable license key (BeatLicense row) in addition to the
+      // PDF above — fire-and-forget so a failure here never blocks the
+      // buyer's download/confirmation. Idempotent on purchaseId.
+      issueBeatLicense({
+        purchaseId: purchase.id,
+        buyerName:  purchase.buyerName,
+        buyerEmail: purchase.buyerEmail,
+        artistName: beat.artist.name,
+        songTitle:  beat.title,
+      }).catch(e => logger.error('[paystack/webhook] beat license key issuance failed', { traceId, error: String(e) }));
       if (purchase.licenseType === 'exclusive') {
         await prisma.beat.update({ where: { id: beat.id }, data: { isExclusive: true, isActive: false } });
         await auditLog.exclusiveLocked(beat.id, beat.title, purchase.id);
