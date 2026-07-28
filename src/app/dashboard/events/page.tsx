@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye, ScanLine, Image as ImageIcon } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
