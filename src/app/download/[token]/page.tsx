@@ -81,6 +81,16 @@ export default function DownloadPage() {
               </a>
             )}
 
+            {data.licenseKey && (
+              <div className="mt-4 p-4 rounded-xl text-center" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>License key</p>
+                <p className="font-mono text-sm mb-2" style={{ color: 'var(--text)' }}>{data.licenseKey}</p>
+                <a href={`/verify-license?key=${data.licenseKey}`} className="text-xs underline" style={{ color: 'var(--sky)' }}>
+                  Verify this license →
+                </a>
+              </div>
+            )}
+
             <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
               Need another copy? <a href="/redownload" className="underline">Re-download portal</a>
             </p>
