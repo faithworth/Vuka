@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import {
-  TrendingUp, Download, BarChart2, RefreshCw, Music, Disc, ChevronDown,
+  TrendingUp, Download, BarChart2, RefreshCw, Music, Disc, ChevronDown, FileText, Receipt,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
@@ -39,6 +39,32 @@ export default function EarningsPage() {
   const [data, setData]       = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan]       = useState<{ artistSharePct: number; platformFeePct: number; planName: string } | null>(null);
+  const [invoices, setInvoices]           = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [taxYear, setTaxYear]             = useState(new Date().getFullYear());
+  const [taxRecord, setTaxRecord]         = useState<any>(null);
+  const [taxLoading, setTaxLoading]       = useState(false);
+
+  async function loadInvoices() {
+    setInvoicesLoading(true);
+    try {
+      const res = await fetch('/api/invoices');
+      if (res.ok) setInvoices((await res.json()).invoices || []);
+    } catch {}
+    setInvoicesLoading(false);
+  }
+
+  async function loadTaxRecord(year: number) {
+    setTaxLoading(true);
+    try {
+      const res = await fetch(`/api/invoices?type=tax&year=${year}`);
+      if (res.ok) setTaxRecord((await res.json()).record || null);
+    } catch {}
+    setTaxLoading(false);
+  }
+
+  useEffect(() => { loadInvoices(); }, []);
+  useEffect(() => { loadTaxRecord(taxYear); }, [taxYear]);
 
   async function load() {
     setLoading(true);
