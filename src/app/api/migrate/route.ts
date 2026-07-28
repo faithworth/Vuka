@@ -20,38 +20,6 @@ const prisma = new PrismaClient();
 // ── Migration registry — add new ones at the bottom ──────────────────────
 const MIGRATIONS: { id: string; sql: string }[] = [
   {
-    id:  'paypal_integration',
-    sql: `
-      -- Purchase: PayPal tracking fields
-      ALTER TABLE "Purchase" ADD COLUMN IF NOT EXISTS "paymentProvider" TEXT NOT NULL DEFAULT 'paystack';
-      ALTER TABLE "Purchase" ADD COLUMN IF NOT EXISTS "paymentCurrency" TEXT NOT NULL DEFAULT 'ZAR';
-      ALTER TABLE "Purchase" ADD COLUMN IF NOT EXISTS "paymentAmount"   DOUBLE PRECISION NOT NULL DEFAULT 0;
-      ALTER TABLE "Purchase" ADD COLUMN IF NOT EXISTS "artistEarnings"  DOUBLE PRECISION NOT NULL DEFAULT 0;
-
-      -- Purchase: drop obsolete distributionRelease FK
-      ALTER TABLE "Purchase" DROP COLUMN IF EXISTS "distributionReleaseId";
-      DROP INDEX IF EXISTS "Purchase_distributionReleaseId_idx";
-
-      -- PayoutRequest: method + PayPal fields
-      ALTER TABLE "PayoutRequest" ADD COLUMN IF NOT EXISTS "method"             TEXT NOT NULL DEFAULT 'bank_transfer';
-      ALTER TABLE "PayoutRequest" ADD COLUMN IF NOT EXISTS "paypalEmail"        TEXT;
-      ALTER TABLE "PayoutRequest" ADD COLUMN IF NOT EXISTS "notes"              TEXT NOT NULL DEFAULT '';
-      ALTER TABLE "PayoutRequest" ADD COLUMN IF NOT EXISTS "paystackReference"  TEXT;
-
-      -- Artist: top-level PayPal email
-      ALTER TABLE "Artist" ADD COLUMN IF NOT EXISTS "paypalEmail" TEXT;
-
-      -- Clean up Flutterwave method values
-      UPDATE "ArtistPayout" SET "method" = 'bank_transfer' WHERE "method" = 'flutterwave';
-
-      -- Indexes
-      CREATE INDEX IF NOT EXISTS "Purchase_paymentProvider_idx" ON "Purchase"("paymentProvider");
-      CREATE INDEX IF NOT EXISTS "Purchase_paymentCurrency_idx" ON "Purchase"("paymentCurrency");
-      CREATE INDEX IF NOT EXISTS "PayoutRequest_method_idx"     ON "PayoutRequest"("method");
-      CREATE INDEX IF NOT EXISTS "PayoutRequest_status_idx"     ON "PayoutRequest"("status");
-    `,
-  },
-  {
     id:  'phase13_ticket_gate_security',
     sql: `
       -- Restores the anti-fraud columns for event check-in that were missing
