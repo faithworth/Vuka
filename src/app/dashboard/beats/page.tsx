@@ -53,9 +53,14 @@ export default function DashboardBeatsPage() {
     <div className="p-6 md:p-10">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-black" style={{ color: 'var(--text)' }}>Your Beats</h1>
-        <Link href="/dashboard/uploads" className="px-4 py-2 rounded-xl font-bold text-white text-sm" style={{ background: 'var(--sky)' }}>
-          + Upload Beat
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/beats/ai-bundle" className="px-4 py-2 rounded-xl font-bold text-sm" style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+            AI Beat Bundler
+          </Link>
+          <Link href="/dashboard/uploads" className="px-4 py-2 rounded-xl font-bold text-white text-sm" style={{ background: 'var(--sky)' }}>
+            + Upload Beat
+          </Link>
+        </div>
       </div>
 
       {loading ? (
