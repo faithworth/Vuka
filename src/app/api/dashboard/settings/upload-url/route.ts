@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
       if (mime === 'audio/flac') return 'flac';
       if (mime === 'audio/mpeg' || mime === 'audio/mp3')  return 'mp3';
       if (mime === 'image/jpeg') return 'jpg';
+      if (mime === 'application/pdf') return 'pdf';
+      if (mime === 'video/mp4') return 'mp4';
+      if (mime === 'video/quicktime') return 'mov';
       // Fallback: grab the subtype
       return mime.split('/')[1]?.split(';')[0] || 'bin';
     }
@@ -73,6 +76,12 @@ export async function POST(req: NextRequest) {
         break;
       case 'eventCover':
         key = `events/covers/${artistId}-${ts}.${ext}`;
+        break;
+      case 'exclusiveContent':
+        key = `exclusive/${artistId}-${ts}.${ext}`;
+        break;
+      case 'exclusiveThumb':
+        key = `exclusive/thumbs/${artistId}-${ts}.${ext}`;
         break;
       default:
         return NextResponse.json({ error: `Unknown fileType: ${fileType}` }, { status: 400 });
