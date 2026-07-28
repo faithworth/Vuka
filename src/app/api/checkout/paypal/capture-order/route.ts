@@ -47,6 +47,7 @@ import { incrementDailyRollup } from '@/lib/social';
 import { checkAndAwardPlaques } from '@/lib/plaques';
 import { disburseSplitSheet } from '@/lib/splits';
 import { issueBeatLicense } from '@/lib/licensing';
+import { createInvoiceFromPurchase } from '@/lib/invoices';
 import crypto from 'crypto';
 
 const schema = z.object({
@@ -440,6 +441,12 @@ export async function POST(req: NextRequest) {
   await auditLog.purchaseConfirmed(
     purchase.id, itemTitle, purchase.amount, purchase.currency, buyerEmail
   );
+
+  if (purchase.itemType === 'beat' || purchase.itemType === 'release') {
+    createInvoiceFromPurchase(purchase.id).catch(e =>
+      logger.error('[PayPal capture] invoice creation failed', { traceId, error: String(e) })
+    );
+  }
 
   logger.info('[PayPal capture] Purchase confirmed', {
     traceId, purchaseId: purchase.id, orderId, amountUSD, priceZAR: purchase.amount, fxRate, paypalFeeUSD,
