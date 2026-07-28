@@ -53,6 +53,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'Organization',
+                  '@id': 'https://www.vukamusic.com/#organization',
+                  name: 'Vuka Music',
+                  alternateName: 'VukaMusic',
+                  url: 'https://www.vukamusic.com',
+                  logo: 'https://www.vukamusic.com/favicon.svg',
+                  description:
+                    'Vuka Music is the direct-to-fan sales platform for South African independent artists and producers to sell beats, releases, event tickets, and merch.',
+                  areaServed: 'ZA',
+                  sameAs: [],
+                },
+                {
+                  '@type': 'WebSite',
+                  '@id': 'https://www.vukamusic.com/#website',
+                  url: 'https://www.vukamusic.com',
+                  name: 'Vuka Music',
+                  publisher: { '@id': 'https://www.vukamusic.com/#organization' },
+                  potentialAction: {
+                    '@type': 'SearchAction',
+                    target: 'https://www.vukamusic.com/discover?q={search_term_string}',
+                    'query-input': 'required name=search_term_string',
+                  },
+                },
+              ],
+            }),
+          }}
+        />
         <Providers>{children}</Providers>
         <CelebrationBadge />
       </body>
