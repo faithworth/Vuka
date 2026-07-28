@@ -1,7 +1,23 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye, ScanLine } from 'lucide-react';
+import { Plus, Calendar, MapPin, Ticket, Users, Globe, Trash2, ChevronRight, Check, AlertCircle, Eye, ScanLine, Image as ImageIcon } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
+
+async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: number) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', presignedUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    if (onProgress) {
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+    }
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
+    xhr.onerror  = () => reject(new Error('Network error'));
+    xhr.send(file);
+  });
+}
 
 interface EventTicketForm { name: string; description: string; price: string; quantity: string }
 interface EventItem {
@@ -36,7 +52,18 @@ export default function EventsPage() {
   const [startDate,   setStartDate]   = useState('');
   const [endDate,     setEndDate]     = useState('');
   const [coverUrl,    setCoverUrl]    = useState('');
+  const [coverFile,   setCoverFile]   = useState<File | null>(null);
+  const [coverPreview,setCoverPreview]= useState('');
+  const [coverProgress, setCoverProgress] = useState<number | null>(null);
   const [tickets,     setTickets]     = useState<EventTicketForm[]>([{ name:'General Admission', description:'', price:'', quantity:'' }]);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  function handleCoverPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
 
   async function load() {
     setLoading(true);
@@ -48,6 +75,7 @@ export default function EventsPage() {
   function resetForm() {
     setTitle(''); setDesc(''); setVenue(''); setCity(''); setProvince('Gauteng');
     setStartDate(''); setEndDate(''); setCoverUrl('');
+    setCoverFile(null); setCoverPreview(''); setCoverProgress(null);
     setTickets([{ name:'General Admission', description:'', price:'', quantity:'' }]);
     setError(''); setSuccess('');
   }
@@ -59,9 +87,21 @@ export default function EventsPage() {
   async function create() {
     setError(''); setSaving(true);
     try {
+      let finalCoverUrl = coverUrl;
+      if (coverFile) {
+        const initRes = await fetch('/api/dashboard/settings/upload-url', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentType: coverFile.type, fileType: 'eventCover' }),
+        });
+        if (!initRes.ok) { setError('Failed to prepare image upload'); setSaving(false); return; }
+        const { presignedUrl, publicUrl } = await initRes.json();
+        await uploadToR2(presignedUrl, coverFile, p => setCoverProgress(p));
+        setCoverProgress(null);
+        finalCoverUrl = publicUrl;
+      }
       const res = await fetch('/api/dashboard/events', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ title, description, venue, city, province, startDate, endDate: endDate || undefined, coverUrl,
+        body: JSON.stringify({ title, description, venue, city, province, startDate, endDate: endDate || undefined, coverUrl: finalCoverUrl,
           tickets: tickets.filter(t => t.name && t.price !== '').map(t => ({ ...t, price: parseFloat(t.price), quantity: t.quantity ? parseInt(t.quantity) : null })) }),
       });
       const d = await res.json();
@@ -102,7 +142,23 @@ export default function EventsPage() {
           <h2 className="text-sm font-bold" style={{ color:'var(--text)' }}>Event Details</h2>
           <input className="input w-full" placeholder="Event title *" value={title} onChange={e => setTitle(e.target.value)} />
           <textarea className="input w-full resize-none" rows={3} placeholder="Description" value={description} onChange={e => setDesc(e.target.value)} />
-          <input className="input w-full" placeholder="Cover image URL" value={coverUrl} onChange={e => setCoverUrl(e.target.value)} />
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color:'var(--text-muted)' }}>Cover Image</label>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background:'var(--surface2)', border:'1px solid var(--border)' }}>
+                {coverPreview
+                  ? <img src={coverPreview} className="w-full h-full object-cover" alt="" />
+                  : <ImageIcon size={20} style={{ color:'var(--text-muted)' }} />}
+              </div>
+              <button type="button" onClick={() => coverInputRef.current?.click()}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--text)' }}>
+                {coverPreview ? 'Change Image' : 'Upload Image'}
+              </button>
+              {coverProgress !== null && <span className="text-sm" style={{ color:'var(--sky)' }}>Uploading {coverProgress}%…</span>}
+            </div>
+            <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverPick} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color:'var(--text-muted)' }}>Start Date & Time *</label>
