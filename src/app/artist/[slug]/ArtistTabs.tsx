@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink, Video, Package, ShoppingBag, Users, Check, Zap, type LucideIcon,
+  Music, Disc, Send, Heart, MessageCircle, Repeat2, ExternalLink, Video, Package, ShoppingBag, Users, Check, Zap, Lock, FileText, Link as LinkIcon, type LucideIcon,
 } from 'lucide-react';
 import { BeatCard } from '@/components/BeatCard';
 import { ReleaseCard } from '@/components/ReleaseCard';
@@ -10,7 +10,7 @@ import VukaLoader from '@/components/brand/VukaLoader';
 
 // ─── Domain types ────────────────────────────────────────────────────────────
 
-type Tab = 'beats' | 'releases' | 'videos' | 'samples' | 'merch' | 'membership' | 'posts';
+type Tab = 'beats' | 'releases' | 'videos' | 'samples' | 'merch' | 'membership' | 'posts' | 'exclusive';
 
 interface TabConfig {
   key:   Tab;
@@ -74,6 +74,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
       { key: 'samples',    label: 'Samples',    icon: Package,     count: artist.samples?.length           || 0, show: true           },
       { key: 'merch',      label: 'Merch',      icon: ShoppingBag, count: artist.merch?.length             || 0, show: hasMerch       },
       { key: 'membership', label: 'Membership', icon: Users,       count: artist.subscriptionTiers?.length || 0, show: hasMemberships },
+      { key: 'exclusive',   label: 'Exclusive',   icon: Lock,        count: 0,                                    show: hasMemberships },
       { key: 'posts',      label: 'Posts',      icon: Send,        count: 0,                                    show: true           },
     ] as TabConfig[]
   ).filter(t => t.show);
@@ -85,6 +86,9 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
   const [subscribing,      setSubscribing]      = useState<string | null>(null);
   const [subscribeError,   setSubscribeError]   = useState('');
   const [subscribeSuccess, setSubscribeSuccess] = useState('');
+  const [exclusiveContent, setExclusiveContent] = useState<any[]>([]);
+  const [exclusiveLoading, setExclusiveLoading] = useState(false);
+  const [exclusiveFetched, setExclusiveFetched] = useState(false);
 
   useEffect(() => {
     if (activeTab !== 'posts' || postsFetched) return;
@@ -94,6 +98,15 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
       .then(d => { setPosts(d.posts ?? []); setPostsFetched(true); setPostsLoading(false); })
       .catch(() => setPostsLoading(false));
   }, [activeTab, postsFetched, artist.slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'exclusive' || exclusiveFetched) return;
+    setExclusiveLoading(true);
+    fetch(`/api/creator/content?artistId=${artist.id}`)
+      .then(r => r.ok ? r.json() : { content: [] })
+      .then(d => { setExclusiveContent(d.content ?? []); setExclusiveFetched(true); setExclusiveLoading(false); })
+      .catch(() => setExclusiveLoading(false));
+  }, [activeTab, exclusiveFetched, artist.id]);
 
   async function handleSubscribe(tier: any) {
     setSubscribeError('');
@@ -391,6 +404,79 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Exclusive Content ───────────────────────────── */}
+      {activeTab === 'exclusive' && (
+        <section className="mb-12 max-w-2xl">
+          {exclusiveLoading ? (
+            <div className="flex justify-center py-10"><VukaLoader size={24} /></div>
+          ) : !exclusiveContent.length ? (
+            <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <Lock size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+              <p className="font-semibold" style={{ color: 'var(--text)' }}>Nothing published yet</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Check back soon, or join a membership tier to unlock future drops</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {exclusiveContent.map((item: any) => {
+                const locked = !item.isFreePreview && !item.fileUrl && !item.body && !item.externalUrl;
+                const TypeIcon = item.contentType === 'link' ? LinkIcon : item.contentType === 'text' ? FileText : Lock;
+                return (
+                  <article key={item.id} className="card p-5" style={{ opacity: locked ? 0.75 : 1 }}>
+                    <div className="flex items-start gap-3 mb-2">
+                      {item.thumbnailUrl && (
+                        <img src={item.thumbnailUrl} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" alt="" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold" style={{ color: 'var(--text)' }}>{item.title}</h3>
+                          {locked && <Lock size={12} style={{ color: 'var(--text-muted)' }} />}
+                        </div>
+                        {item.description && (
+                          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {locked ? (
+                      <div className="mt-3 p-3 rounded-xl text-sm flex items-center gap-2"
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        <Lock size={13} /> Join a membership tier to unlock this
+                      </div>
+                    ) : (
+                      <>
+                        {item.body && (
+                          <p className="text-sm whitespace-pre-wrap mt-2" style={{ color: 'var(--text)' }}>{item.body}</p>
+                        )}
+                        {item.contentType === 'audio' && item.fileUrl && (
+                          <audio controls src={item.fileUrl} className="w-full mt-3" />
+                        )}
+                        {item.contentType === 'video' && item.fileUrl && (
+                          <video controls src={item.fileUrl} className="w-full mt-3 rounded-xl" style={{ maxHeight: 320 }} />
+                        )}
+                        {(item.contentType === 'pdf' || item.contentType === 'link') && (item.fileUrl || item.externalUrl) && (
+                          <a href={item.fileUrl || item.externalUrl} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 rounded-xl mt-3 text-sm font-medium"
+                            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--sky)' }}>
+                            <TypeIcon size={14} /> {item.contentType === 'pdf' ? 'Open PDF' : 'Open link'}
+                          </a>
+                        )}
+                      </>
+                    )}
+
+                    {item.isFreePreview && (
+                      <span className="inline-block mt-3 text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(56,182,232,0.1)', color: 'var(--sky)' }}>
+                        Free preview
+                      </span>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
