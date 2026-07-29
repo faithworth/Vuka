@@ -8,6 +8,7 @@
 //      page refreshes from burning the 10-download limit.
 // ============================================================
 
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateLicensePDF } from '@/lib/pdf';
