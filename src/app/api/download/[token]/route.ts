@@ -23,7 +23,6 @@ export async function GET(
     include: {
       beat: { include: { artist: true } },
       release: { include: { tracks: { orderBy: { trackNumber: 'asc' } } } },
-      distributionRelease: { include: { tracks: { orderBy: { trackNumber: 'asc' } } } },
       video: true,
       sample: true,
     },
@@ -95,11 +94,6 @@ export async function GET(
       const filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.mp3`;
       downloads.push({ name: filename, url: `${base}/${i}` });
     });
-  } else if ((purchase as any).distributionRelease) {
-    (purchase as any).distributionRelease.tracks.forEach((track: any, i: number) => {
-      const filename = `${String(track.trackNumber).padStart(2, '0')} - ${track.title}.mp3`;
-      downloads.push({ name: filename, url: `${base}/distrib-${i}` });
-    });
   } else if (purchase.video) {
     downloads.push({ name: `${purchase.video.title}.mp4`, url: `${base}/0` });
   } else if (purchase.sample) {
@@ -108,7 +102,7 @@ export async function GET(
 
   return NextResponse.json({
     downloads,
-    itemName: purchase.beat?.title || purchase.release?.title || (purchase as any).distributionRelease?.title || purchase.video?.title || purchase.sample?.title || 'Your Purchase',
+    itemName: purchase.beat?.title || purchase.release?.title || purchase.video?.title || purchase.sample?.title || 'Your Purchase',
     downloadsLeft: 10 - purchase.downloadCount,
     licenseUrl,
     licenseKey: beatLicense?.licenseKey || null,
