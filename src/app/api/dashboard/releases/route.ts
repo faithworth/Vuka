@@ -21,44 +21,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Distribution releases (DistributionRelease model)
-    const distribReleases = await prisma.distributionRelease.findMany({
-      where: { artistId: user.artist.id },
-      include: { tracks: { orderBy: { trackNumber: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Normalise distribution releases to the same shape the dashboard page expects
-    const normDistrib = distribReleases.map(r => ({
-      id:           r.id,
-      _isDistrib:   true,
-      title:        r.title,
-      releaseType:  r.releaseType,
-      artworkUrl:   r.artworkUrl,
-      price:        (r as any).price ?? 0,
-      minPrice:     (r as any).minPrice ?? 0,
-      isActive:     r.status === 'live',
-      plays:        0,
-      sales:        0,
-      upc:          r.upc,
-      slug:         null,
-      status:       r.status,
-      createdAt:    r.createdAt,
-      tracks:       r.tracks.map((t: any) => ({
-        id:          t.id,
-        title:       t.title,
-        trackNumber: t.trackNumber,
-        isrc:        t.isrc ?? null,
-        fileUrl:     t.fileUrl,
-        duration:    t.duration ?? 0,
-      })),
-    }));
-
-    // Merge, newest first
-    const releases = [...storeReleases, ...normDistrib]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return NextResponse.json({ releases });
+    return NextResponse.json({ releases: storeReleases });
   } catch (err) {
     console.error('[releases] GET error:', err);
     return NextResponse.json({ releases: [], dbError: true });
