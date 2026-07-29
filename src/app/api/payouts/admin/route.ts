@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { approvePayoutRequest } from '@/lib/payouts';
+import { approvePayoutRequest, markPayoutPaid, rejectPayoutRequest } from '@/lib/payouts';
 
 // GET — list payout requests for admin review
 export async function GET(req: NextRequest) {
@@ -52,25 +52,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, result });
       }
 
+      case 'mark_paid': {
+        const { reference } = await req.json().catch(() => ({ reference: undefined })) || {};
+        const ref = reference || `manual-${Date.now()}`;
+        const result = await markPayoutPaid(requestId, ref);
+        return NextResponse.json({ ok: true, result });
+      }
+
       case 'reject': {
         const existing = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
         if (!existing) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
-        if (existing.status !== 'pending') {
+        if (existing.status !== 'pending' && existing.status !== 'approved') {
           return NextResponse.json({ error: `Request is ${existing.status}` }, { status: 409 });
         }
-
-        // Revert any processing payouts for this artist back to pending
-        await prisma.artistPayout.updateMany({
-          where: { artistId: existing.artistId, status: 'processing' },
-          data: { status: 'pending', notes: 'Reverted — payout request rejected by admin' },
-        });
-
-        await prisma.payoutRequest.update({
-          where: { id: requestId },
-          data: { status: 'cancelled', adminNotes: notes || 'Rejected by admin', processedAt: new Date() },
-        });
-
-        return NextResponse.json({ ok: true, status: 'cancelled' });
+        const result = await rejectPayoutRequest(requestId, notes || 'Rejected by admin');
+        return NextResponse.json({ ok: true, result });
       }
 
       default:
