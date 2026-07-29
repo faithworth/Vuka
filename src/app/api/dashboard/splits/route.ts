@@ -11,9 +11,7 @@ import prisma from '@/lib/prisma';
 const ALLOWED_ITEM_TYPES = ['beat', 'release', 'video', 'sample', 'merch'] as const;
 
 // Confirms itemId both exists and is owned by the requesting artist, so an
-// artist can't point a split sheet at someone else's content. 'release'
-// checks Release first, then falls back to DistributionRelease since
-// distribution-only releases share the 'release' itemType.
+// artist can't point a split sheet at someone else's content.
 async function itemBelongsToArtist(itemType: string, itemId: string, artistId: string): Promise<boolean> {
   switch (itemType) {
     case 'beat': {
@@ -22,9 +20,7 @@ async function itemBelongsToArtist(itemType: string, itemId: string, artistId: s
     }
     case 'release': {
       const release = await prisma.release.findUnique({ where: { id: itemId }, select: { artistId: true } });
-      if (release) return release.artistId === artistId;
-      const distRelease = await prisma.distributionRelease.findUnique({ where: { id: itemId }, select: { artistId: true } });
-      return distRelease?.artistId === artistId;
+      return release?.artistId === artistId;
     }
     case 'video': {
       const video = await prisma.video.findUnique({ where: { id: itemId }, select: { artistId: true } });
