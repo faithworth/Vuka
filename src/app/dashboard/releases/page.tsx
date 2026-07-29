@@ -105,14 +105,10 @@ export default function DashboardReleasesPage() {
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full"
                     style={{
-                      background: release._isDistrib
-                        ? 'rgba(56,182,232,0.1)'
-                        : release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
-                      color: release._isDistrib
-                        ? 'var(--sky)'
-                        : release.isActive ? 'var(--green)' : '#ef4444',
+                      background: release.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                      color: release.isActive ? 'var(--green)' : '#ef4444',
                     }}>
-                    {release._isDistrib ? (release.status ?? 'distribution') : (release.isActive ? 'Active' : 'Hidden')}
+                    {release.isActive ? 'Active' : 'Hidden'}
                   </span>
                 </div>
                 <div className="text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -120,12 +116,6 @@ export default function DashboardReleasesPage() {
                   <span>{release.plays ?? 0} plays</span>
                   <span>{release.sales ?? 0} sales</span>
                   <span>{formatCurrency(release.price)}</span>
-                  {release.distributor && (
-                    <span className="px-1.5 py-0.5 rounded text-xs font-medium"
-                      style={{ background: 'rgba(160,232,124,0.1)', color: 'var(--green)' }}>
-                      via {release.distributor}
-                    </span>
-                  )}
                   {/* UPC display */}
                   {release.upc && (
                     <button
@@ -152,22 +142,13 @@ export default function DashboardReleasesPage() {
                     {expanded === release.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
                 )}
-                <button onClick={() => !release._isDistrib && toggleActive(release.id, release.isActive)}
+                <button onClick={() => toggleActive(release.id, release.isActive)}
                   className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
-                  title={release._isDistrib ? 'Managed via distribution' : (release.isActive ? 'Hide release' : 'Make live')}
-                  disabled={!!release._isDistrib}
-                  style={{ color: 'var(--text-muted)', opacity: release._isDistrib ? 0.35 : 1 }}>
+                  title={release.isActive ? 'Hide release' : 'Make live'}
+                  style={{ color: 'var(--text-muted)' }}>
                   {release.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-                {release._isDistrib && (
-                  <Link href={`/dashboard/releases/${release.id}/edit`}
-                    className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
-                    title="Edit / re-upload audio"
-                    style={{ color: 'var(--sky)' }}>
-                    <Pencil size={16} />
-                  </Link>
-                )}
-                <Link href={release._isDistrib ? `/releases/${release.id}` : `/release/${release.slug}`} target="_blank"
+                <Link href={`/release/${release.slug}`} target="_blank"
                   className="p-2 rounded-lg transition-colors hover:bg-[var(--surface2)]"
                   style={{ color: 'var(--sky)' }}>
                   <ExternalLink className="w-4 h-4" />
