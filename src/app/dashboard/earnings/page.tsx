@@ -306,6 +306,82 @@ export default function EarningsPage() {
             </div>
           )}
 
+          {/* Invoices & Tax Summary */}
+          <div className="grid md:grid-cols-2 gap-6 mb-6 mt-6">
+            {/* Invoices */}
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              <div className="px-5 py-4 flex items-center gap-2"
+                style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                <Receipt size={15} style={{ color: 'var(--sky)' }} />
+                <h2 className="text-sm font-bold" style={{ color: 'var(--text)' }}>Invoices</h2>
+              </div>
+              {invoicesLoading ? (
+                <div className="flex justify-center py-8" style={{ background: 'var(--surface)' }}><VukaLoader size={18} /></div>
+              ) : invoices.length === 0 ? (
+                <div className="py-8 text-center text-sm px-5" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+                  No invoices yet — one is generated automatically for each confirmed beat or release sale.
+                </div>
+              ) : (
+                <div className="divide-y max-h-72 overflow-y-auto" style={{ borderColor: 'var(--border)' }}>
+                  {invoices.map((inv: any) => (
+                    <div key={inv.id} className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--surface)' }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-mono font-semibold" style={{ color: 'var(--text)' }}>{inv.number}</p>
+                        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+                          {new Date(inv.issuedAt).toLocaleDateString('en-ZA')}
+                          {inv.purchase?.buyerName ? ` · ${inv.purchase.buyerName}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--green)' }}>
+                        {formatCurrency(inv.total, inv.currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tax Summary */}
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              <div className="px-5 py-4 flex items-center justify-between"
+                style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                <div className="flex items-center gap-2">
+                  <FileText size={15} style={{ color: 'var(--sky)' }} />
+                  <h2 className="text-sm font-bold" style={{ color: 'var(--text)' }}>Tax Summary</h2>
+                </div>
+                <select value={taxYear} onChange={e => setTaxYear(Number(e.target.value))}
+                  className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                  {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              {taxLoading ? (
+                <div className="flex justify-center py-8" style={{ background: 'var(--surface)' }}><VukaLoader size={18} /></div>
+              ) : !taxRecord ? (
+                <div className="py-8 text-center text-sm px-5" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+                  No earnings recorded for {taxYear} yet.
+                </div>
+              ) : (
+                <div className="p-5 space-y-3" style={{ background: 'var(--surface)' }}>
+                  {[
+                    { label: 'Total Earnings', value: taxRecord.totalEarnings, color: 'var(--gold)' },
+                    { label: 'Platform Fees',  value: taxRecord.platformFees,  color: 'var(--text-muted)' },
+                    { label: 'Net Earnings',   value: taxRecord.netEarnings,   color: 'var(--green)' },
+                  ].map(row => (
+                    <div key={row.label} className="flex justify-between text-sm">
+                      <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                      <span className="font-semibold" style={{ color: row.color }}>{formatCurrency(row.value, taxRecord.currency)}</span>
+                    </div>
+                  ))}
+                  <p className="text-xs pt-2" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+                    Figures are for record-keeping and don't constitute tax advice — check with a local tax professional for your filing obligations.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Fee note */}
           <div className="mt-6 px-4 py-3 rounded-xl flex items-start gap-3 text-xs"
             style={{ background: 'rgba(201,162,39,0.07)', border: '1px solid rgba(201,162,39,0.25)' }}>
