@@ -47,56 +47,11 @@ export async function GET(req: NextRequest) {
       take: limit,
     });
 
-    // ── Distribution releases (live artist uploads) ───────────
-    const distribWhere: Record<string, unknown> = { status: 'live' };
-    if (q)    distribWhere.title       = { contains: q, mode: 'insensitive' };
-    if (type) distribWhere.releaseType = type.toLowerCase();
-
-    const distribReleases = await prisma.distributionRelease.findMany({
-      where: distribWhere,
-      include: {
-        artist: { select: { name: true, slug: true, photoUrl: true } },
-        tracks: { select: { id: true, title: true, trackNumber: true, duration: true, fileUrl: true, masterFileUrl: true } },
-      },
-      orderBy: { liveAt: 'desc' },
-      take: limit,
-    });
-
-    // Normalise distribution releases to the same shape as store releases
-    const r2Base = process.env.CLOUDFLARE_R2_PUBLIC_URL || '';
-    const normDistrib = distribReleases.map(r => ({
-      id:          r.id,
-      slug:        null,
-      _isDistrib:  true,
-      title:       r.title,
-      releaseType: r.releaseType,
-      artworkUrl:  r.artworkUrl,
-      price:       (r as any).price ?? 0,
-      minPrice:    (r as any).minPrice ?? 0,
-      payWhatWant: (r as any).payWhatYouWant ?? false,
-      isActive:    true,
-      createdAt:   r.createdAt,
-      upc:         r.upc,
-      artist:      r.artist,
-      tracks:      r.tracks.map((t: any) => {
-        const raw = t.fileUrl || t.masterFileUrl || '';
-        const previewUrl = raw.startsWith('http') ? raw : (r2Base && raw ? `${r2Base}/${raw}` : null);
-        return { id: t.id, title: t.title, trackNumber: t.trackNumber, duration: t.duration ?? 0, previewUrl };
-      }),
-    }));
-
-    // Merge and re-sort by createdAt
-    const allReleases = [...storeReleases, ...normDistrib]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice((page - 1) * limit, page * limit);
-
-    const total = storeReleases.length + distribReleases.length;
-
     return NextResponse.json({
-      releases: allReleases,
-      total,
+      releases: storeReleases,
+      total: storeReleases.length,
       page,
-      pages: Math.ceil(total / limit),
+      pages: Math.ceil(storeReleases.length / limit),
     });
   } catch (err) {
     console.error('DB error (releases):', err);
