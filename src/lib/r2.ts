@@ -8,6 +8,14 @@ export const r2 = new S3Client({
     accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
   },
+  // FIX: newer @aws-sdk/client-s3 versions (3.729+) default to attaching a
+  // flexible checksum (x-amz-checksum-crc32 trailer) on PutObject requests.
+  // Cloudflare R2's S3-compatible API doesn't support this and rejects the
+  // upload, which silently broke every server-side uploadBuffer() call
+  // (license PDFs, receipts) while presigned-URL browser uploads kept
+  // working fine (they never carry an SDK-injected checksum header).
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
 });
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'vuka-audio';
