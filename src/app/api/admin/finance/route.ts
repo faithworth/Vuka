@@ -27,7 +27,6 @@ function resolveArtist(p: {
   release?: { artistId: string; artist?: any } | null;
   video?: { artistId: string; artist?: any } | null;
   sample?: { artistId: string; artist?: any } | null;
-  distributionRelease?: { artistId: string; artist?: any } | null;
   merch?: { artistId: string; artist?: any } | null;
 }) {
   return (
@@ -36,7 +35,6 @@ function resolveArtist(p: {
     p.release?.artist ||
     p.video?.artist ||
     p.sample?.artist ||
-    p.distributionRelease?.artist ||
     p.merch?.artist ||
     null
   );
@@ -48,7 +46,6 @@ function resolveArtistId(p: {
   release?: { artistId: string } | null;
   video?: { artistId: string } | null;
   sample?: { artistId: string } | null;
-  distributionRelease?: { artistId: string } | null;
   merch?: { artistId: string } | null;
 }) {
   return (
@@ -57,7 +54,6 @@ function resolveArtistId(p: {
     p.release?.artistId ||
     p.video?.artistId ||
     p.sample?.artistId ||
-    p.distributionRelease?.artistId ||
     p.merch?.artistId ||
     null
   );
@@ -92,12 +88,6 @@ const PURCHASE_INCLUDE = {
     },
   },
   sample: {
-    select: {
-      artistId: true, title: true,
-      artist: { select: ARTIST_SELECT },
-    },
-  },
-  distributionRelease: {
     select: {
       artistId: true, title: true,
       artist: { select: ARTIST_SELECT },
@@ -202,7 +192,6 @@ export async function GET(req: NextRequest) {
           release: { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
           video:   { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
           sample:  { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
-          distributionRelease: { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
           merch:   { select: { artistId: true, artist: { select: ARTIST_SELECT } } },
         },
       });
@@ -411,7 +400,6 @@ export async function GET(req: NextRequest) {
             { release:             { is: { artistId } } },
             { video:               { is: { artistId } } },
             { sample:              { is: { artistId } } },
-            { distributionRelease: { is: { artistId } } },
             { merch:               { is: { artistId } } },
           ],
         },
