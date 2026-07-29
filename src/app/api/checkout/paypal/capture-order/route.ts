@@ -437,6 +437,7 @@ export async function POST(req: NextRequest) {
         currency:     purchase.currency,
         dashboardUrl: `${appUrl}/dashboard`,
         planSlug:     artistPlanSlug ?? undefined,
+        planExpiresAt: artistPlanExpiry,
       });
     } catch (e) {
       logger.warn('[PayPal capture] Artist email failed', { e, traceId });
