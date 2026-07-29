@@ -59,11 +59,12 @@ export async function GET() {
     // which don't even go through the Purchase table.
     const payoutRows = await prisma.artistPayout.findMany({
       where: { artistId: artist.id },
-      select: { amount: true, status: true },
+      select: { amount: true, status: true, claimedByPayoutRequestId: true },
     });
-    const totalEarned  = payoutRows.reduce((sum, p) => sum + p.amount, 0);
-    const totalPaid    = payoutRows.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-    const totalPending = payoutRows.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+    const totalEarned    = payoutRows.reduce((sum, p) => sum + p.amount, 0);
+    const totalPaid      = payoutRows.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+    const totalPending   = payoutRows.filter(p => p.status === 'pending' && !p.claimedByPayoutRequestId).reduce((sum, p) => sum + p.amount, 0);
+    const totalRequested = payoutRows.filter(p => p.status === 'pending' && p.claimedByPayoutRequestId).reduce((sum, p) => sum + p.amount, 0);
 
     // Bank accounts saved by artist
     const bankAccounts = await prisma.artistBankAccount.findMany({
@@ -77,7 +78,7 @@ export async function GET() {
       payouts,
       payoutRequests,
       bankAccounts,
-      summary: { totalEarned, totalPaid, totalPending },
+      summary: { totalEarned, totalPaid, totalPending, totalRequested },
       connected: {
         stripe:   false, // Stripe removed in Phase 12
         paystack: !!artist.paystackRecipient,
