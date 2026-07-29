@@ -1091,13 +1091,14 @@ async function upsertSearchIndexArtist(artistId: string): Promise<void> {
 
 export async function incrementDailyRollup(
   artistId: string,
-  field: string
+  field: string,
+  amount = 1
 ): Promise<void> {
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const validFields = [
     'beatPlays', 'releasePlays', 'videoPlays', 'profileViews', 'storeViews',
     'beatSales', 'releaseSales', 'followers', 'unfollows', 'likes', 'comments',
-    'reposts', 'shares', 'revenue', 'tips',
+    'reposts', 'shares', 'totalRevenue', 'tips',
   ];
 
   if (!validFields.includes(field)) {
@@ -1108,8 +1109,8 @@ export async function incrementDailyRollup(
   try {
     await prisma.analyticsDailyRollup.upsert({
       where: { artistId_date: { artistId, date } },
-      create: { artistId, date, [field]: 1 },
-      update: { [field]: { increment: 1 } },
+      create: { artistId, date, [field]: amount },
+      update: { [field]: { increment: amount } },
     });
   } catch (err) {
     // Non-critical — analytics should never break functionality
