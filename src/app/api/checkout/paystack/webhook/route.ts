@@ -416,7 +416,7 @@ export async function POST(req: NextRequest) {
 
   if (artistEmail) {
     try {
-      await sendArtistSaleNotification({ to: artistEmail, artistName, buyerName: purchase.buyerName, itemName, licenseType: purchase.licenseType || undefined, amount: purchase.amount, currency: purchase.currency, dashboardUrl: `${appUrl}/dashboard` });
+      await sendArtistSaleNotification({ to: artistEmail, artistName, buyerName: purchase.buyerName, itemName, licenseType: purchase.licenseType || undefined, amount: purchase.amount, currency: purchase.currency, dashboardUrl: `${appUrl}/dashboard`, planSlug: artistPlanSlug || undefined, planExpiresAt: artistPlanExpiresAt });
     } catch (e) { logger.error('[paystack/webhook] Artist email failed', { traceId, error: String(e) }); }
   }
 
