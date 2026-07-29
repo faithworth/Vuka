@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^1.4.1",
-    "@vercel/speed-insights": "^1.2.0", "^3.600.0",
+    "@vercel/speed-insights": "^1.2.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@prisma/client": "^5.15.0",
     "@supabase/ssr": "^0.12.0",
