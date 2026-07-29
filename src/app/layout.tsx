@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/components/Providers';
 import CelebrationBadge from '@/components/CelebrationBadge';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
@@ -89,6 +91,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <Providers>{children}</Providers>
         <CelebrationBadge />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
