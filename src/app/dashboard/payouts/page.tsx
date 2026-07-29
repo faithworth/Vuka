@@ -117,7 +117,8 @@ export default function PayoutsPage() {
 
   function statusBadge(status: string) {
     const map: Record<string, { label: string; color: string; bg: string }> = {
-      pending:    { label: 'Pending',    color: 'var(--gold)',  bg: 'rgba(234,179,8,0.1)' },
+      pending:    { label: 'Available',  color: 'var(--gold)',  bg: 'rgba(234,179,8,0.1)' },
+      requested:  { label: 'Requested', color: 'var(--sky)',   bg: 'rgba(56,182,232,0.1)' },
       processing: { label: 'Processing', color: 'var(--sky)',   bg: 'rgba(56,182,232,0.1)' },
       completed:  { label: 'Paid',       color: 'var(--green)', bg: 'rgba(16,185,129,0.1)' },
       approved:   { label: 'Approved',   color: 'var(--green)', bg: 'rgba(16,185,129,0.1)' },
@@ -145,11 +146,12 @@ export default function PayoutsPage() {
       </p>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {[
           { label: 'Total Earned', value: summary.totalEarned || 0, icon: TrendingUp, color: 'var(--green)' },
           { label: 'Paid Out',     value: summary.totalPaid    || 0, icon: CheckCircle, color: 'var(--sky)' },
-          { label: 'Pending',      value: summary.totalPending || 0, icon: Clock, color: 'var(--gold)' },
+          { label: 'Requested',    value: summary.totalRequested || 0, icon: Clock, color: 'var(--sky)' },
+          { label: 'Available',    value: summary.totalPending || 0, icon: Clock, color: 'var(--gold)' },
         ].map(card => (
           <div key={card.label} className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <card.icon size={16} style={{ color: card.color }} className="mb-2" />
@@ -534,7 +536,7 @@ export default function PayoutsPage() {
                           <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                             {formatCurrency(p.amount)}
                           </p>
-                          {statusBadge(p.status)}
+                          {statusBadge(p.claimedByPayoutRequestId && p.status === 'pending' ? 'requested' : p.status)}
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium uppercase"
                             style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
                             {p.method}
