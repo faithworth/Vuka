@@ -3,7 +3,7 @@
  * Platform-wide financial data for the admin finance page.
  *
  * Purchase has NO artistId — artist is resolved through the
- * linked item (beat, release, video, sample, distributionRelease).
+ * linked item (beat, release, video, sample).
  * SupportTxn has NO platformFee/netAmount — computed per-artist plan rate.
  *
  * NOTE: All queries are sequential (no Promise.all) to stay within
