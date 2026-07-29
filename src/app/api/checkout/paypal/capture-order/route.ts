@@ -297,6 +297,9 @@ export async function POST(req: NextRequest) {
         }
 
         await prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } });
+        await prisma.revenueRecord.create({
+          data: { artistId, type: 'beat_sale', amount: purchase.amount, platformFee: platformFeeAmt, netAmount, currency: purchase.currency, period: new Date().toISOString().slice(0, 7), purchaseId: purchase.id },
+        }).catch(e => logger.error('[PayPal capture] revenue record failed', { error: String(e) }));
         await incrementDailyRollup(artistId, 'beatSales').catch(() => {});
       }
     }
@@ -312,6 +315,9 @@ export async function POST(req: NextRequest) {
         artworkUrl = release.artworkUrl || '';
         licenseUrl = await issueLicensePdf(release.title, release.artist.name, 'release');
         await prisma.release.update({ where: { id: purchase.releaseId }, data: { sales: { increment: 1 } } });
+        await prisma.revenueRecord.create({
+          data: { artistId, type: 'release_sale', amount: purchase.amount, platformFee: platformFeeAmt, netAmount, currency: purchase.currency, period: new Date().toISOString().slice(0, 7), purchaseId: purchase.id },
+        }).catch(e => logger.error('[PayPal capture] revenue record failed', { error: String(e) }));
         await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
       }
     }
@@ -344,7 +350,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+    await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
 
     // ── ArtistPayout record ────────────────────────────────────────────────
     if (artistId) {
