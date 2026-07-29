@@ -480,10 +480,12 @@ model ArtistPayout {
   reference     String   @default("")
   purchaseId    String?
   notes         String   @default("")
+  claimedByPayoutRequestId String?    // set when a PayoutRequest claims this ledger row; cleared if rejected
   processedAt   DateTime?
   createdAt     DateTime @default(now())
 
   @@index([artistId, status])
+  @@index([claimedByPayoutRequestId])
 }
 
 model DMCAReport {
