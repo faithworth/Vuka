@@ -799,38 +799,32 @@ export async function sendTicketConfirmation({
 }
 
 export async function sendArtistSaleNotification({
-  to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl, planSlug,
+  to, artistName, buyerName, itemName, licenseType, amount, currency, dashboardUrl, planSlug, planExpiresAt,
 }: {
   to: string; artistName: string; buyerName: string; itemName: string;
   licenseType?: string; amount: number; currency: string; dashboardUrl: string;
-  planSlug?: string;
+  planSlug?: string; planExpiresAt?: Date | null;
 }) {
-  const plan       = getPlan(planSlug);
-  const feeAmt     = calcFee(amount, planSlug);
-  const netAmount  = amount - feeAmt;
-  const feePct     = plan.platformFeePct;
+  const plan      = getPlan(planSlug);
+  const feeAmt    = calcFee(amount, planSlug, planExpiresAt);
+  const netAmount = Math.round((amount - feeAmt) * 100) / 100;
+  const feePct    = plan.platformFeePct;
   const subject = `💰 New sale — ${buyerName} bought ${itemName}`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
-      <div style="font-size:48px;text-align:center;margin-bottom:16px;">💰</div>
-      <h2 style="text-align:center;margin:0 0 8px;">Sharp, ${artistName}!</h2>
-      <p style="color:#8b7daa;text-align:center;margin:0 0 24px;">${buyerName} just bought your music.</p>
-      <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Item</span><span>${itemName}</span></div>
-        ${licenseType ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">License</span><span style="text-transform:capitalize;">${licenseType}</span></div>` : ''}
-        <div style="border-top:1px solid #2d2050;padding-top:12px;margin-top:12px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Sale Price</span><span>${currency} ${amount.toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="color:#8b7daa;">Vuka Platform Fee (${feePct}%)</span><span style="color:#ef4444;">−${currency} ${feeAmt.toFixed(2)}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#f0eafa;font-weight:700;">You receive</span><span style="color:#10b981;font-weight:700;font-size:20px;">${currency} ${netAmount.toFixed(2)}</span></div>
-        </div>
-      </div>
-      <a href="${dashboardUrl}" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">View Payouts →</a>
+  const html = layout(card(`
+    ${icon('💰')}
+    <div style="text-align:center;">
+      ${heading(`Sharp, ${artistName}!`)}
+      ${sub(`${buyerName} just bought your music.`)}
     </div>
-  </div>
-</body></html>`;
+    ${infoTable(`
+      ${row('Item', `<strong>${itemName}</strong>`)}
+      ${licenseType ? row('License', `<span style="text-transform:capitalize;">${licenseType}</span>`) : ''}
+      ${row('Sale Price', `${currency} ${amount.toFixed(2)}`)}
+      ${row(`Vuka Platform Fee (${feePct}%)`, `<span style="color:#FF4D4D;">−${currency} ${feeAmt.toFixed(2)}</span>`)}
+      ${row('You receive', `${currency} ${netAmount.toFixed(2)}`, true)}
+    `)}
+    ${btn(dashboardUrl, 'View Payouts →')}
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
