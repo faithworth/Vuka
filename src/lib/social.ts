@@ -247,6 +247,8 @@ export async function followArtist(userId: string, artistId: string): Promise<vo
     update: {},
   });
 
+  await incrementDailyRollup(artistId, 'followers').catch(() => {});
+
   await createNotification({
     userId: artist.userId,
     type: 'new_follower',
@@ -262,6 +264,7 @@ export async function followArtist(userId: string, artistId: string): Promise<vo
 
 export async function unfollowArtist(userId: string, artistId: string): Promise<void> {
   await prisma.follow.deleteMany({ where: { userId, artistId } });
+  await incrementDailyRollup(artistId, 'unfollows').catch(() => {});
 }
 
 export async function getFollowStatus(userId: string, artistId: string): Promise<boolean> {
@@ -335,6 +338,34 @@ async function resolveEntityOwner(
   return null;
 }
 
+/**
+ * Like resolveEntityOwner, but resolves to the owning Artist.id (not
+ * User.id) for engagement-rollup purposes, since AnalyticsDailyRollup is
+ * keyed by artistId.
+ */
+async function resolveEntityOwnerArtistId(
+  targetType: LikeableType | string,
+  targetId: string
+): Promise<string | null> {
+  if (targetType === 'post') {
+    const post = await prisma.artistPost.findUnique({ where: { id: targetId }, select: { artistId: true } });
+    return post?.artistId ?? null;
+  }
+  if (targetType === 'beat') {
+    const beat = await prisma.beat.findUnique({ where: { id: targetId }, select: { artistId: true } });
+    return beat?.artistId ?? null;
+  }
+  if (targetType === 'release') {
+    const release = await prisma.release.findUnique({ where: { id: targetId }, select: { artistId: true } });
+    return release?.artistId ?? null;
+  }
+  if (targetType === 'reel') {
+    const reel = await prisma.reel.findUnique({ where: { id: targetId }, select: { artistId: true } });
+    return reel?.artistId ?? null;
+  }
+  return null;
+}
+
 export async function toggleLike(
   userId: string,
   targetType: LikeableType,
@@ -377,6 +408,11 @@ export async function toggleLike(
     } else if (targetType === 'reel') {
       await prisma.reel.update({ where: { id: targetId }, data: { likeCount: { increment: 1 } } });
     }
+
+    // Engagement rollup — resolve the *owning* artist, not the liker.
+    void resolveEntityOwnerArtistId(targetType, targetId).then((ownerArtistId) => {
+      if (ownerArtistId) incrementDailyRollup(ownerArtistId, 'likes').catch(() => {});
+    });
 
     // Notify the owner — fire-and-forget, never blocks the toggle response.
     void (async () => {
@@ -515,6 +551,10 @@ export async function toggleRepost(
       data: { repostCount: { increment: 1 } },
     });
 
+    void resolveEntityOwnerArtistId('post', targetId).then((ownerArtistId) => {
+      if (ownerArtistId) incrementDailyRollup(ownerArtistId, 'reposts').catch(() => {});
+    });
+
     // Notify the original post owner — fire-and-forget.
     void (async () => {
       try {
@@ -541,6 +581,10 @@ export async function toggleRepost(
     })();
   } else if (targetType === 'reel') {
     await prisma.reel.update({ where: { id: targetId }, data: { repostCount: { increment: 1 } } });
+
+    void resolveEntityOwnerArtistId('reel', targetId).then((ownerArtistId) => {
+      if (ownerArtistId) incrementDailyRollup(ownerArtistId, 'reposts').catch(() => {});
+    });
 
     void (async () => {
       try {
@@ -640,6 +684,19 @@ export async function createComment(
   }
 
   await incrementDailyRollup(userId, 'comments');
+
+  // Engagement rollup on the *owning artist*, not the commenter (userId
+  // above was being passed straight into the artistId slot, which either
+  // silently failed for fans with no Artist row or wrote to the wrong
+  // artist's rollup entirely).
+  void (data.postId ? resolveEntityOwnerArtistId('post', data.postId)
+      : data.reelId ? resolveEntityOwnerArtistId('reel', data.reelId)
+      : data.beatId ? resolveEntityOwnerArtistId('beat', data.beatId)
+      : data.releaseId ? resolveEntityOwnerArtistId('release', data.releaseId)
+      : Promise.resolve(null)
+  ).then((ownerArtistId) => {
+    if (ownerArtistId) incrementDailyRollup(ownerArtistId, 'comments').catch(() => {});
+  });
 
   // Notify: the post owner (on top-level or reply) and the parent comment's
   // author (on a reply), skipping self-notifications and de-duplicating.
