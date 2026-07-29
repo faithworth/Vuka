@@ -283,8 +283,11 @@ export async function POST(req: NextRequest) {
         await auditLog.exclusiveLocked(beat.id, beat.title, purchase.id);
       }
       txOps.push(prisma.beat.update({ where: { id: beat.id }, data: { sales: { increment: 1 } } }));
+      txOps.push(prisma.revenueRecord.create({
+        data: { artistId, type: 'beat_sale', amount: purchase.amount, platformFee: platformFeeAmt, netAmount, currency: purchase.currency, period: new Date().toISOString().slice(0, 7), purchaseId: purchase.id },
+      }));
       await incrementDailyRollup(artistId, 'beatSales').catch(() => {});
-      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   } else if (purchase.itemType === 'release' && (purchase as any).releaseId) {
     const release = await prisma.release.findUnique({ where: { id: (purchase as any).releaseId }, include: { artist: { include: { user: true } } } });
@@ -293,8 +296,11 @@ export async function POST(req: NextRequest) {
       artistName = release.artist.name; artworkUrl = release.artworkUrl || ''; artistId = release.artist.id;
       licenseUrl = await issueLicensePdf(release.title, release.artist.name, 'release');
       txOps.push(prisma.release.update({ where: { id: release.id }, data: { sales: { increment: 1 } } }));
+      txOps.push(prisma.revenueRecord.create({
+        data: { artistId, type: 'release_sale', amount: purchase.amount, platformFee: platformFeeAmt, netAmount, currency: purchase.currency, period: new Date().toISOString().slice(0, 7), purchaseId: purchase.id },
+      }));
       await incrementDailyRollup(artistId, 'releaseSales').catch(() => {});
-      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   } else if (purchase.itemType === 'video' && purchase.videoId) {
     const video = await prisma.video.findUnique({ where: { id: purchase.videoId }, include: { artist: { include: { user: true } } } });
@@ -303,7 +309,7 @@ export async function POST(req: NextRequest) {
       artistName = video.artist.name; artworkUrl = video.thumbnailUrl || ''; artistId = video.artist.id;
       licenseUrl = await issueLicensePdf(video.title, video.artist.name, 'video');
       txOps.push(prisma.video.update({ where: { id: video.id }, data: { sales: { increment: 1 } } }));
-      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   } else if (purchase.itemType === 'sample' && purchase.sampleId) {
     const sample = await prisma.sample.findUnique({ where: { id: purchase.sampleId }, include: { artist: { include: { user: true } } } });
@@ -312,7 +318,7 @@ export async function POST(req: NextRequest) {
       artistName = sample.artist.name; artworkUrl = sample.artworkUrl || ''; artistId = sample.artist.id;
       licenseUrl = await issueLicensePdf(sample.title, sample.artist.name, 'sample');
       txOps.push(prisma.sample.update({ where: { id: sample.id }, data: { sales: { increment: 1 } } }));
-      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   } else if (purchase.itemType === 'merch' && (purchase as any).merchId) {
     const merch = await prisma.merch.findUnique({ where: { id: (purchase as any).merchId }, include: { artist: { include: { user: true } } } });
@@ -320,7 +326,7 @@ export async function POST(req: NextRequest) {
       itemName = merch.title; artistEmail = merch.artist.user.email;
       artistName = merch.artist.name; artworkUrl = merch.imageUrl || ''; artistId = merch.artist.id;
       txOps.push(prisma.merch.update({ where: { id: merch.id }, data: { stock: { decrement: 1 } } }));
-      await incrementDailyRollup(artistId, 'revenue').catch(() => {});
+      await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   }
 
