@@ -70,34 +70,6 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ slug: st
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const distributionReleases = await prisma.distributionRelease.findMany({
-      where: { artistId: artist.id, status: 'live' },
-      include: { tracks: { orderBy: { trackNumber: 'asc' } } },
-      orderBy: { liveAt: 'desc' },
-      take: 50,
-    }).catch(() => []);
-
-    const normalisedDistribReleases = distributionReleases.map(r => ({
-      id: r.id,
-      slug: r.id,
-      title: r.title,
-      releaseType: r.releaseType,
-      artworkUrl: r.artworkUrl,
-      price: null,
-      isActive: true,
-      upc: r.upc,
-      distributor: r.distributor,
-      _isDistribution: true,
-      tracks: r.tracks.map(t => ({
-        id: t.id,
-        title: t.title,
-        trackNumber: t.trackNumber,
-        duration: t.duration ?? 0,
-        previewUrl: t.fileUrl || t.masterFileUrl || null,
-        isrc: t.isrc,
-      })),
-    }));
-
     const subscriptionTiers = await prisma.creatorSubscriptionTier.findMany({
       where: { artistId: artist.id, isActive: true },
       orderBy: { price: 'asc' },
@@ -153,7 +125,6 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ slug: st
       samples:              (artist.samples ?? []).map(s => ({ ...s, tags: coerceStringArray((s as any).tags) })),
       merch:                (artist.merch ?? []).map(m => ({ ...m, sizes: coerceStringArray((m as any).sizes) })),
       subscriptionTiers:    subscriptionTiers.map(t => ({ ...t, perks: coerceStringArray((t as any).perks) })),
-      distributionReleases: normalisedDistribReleases,
       storefront,
       socialLinks:     (artist as any).socialLinks || storefront?.socialLinks || {},
       artistSharePct:  effectivePlan.artistSharePct,
