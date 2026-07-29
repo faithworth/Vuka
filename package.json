@@ -26,7 +26,8 @@
     "paypal:verify": "ts-node --compiler-options {\"module\":\"CommonJS\"} -e \"const p = require('./src/lib/paypal'); p.paypal.orders.get('test').catch(e => console.log(e.message));\""
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.600.0",
+    "@vercel/analytics": "^1.4.1",
+    "@vercel/speed-insights": "^1.2.0", "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@prisma/client": "^5.15.0",
     "@supabase/ssr": "^0.12.0",
