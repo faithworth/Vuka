@@ -30,40 +30,48 @@ export async function requestPayout(params: {
   const artist = await prisma.artist.findUnique({ where: { id: params.artistId } });
   if (!artist) throw new Error('Artist not found');
 
-  // Derive available balance from the ArtistPayout ledger, which every
-  // revenue-confirming webhook writes to (sales, tips, memberships,
-  // marketplace orders, event tickets, campaign pledges, industry service
-  // orders). Previously this only summed beat + release purchase.netAmount,
-  // understating balance for artists earning from other sources — or, once
-  // a more-complete total was shown elsewhere in the UI, causing a
-  // legitimate payout request to be rejected as "exceeding" this
-  // artificially-low figure.
-  //
-  // Unpaid balance = ArtistPayout rows still 'pending' minus whatever is
-  // already tied up in an in-flight (not yet paid) PayoutRequest.
-  const pendingLedger = await prisma.artistPayout.aggregate({
-    where: { artistId: params.artistId, status: 'pending' },
-    _sum: { amount: true },
+  // Available balance = ledger rows that are 'pending' AND not already
+  // claimed by another in-flight request. This is the ONLY source of truth
+  // for availability now — no separate aggregate math to drift out of sync.
+  const unclaimed = await prisma.artistPayout.findMany({
+    where: { artistId: params.artistId, status: 'pending', claimedByPayoutRequestId: null },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, amount: true },
   });
-  const alreadyRequested = await prisma.payoutRequest.aggregate({
-    where: { artistId: params.artistId, status: { in: ['pending', 'approved'] } },
-    _sum: { amount: true },
-  });
-  const available = (pendingLedger._sum.amount ?? 0) - (alreadyRequested._sum.amount ?? 0);
+  const available = unclaimed.reduce((sum, p) => sum + p.amount, 0);
 
   if (params.amount > available + 0.01) {
     throw new Error(`Requested ${params.amount} exceeds available balance ${available.toFixed(2)}`);
   }
 
-  return prisma.payoutRequest.create({
-    data: {
-      artistId:     params.artistId,
-      amount:       params.amount,
-      currency:     params.currency || 'ZAR',
-      bankAccountId: params.bankAccountId,
-      status:       'pending',
-      adminNotes:   '',
-    },
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.payoutRequest.create({
+      data: {
+        artistId:     params.artistId,
+        amount:       params.amount,
+        currency:     params.currency || 'ZAR',
+        bankAccountId: params.bankAccountId,
+        status:       'pending',
+        adminNotes:   '',
+      },
+    });
+
+    // Claim ledger rows oldest-first until we've covered the requested amount
+    let claimed = 0;
+    const claimIds: string[] = [];
+    for (const row of unclaimed) {
+      if (claimed >= params.amount) break;
+      claimIds.push(row.id);
+      claimed += row.amount;
+    }
+    if (claimIds.length > 0) {
+      await tx.artistPayout.updateMany({
+        where: { id: { in: claimIds } },
+        data: { claimedByPayoutRequestId: request.id },
+      });
+    }
+
+    return request;
   });
 }
 
@@ -89,18 +97,11 @@ export async function markPayoutPaid(requestId: string, reference: string) {
       data: { status: 'paid', processedAt: new Date(), adminNotes: `Ref: ${reference}` },
     });
 
-    // Create an ArtistPayout record as the ledger entry
-    await tx.artistPayout.create({
-      data: {
-        artistId:  req.artistId,
-        amount:    req.amount,
-        currency:  req.currency,
-        status:    'paid',
-        method:    req.bankAccountId ? 'bank' : 'paystack',
-        reference,
-        notes:     `PayoutRequest ${requestId}`,
-        processedAt: new Date(),
-      },
+    // Settle the exact ledger rows this request claimed — in place, not a
+    // new duplicate row. This is what makes "Pending" actually clear.
+    await tx.artistPayout.updateMany({
+      where: { claimedByPayoutRequestId: requestId },
+      data: { status: 'paid', reference, processedAt: new Date() },
     });
 
     return req;
@@ -110,9 +111,17 @@ export async function markPayoutPaid(requestId: string, reference: string) {
 // ── Admin: Reject Payout Request ─────────────────────────────
 
 export async function rejectPayoutRequest(requestId: string, reason: string) {
-  return prisma.payoutRequest.update({
-    where: { id: requestId },
-    data: { status: 'rejected', adminNotes: reason },
+  return prisma.$transaction(async (tx) => {
+    // Release any ledger rows this request had claimed — otherwise that
+    // money is locked out of "available" forever with nothing to show for it.
+    await tx.artistPayout.updateMany({
+      where: { claimedByPayoutRequestId: requestId },
+      data: { claimedByPayoutRequestId: null },
+    });
+    return tx.payoutRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected', adminNotes: reason },
+    });
   });
 }
 
