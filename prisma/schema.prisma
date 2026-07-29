@@ -672,6 +672,7 @@ model CreatorSubscriptionTier {
   perks       String[]
   isActive    Boolean             @default(true)
   memberships CreatorMembership[]
+  exclusiveContent ExclusiveContent[]
   createdAt   DateTime            @default(now())
 }
 
@@ -700,13 +701,17 @@ model ExclusiveContent {
   title          String
   description    String    @default("")
   contentType    String    // audio, video, pdf, link, text
+  contentUrl     String    @default("") // resolved at write-time: fileUrl for uploads, externalUrl for links
   fileUrl        String    @default("")
   externalUrl    String    @default("")
   body           String    @default("")
   thumbnailUrl   String    @default("")
+  tierId         String?                  // "primary" tier for display (e.g. "Requires: Gold") — actual gating uses accessTierIds
+  tier           CreatorSubscriptionTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
   accessTierIds  Json      @default("[]")
   isFreePreview  Boolean   @default(false)
   isPublished    Boolean   @default(false)
+  isActive       Boolean   @default(true) // false = archived (soft-deleted) — hidden everywhere but recoverable
   publishedAt    DateTime?
   createdAt      DateTime  @default(now())
 
