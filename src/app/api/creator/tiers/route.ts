@@ -79,15 +79,27 @@ export async function PATCH(req: NextRequest) {
     // priceYearly and maxSubscribers/sortOrder don't exist on the model — skip them gracefully.
     const allowed = ['name', 'description', 'priceMonthly', 'perks', 'isActive'] as const;
     const data: any = {};
+    let perksUpdate: string | null = null;
     for (const key of allowed) {
       if (updates[key] !== undefined) {
         if (key === 'priceMonthly') {
-          // Map to the schema field name
           data['price'] = parseFloat(updates[key]);
+          data['priceMonthly'] = parseFloat(updates[key]);
+        } else if (key === 'perks') {
+          // Handle separately via raw query to avoid text[] type mismatch
+          const perksArr: string[] = (updates[key] || []).map((p: any) => typeof p === 'string' ? p : String(p));
+          perksUpdate = '{' + perksArr.map(p => `"${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',') + '}';
         } else {
           data[key] = updates[key];
         }
       }
+    }
+
+    if (perksUpdate !== null) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "CreatorSubscriptionTier" SET perks = $1::text[], "updatedAt" = now() WHERE id = $2`,
+        perksUpdate, tierId
+      );
     }
 
     const updated = await prisma.creatorSubscriptionTier.update({
