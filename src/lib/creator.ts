@@ -65,7 +65,7 @@ export async function createTier(
   await executeRaw(
     `INSERT INTO "CreatorSubscriptionTier"
        (id, "artistId", name, "priceMonthly", currency, description, perks, "isActive", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, true, $8::timestamptz, $8::timestamptz)`,
+     VALUES ($1, $2, $3, $4, $5, $6, ARRAY(SELECT json_array_elements_text($7::json)), true, $8::timestamptz, $8::timestamptz)`,
     id, artistId, data.name, price, currency, desc, perksJson, now,
   );
 
