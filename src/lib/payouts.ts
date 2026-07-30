@@ -82,10 +82,20 @@ export async function approvePayoutRequest(requestId: string, notes?: string) {
   if (!req) throw new Error('Payout request not found');
   if (req.status !== 'pending') throw new Error(`Already ${req.status}`);
 
-  return prisma.payoutRequest.update({
+  await prisma.payoutRequest.update({
     where: { id: requestId },
     data: { status: 'approved', ...(notes ? { adminNotes: notes } : {}) },
   });
+
+  // Auto-dispatch immediately — fire-and-forget so the admin response
+  // is not blocked, but errors are logged and the request falls back
+  // to 'rejected' with claimed ledger rows released.
+  const { dispatchPayout } = await import('./earnings');
+  dispatchPayout(requestId).catch((err) => {
+    console.error('[payouts] auto-dispatch failed', requestId, err);
+  });
+
+  return req;
 }
 
 // ── Admin: Mark Payout Paid ───────────────────────────────────
