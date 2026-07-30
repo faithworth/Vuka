@@ -15,7 +15,7 @@ import VukaLoader from '@/components/brand/VukaLoader';
 type Period = 1 | 3 | 12 | 24;
 
 interface TopItem { id: string; title: string; slug: string; sales: number; plays: number; basicPrice?: number; price?: number; }
-interface Breakdown { beatSales: number; releaseSales: number; subscriptions: number; marketplace: number; tips: number; distribution: number; }
+interface Breakdown { beatSales: number; releaseSales: number; subscriptions: number; marketplace: number; tips: number; }
 
 interface RevenueData {
   monthlyRevenue: { id: string; period: string; amount: number; netAmount: number; type: string; currency: string }[];
@@ -186,7 +186,6 @@ export default function EarningsPage() {
                 {[
                   { label: 'Beat Sales',     value: data.breakdown.beatSales,     color: 'var(--sky)' },
                   { label: 'Release Sales',  value: data.breakdown.releaseSales,  color: 'var(--green)' },
-                  { label: 'Distribution',   value: data.breakdown.distribution,  color: 'var(--gold)' },
                   { label: 'Fan Support',    value: data.breakdown.tips,           color: '#f59e0b' },
                   { label: 'Memberships',    value: data.breakdown.subscriptions,  color: '#a238ff' },
                   { label: 'Services',       value: data.breakdown.marketplace,    color: '#00c896' },
