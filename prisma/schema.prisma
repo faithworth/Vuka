@@ -334,7 +334,6 @@ model Purchase {
   @@index([buyerEmail])
   @@index([downloadToken])
   @@index([artistId])
-  @@index([distributionReleaseId])
   @@index([paypalCaptureId])
   @@index([userId])
   @@index([beatId])
