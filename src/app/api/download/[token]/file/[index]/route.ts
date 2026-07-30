@@ -54,7 +54,6 @@ export async function GET(
     include: {
       beat: { include: { artist: true } },
       release: { include: { tracks: { orderBy: { trackNumber: 'asc' } }, artist: true } },
-      distributionRelease: { include: { tracks: { orderBy: { trackNumber: 'asc' } }, artist: true } },
       video: { include: { artist: true } },
       sample: { include: { artist: true } },
     },
@@ -153,53 +152,6 @@ export async function GET(
     if (!raw) return new NextResponse('File not found', { status: 404 });
 
     const trackNum = String(track.trackNumber).padStart(2, '0');
-    if (isWav) {
-      return streamResponse(tagWav(raw, meta), `${trackNum} - ${track.title}.wav`, 'audio/wav');
-    } else {
-      return streamResponse(tagMp3(raw, meta), `${trackNum} - ${track.title}.mp3`, 'audio/mpeg');
-    }
-  }
-
-  // ── DISTRIBUTION RELEASE (artist-uploaded tracks — use fileUrl/masterFileUrl) ──
-  if ((purchase as any).distributionRelease) {
-    const distRelease = (purchase as any).distributionRelease;
-    const artist = distRelease.artist;
-    const tracks = distRelease.tracks;
-
-    // Index is encoded as "distrib-N"
-    const distribIdx = typeof indexParam === 'string' && indexParam.startsWith('distrib-')
-      ? parseInt(indexParam.replace('distrib-', ''))
-      : idx;
-
-    const track = tracks[distribIdx];
-    if (!track) return new NextResponse('Track not found', { status: 404 });
-
-    const fileUrl = track.masterFileUrl || track.fileUrl;
-    if (!fileUrl) return new NextResponse('File not available', { status: 404 });
-
-    const artworkBuf = distRelease.artworkUrl ? await fetchBuffer(distRelease.artworkUrl) : null;
-    const year = new Date(distRelease.createdAt).getFullYear().toString();
-
-    const meta: TrackMeta = {
-      title: track.title,
-      artist: artist.name,
-      albumArtist: artist.name,
-      album: distRelease.title,
-      trackNumber: track.trackNumber,
-      totalTracks: tracks.length,
-      year,
-      artworkBuffer: artworkBuf || undefined,
-    };
-
-    // Fetch from R2 key if it's a relative key, else fetch from URL directly
-    const isR2Key = !fileUrl.startsWith('http');
-    const raw = isR2Key
-      ? await fetchR2Buffer(fileUrl)
-      : await fetchBuffer(fileUrl);
-    if (!raw) return new NextResponse('File not found in storage', { status: 404 });
-
-    const trackNum = String(track.trackNumber).padStart(2, '0');
-    const isWav = fileUrl.endsWith('.wav');
     if (isWav) {
       return streamResponse(tagWav(raw, meta), `${trackNum} - ${track.title}.wav`, 'audio/wav');
     } else {
