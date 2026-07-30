@@ -189,7 +189,14 @@ export default function DashboardPage() {
                 {stats.recentSales.map((sale: any) => (
                   <div key={sale.id} className="flex items-center justify-between p-4">
                     <div>
-                      <p className="font-medium" style={{ color: 'var(--text)' }}>{sale.beat?.title || sale.release?.title || 'Item'}</p>
+                      <p className="font-medium" style={{ color: 'var(--text)' }}>
+                        {sale.beat?.title || sale.release?.title || sale.video?.title || sale.sample?.title || sale.merch?.title || ({
+                          membership:  'Fan Membership',
+                          marketplace: 'Marketplace Order',
+                          ticket:      'Event Ticket',
+                          campaign:    'Campaign Pledge',
+                        } as Record<string, string>)[sale.itemType] || 'Purchase'}
+                      </p>
                       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{sale.buyerName} · {sale.licenseType || sale.itemType}</p>
                     </div>
                     <span className="font-bold" style={{ color: 'var(--green)' }}>{formatCurrency(sale.amount, sale.currency)}</span>
