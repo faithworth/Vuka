@@ -12,69 +12,43 @@ export async function GET() {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [recentPurchases, allRevenue, monthPurchases, beats, releases, mktRevenue, mktMonthRevenue] = await Promise.all([
+    const [recentPurchases, payoutRows, beats, releases] = await Promise.all([
       prisma.purchase.findMany({
         where: {
           status: 'confirmed',
           OR: [
-            { beat: { artistId } },
+            { beat:    { artistId } },
             { release: { artistId } },
+            { video:   { artistId } },
+            { sample:  { artistId } },
+            { merch:   { artistId } },
             { artistId },
           ],
         },
-        include: { beat: { select: { title: true } }, release: { select: { title: true } } },
+        include: {
+          beat:    { select: { title: true } },
+          release: { select: { title: true } },
+          video:   { select: { title: true } },
+          sample:  { select: { title: true } },
+          merch:   { select: { title: true } },
+        },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
-      // All confirmed revenue from Purchase table (beats, releases, marketplace, memberships)
-      prisma.purchase.aggregate({
-        where: {
-          status: 'confirmed',
-          OR: [
-            { beat: { artistId } },
-            { release: { artistId } },
-            { artistId },
-          ],
-        },
-        _sum: { amount: true },
-      }),
-      prisma.purchase.aggregate({
-        where: {
-          status: 'confirmed',
-          createdAt: { gte: monthStart },
-          OR: [
-            { beat: { artistId } },
-            { release: { artistId } },
-            { artistId },
-          ],
-        },
-        _sum: { amount: true },
+      // Same ledger Payouts' 'Total Earned' reads from — every revenue-
+      // confirming webhook (sales, tips, memberships, marketplace, tickets,
+      // campaigns, industry orders) writes an ArtistPayout row, so this is
+      // the one source of truth both pages should agree on.
+      prisma.artistPayout.findMany({
+        where: { artistId },
+        select: { amount: true, createdAt: true },
       }),
       prisma.beat.aggregate({ where: { artistId }, _sum: { plays: true, sales: true } }),
       prisma.release.aggregate({ where: { artistId }, _sum: { plays: true, sales: true } }),
-      // Industry service orders revenue (stored separately)
-      prisma.$queryRaw<Array<{ total: number }>>`
-        SELECT COALESCE(SUM(iso.amount), 0)::float AS total
-        FROM "IndustryServiceOrder" iso
-        WHERE iso."artistId" = ${artistId}
-          AND iso.status IN ('paid', 'delivered', 'completed')
-      `,
-      prisma.$queryRaw<Array<{ total: number }>>`
-        SELECT COALESCE(SUM(iso.amount), 0)::float AS total
-        FROM "IndustryServiceOrder" iso
-        WHERE iso."artistId" = ${artistId}
-          AND iso.status IN ('paid', 'delivered', 'completed')
-          AND iso."createdAt" >= ${monthStart}
-      `,
     ]);
 
-    const purchaseRevenue = allRevenue._sum.amount || 0;
-    const purchaseMonthRevenue = monthPurchases._sum.amount || 0;
-    const industryRevenue = Number((mktRevenue as any)[0]?.total ?? 0);
-    const industryMonthRevenue = Number((mktMonthRevenue as any)[0]?.total ?? 0);
-
-    const totalRevenue = purchaseRevenue + industryRevenue;
-    const monthRevenue = purchaseMonthRevenue + industryMonthRevenue;
+    const totalRevenue = payoutRows.reduce((sum, p) => sum + p.amount, 0);
+    const monthRevenue = payoutRows.filter(p => p.createdAt >= monthStart).reduce((sum, p) => sum + p.amount, 0);
     const totalPlays = (beats._sum.plays || 0) + (releases._sum.plays || 0);
     const totalSales = (beats._sum.sales || 0) + (releases._sum.sales || 0);
 
