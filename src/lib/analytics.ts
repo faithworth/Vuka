@@ -223,14 +223,38 @@ export async function getAudienceAnalytics(artistId: string) {
 export async function getRevenueAnalytics(artistId: string, months = 12) {
   const since = new Date();
   since.setMonth(since.getMonth() - months);
-  const sinceStr = since.toISOString().slice(0, 7);
 
-  const [revenueRecords, topBeats, topReleases, conversionData] = await Promise.all([
-    // Monthly revenue records — wrapped so a missing column (pre-migration) returns []
-    prisma.revenueRecord.findMany({
-      where: { artistId, period: { gte: sinceStr } },
-      orderBy: { period: 'asc' },
-    }).catch(() => []),
+  const [artist, purchases, supportTxns, topBeats, topReleases, conversionData] = await Promise.all([
+    prisma.artist.findUnique({
+      where: { id: artistId },
+      select: { planSlug: true, planExpiresAt: true, lifetimeGrossSales: true },
+    }),
+
+    // Ground-truth ledger — same rows Purchases/Payouts already read from,
+    // covering both relation-linked items (beat/release/video/sample/merch)
+    // and direct-FK items (membership/marketplace/ticket/campaign).
+    prisma.purchase.findMany({
+      where: {
+        status: 'confirmed',
+        createdAt: { gte: since },
+        OR: [
+          { beat:    { artistId } },
+          { release: { artistId } },
+          { video:   { artistId } },
+          { sample:  { artistId } },
+          { merch:   { artistId } },
+          { artistId },
+        ],
+      },
+      select: { itemType: true, amount: true, netAmount: true, currency: true, createdAt: true },
+    }),
+
+    // Confirmed fan tips — never written to RevenueRecord by the live
+    // webhook path, so read straight from the source table instead.
+    prisma.supportTxn.findMany({
+      where: { artistId, status: 'confirmed', createdAt: { gte: since } },
+      select: { amount: true, currency: true, createdAt: true },
+    }),
 
     // Top-selling beats
     prisma.beat.findMany({
@@ -256,28 +280,56 @@ export async function getRevenueAnalytics(artistId: string, months = 12) {
   const totalSales = conversionData._sum.sales ?? 0;
   const conversionRate = totalPlays > 0 ? (totalSales / totalPlays) * 100 : 0;
 
-  // Revenue breakdown by source — computed from individual RevenueRecord.type values
-  const breakdown = revenueRecords.length > 0
-    ? revenueRecords.reduce(
+  const ITEM_TYPE_LABEL: Record<string, string> = {
+    beat: 'beat_sale', release: 'release_sale', membership: 'membership',
+    marketplace: 'marketplace', merch: 'merch_sale', video: 'video_sale',
+    sample: 'sample_sale', ticket: 'ticket_sale', campaign: 'campaign_pledge',
+  };
+
+  type Row = { period: string; type: string; amount: number; netAmount: number; currency: string };
+  const rows = new Map<string, Row>();
+  function addRow(period: string, type: string, amount: number, netAmount: number, currency: string) {
+    const key = `${period}__${type}__${currency}`;
+    const existing = rows.get(key);
+    if (existing) { existing.amount += amount; existing.netAmount += netAmount; }
+    else rows.set(key, { period, type, amount, netAmount, currency });
+  }
+
+  for (const p of purchases) {
+    const period = p.createdAt.toISOString().slice(0, 7);
+    addRow(period, ITEM_TYPE_LABEL[p.itemType] || p.itemType, p.amount, p.netAmount || p.amount, p.currency);
+  }
+
+  for (const t of supportTxns) {
+    const period = t.createdAt.toISOString().slice(0, 7);
+    // SupportTxn stores no netAmount column — approximate at the artist's
+    // current fee rate, same calculation the confirming webhook itself uses.
+    const net = artistNet(t.amount, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
+    addRow(period, 'tip', t.amount, net, t.currency);
+  }
+
+  const monthlyRevenue = Array.from(rows.values())
+    .sort((a, b) => a.period.localeCompare(b.period))
+    .map((r, i) => ({ id: `${r.period}-${r.type}-${i}`, ...r }));
+
+  const breakdown = (purchases.length > 0 || supportTxns.length > 0)
+    ? monthlyRevenue.reduce(
         (acc, r) => {
-          const amount = r.netAmount || r.amount;
           switch (r.type) {
-            case 'beat_sale':       acc.beatSales     += amount; break;
-            case 'release_sale':    acc.releaseSales  += amount; break;
-            case 'subscription':    acc.subscriptions += amount; break;
-            case 'marketplace':     acc.marketplace   += amount; break;
-            case 'support':
-            case 'tip':             acc.tips          += amount; break;
-            case 'distribution':    acc.distribution  += amount; break;
+            case 'beat_sale':    acc.beatSales     += r.netAmount; break;
+            case 'release_sale': acc.releaseSales  += r.netAmount; break;
+            case 'membership':   acc.subscriptions += r.netAmount; break;
+            case 'marketplace':  acc.marketplace   += r.netAmount; break;
+            case 'tip':          acc.tips          += r.netAmount; break;
           }
           return acc;
         },
-        { beatSales: 0, releaseSales: 0, subscriptions: 0, marketplace: 0, tips: 0, distribution: 0 }
+        { beatSales: 0, releaseSales: 0, subscriptions: 0, marketplace: 0, tips: 0 }
       )
     : null;
 
   return {
-    monthlyRevenue: revenueRecords,
+    monthlyRevenue,
     topBeats,
     topReleases,
     conversionRate: parseFloat(conversionRate.toFixed(2)),
