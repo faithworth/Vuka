@@ -1,19 +1,14 @@
 // src/app/api/admin/earnings/route.ts
-// Phase 7 — Admin: DSP earnings report upload, preview, and confirm ingestion.
+// Phase 7 — Admin: revenue records, payout requests, and manual credits.
 //
 // GET  ?action=list                       — list all RevenueRecords (paginated)
-// POST { action: 'preview', ... }         — parse CSV, return preview (no DB writes)
-// POST { action: 'confirm', preview: ... } — commit preview to DB
+// GET  ?action=payouts                    — list PayoutRequests
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import {
-  previewEarningsIngestion,
-  confirmEarningsIngestion,
-  dispatchPayout,
-} from '@/lib/earnings';
+import { dispatchPayout } from '@/lib/earnings';
 
 // GET — list revenue records or pending payouts
 export async function GET(req: NextRequest) {
@@ -85,41 +80,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { action } = body;
-
-    // ── Preview ──────────────────────────────────────────────
-    if (action === 'preview') {
-      const { platformName, csvContent, currency } = body;
-
-      if (!platformName || !csvContent) {
-        return NextResponse.json(
-          { error: 'platformName and csvContent required' },
-          { status: 400 }
-        );
-      }
-
-      if (csvContent.length > 10 * 1024 * 1024) {
-        return NextResponse.json({ error: 'CSV too large (max 10MB)' }, { status: 413 });
-      }
-
-      const preview = await previewEarningsIngestion({ platformName, csvContent, currency });
-      return NextResponse.json({ preview });
-    }
-
-    // ── Confirm ───────────────────────────────────────────────
-    if (action === 'confirm') {
-      const { preview } = body;
-
-      if (!preview) {
-        return NextResponse.json({ error: 'preview object required' }, { status: 400 });
-      }
-
-      const result = await confirmEarningsIngestion({
-        preview,
-        adminId: user.id,
-      });
-
-      return NextResponse.json({ ok: true, ...result });
-    }
 
     // ── Approve Payout ────────────────────────────────────────
     if (action === 'approve_payout') {
