@@ -115,22 +115,35 @@ export default function PayoutsPage() {
     payoutRequests = [], bankAccounts = [],
   } = data || {};
 
-  function statusBadge(status: string) {
+  // Two badge functions: one for ArtistPayout ledger rows, one for PayoutRequests
+  // (they share status names but need different human labels to avoid confusion)
+  function ledgerBadge(status: string, claimed?: string | null) {
+    const effective = claimed && status === 'pending' ? 'requested' : status;
     const map: Record<string, { label: string; color: string; bg: string }> = {
-      pending:    { label: 'Available',  color: 'var(--gold)',  bg: 'rgba(234,179,8,0.1)' },
-      requested:  { label: 'Requested', color: 'var(--sky)',   bg: 'rgba(56,182,232,0.1)' },
+      pending:    { label: 'Available',   color: 'var(--gold)',  bg: 'rgba(234,179,8,0.1)' },
+      requested:  { label: 'Requested',  color: 'var(--sky)',   bg: 'rgba(56,182,232,0.1)' },
       processing: { label: 'Processing', color: 'var(--sky)',   bg: 'rgba(56,182,232,0.1)' },
+      paid:       { label: 'Paid',       color: 'var(--green)', bg: 'rgba(16,185,129,0.1)' },
       completed:  { label: 'Paid',       color: 'var(--green)', bg: 'rgba(16,185,129,0.1)' },
-      approved:   { label: 'Approved',   color: 'var(--green)', bg: 'rgba(16,185,129,0.1)' },
       failed:     { label: 'Failed',     color: '#f87171',      bg: 'rgba(248,113,113,0.1)' },
     };
+    const s = map[effective] || map.pending;
+    return <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: s.color, background: s.bg }}>{s.label}</span>;
+  }
+
+  function requestBadge(status: string) {
+    const map: Record<string, { label: string; color: string; bg: string }> = {
+      pending:    { label: 'Submitted',  color: 'var(--text-muted)', bg: 'var(--surface2)' },
+      approved:   { label: 'Approved',  color: 'var(--sky)',         bg: 'rgba(56,182,232,0.1)' },
+      processing: { label: 'Processing',color: 'var(--sky)',         bg: 'rgba(56,182,232,0.1)' },
+      paid:       { label: 'Paid',      color: 'var(--green)',       bg: 'rgba(16,185,129,0.1)' },
+      completed:  { label: 'Paid',      color: 'var(--green)',       bg: 'rgba(16,185,129,0.1)' },
+      rejected:   { label: 'Rejected',  color: '#f87171',            bg: 'rgba(248,113,113,0.1)' },
+      cancelled:  { label: 'Cancelled', color: 'var(--text-muted)',  bg: 'var(--surface2)' },
+      failed:     { label: 'Failed',    color: '#f87171',            bg: 'rgba(248,113,113,0.1)' },
+    };
     const s = map[status] || map.pending;
-    return (
-      <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-        style={{ color: s.color, background: s.bg }}>
-        {s.label}
-      </span>
-    );
+    return <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: s.color, background: s.bg }}>{s.label}</span>;
   }
 
   return (
@@ -503,7 +516,7 @@ export default function PayoutsPage() {
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                           {formatCurrency(r.amount)}
                         </p>
-                        {statusBadge(r.status)}
+                        {requestBadge(r.status)}
                       </div>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {new Date(r.createdAt).toLocaleDateString('en-ZA')}
@@ -536,7 +549,7 @@ export default function PayoutsPage() {
                           <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                             {formatCurrency(p.amount)}
                           </p>
-                          {statusBadge(p.claimedByPayoutRequestId && p.status === 'pending' ? 'requested' : p.status)}
+                          {ledgerBadge(p.status, p.claimedByPayoutRequestId)}
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium uppercase"
                             style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
                             {p.method}
