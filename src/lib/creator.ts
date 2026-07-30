@@ -16,7 +16,6 @@ function getPeriod(): string {
 // ── Subscription Tier Management ──────────────────────────────
 
 export async function getArtistTiers(artistId: string) {
-  // Raw query — perks is jsonb in DB but Prisma schema says String[]; findMany crashes.
   const rows = await queryRaw(
     `SELECT t.*, COUNT(m.id)::int AS "membershipCount"
        FROM "CreatorSubscriptionTier" t
@@ -28,7 +27,7 @@ export async function getArtistTiers(artistId: string) {
   );
   return rows.map(r => ({
     ...r,
-    perks: Array.isArray(r.perks) ? r.perks : (typeof r.perks === 'string' ? JSON.parse(r.perks) : []),
+    perks: Array.isArray(r.perks) ? r.perks : [],
     _count: { memberships: r.membershipCount ?? 0 },
   }));
 }
@@ -62,20 +61,26 @@ export async function createTier(
   const desc     = data.description || '';
   const perksJson = JSON.stringify(perksStrings);
 
+  // Format perks as a PostgreSQL array literal e.g. {"perk1","perk2"}
+  // so we can pass it with ::text[] cast without any json conversion at
+  // the DB level. This avoids the type-mismatch that occurs when Prisma
+  // binds the perksJson string as jsonb and the expression is evaluated
+  // as jsonb rather than text[].
+  const pgPerks = '{' + perksStrings.map(p => `"${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',') + '}';
+
   await executeRaw(
     `INSERT INTO "CreatorSubscriptionTier"
        (id, "artistId", name, "priceMonthly", currency, description, perks, "isActive", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, $5, $6, ARRAY(SELECT json_array_elements_text($7::json)), true, $8::timestamptz, $8::timestamptz)`,
-    id, artistId, data.name, price, currency, desc, perksJson, now,
+     VALUES ($1, $2, $3, $4, $5, $6, $7::text[], true, $8::timestamptz, $8::timestamptz)`,
+    id, artistId, data.name, price, currency, desc, pgPerks, now,
   );
 
-  // Raw query — Prisma findUnique crashes reading perks (jsonb vs String[])
   const rows = await queryRaw(
     `SELECT * FROM "CreatorSubscriptionTier" WHERE id = $1 LIMIT 1`, id,
   );
   if (!rows[0]) return null;
   const r = rows[0];
-  return { ...r, perks: Array.isArray(r.perks) ? r.perks : (typeof r.perks === 'string' ? JSON.parse(r.perks) : []) };
+  return { ...r, perks: Array.isArray(r.perks) ? r.perks : [] };
 }
 
 // ── Membership Lifecycle ──────────────────────────────────────
