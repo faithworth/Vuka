@@ -20,6 +20,7 @@ export async function GET() {
             { video:   { artistId } },
             { sample:  { artistId } },
             { merch:   { artistId } },
+            { artistId },
           ],
         },
         include: {
