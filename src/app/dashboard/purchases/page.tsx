@@ -36,7 +36,14 @@ export default function PurchasesPage() {
                 {purchases.map((p: any) => (
                   <tr key={p.id}>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{formatDate(p.createdAt)}</td>
-                    <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text)' }}>{p.beat?.title || p.release?.title || p.video?.title || p.sample?.title || p.merch?.title || '—'}</td>
+                    <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text)' }}>
+                      {p.beat?.title || p.release?.title || p.video?.title || p.sample?.title || p.merch?.title || ({
+                        membership:  'Fan Membership',
+                        marketplace: 'Marketplace Order',
+                        ticket:      'Event Ticket',
+                        campaign:    'Campaign Pledge',
+                      } as Record<string, string>)[p.itemType] || 'Purchase'}
+                    </td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{p.buyerName}</td>
                     <td className="px-4 py-3 text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{p.licenseType || p.itemType}</td>
                     <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--green)' }}>{formatCurrency(p.amount, p.currency)}</td>
