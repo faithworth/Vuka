@@ -38,7 +38,6 @@ export async function POST(
       include: {
         beat:               { select: { title: true, artworkUrl: true } },
         release:            { select: { title: true, artworkUrl: true } },
-        distributionRelease:{ select: { title: true, artworkUrl: true } },
         video:              { select: { title: true, thumbnailUrl: true } },
         sample:             { select: { title: true, artworkUrl: true } },
       },
@@ -146,7 +145,6 @@ export async function POST(
     const itemName =
       purchase.beat?.title ||
       purchase.release?.title ||
-      (purchase as any).distributionRelease?.title ||
       purchase.video?.title ||
       purchase.sample?.title ||
       'your purchase';
@@ -154,7 +152,6 @@ export async function POST(
     const artworkUrl =
       purchase.beat?.artworkUrl ||
       purchase.release?.artworkUrl ||
-      (purchase as any).distributionRelease?.artworkUrl ||
       (purchase as any).sample?.artworkUrl ||
       (purchase as any).video?.thumbnailUrl ||
       undefined;
