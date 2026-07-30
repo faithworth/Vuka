@@ -1998,4 +1998,6 @@ model ArtistOnboarding {
   completedAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@map("artist_onboarding")
 }
