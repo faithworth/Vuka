@@ -423,7 +423,7 @@ export default function ArtistTabs({ artist }: ArtistTabsProps) {
           ) : (
             <div className="space-y-4">
               {exclusiveContent.map((item: any) => {
-                const locked = !item.isFreePreview && !item.fileUrl && !item.body && !item.externalUrl;
+                const locked = item.entitled === false;
                 const TypeIcon = item.contentType === 'link' ? LinkIcon : item.contentType === 'text' ? FileText : Lock;
                 return (
                   <article key={item.id} className="card p-5" style={{ opacity: locked ? 0.75 : 1 }}>
