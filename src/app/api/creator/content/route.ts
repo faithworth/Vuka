@@ -12,15 +12,18 @@ import { checkContentEntitlement } from '@/lib/creator';
 // GET — list content (fan view: gate by entitlement; artist view: all their content)
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { searchParams } = new URL(req.url);
     const artistId  = searchParams.get('artistId');
     const contentId = searchParams.get('contentId');
 
-    // Single content fetch with entitlement check
+    // Auth is optional for the list path — unauthenticated fans should still
+    // see locked content cards. Single-item fetches still require a session.
+    const user = await requireAuth();
+
+    // Single content fetch with entitlement check (requires auth)
     if (contentId) {
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
       const content = await prisma.exclusiveContent.findUnique({
         where: { id: contentId },
         include: { artist: { select: { id: true, name: true, slug: true } } },
@@ -36,25 +39,52 @@ export async function GET(req: NextRequest) {
 
     if (!artistId) return NextResponse.json({ error: 'artistId or contentId required' }, { status: 400 });
 
-    // List for an artist — artist sees all their own, fans see published only
-    const isOwner = user.artist?.id === artistId;
+    // List for an artist — owner sees drafts too; fans see published only
+    const isOwner = user?.artist?.id === artistId;
     const items = await prisma.exclusiveContent.findMany({
       where: {
         artistId,
         ...(isOwner ? {} : { isPublished: true }),
       },
       orderBy: { publishedAt: 'desc' },
-      // Strip private fields for non-entitled fans
-      select: {
-        id: true, artistId: true, title: true, description: true,
-        contentType: true, thumbnailUrl: true, isFreePreview: true,
-        accessTierIds: true, isPublished: true, publishedAt: true,
-        // Include body/fileUrl/externalUrl only for owner
-        ...(isOwner ? { fileUrl: true, body: true, externalUrl: true } : {}),
-      },
     });
 
-    return NextResponse.json({ content: items });
+    // Owner sees everything without entitlement gating
+    if (isOwner) return NextResponse.json({ content: items });
+
+    // For fans (logged-in or not): one membership lookup, then gate each item
+    const activeMembership = user
+      ? await prisma.creatorMembership.findFirst({
+          where: {
+            userId: user.id,
+            artistId,
+            status: 'active',
+            expiresAt: { gte: new Date() },
+          },
+          select: { tierId: true },
+        })
+      : null;
+
+    const gated = items.map(item => {
+      // Free previews are visible to everyone
+      if (item.isFreePreview) return { ...item, entitled: true };
+
+      // No active membership at all → locked
+      if (!activeMembership) {
+        return { ...item, fileUrl: '', body: '', externalUrl: '', entitled: false };
+      }
+
+      // Membership exists — check if it covers this content's tier list
+      const tierIds = (item.accessTierIds ?? []) as string[];
+      const entitled = tierIds.length === 0 || tierIds.includes(activeMembership.tierId);
+      if (!entitled) {
+        return { ...item, fileUrl: '', body: '', externalUrl: '', entitled: false };
+      }
+
+      return { ...item, entitled: true };
+    });
+
+    return NextResponse.json({ content: gated });
   } catch (err) {
     console.error('[creator/content] GET error:', err);
     return NextResponse.json({ error: 'Database error' }, { status: 503 });
