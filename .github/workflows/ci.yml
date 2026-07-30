@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # NOTE: using `npm install` not `npm ci` for now — package-lock.json
       # has not yet been regenerated against the Next 15 / React 19 bump in
