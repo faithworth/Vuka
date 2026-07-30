@@ -38,6 +38,7 @@ import { disburseSplitSheet } from '@/lib/splits';
 import { issueBeatLicense } from '@/lib/licensing';
 import { createInvoiceFromPurchase } from '@/lib/invoices';
 import { handlePlanEvent, handleMarketplaceEvent, handleMembershipEvent, handleIndustryOrderEvent, handleSupportEvent, handleTicketEvent, handleCampaignEvent } from '@/lib/webhooks/paystack-handlers';
+import { handlePaystackTransferWebhook } from '@/lib/earnings';
 
 export async function POST(req: NextRequest) {
   const traceId   = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -51,6 +52,14 @@ export async function POST(req: NextRequest) {
 
   let event: any;
   try { event = JSON.parse(rawBody); } catch { return new NextResponse('Bad JSON', { status: 400 }); }
+
+  // ── Transfer events (outbound payouts) ──────────────────────────────
+  if (event.event === 'transfer.success' || event.event === 'transfer.failed') {
+    await handlePaystackTransferWebhook(event).catch(e =>
+      logger.error('[paystack/webhook] transfer webhook handler failed', { traceId, error: String(e) })
+    );
+    return NextResponse.json({ ok: true });
+  }
 
   if (event.event !== 'charge.success') return NextResponse.json({ ok: true });
 
