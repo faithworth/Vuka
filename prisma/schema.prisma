@@ -101,7 +101,6 @@ model Artist {
   dmcaReports      DMCAReport[]
   serviceInquiries ServiceInquiry[]
   // Phase 2
-  distributionReleases  DistributionRelease[]
   subscriptionTiers     CreatorSubscriptionTier[]
   memberships           CreatorMembership[]
   exclusiveContent      ExclusiveContent[]
@@ -308,8 +307,6 @@ model Purchase {
   video              Video?       @relation(fields: [videoId], references: [id])
   sampleId           String?
   sample             Sample?      @relation(fields: [sampleId], references: [id])
-  distributionReleaseId String?
-  distributionRelease   DistributionRelease? @relation(fields: [distributionReleaseId], references: [id])
   subscriptionId     String?
   subscription       Subscription? @relation(fields: [subscriptionId], references: [id])
   merchId            String?
