@@ -169,6 +169,7 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
 
   const membership = await prisma.creatorMembership.findFirst({
     where: { paystackReference: reference },
+    include: { user: { select: { name: true, email: true } }, tier: { select: { name: true } } },
   });
 
   if (!membership) {
@@ -216,6 +217,8 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
     const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
     const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
+    const fanName = membership.user?.name || verification.customerEmail?.split('@')[0] || 'Fan';
+
     await prisma.artistPayout.create({
       data: {
         artistId:  membership.artistId,
@@ -224,7 +227,7 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
         currency:  'ZAR',
         status:    'pending',
         reference,
-        notes:     `Fan membership payment (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
+        notes:     `Fan membership: ${membership.tier?.name || 'tier'} from ${fanName} (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
       },
     });
 
@@ -232,8 +235,8 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
       data: {
         itemType:          'membership',
         artistId:          membership.artistId,
-        buyerEmail:        verification.customerEmail || '',
-        buyerName:         'Fan',
+        buyerEmail:        verification.customerEmail || membership.user?.email || '',
+        buyerName:         fanName,
         amount:            amountGross,
         currency:          'ZAR',
         platformFee:       fee,
