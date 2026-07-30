@@ -772,6 +772,45 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
 }
 
 // ── 6. WEBHOOK STATUS HANDLERS ────────────────────────────────
+// All handlers now use markPayoutPaid() / rejectPayoutRequest() from
+// payouts.ts so the original claimed ledger rows are settled in place
+// instead of creating duplicate 'paid' rows.
+
+import { markPayoutPaid, rejectPayoutRequest } from './payouts';
+
+// ── Paystack transfer webhook ─────────────────────────────────
+export async function handlePaystackTransferWebhook(payload: {
+  event: string;
+  data: {
+    reference: string;
+    transfer_code?: string;
+    status: string;
+    reason?: string;
+  };
+}): Promise<void> {
+  const { event, data } = payload;
+  if (event !== 'transfer.success' && event !== 'transfer.failed') return;
+
+  // Reference format: VUKA-XXXXXXXX (last 8 chars of payoutRequestId, upper)
+  const refSuffix = (data.reference || '').replace('VUKA-', '').toLowerCase();
+  if (!refSuffix) return;
+
+  const request = await prisma.payoutRequest.findFirst({
+    where: { id: { endsWith: refSuffix } },
+  });
+  if (!request) {
+    logger.warn('[earnings] Paystack transfer webhook — no matching PayoutRequest', { ref: data.reference });
+    return;
+  }
+
+  if (event === 'transfer.success') {
+    await markPayoutPaid(request.id, data.transfer_code || data.reference);
+    logger.info('[earnings] Paystack transfer succeeded', { requestId: request.id, ref: data.reference });
+  } else {
+    await rejectPayoutRequest(request.id, `Paystack transfer failed — ${data.reason || data.status}`);
+    logger.warn('[earnings] Paystack transfer failed', { requestId: request.id, ref: data.reference });
+  }
+}
 
 export async function handleFlutterwaveWebhook(payload: {
   event: string;
@@ -787,39 +826,18 @@ export async function handleFlutterwaveWebhook(payload: {
   const { event, data } = payload;
   if (event !== 'transfer.completed' && event !== 'transfer.failed') return;
 
-  // Extract payoutRequestId from reference: VUKA-XXXXXXXX
-  const refSuffix = data.reference?.replace('VUKA-', '');
+  const refSuffix = data.reference?.replace('VUKA-', '').toLowerCase();
   if (!refSuffix) return;
 
   const request = await prisma.payoutRequest.findFirst({
-    where: { id: { endsWith: refSuffix.toLowerCase() } },
+    where: { id: { endsWith: refSuffix } },
   });
   if (!request) return;
 
-  const newStatus = data.status === 'SUCCESSFUL' ? 'paid' : 'rejected';
-
-  await prisma.payoutRequest.update({
-    where: { id: request.id },
-    data: {
-      status: newStatus,
-      processedAt: new Date(),
-      adminNotes: `Flutterwave webhook: ${data.status} — ${data.complete_message || ''}`,
-    },
-  });
-
-  if (newStatus === 'paid') {
-    await prisma.artistPayout.create({
-      data: {
-        artistId:    request.artistId,
-        amount:      request.amount,
-        currency:    request.currency,
-        status:      'paid',
-        method:      'flutterwave',
-        reference:   data.reference,
-        notes:       `PayoutRequest ${request.id}`,
-        processedAt: new Date(),
-      },
-    });
+  if (data.status === 'SUCCESSFUL') {
+    await markPayoutPaid(request.id, data.reference);
+  } else {
+    await rejectPayoutRequest(request.id, `Flutterwave transfer failed — ${data.complete_message || data.status}`);
   }
 }
 
@@ -839,38 +857,20 @@ export async function handlePayPalWebhook(payload: {
   if (!event_type.startsWith('PAYMENT.PAYOUTS-ITEM')) return;
 
   const senderBatchId = resource.batch_header?.sender_batch_header?.sender_batch_id || '';
-  const refSuffix = senderBatchId.replace('VUKA-', '');
+  const refSuffix = senderBatchId.replace('VUKA-', '').toLowerCase();
   if (!refSuffix) return;
 
   const request = await prisma.payoutRequest.findFirst({
-    where: { id: { endsWith: refSuffix.toLowerCase() } },
+    where: { id: { endsWith: refSuffix } },
   });
   if (!request) return;
 
   const success = event_type === 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED';
-  const failed = event_type === 'PAYMENT.PAYOUTS-ITEM.FAILED' || event_type === 'PAYMENT.PAYOUTS-ITEM.RETURNED';
+  const failed  = event_type === 'PAYMENT.PAYOUTS-ITEM.FAILED' || event_type === 'PAYMENT.PAYOUTS-ITEM.RETURNED';
 
   if (success) {
-    await prisma.payoutRequest.update({
-      where: { id: request.id },
-      data: { status: 'paid', processedAt: new Date(), adminNotes: `PayPal: ${event_type}` },
-    });
-    await prisma.artistPayout.create({
-      data: {
-        artistId:    request.artistId,
-        amount:      request.amount,
-        currency:    request.currency,
-        status:      'paid',
-        method:      'paypal',
-        reference:   senderBatchId,
-        notes:       `PayoutRequest ${request.id}`,
-        processedAt: new Date(),
-      },
-    });
+    await markPayoutPaid(request.id, senderBatchId);
   } else if (failed) {
-    await prisma.payoutRequest.update({
-      where: { id: request.id },
-      data: { status: 'rejected', adminNotes: `PayPal: ${event_type}` },
-    });
+    await rejectPayoutRequest(request.id, `PayPal payout failed — ${event_type}`);
   }
 }
