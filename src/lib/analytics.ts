@@ -5,6 +5,7 @@
 
 import prisma, { queryRaw } from './prisma';
 import { incrementDailyRollup } from './social';
+import { artistNet } from './plans';
 
 // ── PAGE VIEW TRACKING ────────────────────────────────────────
 
