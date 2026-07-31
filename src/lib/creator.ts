@@ -57,9 +57,7 @@ export async function createTier(
   const now      = new Date().toISOString();
   const price    = data.priceMonthly;
   const currency = data.currency || 'ZAR';
-  const interval = 'monthly';
   const desc     = data.description || '';
-  const perksJson = JSON.stringify(perksStrings);
 
   // Format perks as a PostgreSQL array literal e.g. {"perk1","perk2"}
   // so we can pass it with ::text[] cast without any json conversion at
