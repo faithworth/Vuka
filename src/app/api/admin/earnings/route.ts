@@ -85,10 +85,19 @@ export async function POST(req: NextRequest) {
     if (action === 'approve_payout') {
       const { payoutRequestId, notes } = body;
       if (!payoutRequestId) return NextResponse.json({ error: 'payoutRequestId required' }, { status: 400 });
+
       await prisma.payoutRequest.update({
         where: { id: payoutRequestId },
         data: { status: 'approved', adminNotes: notes || '' },
       });
+
+      // Auto-dispatch immediately — fire and forget so the admin
+      // response isn't blocked. Errors are logged; on failure the
+      // admin can retry via dispatch_payout action.
+      dispatchPayout(payoutRequestId).catch((err) => {
+        console.error('[admin/earnings] auto-dispatch after approval failed', payoutRequestId, err);
+      });
+
       return NextResponse.json({ ok: true });
     }
 
