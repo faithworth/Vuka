@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import { Navbar } from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency, generateWaveformFallback } from '@/lib/utils';
@@ -27,7 +28,20 @@ export default function BeatDetailPage() {
   if (loading) return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
-      <div className="flex items-center justify-center py-24"><p style={{ color: 'var(--text-muted)' }}>Just now…</p></div>
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="flex flex-col md:flex-row gap-8 animate-pulse">
+          <div className="md:w-72 flex-shrink-0">
+            <div className="aspect-square rounded-2xl" style={{ background: 'var(--surface)' }} />
+          </div>
+          <div className="flex-1 space-y-4">
+            <div className="h-4 w-16 rounded" style={{ background: 'var(--surface)' }} />
+            <div className="h-8 w-3/4 rounded" style={{ background: 'var(--surface)' }} />
+            <div className="h-5 w-1/3 rounded" style={{ background: 'var(--surface)' }} />
+            <div className="h-14 rounded-xl mt-8" style={{ background: 'var(--surface)' }} />
+            <div className="h-14 rounded-xl" style={{ background: 'var(--surface)' }} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -62,7 +76,14 @@ export default function BeatDetailPage() {
           <div className="md:w-72 flex-shrink-0">
             <div className="aspect-square rounded-2xl overflow-hidden relative" style={{ background: 'var(--surface)' }}>
               {beat.artworkUrl
-                ? <img src={beat.artworkUrl} alt={beat.title} className="w-full h-full object-cover" />
+                ? <Image
+                    src={beat.artworkUrl}
+                    alt={beat.title}
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 100vw, 288px"
+                    className="object-cover"
+                  />
                 : <div className="w-full h-full flex items-center justify-center text-7xl">🎵</div>}
               <div className="absolute bottom-3 left-3">
                 <PreviewPlayButton track={track} size={56} />
