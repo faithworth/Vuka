@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Calendar, MapPin, Ticket, Check, AlertCircle } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
@@ -62,10 +63,29 @@ export default function EventPage() {
 
   return (
     <div className="min-h-screen pb-20" style={{ background:'var(--bg)' }}>
-      {event.coverUrl && <div className="w-full h-64 bg-cover bg-center" style={{ backgroundImage:`url(${event.coverUrl})` }}/>}
+      {event.coverUrl && (
+        <div className="relative w-full h-64">
+          <Image
+            src={event.coverUrl}
+            alt={event.title}
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+        </div>
+      )}
       <div className="max-w-xl mx-auto px-4 pt-8">
         <a href={`/artist/${event.artist.slug}`} className="flex items-center gap-2 mb-4">
-          {event.artist.photoUrl && <img src={event.artist.photoUrl} alt={event.artist.name} className="w-8 h-8 rounded-full object-cover"/>}
+          {event.artist.photoUrl && (
+            <Image
+              src={event.artist.photoUrl}
+              alt={event.artist.name}
+              width={32}
+              height={32}
+              className="rounded-full object-cover"
+            />
+          )}
           <span className="text-sm font-semibold hover:underline" style={{ color:'var(--text-muted)' }}>{event.artist.name}</span>
         </a>
         <h1 className="text-3xl font-black mb-3" style={{ color:'var(--text)' }}>{event.title}</h1>
