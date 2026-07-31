@@ -171,6 +171,84 @@ export async function chargeAuthorization(
   };
 }
 
+// ── Transfer Recipients (artist bank payouts) ───────────────────────────────
+// Paystack Transfer Recipient = a verified bank account that Vuka can push
+// money to from its Paystack balance. Artists never need a Paystack account —
+// Vuka holds the single merchant account and sends artist shares outward.
+
+export const SA_BANK_CODES: Record<string, string> = {
+  'ABSA':                '632005',
+  'African Bank':        '430000',
+  'Bidvest Bank':        '462005',
+  'Capitec':             '470010',
+  'Discovery Bank':      '679000',
+  'FNB':                 '250655',
+  'First National Bank': '250655',
+  'Grindrod Bank':       '584000',
+  'Investec':            '580105',
+  'Nedbank':             '198765',
+  'Standard Bank':       '051001',
+  'TymeBank':            '678910',
+  'Old Mutual':          '462005',
+  'Sasfin':              '683000',
+  'Ubank':               '431010',
+};
+
+export function getBankCode(bankName: string): string | null {
+  return SA_BANK_CODES[bankName] ?? null;
+}
+
+export async function resolveAccountNumber(params: {
+  accountNumber: string;
+  bankCode: string;
+}): Promise<{ accountName: string } | null> {
+  try {
+    const res = await fetch(
+      `https://api.paystack.co/bank/resolve?account_number=${params.accountNumber}&bank_code=${params.bankCode}`,
+      { headers: { Authorization: `Bearer ${SECRET_KEY}` } },
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.status ? { accountName: json.data?.account_name ?? '' } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function createTransferRecipient(params: {
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+  currency?: string;
+}): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.paystack.co/transferrecipient', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type:           'nuban',
+        name:           params.name,
+        account_number: params.accountNumber,
+        bank_code:      params.bankCode,
+        currency:       params.currency ?? 'ZAR',
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('[paystack] createTransferRecipient failed', err);
+      return null;
+    }
+    const json = await res.json();
+    return json.data?.recipient_code ?? null;
+  } catch (e) {
+    console.error('[paystack] createTransferRecipient error', e);
+    return null;
+  }
+}
+
 // ── Webhook Signature Verification ───────────────────────────────────────────
 
 export function verifyPaystackWebhook(rawBody: string, signature: string): boolean {
