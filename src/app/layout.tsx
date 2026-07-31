@@ -42,6 +42,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Extract origin from R2 public URL for preconnect (server-only env var is fine here
+  // since layout.tsx is a Server Component)
+  let r2Origin: string | null = null;
+  try {
+    if (process.env.CLOUDFLARE_R2_PUBLIC_URL) {
+      r2Origin = new URL(process.env.CLOUDFLARE_R2_PUBLIC_URL).origin;
+    }
+  } catch {}
+
   return (
     <html lang="en">
       <head>
@@ -49,6 +58,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Vuka Music Design System fonts — Syne (headings), DM Sans (body), JetBrains Mono (numbers/code) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* Preconnect to R2 CDN so artwork/audio loads start without TCP handshake delay */}
+        {r2Origin && <link rel="preconnect" href={r2Origin} />}
+        {r2Origin && <link rel="dns-prefetch" href={r2Origin} />}
         <link
           href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;600;700&display=swap"
           rel="stylesheet"
