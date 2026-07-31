@@ -16,7 +16,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { encrypt, maskAccountNumber } from '@/lib/encryption';
+import { encrypt, maskAccountNumber, decrypt } from '@/lib/encryption';
+import { createTransferRecipient, getBankCode } from '@/lib/paystack';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { z } from 'zod';
 
@@ -178,6 +179,31 @@ export async function POST(req: NextRequest) {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Fire-and-forget: create a Paystack transfer recipient so this account
+    // can receive automatic payouts. Uses branchCode as the Paystack bank
+    // code (standard SA format). Non-blocking — failure just means the
+    // admin must manually dispatch this account’s payouts until resolved.
+    const bankCode = branchCode || getBankCode(bankName) || '';
+    if (bankCode && created?.id) {
+      (async () => {
+        try {
+          const recipientCode = await createTransferRecipient({
+            name:          accountHolder,
+            accountNumber, // plain-text — only used here, never persisted
+            bankCode,
+          });
+          if (recipientCode) {
+            await prisma.artistBankAccount.update({
+              where: { id: created.id },
+              data: { paystackAccountCode: recipientCode, isVerified: true },
+            });
+          }
+        } catch (e) {
+          console.error('[bank-accounts] Paystack recipient creation failed', e);
+        }
+      })();
+    }
 
     return NextResponse.json({ account: created }, { status: 201 });
   } catch (err: any) {
