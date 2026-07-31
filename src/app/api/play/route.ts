@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       const video = await prisma.video.update({
         where: { id: itemId },
         data: {
-          views: { increment: 1 },
+          plays: { increment: 1 },
           artist: { update: { totalPlays: { increment: 1 } } },
         },
         select: { artistId: true },
