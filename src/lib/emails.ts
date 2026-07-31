@@ -834,23 +834,19 @@ export async function sendSupportFanConfirmation({
   to: string; fanName: string; artistName: string; amount: number; currency: string; tier: string; message?: string;
 }) {
   const subject = `You just made someone's day ♥ — Vuka`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
-      <div style="font-size:48px;text-align:center;margin-bottom:16px;">♥</div>
-      <h2 style="text-align:center;">You made someone's day, ${fanName}</h2>
-      <p style="color:#8b7daa;text-align:center;margin:8px 0 24px;">Your support means the world to ${artistName}.</p>
-      <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Artist</span><span>${artistName}</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier earned</span><span style="color:#38b6e8;font-weight:700;">${tier}</span></div>
-      </div>
-      ${message ? `<div style="background:#1e1828;border-left:3px solid #38b6e8;padding:16px;border-radius:0 12px 12px 0;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your message:</p><p style="font-style:italic;">"${message}"</p></div>` : ''}
+  const html = layout(card(`
+    ${icon('♥')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`You made someone's day, ${fanName}`)}
+      ${sub(`Your support means the world to ${artistName}.`)}
     </div>
-  </div>
-</body></html>`;
+    ${infoTable(`
+      ${row('Artist', artistName)}
+      ${row('Amount', `<span style="color:#A0E87C;font-weight:700;">${currency} ${amount.toFixed(2)}</span>`, true)}
+      ${row('Tier earned', `<span style="color:#38b6e8;font-weight:700;">${tier}</span>`)}
+    `)}
+    ${message ? `<div style="background:#1A1A1A;border-left:3px solid #38b6e8;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;"><p style="color:#A0A0A0;font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Your message</p><p style="color:#F5F5F5;font-style:italic;margin:0;font-size:15px;line-height:1.6;">&ldquo;${message}&rdquo;</p></div>` : ''}
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
@@ -860,23 +856,20 @@ export async function sendCampaignBackerConfirmation({
   to: string; backerName: string; artistName: string; campaignTitle: string; amount: number; currency: string; tierTitle?: string; message?: string;
 }) {
   const subject = `You just backed ${campaignTitle} ♥ — Vuka`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;">
-      <div style="font-size:48px;text-align:center;margin-bottom:16px;">🎯</div>
-      <h2 style="text-align:center;">Thanks for backing, ${backerName}</h2>
-      <p style="color:#8b7daa;text-align:center;margin:8px 0 24px;">You just helped fund "${campaignTitle}" by ${artistName}.</p>
-      <div style="background:#1e1828;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Campaign</span><span>${campaignTitle}</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Pledge</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
-        ${tierTitle ? `<div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#38b6e8;font-weight:700;">${tierTitle}</span></div>` : ''}
-      </div>
-      ${message ? `<div style="background:#1e1828;border-left:3px solid #38b6e8;padding:16px;border-radius:0 12px 12px 0;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Your message:</p><p style="font-style:italic;">"${message}"</p></div>` : ''}
+  const html = layout(card(`
+    ${icon('🎯')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`Thanks for backing, ${backerName}!`)}
+      ${sub(`You just helped fund &ldquo;${campaignTitle}&rdquo; by ${artistName}.`)}
     </div>
-  </div>
-</body></html>`;
+    ${infoTable(`
+      ${row('Campaign', `<strong>${campaignTitle}</strong>`)}
+      ${row('Artist', artistName)}
+      ${row('Pledge', `<span style="color:#A0E87C;font-weight:700;">${currency} ${amount.toFixed(2)}</span>`, true)}
+      ${tierTitle ? row('Tier', `<span style="color:#38b6e8;font-weight:700;">${tierTitle}</span>`) : ''}
+    `)}
+    ${message ? `<div style="background:#1A1A1A;border-left:3px solid #38b6e8;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;"><p style="color:#A0A0A0;font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Your message</p><p style="color:#F5F5F5;font-style:italic;margin:0;font-size:15px;line-height:1.6;">&ldquo;${message}&rdquo;</p></div>` : ''}
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
@@ -886,21 +879,17 @@ export async function sendNewMessageNotification({
   to: string; name: string; preview: string; inboxUrl: string;
 }) {
   const subject = `💬 You have a new message on Vuka`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;margin:0 0 32px;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;">
-      <div style="font-size:40px;text-align:center;margin-bottom:16px;">💬</div>
-      <h2 style="text-align:center;margin:0 0 8px;">Hey ${name}, you got a message</h2>
-      <div style="background:#1e1828;border-radius:12px;padding:16px;margin:24px 0;color:#8b7daa;font-style:italic;">
-        "${preview.slice(0, 120)}${preview.length > 120 ? '…' : ''}"
-      </div>
-      <a href="${inboxUrl}" style="display:block;background:linear-gradient(135deg,#38b6e8,#5b21b6);color:white;text-decoration:none;text-align:center;padding:16px;border-radius:12px;font-weight:700;">Open Messages →</a>
-      <p style="color:#8b7daa;font-size:12px;text-align:center;margin-top:16px;">Manage notification preferences in <a href="${APP_URL()}/dashboard/settings" style="color:#38b6e8;">Settings</a>.</p>
+  const html = layout(card(`
+    ${icon('💬')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`Hey ${name}, you got a message`)}
     </div>
-  </div>
-</body></html>`;
+    <div style="background:#1A1A1A;border-radius:8px;padding:20px;margin:0 0 24px;color:#A0A0A0;font-style:italic;font-size:15px;line-height:1.6;">
+      &ldquo;${(preview.slice(0, 120) + (preview.length > 120 ? '…' : '')).replace(/</g, '&lt;').replace(/>/g, '&gt;')}&rdquo;
+    </div>
+    ${btn(inboxUrl, 'Open Messages →')}
+    <p style="color:#6B6B6B;font-size:12px;text-align:center;margin-top:16px;">Manage notification preferences in <a href="${APP_URL()}/dashboard/settings" style="color:#A0E87C;text-decoration:none;">Settings</a>.</p>
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
@@ -910,22 +899,18 @@ export async function sendMilestoneNotification({
   to: string; artistName: string; milestone: string; value: number; dashboardUrl: string;
 }) {
   const subject = `🎉 Milestone reached — ${milestone}`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;text-align:center;">
-      <div style="font-size:56px;margin-bottom:16px;">🎉</div>
-      <h2 style="margin:0 0 8px;">Sharp, ${artistName}!</h2>
-      <p style="color:#8b7daa;margin:0 0 24px;">You just hit a milestone:</p>
-      <div style="background:linear-gradient(135deg,#38b6e8,#5b21b6);border-radius:12px;padding:24px;margin-bottom:24px;">
-        <p style="font-size:20px;font-weight:700;margin:0;">${milestone}</p>
-        <p style="font-size:36px;font-weight:900;margin:8px 0 0;">${value.toLocaleString()}</p>
-      </div>
-      <a href="${dashboardUrl}" style="display:inline-block;background:#1e1828;color:#38b6e8;text-decoration:none;padding:12px 24px;border-radius:12px;font-weight:700;">View Dashboard →</a>
+  const html = layout(card(`
+    ${icon('🎉')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`Sharp, ${artistName}!`)}
+      ${sub('You just hit a milestone:')}
     </div>
-  </div>
-</body></html>`;
+    <div style="background:linear-gradient(135deg,#A0E87C22,#6BB84A22);border:1px solid rgba(160,232,124,0.3);border-radius:12px;padding:28px;margin:0 0 24px;text-align:center;">
+      <p style="font-size:17px;font-weight:700;color:#F5F5F5;margin:0 0 12px;">${milestone}</p>
+      <p style="font-size:44px;font-weight:900;color:#A0E87C;margin:0;font-family:monospace;letter-spacing:-1px;">${value.toLocaleString()}</p>
+    </div>
+    ${btn(dashboardUrl, 'View Dashboard →', 'secondary')}
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
@@ -999,23 +984,19 @@ export async function sendSupportArtistNotification({
   goalTitle?: string; goalPercent?: number;
 }) {
   const subject = `♥ ${fanName} just supported you on Vuka`;
-  const html = `<!DOCTYPE html><html>
-<body style="background:#0d0b14;color:#f0eafa;font-family:'DM Sans',sans-serif;margin:0;padding:0;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <h1 style="font-size:32px;font-weight:900;background:linear-gradient(135deg,#38b6e8,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;">VUKA</h1>
-    <div style="background:#16121f;border:1px solid #2d2050;border-radius:16px;padding:32px;margin-top:24px;text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">♥</div>
-      <h2 style="margin:0 0 8px;">Sharp, ${artistName}!</h2>
-      <p style="color:#8b7daa;margin:0 0 24px;">${fanName} just sent you support.</p>
-      <div style="background:#1e1828;border-radius:12px;padding:20px;text-align:left;margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">From</span><span>${fanName}</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#8b7daa;">Amount</span><span style="color:#f59e0b;font-weight:700;">${currency} ${amount.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#8b7daa;">Tier</span><span style="color:#38b6e8;">${tier}</span></div>
-      </div>
-      ${message ? `<div style="background:#1e1828;border-left:3px solid #f59e0b;padding:16px;border-radius:0 12px 12px 0;text-align:left;"><p style="color:#8b7daa;font-size:13px;margin:0 0 8px;">Their message:</p><p style="font-style:italic;margin:0;">"${message}"</p></div>` : ''}
+  const html = layout(card(`
+    ${icon('♥')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`Sharp, ${artistName}!`)}
+      ${sub(`${fanName} just sent you support.`)}
     </div>
-  </div>
-</body></html>`;
+    ${infoTable(`
+      ${row('From', fanName)}
+      ${row('Amount', `<span style="color:#A0E87C;font-weight:700;">${currency} ${amount.toFixed(2)}</span>`, true)}
+      ${row('Tier', `<span style="color:#38b6e8;">${tier}</span>`)}
+    `)}
+    ${message ? `<div style="background:#1A1A1A;border-left:3px solid #E8C87C;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;"><p style="color:#A0A0A0;font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Their message</p><p style="color:#F5F5F5;font-style:italic;margin:0;font-size:15px;line-height:1.6;">&ldquo;${message}&rdquo;</p></div>` : ''}
+  `));
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
