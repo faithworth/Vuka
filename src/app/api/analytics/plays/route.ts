@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const targetType = req.nextUrl.searchParams.get('target') ?? '';
     const targetId = req.nextUrl.searchParams.get('id') ?? '';
     const artistId = req.nextUrl.searchParams.get('aid') ?? undefined;
-    const country = req.nextUrl.searchParams.get('c') ?? undefined;
+    const country = req.nextUrl.searchParams.get('c') || req.headers.get('x-vercel-ip-country') || undefined;
 
     if (targetType && targetId) {
       await recordPageView({ artistId, targetType, targetId, country });
