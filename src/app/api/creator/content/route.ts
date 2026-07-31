@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
     const items = await prisma.exclusiveContent.findMany({
       where: {
         artistId,
+        isActive: true,
         ...(isOwner ? {} : { isPublished: true }),
       },
       orderBy: { publishedAt: 'desc' },
@@ -107,12 +108,15 @@ export async function POST(req: NextRequest) {
     if (!title?.trim())    return NextResponse.json({ error: 'Title required' }, { status: 400 });
     if (!contentType)      return NextResponse.json({ error: 'contentType required' }, { status: 400 });
 
+    const contentUrl = fileUrl || externalUrl || '';
+
     const content = await prisma.exclusiveContent.create({
       data: {
         artistId: user.artist.id,
         title: title.trim(),
         description: description || '',
         contentType,
+        contentUrl,
         fileUrl: fileUrl || '',
         thumbnailUrl: thumbnailUrl || '',
         externalUrl: externalUrl || '',
@@ -120,6 +124,7 @@ export async function POST(req: NextRequest) {
         accessTierIds: accessTierIds || [],
         isFreePreview: isFreePreview || false,
         isPublished: isPublished || false,
+        isActive: true,
         publishedAt: isPublished ? new Date() : null,
       },
     });
@@ -152,6 +157,10 @@ export async function PATCH(req: NextRequest) {
       if (updates[key] !== undefined) data[key] = updates[key];
     }
 
+    if (data.fileUrl !== undefined || data.externalUrl !== undefined) {
+      data.contentUrl = (data.fileUrl ?? content.fileUrl) || (data.externalUrl ?? content.externalUrl) || '';
+    }
+
     // Set publishedAt when publishing for the first time
     if (data.isPublished && !content.isPublished) {
       data.publishedAt = new Date();
@@ -180,7 +189,10 @@ export async function DELETE(req: NextRequest) {
     });
     if (!content) return NextResponse.json({ error: 'Content not found' }, { status: 404 });
 
-    await prisma.exclusiveContent.delete({ where: { id: contentId } });
+    await prisma.exclusiveContent.update({
+      where: { id: contentId },
+      data: { isActive: false },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[creator/content] DELETE error:', err);
