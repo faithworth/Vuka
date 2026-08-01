@@ -52,6 +52,12 @@ export const RATE_LIMITS = {
   story_create:       { key: 'story_create',        max: 20,  windowMs: 3_600_000  },
   reel_create:        { key: 'reel_create',         max: 8,   windowMs: 3_600_000  },
 
+  // ── AI Content Engine ────────────────────────
+  // Cloudflare Workers AI free tier is a shared 10k neurons/day account-wide
+  // pool, not per-user — this cap protects that pool from one artist burning
+  // it for everyone. Revisit once on a paid Workers AI allocation.
+  ai_image_generate:  { key: 'ai_image_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per artist
+
   // ── Messaging ─────────────────────────────────────────────
   message_send:       { key: 'message_send',       max: 20,  windowMs: 60_000     },
 
