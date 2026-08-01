@@ -5,6 +5,43 @@ import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
 import { z } from "zod";
 
+// ── TEMPORARY ChatGPT-connector compatibility patch (bootstrap) ──────────
+// Added to get ChatGPT's remote MCP connector to accept this server without
+// a full architectural redesign. Two independent things were fixed here:
+//
+// 1. `export const maxDuration` below — this is the actual Next.js/Vercel
+//    route-segment config that extends the serverless function's real
+//    execution timeout. The `maxDuration: 120` previously passed into
+//    createMcpHandler's config object only controls mcp-handler's internal
+//    Redis-backed SSE keep-alive timer — it does NOT change Vercel's function
+//    timeout. Without this export, long-running tools (e.g.
+//    github_regenerate_lockfile, which assumes ~120s of headroom) could be
+//    killed by the account's default function timeout.
+//
+// 2. The `OPTIONS` export at the bottom of this file — the MCP route had no
+//    CORS preflight handling. mcp-handler's built-in CORS headers only cover
+//    its OAuth metadata endpoints, not the main tools/list-tools/call route,
+//    in either mcp-handler v1 or v2. Added minimally so any browser-based MCP
+//    client (not just server-to-server ones) can reach this endpoint.
+//
+// 3. Every tool `description` string (and the handful of longest parameter
+//    `.describe()` strings) was shortened. This was the actual root cause of
+//    ChatGPT refusing to create the connector at all: ChatGPT enforces a
+//    combined token budget (~5,000 tokens) across every tool's name +
+//    description + JSON schema in one manifest, and the original 81-tool
+//    manifest measured at roughly 8,000-12,000 tokens by that reckoning.
+//    Tool NAMES, PARAMETERS, and all business logic are unchanged — only the
+//    descriptive text was trimmed. If a future redesign needs the fuller
+//    explanations back for a specific tool, they're preserved in git history
+//    on the commit that introduced this patch.
+//
+// This is intentionally a minimal, surgical patch, not a redesign. A future
+// pass (modular tool registries, per-domain endpoints, richer metadata, etc.)
+// is expected to happen separately, on top of a working ChatGPT connection.
+// ───────────────────────────────────────────────────────────────────────
+
+export const maxDuration = 120;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -85,7 +122,7 @@ const handler = createMcpHandler(
     // --- Health check ---
     server.tool(
       "ping",
-      "Simple health-check tool. Returns a confirmation message with the current server time.",
+      "Health check; returns server time.",
       { message: z.string().optional().describe("Optional message to echo back") },
       async ({ message }) => ({
         content: [
@@ -102,9 +139,9 @@ const handler = createMcpHandler(
     // --- Read-only SQL access ---
     server.tool(
       "run_sql_query",
-      "Run a read-only SQL query (SELECT or WITH only) directly against the Vuka Music production Postgres database. Use this for any data question not already covered by a dedicated tool — ad-hoc lookups, aggregates, joins across tables. Writes, DDL, and multi-statement queries are blocked. Results capped at 200 rows and a 5-second timeout.",
+      "Read-only SELECT/WITH query against production Postgres.",
       {
-        query: z.string().describe("A single SELECT or WITH query. No semicolons chaining multiple statements."),
+        query: z.string().describe("A single SELECT or WITH query"),
         row_limit: z.number().int().min(1).max(200).optional().default(50).describe("Max rows to return, capped at 200"),
       },
       async ({ query, row_limit }) => {
@@ -128,7 +165,7 @@ const handler = createMcpHandler(
     // --- Artist revenue summary ---
     server.tool(
       "get_artist_summary",
-      "Look up a Vuka Music artist by name or slug and return their full revenue picture (beat/release sales, tips, crowdfunding, marketplace orders), payout status, and plan status. Use this whenever the user asks about a specific artist's performance, earnings, or account status.",
+      "Artist lookup: revenue, payout, plan status.",
       { query: z.string().describe("Artist name or slug to search for (partial match allowed)") },
       async ({ query }) => {
         const { data: artists, error: artistError } = await supabase
@@ -232,12 +269,12 @@ const handler = createMcpHandler(
     // --- Verify (or unverify) an artist's bank account ---
     server.tool(
       "verify_bank_account",
-      "Verify or unverify an artist's bank account by artist name/slug, enabling their payouts to that account once past the 48h cooldown. If the artist has multiple bank accounts, this returns a list asking you to specify bank_account_id.",
+      "Verify/unverify an artist's bank account.",
       {
         artist_query: z.string().describe("Artist name or slug to search for"),
         verified: z.boolean().describe("true to verify, false to unverify"),
-        bank_account_id: z.string().optional().describe("Specific bank account id, required only if the artist has multiple accounts"),
-        method: z.string().optional().describe("Verification method, e.g. 'manual_admin_review', 'micro_deposit'"),
+        bank_account_id: z.string().optional().describe("Bank account id, if artist has multiple accounts"),
+        method: z.string().optional().describe("Verification method"),
         notes: z.string().optional().describe("Optional notes for the audit log"),
       },
       async ({ artist_query, verified, bank_account_id, method, notes }) => {
@@ -311,7 +348,7 @@ const handler = createMcpHandler(
     // --- Platform-wide metrics dashboard ---
     server.tool(
       "get_platform_metrics",
-      "Get a one-call snapshot of platform health: artist counts by plan tier, gross merchandise value (GMV) for the current calendar month across all revenue sources, total pending payouts awaiting admin action, and new signups in the last 7 days. Use this for any 'how's the business doing' or dashboard-style question.",
+      "Platform snapshot: plans, GMV, payouts, signups.",
       {},
       async () => {
         const startOfMonth = new Date();
@@ -365,7 +402,7 @@ const handler = createMcpHandler(
     // --- Search users/accounts ---
     server.tool(
       "search_users",
-      "Search Vuka Music user accounts by name or email (partial match). Returns account status, role, and linked artist plan/verification info if they have an artist profile. Use this to look up any account — fan, artist, admin — not just artists.",
+      "Search user accounts by name/email.",
       { query: z.string().describe("Name or email substring to search for") },
       async ({ query }) => {
         const { data: users, error } = await supabase
@@ -398,7 +435,7 @@ const handler = createMcpHandler(
     // --- Monthly revenue trend report ---
     server.tool(
       "get_revenue_report",
-      "Get a month-by-month revenue trend across all sources (purchases, tips, crowdfunding, marketplace) for the last N months. Use this for 'how's revenue trending', bookkeeping summaries, or growth/decline questions — unlike get_platform_metrics, which only covers the current month.",
+      "Monthly revenue trend for the last N months.",
       {
         months_back: z.number().int().min(1).max(24).optional().default(6).describe("How many months of history to include, max 24"),
       },
@@ -460,7 +497,7 @@ const handler = createMcpHandler(
     // --- VAT summary over a period ---
     server.tool(
       "get_vat_summary",
-      "Get a VAT breakdown for a given period, based on confirmed revenue across all sources (purchases, tips, crowdfunding, marketplace). Assumes standard South African VAT (15%, VAT-inclusive pricing) unless a different rate is passed — this is a working estimate from platform data only, not a filing. Use this for bookkeeping prep, not as a substitute for an accountant or SARS submission.",
+      "VAT breakdown for a period (15% SA default), not a filing.",
       {
         months_back: z.number().int().min(1).max(24).optional().default(1).describe("How many months back to include, max 24"),
         vat_rate: z.number().min(0).max(1).optional().default(0.15).describe("VAT rate as a decimal, defaults to South Africa's standard 15%"),
@@ -511,7 +548,7 @@ const handler = createMcpHandler(
     // --- Signup-to-first-sale funnel ---
     server.tool(
       "get_conversion_funnel",
-      "Get a snapshot of the platform funnel: total users, how many have created an artist profile, and how many of those artists have made at least one confirmed sale. Use this for growth/marketing questions about drop-off and conversion, not for individual artist lookups (use get_artist_summary for that).",
+      "Signup-to-first-sale funnel snapshot.",
       {},
       async () => {
         const [totalUsers, artists, purchases] = await Promise.all([
@@ -548,11 +585,11 @@ const handler = createMcpHandler(
     // --- Draft a DMCA takedown notice (does not send) ---
     server.tool(
       "draft_dmca_notice",
-      "Draft (does not send) a DMCA-style takedown notice for a Vuka Music release, using the release and artist info on file. Returns text for a human to review, fill in contact details, and send themselves via whatever submission process the target platform actually requires. This tool never sends anything and never contacts the target platform.",
+      "Draft (not send) a DMCA notice for human review.",
       {
         release_query: z.string().describe("Release title or id to search for"),
         infringing_url: z.string().describe("URL where the infringing content was found"),
-        platform_name: z.string().optional().describe("Name of the platform hosting the infringing content, e.g. 'YouTube', 'SoundCloud'"),
+        platform_name: z.string().optional().describe("Platform hosting the content, e.g. 'YouTube'"),
       },
       async ({ release_query, infringing_url, platform_name }) => {
         const { data: releases, error } = await supabase
@@ -608,7 +645,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Verification queue for fraud/risk review ---
     server.tool(
       "list_verification_queue",
-      "List all artist bank accounts that are not yet verified, showing whether they're still in the 48h cooldown or already eligible for review. Use this to work through the verification backlog instead of checking artists one at a time.",
+      "List unverified artist bank accounts.",
       {},
       async () => {
         const { data: accounts, error } = await supabase
@@ -653,7 +690,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Read a file from the repo ---
     server.tool(
       "github_read_file",
-      "Read the current contents of a file from the Vuka Music GitHub repository. Use this before editing a file, to see what's currently there and get context.",
+      "Read a file's contents from the repo.",
       {
         path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
         branch: z.string().optional().default("main").describe("Branch to read from, defaults to main"),
@@ -682,7 +719,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Commit a file change to the repo ---
     server.tool(
       "github_commit_file",
-      "Create or update a file in the Vuka Music GitHub repository and commit the change directly. This triggers a real deployment via Vercel's GitHub integration if committed to main. Use with care — this pushes real code to the live repo. Prefer github_create_branch + create_pull_request for anything non-trivial, so changes get reviewed before going live. For editing part of a large existing file, prefer github_patch_file instead — it's much cheaper and safer than resending the whole file.",
+      "Commit a file directly (deploys if on main). Prefer branch+PR, or github_patch_file for large files.",
       {
         path: z.string().describe("File path in the repo, e.g. 'app/api/[transport]/route.ts'"),
         content: z.string().describe("The full new content of the file"),
@@ -734,9 +771,9 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- List files/directories in the repo ---
     server.tool(
       "github_list_files",
-      "List files and subdirectories at a given path in the Vuka Music GitHub repository. Use this to browse the repo structure and find the correct file path before reading or editing, instead of guessing paths.",
+      "List files/subdirectories at a repo path.",
       {
-        path: z.string().optional().default("").describe("Directory path in the repo, e.g. 'src/app/api'. Empty string for repo root."),
+        path: z.string().optional().default("").describe("Directory path, e.g. 'src/app/api'"),
         branch: z.string().optional().default("main").describe("Branch to list from, defaults to main"),
       },
       async ({ path, branch }) => {
@@ -767,7 +804,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Search code across the repo ---
     server.tool(
       "github_search_code",
-      "Search for a code snippet, function name, or string across the entire Vuka Music GitHub repository. Use this to find which files reference something (e.g. a model field, an env var, a function) instead of guessing paths.",
+      "Search code across the repo.",
       {
         query: z.string().describe("Code search query, e.g. 'eligibleForPayoutAt' or 'requireAdmin'"),
       },
@@ -793,7 +830,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Create a new branch off an existing one ---
     server.tool(
       "github_create_branch",
-      "Create a new branch in the Vuka Music repo, branching off an existing branch (default: main). Use this before making a non-trivial code change, so the change can go through create_pull_request instead of committing straight to main.",
+      "Create a new branch (default base: main).",
       {
         branch_name: z.string().describe("Name for the new branch, e.g. 'fix/payout-cooldown-edge-case'"),
         from_branch: z.string().optional().default("main").describe("Branch to base the new branch on, defaults to main"),
@@ -834,7 +871,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Open a pull request ---
     server.tool(
       "create_pull_request",
-      "Open a pull request from a feature branch into main (or another base branch), for human review before merging. Use this after github_create_branch + github_commit_file, instead of committing straight to main, for anything beyond a trivial one-line fix.",
+      "Open a PR for human review before merging.",
       {
         title: z.string().describe("PR title"),
         head_branch: z.string().describe("The branch with your changes (created via github_create_branch)"),
@@ -869,7 +906,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Check GitHub Actions CI status ---
     server.tool(
       "get_ci_status",
-      "Check recent GitHub Actions workflow runs (tests, type-check) for a branch. Use this after committing code to confirm it actually passes tests, instead of assuming a commit is safe just because it went through.",
+      "Check recent CI run status for a branch.",
       {
         branch: z.string().optional().default("main").describe("Branch to check runs for, defaults to main"),
         limit: z.number().int().min(1).max(10).optional().default(5).describe("How many recent runs to return, max 10"),
@@ -916,7 +953,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Pull real failure output from a workflow run ---
     server.tool(
       "get_workflow_logs",
-      "Get the actual log output for a GitHub Actions workflow run, focused on the first failed job/step. Use this after get_ci_status shows a failure, instead of guessing at the cause — pass the run id from get_ci_status's output.",
+      "Get log output for a CI run's first failure.",
       {
         run_id: z.string().describe("The workflow run id, from get_ci_status output"),
       },
@@ -963,18 +1000,18 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Patch a file with targeted find/replace edits — no full-file content needed ---
     server.tool(
       "github_patch_file",
-      "Edit a file in the repo using one or more targeted find/replace edits, without supplying the full file content. Fetches the current file, applies each edit in order (each old_str must match exactly once or the whole patch is rejected before anything is committed), and pushes the result. Use this instead of github_commit_file for any change to a large file — it's dramatically cheaper than retyping the whole file, and safer since a non-unique or missing old_str fails loudly instead of silently corrupting content. Files over ~1MB aren't supported by this endpoint — use github_read_file_range to inspect, and fall back to github_commit_file for those.",
+      "Edit a file via find/replace instead of full content. Fails if a match isn't unique.",
       {
         path: z.string().describe("File path in the repo"),
         edits: z
           .array(
             z.object({
-              old_str: z.string().describe("Exact text to find — must appear exactly once in the current file"),
+              old_str: z.string().describe("Exact text to find, must be unique in the file"),
               new_str: z.string().describe("Text to replace it with"),
             })
           )
           .min(1)
-          .describe("One or more find/replace edits, applied in order against the same file"),
+          .describe("Find/replace edits, applied in order"),
         commit_message: z.string(),
         branch: z.string().optional().default("main"),
       },
@@ -1034,7 +1071,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Delete a file for real, not just neutralize it ---
     server.tool(
       "github_delete_file",
-      "Delete a file from the repo. Use this instead of overwriting a file with a disabled/410 stub when the file should actually be removed from the tree.",
+      "Delete a file from the repo.",
       {
         path: z.string(),
         commit_message: z.string(),
@@ -1066,7 +1103,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Read only a line range from a large file ---
     server.tool(
       "github_read_file_range",
-      "Read only a specific line range from a file in the repo, instead of the whole thing. Use this for large files when only a section near an error or a known area needs inspecting — much cheaper than github_read_file on a multi-hundred-line file.",
+      "Read a specific line range from a file.",
       {
         path: z.string(),
         start_line: z.number().int().min(1),
@@ -1099,7 +1136,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Atomic multi-file commit ---
     server.tool(
       "github_batch_commit",
-      "Commit changes to multiple files at once as a single atomic commit, using the Git Data API (blob → tree → commit → ref update). Use this when one logical change spans several files, instead of N separate github_commit_file calls — one commit, one deploy trigger, clearer history. Each file's full new content still has to be provided (this doesn't reduce per-file size cost — use github_patch_file for that), it just groups multiple files into one commit instead of many.",
+      "Commit multiple files atomically.",
       {
         files: z
           .array(
@@ -1181,7 +1218,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Regenerate package-lock.json server-side, without routing its content through the model ---
     server.tool(
       "github_regenerate_lockfile",
-      "Regenerate package-lock.json by running `npm install --package-lock-only` inside this serverless function against the repo's current package.json, then commit the result directly to GitHub. This solves the specific problem where a lockfile is too large to paste as a tool call argument — its content never passes through the calling model at all. Experimental: depends on npm being invocable and network-reachable inside this runtime, and on the install finishing inside the function's time limit. If it errors, the fallback is running `npm install` on a real machine and committing the file from there.",
+      "Regenerate package-lock.json via npm install. Experimental.",
       {
         branch: z.string().optional().default("main"),
         commit_message: z.string().optional().default("chore: regenerate package-lock.json"),
@@ -1255,7 +1292,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Project memory: persistent context across sessions/chats ---
     server.tool(
       "get_project_briefing",
-      "Read this FIRST at the start of any Vuka Music work session, before re-reading code or docs. Returns the full persistent project memory (architecture, stack, business rules, conventions, gotchas) grouped by category, the 5 most recent session summaries, and all open known issues. Replaces re-deriving context from scratch.",
+      "Read FIRST each session: project memory, recent summaries, open issues.",
       {},
       async () => {
         const [memRes, sessionsRes, issuesRes] = await Promise.all([
@@ -1296,10 +1333,10 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "memory_set",
-      "Store or update a durable fact about the Vuka Music project (architecture decision, business rule, convention, gotcha) so future sessions don't have to rediscover it. Upserts by key.",
+      "Store/update a durable project fact by key.",
       {
-        key: z.string().describe("Short unique identifier, e.g. 'plan-tiers' or 'payout-cooldown-rule'"),
-        category: z.string().describe("Grouping label, e.g. 'architecture', 'business-rules', 'conventions', 'gotchas'"),
+        key: z.string().describe("Short unique id, e.g. 'plan-tiers'"),
+        category: z.string().describe("Category, e.g. 'gotchas'"),
         value: z.string().describe("The fact itself, in plain language"),
       },
       async ({ key, category, value }) => {
@@ -1318,7 +1355,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "memory_get",
-      "Fetch a specific stored project-memory fact by its exact key. Use memory_search instead if you don't know the exact key.",
+      "Fetch a project-memory fact by exact key.",
       { key: z.string() },
       async ({ key }) => {
         const { data, error } = await supabase.from("ProjectMemory").select("key, category, value, updatedAt").eq("key", key).maybeSingle();
@@ -1330,7 +1367,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "memory_search",
-      "Search stored project-memory facts by keyword across key, category, and value. Use when you don't know the exact key.",
+      "Search project-memory facts by keyword.",
       { query: z.string() },
       async ({ query }) => {
         const { data, error } = await supabase
@@ -1346,9 +1383,9 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "log_session_summary",
-      "Record a summary of the current work session — what changed, key decisions made, and what's left open — so the next session (any Claude, any chat) can pick up context in one call via get_project_briefing/get_recent_changes instead of re-reading the whole conversation history.",
+      "Record a summary of this session for future sessions.",
       {
-        summary: z.string().describe("2-5 sentence plain-language summary of what happened this session"),
+        summary: z.string().describe("Session summary"),
         files_changed: z.string().optional().describe("Comma-separated list of files touched"),
         decisions: z.string().optional().describe("Key decisions made and why"),
         open_items: z.string().optional().describe("What's left unfinished or needs follow-up"),
@@ -1369,7 +1406,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_recent_changes",
-      "Get the N most recent session-summary log entries — a lightweight changelog of what's been done recently across all chats, without reading commit history or transcripts.",
+      "Get the N most recent session summaries.",
       { limit: z.number().int().min(1).max(50).optional().default(10) },
       async ({ limit }) => {
         const { data, error } = await supabase.from("SessionLog").select("summary, filesChanged, decisions, openItems, createdAt").order("createdAt", { ascending: false }).limit(limit);
@@ -1382,7 +1419,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "known_issue_action",
-      "Create, update, or resolve a known-issue record — persistent tracking of bugs/gaps/tech-debt across sessions so they don't get silently forgotten or rediscovered from scratch.",
+      "Create/update/resolve a known-issue record.",
       {
         action: z.enum(["create", "update", "resolve"]),
         id: z.string().optional().describe("Required for update/resolve — the issue id"),
@@ -1422,7 +1459,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "repo_map",
-      "Get a live top-level map of the Vuka Music repo (root files/dirs plus API route groups) in one call instead of browsing with multiple github_list_files calls. Cheap orientation tool for 'what exists' questions.",
+      "Top-level repo map in one call.",
       {},
       async () => {
         async function listDir(path: string) {
@@ -1446,7 +1483,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- IT-ops diagnostic tools ---
     server.tool(
       "get_schema_map",
-      "Get the full database schema map in one call: every table's columns/types, or just one table if specified, plus foreign keys. Replaces multiple information_schema round-trips.",
+      "Full DB schema map: columns, types, foreign keys.",
       { table: z.string().optional().describe("Optional: limit to one table name") },
       async ({ table }) => {
         if (table && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) return { content: [{ type: "text", text: "Invalid table name." }], isError: true };
@@ -1475,7 +1512,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_missing_indexes",
-      "Find foreign-key columns in the public schema without a covering index — a common source of full-table-scan slowdowns on joins/webhooks.",
+      "Find FK columns missing a covering index.",
       {},
       async () => {
         try {
@@ -1492,7 +1529,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_rls_policies",
-      "List public-schema tables with Row Level Security disabled, or enabled but with zero policies — a security gap since Supabase's anon/service-role split relies on RLS.",
+      "List tables with RLS disabled or empty.",
       {},
       async () => {
         try {
@@ -1510,7 +1547,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "find_orphaned_records",
-      "Find rows in a child table whose foreign key doesn't match any row in the parent table — a targeted data-integrity check for a relationship you specify.",
+      "Find child rows with a broken foreign key.",
       { child_table: z.string(), child_fk_column: z.string(), parent_table: z.string(), parent_pk_column: z.string().optional().default("id") },
       async ({ child_table, child_fk_column, parent_table, parent_pk_column }) => {
         const ident = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -1531,7 +1568,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "audit_plan_gating",
-      "Find artists whose paid plan has expired (planExpiresAt in the past) but who are still on a non-free planSlug — a sign the expire-plans cron missed them or hasn't run.",
+      "Find artists past plan expiry still on paid plans.",
       {},
       async () => {
         const { data, error } = await supabase.from("Artist").select("id, name, slug, planSlug, planExpiresAt").neq("planSlug", "free").not("planExpiresAt", "is", null).lt("planExpiresAt", new Date().toISOString()).limit(50);
@@ -1543,7 +1580,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "verify_payout_integrity",
-      "Flag artists who have confirmed revenue but no corresponding payout record at all — a sign money is owed but hasn't entered the payout pipeline.",
+      "Flag artists with revenue but no payout record.",
       { min_revenue: z.number().optional().default(100).describe("Minimum confirmed revenue to flag") },
       async ({ min_revenue }) => {
         const { data: purchases, error: pErr } = await supabase.from("Purchase").select("artistId, netAmount, status").eq("status", "confirmed");
@@ -1566,7 +1603,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_billing_status",
-      "Snapshot of subscription/billing state: active/cancelled/failed counts, plus an explanation of whether automatic recurring re-charging exists (currently it does not).",
+      "Billing snapshot: active/cancelled/failed, auto-renew status.",
       {},
       async () => {
         const { data, error } = await supabase.from("artist_plan_subscriptions").select("status, planSlug, failReason");
@@ -1580,7 +1617,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_admin_audit_log",
-      "Get recent admin action log entries (who did what, when, severity) from AdminLog.",
+      "Recent admin action log entries.",
       { limit: z.number().int().min(1).max(100).optional().default(20) },
       async ({ limit }) => {
         const { data, error } = await supabase.from("AdminLog").select("action, targetType, targetId, actorId, severity, notes, createdAt").order("createdAt", { ascending: false }).limit(limit);
@@ -1592,7 +1629,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_recent_errors",
-      "Get recent error/critical-severity entries from AdminLog — a lightweight incident feed without leaving chat.",
+      "Recent error/critical log entries.",
       { limit: z.number().int().min(1).max(100).optional().default(20) },
       async ({ limit }) => {
         const { data, error } = await supabase.from("AdminLog").select("action, targetType, targetId, severity, notes, createdAt").in("severity", ["error", "critical"]).order("createdAt", { ascending: false }).limit(limit);
@@ -1604,7 +1641,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_webhook_health",
-      "Proxy for webhook/payment-processing health: counts of failed Purchase, MarketplaceOrder, and subscription records in the last 7 days, to spot a webhook silently failing.",
+      "Failed payment records in the last 7 days.",
       {},
       async () => {
         const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -1619,7 +1656,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_env_vars",
-      "Read .env.example from the repo and report, for each required variable name, whether it's currently set in this server's runtime environment (names only, never values).",
+      "Check which required env vars are set (names only).",
       {},
       async () => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/.env.example`, { headers: githubHeaders() });
@@ -1635,7 +1672,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_dependency_vulnerabilities",
-      "Check package.json dependencies against the OSV.dev vulnerability database and report any with known CVEs.",
+      "Check dependencies against OSV.dev for known CVEs.",
       {},
       async () => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/package.json`, { headers: githubHeaders() });
@@ -1665,7 +1702,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "find_todos_and_fixmes",
-      "Search the repo for TODO, FIXME, HACK, and XXX comments — a quick tech-debt inventory without browsing file by file.",
+      "Search repo for TODO/FIXME comments.",
       {},
       async () => {
         const markers = ["TODO", "FIXME", "HACK", "XXX"];
@@ -1683,7 +1720,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "find_large_files",
-      "List repo files above a size threshold (default 100KB) using the git tree API — useful for spotting accidentally-committed binaries or bloated generated files.",
+      "List repo files above a size threshold.",
       { min_kb: z.number().optional().default(100) },
       async ({ min_kb }) => {
         const branchRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/branches/main`, { headers: githubHeaders() });
@@ -1701,7 +1738,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "explain_query",
-      "Run EXPLAIN ANALYZE on a read-only SELECT/WITH query against production, to diagnose slow queries before optimizing. Same read-only guardrails as run_sql_query.",
+      "EXPLAIN ANALYZE a read-only query.",
       { query: z.string() },
       async ({ query }) => {
         const validationError = validateReadOnlyQuery(query);
@@ -1718,7 +1755,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "diff_schema_vs_prisma",
-      "Compare a Prisma model's declared fields (from prisma/schema.prisma) against the live database table's actual columns, to catch schema drift after manual migrations.",
+      "Compare a Prisma model against the live DB table.",
       { model_name: z.string().describe("Prisma model name, e.g. 'Artist'"), table_name: z.string().describe("Actual DB table name") },
       async ({ model_name, table_name }) => {
         if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table_name)) return { content: [{ type: "text", text: "Invalid table name." }], isError: true };
@@ -1744,7 +1781,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "search_repo_batch",
-      "Run multiple code-search queries against the repo in a single call instead of one github_search_code call per term — cuts round-trips when checking several symbols/patterns at once.",
+      "Run multiple code searches in one call.",
       { queries: z.array(z.string()).min(1).max(10) },
       async ({ queries }) => {
         const sections: string[] = [];
@@ -1761,7 +1798,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_changelog",
-      "Get a real changelog between two git refs (branches/tags/SHAs) via GitHub's compare API — commit messages and files touched, without pulling full diffs into context.",
+      "Changelog between two git refs.",
       { base: z.string().describe("Older ref"), head: z.string().optional().default("main") },
       async ({ base, head }) => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/compare/${base}...${head}`, { headers: githubHeaders() });
@@ -1775,7 +1812,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_test_coverage_snapshot",
-      "Proxy for test coverage: counts route.ts files under src/app/api vs test files found repo-wide, and lists up to 20 API route files. Cheaper than running a real coverage report.",
+      "Rough test-coverage proxy across route files.",
       {},
       async () => {
         async function listRecursive(path: string): Promise<string[]> {
@@ -1799,7 +1836,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "health_check_full",
-      "One-call project health check: DB connectivity, open critical/high known issues, subscription status counts, and latest CI run status. Run this instead of several separate diagnostic calls when starting a session or after a big change.",
+      "One-call health check across the whole system.",
       {},
       async () => {
         const [dbPing, issues, subs, ciRes] = await Promise.allSettled([
@@ -1827,7 +1864,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
     // --- Additional dev-efficiency tools ---
     server.tool(
       "batch_read_files",
-      "Read multiple files from the repo in one call instead of one github_read_file call per file — cuts round-trips when reviewing several related files at once. Files over ~30KB are skipped with a note to use github_read_file_range instead.",
+      "Read multiple repo files in one call.",
       { paths: z.array(z.string()).min(1).max(15), branch: z.string().optional().default("main") },
       async ({ paths, branch }) => {
         const sections: string[] = [];
@@ -1845,7 +1882,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "list_recent_commits",
-      "List the N most recent commits on a branch with messages and authors — lighter than get_changelog when you just need a quick recent-activity view.",
+      "List the N most recent commits.",
       { branch: z.string().optional().default("main"), limit: z.number().int().min(1).max(50).optional().default(10) },
       async ({ branch, limit }) => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits?sha=${branch}&per_page=${limit}`, { headers: githubHeaders() });
@@ -1857,7 +1894,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "list_open_prs",
-      "List open pull requests — what's waiting for review/merge without opening GitHub.",
+      "List open pull requests.",
       {},
       async () => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls?state=open&per_page=20`, { headers: githubHeaders() });
@@ -1870,7 +1907,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "search_known_issues",
-      "Search all known issues (open or resolved) by keyword across title/description/area — unlike get_project_briefing, which only shows open ones.",
+      "Search all known issues by keyword.",
       { query: z.string() },
       async ({ query }) => {
         const { data, error } = await supabase.from("KnownIssue").select("id, title, description, severity, area, status").or(`title.ilike.%${query}%,description.ilike.%${query}%,area.ilike.%${query}%`).limit(20);
@@ -1882,7 +1919,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "memory_bulk_set",
-      "Store or update several project-memory facts in one call instead of multiple memory_set calls — use when logging several related facts at once (e.g. end of a big session).",
+      "Store several project-memory facts at once.",
       { entries: z.array(z.object({ key: z.string(), category: z.string(), value: z.string() })).min(1).max(20) },
       async ({ entries }) => {
         const now = new Date().toISOString();
@@ -1903,7 +1940,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_deployment_drift",
-      "Check whether main has commits that haven't been through a completed CI run yet — flags if code is ahead of what's been verified.",
+      "Check if main has commits ahead of CI.",
       {},
       async () => {
         const commitsRes = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits?sha=main&per_page=1`, { headers: githubHeaders() });
@@ -1920,7 +1957,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_migration_drift",
-      "Compare migration folders in prisma/migrations against rows in _prisma_migrations to catch a migration that exists in the repo but was never applied to the live DB, or vice versa.",
+      "Compare migration files against applied migrations.",
       {},
       async () => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/prisma/migrations`, { headers: githubHeaders() });
@@ -1941,7 +1978,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_table_row_counts",
-      "Fast approximate row counts for every public table in one call (pg_class estimates, not exact COUNT(*)) — cheap overview of data scale across the whole schema.",
+      "Approximate row counts for every public table.",
       {},
       async () => {
         try {
@@ -1957,7 +1994,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "diff_file_between_refs",
-      "Show whether a specific file differs between two refs (branches/SHAs) and a compact diff if so — cheaper than pulling both full files into context.",
+      "Show if a file differs between two refs.",
       { path: z.string(), base: z.string(), head: z.string().optional().default("main") },
       async ({ path, base, head }) => {
         const res = await fetch(`${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/compare/${base}...${head}`, { headers: githubHeaders() });
@@ -1971,7 +2008,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "list_stale_open_issues",
-      "List open known issues older than N days (default 14) — a prioritization aid so nothing sits forgotten.",
+      "List open known issues older than N days.",
       { days: z.number().optional().default(14) },
       async ({ days }) => {
         const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -1990,7 +2027,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "merge_pull_request",
-      "Merge an open pull request into its base branch. SAFETY GATE: refuses to merge if CI isn't fully green, or if the PR's changed files touch payment/auth/webhook/cron/payout paths — those require confirm_sensitive: true, which should only be passed after a human has actually reviewed the diff, not automatically.",
+      "Merge a PR. Refuses if CI fails, or touches payment/auth paths without confirm_sensitive:true.",
       { pr_number: z.number(), confirm_sensitive: z.boolean().optional().default(false), merge_method: z.enum(["merge", "squash", "rebase"]).optional().default("squash") },
       async ({ pr_number, confirm_sensitive, merge_method }) => {
         try {
@@ -2035,7 +2072,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "close_pull_request",
-      "Close an open pull request WITHOUT merging — use to reject a change, e.g. after verify_diff_matches_claim or check_new_code_has_tests turns up a real problem.",
+      "Close a PR without merging.",
       { pr_number: z.number(), reason: z.string().optional() },
       async ({ pr_number, reason }) => {
         try {
@@ -2062,7 +2099,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_pr_ci_status",
-      "Get CI check-run status for a specific open PR by number, without needing to know its branch name.",
+      "CI status for a PR by number.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2081,7 +2118,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_pr_diff_summary",
-      "Get the list of files changed in a PR with additions/deletions per file — cheaper than fetching the full diff when you just need scope.",
+      "Files changed in a PR with add/delete counts.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2098,7 +2135,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_money_auth_touch",
-      "Flag whether a PR touches payment, auth, webhook, cron, or payout code paths — a quick risk signal, and what merge_pull_request checks internally before requiring confirm_sensitive.",
+      "Flag whether a PR touches payment/auth paths.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2115,7 +2152,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_new_code_has_tests",
-      "For a PR, checks whether changed files under src/lib or src/app/api have a corresponding .test.ts touched in the same PR. Doesn't prove the tests are good — just flags 'zero tests added', the exact gap that let auto-billing originally ship untested.",
+      "Flag whether a PR's changes include tests.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2134,7 +2171,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "verify_diff_matches_claim",
-      "Cross-checks a list of files you're about to claim you changed against the actual PR diff — built to catch the exact failure mode that happened earlier on this project (a bundle claiming a scope of changes that didn't match reality). Pass the files you believe you changed; get back what's missing or extra.",
+      "Cross-check claimed changes against the real PR diff.",
       { pr_number: z.number(), claimed_files: z.array(z.string()) },
       async ({ pr_number, claimed_files }) => {
         try {
@@ -2152,7 +2189,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_pr_age_report",
-      "List all open PRs with days-open, flagging any older than 3 days as stale — an open PR protects nothing until it's actually merged.",
+      "List open PRs, flagging any older than 3 days.",
       {},
       async () => {
         try {
@@ -2173,7 +2210,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "search_for_hardcoded_secrets",
-      "Scan a PR's diff for common secret patterns (live API keys, AWS keys, private keys, PayPal client secrets) accidentally committed in plaintext.",
+      "Scan a PR diff for hardcoded secrets.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2201,7 +2238,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_commit_diff",
-      "Get the diff summary for a single commit by SHA — cheaper than comparing two full branches when you just need to see one change.",
+      "Diff summary for a commit by SHA.",
       { sha: z.string() },
       async ({ sha }) => {
         try {
@@ -2218,7 +2255,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_file_blame_summary",
-      "Get the most recent commit that touched a given file, with its message and author — quick 'why is this here' check without pulling full git log.",
+      "Most recent commit that touched a file.",
       { path: z.string(), branch: z.string().optional().default("main") },
       async ({ path, branch }) => {
         try {
@@ -2235,7 +2272,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "check_route_has_auth_check",
-      "Reads an API route file and flags whether it appears to call a recognized auth guard (requireArtist, requireAdmin, requireUser, requireAuth, getServerSession). Heuristic only, not proof — a route that imports a guard but never calls it, or checks auth some other way, can still false-positive or false-negative. Treat as a first pass.",
+      "Heuristic check for an auth guard in a route.",
       { path: z.string(), branch: z.string().optional().default("main") },
       async ({ path, branch }) => {
         try {
@@ -2254,7 +2291,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "estimate_pr_risk",
-      "Composite risk read on a PR: combines money/auth path touch, presence of new tests, and diff size into one label (low/medium/high) with reasons. A pre-merge sanity check, not a guarantee — always still read the actual diff for anything HIGH.",
+      "Composite PR risk read: low/medium/high.",
       { pr_number: z.number() },
       async ({ pr_number }) => {
         try {
@@ -2283,7 +2320,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "update_known_issue_from_pr",
-      "Link a PR to a known issue and append a status note to the issue's description — use when opening or merging a PR that addresses a tracked issue, so the issue record doesn't go stale.",
+      "Link a PR to a known issue with a status note.",
       { issue_id: z.string(), pr_number: z.number(), status_note: z.string() },
       async ({ issue_id, pr_number, status_note }) => {
         const { data: issue, error: fetchErr } = await supabase.from("KnownIssue").select("description").eq("id", issue_id).single();
@@ -2297,7 +2334,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_recent_admin_actions",
-      "Get the N most recent AdminLog entries — includes actions this MCP server itself takes (pr.merged, pr.closed, plan.auto_renewed, etc), giving a shared audit trail across humans and every AI session working on this project.",
+      "Get the N most recent admin log entries.",
       { limit: z.number().optional().default(20) },
       async ({ limit }) => {
         const { data, error } = await supabase.from("AdminLog").select("action, targetType, targetId, notes, createdAt").order("createdAt", { ascending: false }).limit(limit);
@@ -2309,7 +2346,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_revenue_dashboard",
-      "Revenue snapshot from the Purchase table: gross, platform fee, net, broken down by itemType (plan/marketplace/membership/ticket/campaign/support), for an optional date range (defaults to last 30 days).",
+      "Revenue snapshot by item type for a date range.",
       { startDate: z.string().optional(), endDate: z.string().optional() },
       async ({ startDate, endDate }) => {
         const start = startDate ?? new Date(Date.now() - 30 * 86400000).toISOString();
@@ -2337,7 +2374,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_payout_queue_status",
-      "Pending ArtistPayout rows — count, total value, and how many are older than daysThreshold (default 3) and worth chasing.",
+      "Pending payouts: count, value, how many overdue.",
       { daysThreshold: z.number().optional().default(3) },
       async ({ daysThreshold }) => {
         const { data, error } = await supabase.from("ArtistPayout").select("id, artistId, amount, currency, createdAt, notes").eq("status", "pending").order("createdAt", { ascending: true });
@@ -2354,7 +2391,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "find_at_risk_subscriptions",
-      "Plan subscriptions that are either missing a saved payment token (can't auto-renew at all) or currently in a failed/grace state — the artists most likely to silently drop to Free soon.",
+      "Subscriptions at risk of lapsing.",
       {},
       async () => {
         const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -2377,7 +2414,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 
     server.tool(
       "get_artist_health_snapshot",
-      "One artist's status in one call: plan, subscription health, lifetime sales, and recent purchase activity. Pass artistId or slug.",
+      "One artist's plan, subscription, and sales health.",
       { artistIdOrSlug: z.string() },
       async ({ artistIdOrSlug }) => {
         const { data: artist, error } = await supabase
@@ -2399,3 +2436,16 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
+
+// Minimal CORS preflight support (see compatibility note at top of file).
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}
