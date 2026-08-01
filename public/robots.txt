@@ -12,6 +12,11 @@ Allow: /artist/
 Allow: /beats/
 Allow: /release/
 Allow: /events/
+Allow: /api/mcp
+Allow: /api/mcp-business/
+Allow: /api/mcp-github/
+Allow: /api/mcp-ops/
+Allow: /api/mcp-safety/
 
 Disallow: /admin
 Disallow: /dashboard
