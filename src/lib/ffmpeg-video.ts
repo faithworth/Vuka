@@ -41,7 +41,15 @@ async function probeDurationSec(file: string): Promise<number> {
   } catch (err: any) {
     const stderr: string = err?.stderr?.toString?.() ?? '';
     const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
-    if (!m) throw new Error(`Could not read duration for ${file}`);
+    if (!m) {
+      // Surface ffmpeg's actual complaint (e.g. "Invalid data found when
+      // processing input", unsupported codec, empty file) instead of a
+      // generic message — this is the detail we actually need to debug
+      // a failing voice/image file.
+      throw new Error(
+        `Could not read duration for ${file} — ffmpeg said: ${stderr.slice(-800) || '(no stderr output)'}`
+      );
+    }
     const [, hh, mm, ss] = m;
     return parseInt(hh) * 3600 + parseInt(mm) * 60 + parseFloat(ss);
   }
