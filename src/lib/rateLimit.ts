@@ -59,6 +59,9 @@ export const RATE_LIMITS = {
   ai_image_generate:  { key: 'ai_image_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per admin
   ai_voice_generate:  { key: 'ai_voice_generate',  max: 30,  windowMs: 3_600_000  }, // 30/hr per admin — voice is cheaper on the neuron budget than image
   ai_video_generate:  { key: 'ai_video_generate',  max: 6,   windowMs: 3_600_000  }, // 6/hr per admin — expensive: multiple image+voice calls plus real CPU time
+  ai_job_create:      { key: 'ai_job_create',      max: 6,   windowMs: 3_600_000  }, // 6/hr per admin — same cost profile as ai_video_generate, just scaled up
+  ai_job_process:     { key: 'ai_job_process',      max: 600, windowMs: 3_600_000  }, // generous — this is the polling tick itself, not a generation call; each tick is cheap if the job has nothing left to do
+  ai_script_generate: { key: 'ai_script_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per admin — one text-model call, cheap on the neuron budget
 
   // ── Messaging ─────────────────────────────────────────────
   message_send:       { key: 'message_send',       max: 20,  windowMs: 60_000     },
