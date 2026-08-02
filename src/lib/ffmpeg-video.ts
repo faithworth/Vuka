@@ -1,3 +1,4 @@
+
 /**
  * VUKA — AI Content Engine: video assembly (Phase 2)
  *
@@ -18,7 +19,6 @@ import { promisify } from 'node:util';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-// @ts-expect-error -- ffmpeg-static has no types; it just exports a path string
 import ffmpegPath from 'ffmpeg-static';
 
 const execFileAsync = promisify(execFile);
