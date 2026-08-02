@@ -56,7 +56,7 @@ export const RATE_LIMITS = {
   // Cloudflare Workers AI free tier is a shared 10k neurons/day account-wide
   // pool, not per-user — this cap protects that pool from one artist burning
   // it for everyone. Revisit once on a paid Workers AI allocation.
-  ai_image_generate:  { key: 'ai_image_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per artist
+  ai_image_generate:  { key: 'ai_image_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per admin
   ai_voice_generate:  { key: 'ai_voice_generate',  max: 30,  windowMs: 3_600_000  }, // 30/hr per admin — voice is cheaper on the neuron budget than image
 
   // ── Messaging ─────────────────────────────────────────────
