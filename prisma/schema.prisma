@@ -135,28 +135,29 @@ model Artist {
   labelRoster            LabelArtist[]
   onboarding            ArtistOnboarding?
   fanReferrals          FanReferral[]
-  aiGenerations          AiGeneration[]
   createdAt             DateTime             @default(now())
 }
 
-// ── AI CONTENT ENGINE (Phase 1: images via Cloudflare Workers AI) ──
-// Artist-facing tool that generates on-brand marketing images from a text
-// prompt. Runs on Cloudflare Workers AI (open-weight FLUX.2 models), which
-// has a genuine daily free allocation — see src/lib/ai-image.ts.
-// Phase 2 (video) will add kind="video" once the pipeline exists.
+// ── AI CONTENT ENGINE (admin-only marketing studio) ──────────────
+// Internal tool for the Vuka team to generate marketing content (images now,
+// voice + video in later phases) for Vuka's own social channels. NOT an
+// artist-facing feature — gated by requireAdmin() in every route that
+// touches it. Runs on Cloudflare Workers AI (open-weight models: FLUX.2 for
+// images, Deepgram Aura-1 / MyShell MeloTTS for voice) — see
+// src/lib/ai-image.ts and src/lib/ai-voice.ts.
 model AiGeneration {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  kind      String   // "image" for now; "video" reserved for Phase 2
-  prompt    String   // the artist's original prompt, before brand prefixing
-  styleTag  String?  // optional preset used, e.g. "album-cover", "promo-post"
-  model     String   // underlying model id, e.g. "@cf/black-forest-labs/flux-2-klein-4b"
-  resultUrl String   // public R2 URL of the generated asset
-  status    String   @default("completed") // completed, failed, flagged
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  createdByUserId String   // admin User.id who requested this — not an Artist
+  kind            String   // "image" | "voice" | "video" (video = later phase)
+  prompt          String   // original prompt/script, before any brand prefixing
+  styleTag        String?  // optional preset, e.g. "launch-post", "meme", "ad-vo"
+  model           String   // underlying model id, e.g. "@cf/black-forest-labs/flux-2-klein-4b"
+  resultUrl       String   // public R2 URL of the generated asset
+  status          String   @default("completed") // completed, failed, flagged
+  createdAt       DateTime @default(now())
 
-  @@index([artistId, createdAt])
+  @@index([createdByUserId, createdAt])
+  @@index([kind, createdAt])
 }
 
 // ── CONTENT MODELS ──────────────────────────────────────────
