@@ -9,7 +9,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import {
-  LayoutDashboard, Users, Music, DollarSign, Settings, Shield, Bell, LogOut, Menu, X, ChevronRight, BarChart2, Flag, Crown, FileEdit,
+  LayoutDashboard, Users, Music, DollarSign, Settings, Shield, Bell, LogOut, Menu, X, ChevronRight, BarChart2, Flag, Crown, FileEdit, Sparkles,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 import VukaLogo from '@/components/brand/VukaLogo';
@@ -20,6 +20,7 @@ const ADMIN_NAV = [
   { href: '/admin/plans',        label: 'Plans',        icon: Crown },
   { href: '/admin/releases',     label: 'Releases',     icon: Music },
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },
+  { href: '/admin/ai-studio',    label: 'AI Studio',    icon: Sparkles },
   { href: '/admin/cms',          label: 'CMS',          icon: FileEdit },
   { href: '/admin/settings',     label: 'Settings',     icon: Settings },
   { href: '/admin/security',     label: 'Security',     icon: Shield },
