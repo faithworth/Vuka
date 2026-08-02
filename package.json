@@ -37,6 +37,7 @@
     "@upstash/redis": "^1.31.0",
     "clsx": "^2.1.1",
     "fflate": "^0.8.2",
+    "ffmpeg-static": "^5.2.0",
     "framer-motion": "^11.0.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^1.24.0",
