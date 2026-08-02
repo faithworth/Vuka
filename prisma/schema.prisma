@@ -160,6 +160,32 @@ model AiGeneration {
   @@index([kind, createdAt])
 }
 
+// ── AI CONTENT ENGINE: BACKGROUND JOBS ────────────────────────────
+// Backs multi-slide video generation and (later) auto-scripted ads, which
+// can't complete inside one serverless request's time limit. A job is
+// created once, then advanced in small increments by repeated calls to the
+// job's /process route — each call does as much as it safely can within
+// its own maxDuration, checkpoints progress here, and returns. The next
+// call (triggered by the client polling) picks up where the last left off.
+model AiJob {
+  id              String    @id @default(cuid())
+  createdByUserId String    // admin User.id who requested this
+  kind            String    // "video" (auto-scripted or hand-written slides)
+  status          String    @default("queued") // queued, running, completed, failed
+  input           Json      // { slides: [...] } or { scriptPrompt, slideCount, ... }
+  progress        Json      @default("[]")     // array of completed slide results (R2 URLs) in order
+  totalSteps      Int       @default(0)
+  resultUrl        String?   // final video R2 URL, set on completion
+  error           String?
+  lockedAt        DateTime? // heartbeat — set when a tick starts processing, used to
+                            // stop two concurrent ticks (e.g. two tabs) from double-working
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([createdByUserId, createdAt])
+  @@index([status])
+}
+
 // ── CONTENT MODELS ──────────────────────────────────────────
 
 model Beat {
