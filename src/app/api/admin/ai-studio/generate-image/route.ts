@@ -1,4 +1,10 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+// Quality mode (flux-2-dev) is meaningfully slower than Fast (flux-2-klein-4b)
+// and can exceed Vercel's default 30s function timeout. 90s comfortably covers
+// Quality mode; raise further only if Quality still times out under load.
+export const maxDuration = 90;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
