@@ -2429,6 +2429,83 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- R2 object inspection (read-only) ---
+    // Reuses the same Cloudflare R2 credentials/endpoint pattern as src/lib/r2.ts,
+    // including its checksum-header fix (bef156d) for newer @aws-sdk/client-s3
+    // versions. No write/delete operations exposed here on purpose.
+    server.tool(
+      "r2_list_objects",
+      "List R2 objects under a key prefix (read-only).",
+      {
+        prefix: z.string().optional().describe("Key prefix to filter by, e.g. 'licenses/'"),
+        max_keys: z.number().int().min(1).max(1000).optional().default(50),
+      },
+      async ({ prefix, max_keys }) => {
+        try {
+          const { S3Client, ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+          const client = new S3Client({
+            region: "auto",
+            endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+              accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+              secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+            },
+            requestChecksumCalculation: "WHEN_REQUIRED",
+            responseChecksumValidation: "WHEN_REQUIRED",
+          } as any);
+          const result = await client.send(new ListObjectsV2Command({
+            Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+            Prefix: prefix,
+            MaxKeys: max_keys,
+          }));
+          const objects = (result.Contents ?? []).map((o) => `${o.Key} — ${o.Size} bytes — ${o.LastModified?.toISOString()}`);
+          return {
+            content: [{
+              type: "text",
+              text: objects.length
+                ? `${result.KeyCount ?? objects.length} object(s)${result.IsTruncated ? " (truncated, raise max_keys or narrow prefix)" : ""}:\n${objects.join("\n")}`
+                : `No objects found${prefix ? ` under prefix "${prefix}"` : ""}.`,
+            }],
+          };
+        } catch (err: any) {
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
+    server.tool(
+      "r2_head_object",
+      "Check whether a specific R2 object key exists, with size/last-modified/content-type (read-only).",
+      { key: z.string().describe("Exact object key, e.g. 'licenses/<purchaseId>.pdf'") },
+      async ({ key }) => {
+        try {
+          const { S3Client, HeadObjectCommand } = await import("@aws-sdk/client-s3");
+          const client = new S3Client({
+            region: "auto",
+            endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+              accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+              secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+            },
+            requestChecksumCalculation: "WHEN_REQUIRED",
+            responseChecksumValidation: "WHEN_REQUIRED",
+          } as any);
+          const result = await client.send(new HeadObjectCommand({ Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME, Key: key }));
+          return {
+            content: [{
+              type: "text",
+              text: `Exists: ${key}\nSize: ${result.ContentLength} bytes\nLast modified: ${result.LastModified?.toISOString()}\nContent-Type: ${result.ContentType ?? "unknown"}`,
+            }],
+          };
+        } catch (err: any) {
+          if (err?.name === "NotFound" || err?.$metadata?.httpStatusCode === 404) {
+            return { content: [{ type: "text", text: `Not found: ${key}` }] };
+          }
+          return { content: [{ type: "text", text: `Error: ${err?.message ?? String(err)}` }], isError: true };
+        }
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
