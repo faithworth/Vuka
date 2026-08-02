@@ -58,6 +58,7 @@ export const RATE_LIMITS = {
   // it for everyone. Revisit once on a paid Workers AI allocation.
   ai_image_generate:  { key: 'ai_image_generate',  max: 20,  windowMs: 3_600_000  }, // 20/hr per admin
   ai_voice_generate:  { key: 'ai_voice_generate',  max: 30,  windowMs: 3_600_000  }, // 30/hr per admin — voice is cheaper on the neuron budget than image
+  ai_video_generate:  { key: 'ai_video_generate',  max: 6,   windowMs: 3_600_000  }, // 6/hr per admin — expensive: multiple image+voice calls plus real CPU time
 
   // ── Messaging ─────────────────────────────────────────────
   message_send:       { key: 'message_send',       max: 20,  windowMs: 60_000     },
