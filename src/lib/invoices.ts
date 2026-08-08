@@ -20,6 +20,10 @@ export async function generateInvoiceNumber(): Promise<string> {
 // ── Create Invoice from Purchase ──────────────────────────────
 
 export async function createInvoiceFromPurchase(purchaseId: string) {
+  // Idempotency guard — never create a second invoice for the same purchase.
+  const already = await prisma.invoice.findFirst({ where: { purchaseId } });
+  if (already) return already;
+
   const purchase = await prisma.purchase.findUnique({
     where: { id: purchaseId },
     include: {
@@ -36,12 +40,18 @@ export async function createInvoiceFromPurchase(purchaseId: string) {
 
   return prisma.invoice.create({
     data: {
+      invoiceNumber: number,
       number,
-      artistId:  artist?.id ?? '',
+      artistId:   artist?.id,
       purchaseId: purchase.id,
-      total:     purchase.amount,
-      currency:  purchase.currency,
-      issuedAt:  new Date(),
+      buyerName:  purchase.buyerName,
+      buyerEmail: purchase.buyerEmail,
+      lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1 }],
+      subtotal:   purchase.amount,
+      total:      purchase.amount,
+      currency:   purchase.currency,
+      status:     'paid',
+      issuedAt:   new Date(),
     },
   });
 }
@@ -49,9 +59,13 @@ export async function createInvoiceFromPurchase(purchaseId: string) {
 // ── Create Invoice from Marketplace Order ─────────────────────
 
 export async function createInvoiceFromOrder(orderId: string) {
+  // Idempotency guard — never create a second invoice for the same order.
+  const already = await prisma.invoice.findFirst({ where: { orderId } });
+  if (already) return already;
+
   const order = await prisma.marketplaceOrder.findUnique({
     where: { id: orderId },
-    include: { service: true, seller: true },
+    include: { service: true, seller: true, buyer: true },
   });
   if (!order) throw new Error('Order not found');
 
@@ -59,11 +73,18 @@ export async function createInvoiceFromOrder(orderId: string) {
 
   return prisma.invoice.create({
     data: {
+      invoiceNumber: number,
       number,
-      artistId: order.sellerArtistId,
-      total:    order.packagePrice,
-      currency: order.currency,
-      issuedAt: new Date(),
+      artistId:   order.sellerArtistId,
+      orderId:    order.id,
+      buyerName:  order.buyer?.name ?? 'Unknown',
+      buyerEmail: order.buyer?.email ?? '',
+      lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1 }],
+      subtotal:   order.packagePrice,
+      total:      order.packagePrice,
+      currency:   order.currency,
+      status:     'paid',
+      issuedAt:   new Date(),
     },
   });
 }
