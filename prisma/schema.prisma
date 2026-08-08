@@ -897,18 +897,38 @@ model TaxRecord {
   createdAt DateTime @default(now())
 }
 
+// NOTE: this model was reconciled 2026-08 against the live production table,
+// which had accumulated real columns (buyer/line-item/tax fields) via an
+// out-of-band migration that never touched this file — schema.prisma was the
+// stale side, not the DB. See ADR-style note in invoices.ts.
 model Invoice {
-  id         String    @id @default(cuid())
-  artistId   String
-  artist     Artist    @relation(fields: [artistId], references: [id])
-  purchaseId String?
-  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
-  number     String    @unique
-  total      Float
-  currency   String    @default("ZAR")
-  pdfUrl     String?
-  issuedAt   DateTime  @default(now())
-  createdAt  DateTime  @default(now())
+  id            String    @id @default(cuid())
+  invoiceNumber String
+  artistId      String?
+  artist        Artist?   @relation(fields: [artistId], references: [id])
+  buyerName     String
+  buyerEmail    String
+  buyerAddress  Json      @default("{}")
+  lineItems     Json
+  subtotal      Float
+  taxRate       Float     @default(0)
+  taxAmount     Float     @default(0)
+  total         Float
+  currency      String    @default("ZAR")
+  status        String    @default("draft")
+  dueDate       DateTime?
+  paidAt        DateTime?
+  purchaseId    String?
+  purchase      Purchase? @relation(fields: [purchaseId], references: [id])
+  orderId       String?
+  pdfUrl        String    @default("")
+  notes         String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  number        String?   @unique
+  issuedAt      DateTime  @default(now())
+
+  @@index([purchaseId])
 }
 
 model BeatLicense {
