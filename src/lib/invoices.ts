@@ -38,22 +38,34 @@ export async function createInvoiceFromPurchase(purchaseId: string) {
   const artist   = purchase.beat?.artist || purchase.release?.artist;
   const number   = await generateInvoiceNumber();
 
-  return prisma.invoice.create({
-    data: {
-      invoiceNumber: number,
-      number,
-      artistId:   artist?.id,
-      purchaseId: purchase.id,
-      buyerName:  purchase.buyerName,
-      buyerEmail: purchase.buyerEmail,
-      lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1 }],
-      subtotal:   purchase.amount,
-      total:      purchase.amount,
-      currency:   purchase.currency,
-      status:     'paid',
-      issuedAt:   new Date(),
-    },
-  });
+  try {
+    return await prisma.invoice.create({
+      data: {
+        invoiceNumber: number,
+        number,
+        artistId:   artist?.id,
+        purchaseId: purchase.id,
+        buyerName:  purchase.buyerName,
+        buyerEmail: purchase.buyerEmail,
+        lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1 }],
+        subtotal:   purchase.amount,
+        total:      purchase.amount,
+        currency:   purchase.currency,
+        status:     'paid',
+        issuedAt:   new Date(),
+      },
+    });
+  } catch (err: any) {
+    // P2002 = unique constraint violation. A concurrent request created the
+    // invoice between our findFirst check and this create — the DB-level
+    // Invoice_purchaseId_key constraint caught it. Return the row it made
+    // instead of erroring, so callers see one invoice either way.
+    if (err?.code === 'P2002') {
+      const race = await prisma.invoice.findFirst({ where: { purchaseId } });
+      if (race) return race;
+    }
+    throw err;
+  }
 }
 
 // ── Create Invoice from Marketplace Order ─────────────────────
@@ -71,22 +83,30 @@ export async function createInvoiceFromOrder(orderId: string) {
 
   const number = await generateInvoiceNumber();
 
-  return prisma.invoice.create({
-    data: {
-      invoiceNumber: number,
-      number,
-      artistId:   order.sellerArtistId,
-      orderId:    order.id,
-      buyerName:  order.buyer?.name ?? 'Unknown',
-      buyerEmail: order.buyer?.email ?? '',
-      lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1 }],
-      subtotal:   order.packagePrice,
-      total:      order.packagePrice,
-      currency:   order.currency,
-      status:     'paid',
-      issuedAt:   new Date(),
-    },
-  });
+  try {
+    return await prisma.invoice.create({
+      data: {
+        invoiceNumber: number,
+        number,
+        artistId:   order.sellerArtistId,
+        orderId:    order.id,
+        buyerName:  order.buyer?.name ?? 'Unknown',
+        buyerEmail: order.buyer?.email ?? '',
+        lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1 }],
+        subtotal:   order.packagePrice,
+        total:      order.packagePrice,
+        currency:   order.currency,
+        status:     'paid',
+        issuedAt:   new Date(),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      const race = await prisma.invoice.findFirst({ where: { orderId } });
+      if (race) return race;
+    }
+    throw err;
+  }
 }
 
 // ── Generate Annual Tax Record ────────────────────────────────
