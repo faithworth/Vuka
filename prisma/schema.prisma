@@ -884,17 +884,27 @@ model RevenueRecord {
   @@index([artistId])
 }
 
+// NOTE: reconciled 2026-08 against the live table, which has always been
+// annual-only (unique constraint on artistId+taxYear, no quarter column at
+// all) — confirmed by the sole caller (GET /api/invoices?type=tax&year=YYYY)
+// never passing a quarter. schema.prisma previously described a
+// quarter-based design that was never actually applied to the DB.
 model TaxRecord {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  year      Int
-  quarter   Int
-  totalEarnings Float
-  platformFees  Float
-  netEarnings   Float
-  currency  String   @default("ZAR")
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  artistId    String
+  artist      Artist    @relation(fields: [artistId], references: [id])
+  taxYear     Int
+  totalIncome Float
+  totalFees   Float
+  netIncome   Float
+  currency    String    @default("ZAR")
+  breakdown   Json      @default("{}")
+  pdfUrl      String    @default("")
+  generatedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([artistId, taxYear])
 }
 
 // NOTE: this model was reconciled 2026-08 against the live production table,
