@@ -903,7 +903,7 @@ model TaxRecord {
 // stale side, not the DB. See ADR-style note in invoices.ts.
 model Invoice {
   id            String    @id @default(cuid())
-  invoiceNumber String
+  invoiceNumber String    @unique
   artistId      String?
   artist        Artist?   @relation(fields: [artistId], references: [id])
   buyerName     String
@@ -928,7 +928,8 @@ model Invoice {
   number        String?   @unique
   issuedAt      DateTime  @default(now())
 
-  @@index([purchaseId])
+  @@index([artistId])
+  @@index([status])
 }
 
 model BeatLicense {
