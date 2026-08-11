@@ -138,25 +138,28 @@ export async function generateTaxRecord(artistId: string, year: number) {
   });
   const marketplaceTotal = marketplaceOrders.reduce((s, o) => s + o.packagePrice, 0);
 
-  const totalEarnings  = (beatRevenue._sum.netAmount ?? 0)
-                       + (releaseRevenue._sum.netAmount ?? 0)
-                       + marketplaceTotal
-                       + (tipRevenue._sum.amount ?? 0);
-  const platformFees   = (beatRevenue._sum.platformFee ?? 0)
-                       + (releaseRevenue._sum.platformFee ?? 0);
-  const netEarnings    = totalEarnings - platformFees;
-  const quarter        = Math.ceil((new Date().getMonth() + 1) / 3);
+  const totalIncome = (beatRevenue._sum.netAmount ?? 0)
+                     + (releaseRevenue._sum.netAmount ?? 0)
+                     + marketplaceTotal
+                     + (tipRevenue._sum.amount ?? 0);
+  const totalFees   = (beatRevenue._sum.platformFee ?? 0)
+                     + (releaseRevenue._sum.platformFee ?? 0);
+  const netIncome   = totalIncome - totalFees;
 
-  // findFirst then create/update (no unique constraint on TaxRecord)
-  const existing = await prisma.taxRecord.findFirst({ where: { artistId, year, quarter } });
-  if (existing) {
-    return prisma.taxRecord.update({
-      where: { id: existing.id },
-      data: { totalEarnings, platformFees, netEarnings },
-    });
-  }
-  return prisma.taxRecord.create({
-    data: { artistId, year, quarter, totalEarnings, platformFees, netEarnings, currency: 'ZAR' },
+  const breakdown = {
+    beatRevenue:        beatRevenue._sum.netAmount ?? 0,
+    releaseRevenue:      releaseRevenue._sum.netAmount ?? 0,
+    marketplaceRevenue:  marketplaceTotal,
+    tipRevenue:          tipRevenue._sum.amount ?? 0,
+    platformFees:        totalFees,
+  };
+
+  // (artistId, taxYear) is a real DB unique constraint — upsert is safe
+  // under concurrent requests, unlike the previous findFirst-then-branch.
+  return prisma.taxRecord.upsert({
+    where: { artistId_taxYear: { artistId, taxYear: year } },
+    update: { totalIncome, totalFees, netIncome, breakdown, generatedAt: new Date() },
+    create: { artistId, taxYear: year, totalIncome, totalFees, netIncome, currency: 'ZAR', breakdown, generatedAt: new Date() },
   });
 }
 
