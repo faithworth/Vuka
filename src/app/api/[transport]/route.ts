@@ -2506,6 +2506,151 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       }
     );
 
+    // --- R2 write-path diagnostics (F13 investigation) ---
+    // r2_put_diagnostic_object is the ONLY write-capable R2 tool in this
+    // server. It is hard-restricted to a disposable namespace and can never
+    // touch application data — see the three tools below for the exact
+    // constraints.
+
+    server.tool(
+      "r2_diagnostic_config",
+      "Return NON-SECRET R2 configuration (bucket name, whether creds/endpoint are configured, checksum settings). Never returns key values.",
+      {},
+      async () => {
+        let sdkVersion = "unknown";
+        try {
+          const pkg = await import("@aws-sdk/client-s3/package.json", { assert: { type: "json" } } as any);
+          sdkVersion = (pkg as any).default?.version ?? (pkg as any).version ?? "unknown";
+        } catch {
+          // Fine — this is diagnostic best-effort, not load-bearing.
+        }
+        const config = {
+          bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || "(unset — no hardcoded fallback is used by these diagnostic tools)",
+          accountConfigured: !!process.env.CLOUDFLARE_R2_ACCOUNT_ID,
+          accessKeyConfigured: !!process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+          secretKeyConfigured: !!process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+          publicUrlConfigured: !!process.env.CLOUDFLARE_R2_PUBLIC_URL,
+          region: "auto",
+          sdkVersion,
+          checksumConfiguration: {
+            requestChecksumCalculation: "WHEN_REQUIRED",
+            responseChecksumValidation: "WHEN_REQUIRED",
+          },
+        };
+        return { content: [{ type: "text", text: JSON.stringify(config, null, 2) }] };
+      }
+    );
+
+    const DIAGNOSTIC_TEST_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+    server.tool(
+      "r2_put_diagnostic_object",
+      "Write ONE harmless real object to R2 at _mcp-diagnostics/{testId}.txt to test whether PutObject actually succeeds in production. Cannot target any other key — content is generated internally, testId is restricted to [A-Za-z0-9_-]{1,64}. Refuses to overwrite an existing diagnostic object. Returns the real AWS/R2 error on failure, never swallowed.",
+      { testId: z.string().regex(DIAGNOSTIC_TEST_ID, "testId must match [A-Za-z0-9_-]{1,64}") },
+      async ({ testId }) => {
+        const key = `_mcp-diagnostics/${testId}.txt`;
+        const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+        const start = Date.now();
+        try {
+          const { S3Client, PutObjectCommand, HeadObjectCommand } = await import("@aws-sdk/client-s3");
+          const client = new S3Client({
+            region: "auto",
+            endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+              accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+              secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+            },
+            requestChecksumCalculation: "WHEN_REQUIRED",
+            responseChecksumValidation: "WHEN_REQUIRED",
+          } as any);
+
+          try {
+            await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+            return {
+              content: [{ type: "text", text: JSON.stringify({ ok: false, bucket, key, errorName: "Conflict", errorMessage: "A diagnostic object with this testId already exists — choose a different testId or delete it first with r2_delete_diagnostic_object.", durationMs: Date.now() - start }, null, 2) }],
+              isError: true,
+            };
+          } catch (headErr: any) {
+            if (headErr?.name !== "NotFound" && headErr?.$metadata?.httpStatusCode !== 404) {
+              throw headErr; // a real, different error on the existence check itself — surface it below
+            }
+            // NotFound is the expected, good case — fall through and write.
+          }
+
+          const body = `Vuka MCP diagnostic\ntimestamp=${new Date().toISOString()}\ntestId=${testId}\n`;
+          const result = await client.send(new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: Buffer.from(body, "utf-8"),
+            ContentType: "text/plain",
+          }));
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                ok: true,
+                bucket,
+                key,
+                size: body.length,
+                etag: result.ETag,
+                requestId: result.$metadata?.requestId,
+                httpStatusCode: result.$metadata?.httpStatusCode,
+                durationMs: Date.now() - start,
+              }, null, 2),
+            }],
+          };
+        } catch (err: any) {
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                ok: false,
+                bucket,
+                key,
+                errorName: err?.name ?? "UnknownError",
+                errorMessage: err?.message ?? String(err),
+                httpStatus: err?.$metadata?.httpStatusCode,
+                requestId: err?.$metadata?.requestId,
+                extendedRequestId: err?.$metadata?.extendedRequestId,
+                durationMs: Date.now() - start,
+              }, null, 2),
+            }],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    server.tool(
+      "r2_delete_diagnostic_object",
+      "Delete a diagnostic object previously written by r2_put_diagnostic_object. Can ONLY delete _mcp-diagnostics/{testId}.txt — rejects everything else.",
+      { testId: z.string().regex(DIAGNOSTIC_TEST_ID, "testId must match [A-Za-z0-9_-]{1,64}") },
+      async ({ testId }) => {
+        const key = `_mcp-diagnostics/${testId}.txt`;
+        const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+        try {
+          const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+          const client = new S3Client({
+            region: "auto",
+            endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+              accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+              secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+            },
+            requestChecksumCalculation: "WHEN_REQUIRED",
+            responseChecksumValidation: "WHEN_REQUIRED",
+          } as any);
+          const result = await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+          return { content: [{ type: "text", text: JSON.stringify({ ok: true, bucket, key, requestId: result.$metadata?.requestId }, null, 2) }] };
+        } catch (err: any) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ ok: false, bucket, key, errorName: err?.name, errorMessage: err?.message, httpStatus: err?.$metadata?.httpStatusCode }, null, 2) }],
+            isError: true,
+          };
+        }
+      }
+    );
+
     // --- More tools go here as we build them ---
   },
   {},
