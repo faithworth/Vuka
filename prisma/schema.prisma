@@ -884,31 +884,62 @@ model RevenueRecord {
   @@index([artistId])
 }
 
+// NOTE: reconciled 2026-08 against the live table, which has always been
+// annual-only (unique constraint on artistId+taxYear, no quarter column at
+// all) — confirmed by the sole caller (GET /api/invoices?type=tax&year=YYYY)
+// never passing a quarter. schema.prisma previously described a
+// quarter-based design that was never actually applied to the DB.
 model TaxRecord {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  year      Int
-  quarter   Int
-  totalEarnings Float
-  platformFees  Float
-  netEarnings   Float
-  currency  String   @default("ZAR")
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  artistId    String
+  artist      Artist    @relation(fields: [artistId], references: [id])
+  taxYear     Int
+  totalIncome Float
+  totalFees   Float
+  netIncome   Float
+  currency    String    @default("ZAR")
+  breakdown   Json      @default("{}")
+  pdfUrl      String    @default("")
+  generatedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([artistId, taxYear])
 }
 
+// NOTE: this model was reconciled 2026-08 against the live production table,
+// which had accumulated real columns (buyer/line-item/tax fields) via an
+// out-of-band migration that never touched this file — schema.prisma was the
+// stale side, not the DB. See ADR-style note in invoices.ts.
 model Invoice {
-  id         String    @id @default(cuid())
-  artistId   String
-  artist     Artist    @relation(fields: [artistId], references: [id])
-  purchaseId String?
-  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
-  number     String    @unique
-  total      Float
-  currency   String    @default("ZAR")
-  pdfUrl     String?
-  issuedAt   DateTime  @default(now())
-  createdAt  DateTime  @default(now())
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  artistId      String?
+  artist        Artist?   @relation(fields: [artistId], references: [id])
+  buyerName     String
+  buyerEmail    String
+  buyerAddress  Json      @default("{}")
+  lineItems     Json
+  subtotal      Float
+  taxRate       Float     @default(0)
+  taxAmount     Float     @default(0)
+  total         Float
+  currency      String    @default("ZAR")
+  status        String    @default("draft")
+  dueDate       DateTime?
+  paidAt        DateTime?
+  purchaseId    String?
+  purchase      Purchase? @relation(fields: [purchaseId], references: [id])
+  orderId       String?
+  pdfUrl        String    @default("")
+  notes         String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  number        String?   @unique
+  issuedAt      DateTime  @default(now())
+
+  @@index([artistId])
+  @@index([status])
 }
 
 model BeatLicense {

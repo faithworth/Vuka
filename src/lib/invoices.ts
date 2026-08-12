@@ -20,6 +20,10 @@ export async function generateInvoiceNumber(): Promise<string> {
 // ── Create Invoice from Purchase ──────────────────────────────
 
 export async function createInvoiceFromPurchase(purchaseId: string) {
+  // Idempotency guard — never create a second invoice for the same purchase.
+  const already = await prisma.invoice.findFirst({ where: { purchaseId } });
+  if (already) return already;
+
   const purchase = await prisma.purchase.findUnique({
     where: { id: purchaseId },
     include: {
@@ -34,38 +38,75 @@ export async function createInvoiceFromPurchase(purchaseId: string) {
   const artist   = purchase.beat?.artist || purchase.release?.artist;
   const number   = await generateInvoiceNumber();
 
-  return prisma.invoice.create({
-    data: {
-      number,
-      artistId:  artist?.id ?? '',
-      purchaseId: purchase.id,
-      total:     purchase.amount,
-      currency:  purchase.currency,
-      issuedAt:  new Date(),
-    },
-  });
+  try {
+    return await prisma.invoice.create({
+      data: {
+        invoiceNumber: number,
+        number,
+        artistId:   artist?.id,
+        purchaseId: purchase.id,
+        buyerName:  purchase.buyerName,
+        buyerEmail: purchase.buyerEmail,
+        lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1 }],
+        subtotal:   purchase.amount,
+        total:      purchase.amount,
+        currency:   purchase.currency,
+        status:     'paid',
+        issuedAt:   new Date(),
+      },
+    });
+  } catch (err: any) {
+    // P2002 = unique constraint violation. A concurrent request created the
+    // invoice between our findFirst check and this create — the DB-level
+    // Invoice_purchaseId_key constraint caught it. Return the row it made
+    // instead of erroring, so callers see one invoice either way.
+    if (err?.code === 'P2002') {
+      const race = await prisma.invoice.findFirst({ where: { purchaseId } });
+      if (race) return race;
+    }
+    throw err;
+  }
 }
 
 // ── Create Invoice from Marketplace Order ─────────────────────
 
 export async function createInvoiceFromOrder(orderId: string) {
+  // Idempotency guard — never create a second invoice for the same order.
+  const already = await prisma.invoice.findFirst({ where: { orderId } });
+  if (already) return already;
+
   const order = await prisma.marketplaceOrder.findUnique({
     where: { id: orderId },
-    include: { service: true, seller: true },
+    include: { service: true, seller: true, buyer: true },
   });
   if (!order) throw new Error('Order not found');
 
   const number = await generateInvoiceNumber();
 
-  return prisma.invoice.create({
-    data: {
-      number,
-      artistId: order.sellerArtistId,
-      total:    order.packagePrice,
-      currency: order.currency,
-      issuedAt: new Date(),
-    },
-  });
+  try {
+    return await prisma.invoice.create({
+      data: {
+        invoiceNumber: number,
+        number,
+        artistId:   order.sellerArtistId,
+        orderId:    order.id,
+        buyerName:  order.buyer?.name ?? 'Unknown',
+        buyerEmail: order.buyer?.email ?? '',
+        lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1 }],
+        subtotal:   order.packagePrice,
+        total:      order.packagePrice,
+        currency:   order.currency,
+        status:     'paid',
+        issuedAt:   new Date(),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      const race = await prisma.invoice.findFirst({ where: { orderId } });
+      if (race) return race;
+    }
+    throw err;
+  }
 }
 
 // ── Generate Annual Tax Record ────────────────────────────────
@@ -97,25 +138,28 @@ export async function generateTaxRecord(artistId: string, year: number) {
   });
   const marketplaceTotal = marketplaceOrders.reduce((s, o) => s + o.packagePrice, 0);
 
-  const totalEarnings  = (beatRevenue._sum.netAmount ?? 0)
-                       + (releaseRevenue._sum.netAmount ?? 0)
-                       + marketplaceTotal
-                       + (tipRevenue._sum.amount ?? 0);
-  const platformFees   = (beatRevenue._sum.platformFee ?? 0)
-                       + (releaseRevenue._sum.platformFee ?? 0);
-  const netEarnings    = totalEarnings - platformFees;
-  const quarter        = Math.ceil((new Date().getMonth() + 1) / 3);
+  const totalIncome = (beatRevenue._sum.netAmount ?? 0)
+                     + (releaseRevenue._sum.netAmount ?? 0)
+                     + marketplaceTotal
+                     + (tipRevenue._sum.amount ?? 0);
+  const totalFees   = (beatRevenue._sum.platformFee ?? 0)
+                     + (releaseRevenue._sum.platformFee ?? 0);
+  const netIncome   = totalIncome - totalFees;
 
-  // findFirst then create/update (no unique constraint on TaxRecord)
-  const existing = await prisma.taxRecord.findFirst({ where: { artistId, year, quarter } });
-  if (existing) {
-    return prisma.taxRecord.update({
-      where: { id: existing.id },
-      data: { totalEarnings, platformFees, netEarnings },
-    });
-  }
-  return prisma.taxRecord.create({
-    data: { artistId, year, quarter, totalEarnings, platformFees, netEarnings, currency: 'ZAR' },
+  const breakdown = {
+    beatRevenue:        beatRevenue._sum.netAmount ?? 0,
+    releaseRevenue:      releaseRevenue._sum.netAmount ?? 0,
+    marketplaceRevenue:  marketplaceTotal,
+    tipRevenue:          tipRevenue._sum.amount ?? 0,
+    platformFees:        totalFees,
+  };
+
+  // (artistId, taxYear) is a real DB unique constraint — upsert is safe
+  // under concurrent requests, unlike the previous findFirst-then-branch.
+  return prisma.taxRecord.upsert({
+    where: { artistId_taxYear: { artistId, taxYear: year } },
+    update: { totalIncome, totalFees, netIncome, breakdown, generatedAt: new Date() },
+    create: { artistId, taxYear: year, totalIncome, totalFees, netIncome, currency: 'ZAR', breakdown, generatedAt: new Date() },
   });
 }
 
