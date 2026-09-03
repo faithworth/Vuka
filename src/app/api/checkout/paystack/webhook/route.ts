@@ -146,9 +146,12 @@ export async function POST(req: NextRequest) {
 
   if (verification.status !== 'success') return NextResponse.json({ ok: true });
 
-  // Amount check
-  if (Math.abs(verification.amountZAR - purchase.amount) > 0.01) {
-    logger.error('[paystack/webhook] Amount mismatch', { traceId, paid: verification.amountZAR, expected: purchase.amount });
+  // Amount check — merch purchases are charged item price + shippingFee
+  // together as one Paystack transaction, so the expected total has to
+  // include shippingFee even though purchase.amount stores item price only.
+  const expectedTotal = purchase.amount + ((purchase as any).shippingFee ?? 0);
+  if (Math.abs(verification.amountZAR - expectedTotal) > 0.01) {
+    logger.error('[paystack/webhook] Amount mismatch', { traceId, paid: verification.amountZAR, expected: expectedTotal });
     await auditLog.securityEvent('security.invalid_download_attempt', `Amount mismatch purchaseId=${purchase.id}`, 'paystack');
     return new NextResponse('Amount mismatch', { status: 400 });
   }
@@ -335,6 +338,10 @@ export async function POST(req: NextRequest) {
       itemName = merch.title; artistEmail = merch.artist.user.email;
       artistName = merch.artist.name; artworkUrl = merch.imageUrl || ''; artistId = merch.artist.id;
       txOps.push(prisma.merch.update({ where: { id: merch.id }, data: { stock: { decrement: 1 } } }));
+      // Order was already marked 'awaiting_shipment' at checkout time — this
+      // just confirms it survives the claim/confirm race the same way status
+      // does, in case a future flow ever creates the Purchase row without it.
+      txOps.push(prisma.purchase.update({ where: { id: purchase.id }, data: { fulfillmentStatus: 'awaiting_shipment' } }));
       await incrementDailyRollup(artistId, 'totalRevenue', netAmount).catch(() => {});
     }
   }
