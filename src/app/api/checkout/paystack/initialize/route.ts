@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const {
       itemType, itemId, licenseType,
       buyerEmail, buyerName, currency = 'ZAR',
-      customAmount, userId,
+      customAmount, userId, shippingAddress,
     } = body;
 
     if (!itemType || !itemId || !buyerEmail || !buyerName) {
@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
     let itemName    = '';
     let amount      = 0;
     let artistEmail = '';
+    // Merch only — kept separate from `amount` so platform-fee calculations
+    // (which run against `amount`/`purchase.amount` everywhere downstream)
+    // never include shipping. Charged to the buyer on top of `amount`.
+    let shippingFee = 0;
 
     if (itemType === 'beat') {
       const beat = await prisma.beat.findUnique({
@@ -74,6 +78,17 @@ export async function POST(req: NextRequest) {
       if (!item?.isActive) return NextResponse.json({ error: 'Merch not found or unavailable' }, { status: 404 });
       if (item.stock <= 0)  return NextResponse.json({ error: 'Out of stock' }, { status: 400 });
       amount = item.price; itemName = item.title; artistEmail = item.artist.user.email;
+      shippingFee = item.shippingFee || 0;
+
+      // Physical goods — a shipping address is mandatory, not optional,
+      // regardless of whether shippingFee is 0. There is no way to fulfil
+      // an order with nowhere to send it.
+      const addr = shippingAddress || {};
+      const requiredAddrFields = ['name', 'line1', 'city', 'province', 'postalCode', 'phone'];
+      const missing = requiredAddrFields.filter(f => !addr[f]);
+      if (missing.length > 0) {
+        return NextResponse.json({ error: `Shipping address incomplete — missing: ${missing.join(', ')}` }, { status: 400 });
+      }
 
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
