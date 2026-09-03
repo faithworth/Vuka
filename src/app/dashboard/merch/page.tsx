@@ -28,6 +28,7 @@ interface MerchItem {
   title: string;
   description: string;
   price: number;
+  shippingFee: number;
   stock: number;
   sizes: string[];
   imageUrl: string;
@@ -51,6 +52,7 @@ export default function DashboardMerchPage() {
   const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice]           = useState('');
+  const [shippingFee, setShippingFee] = useState('');
   const [stock, setStock]           = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [imageFile, setImageFile]   = useState<File | null>(null);
@@ -66,7 +68,7 @@ export default function DashboardMerchPage() {
 
   function openCreate() {
     setEditing(null);
-    setTitle(''); setDescription(''); setPrice(''); setStock('');
+    setTitle(''); setDescription(''); setPrice(''); setShippingFee(''); setStock('');
     setSelectedSizes([]); setImageFile(null); setImagePreview('');
     setError(''); setSuccess('');
     setShowForm(true);
@@ -77,6 +79,7 @@ export default function DashboardMerchPage() {
     setTitle(item.title);
     setDescription(item.description || '');
     setPrice(String(item.price));
+    setShippingFee(String(item.shippingFee ?? 0));
     setStock(String(item.stock));
     setSelectedSizes(item.sizes || []);
     setImagePreview(item.imageUrl || '');
@@ -104,13 +107,15 @@ export default function DashboardMerchPage() {
     if (isNaN(numPrice) || numPrice < 0) { setError('Enter a valid price'); return; }
     const numStock = parseInt(stock);
     if (isNaN(numStock) || numStock < 0) { setError('Enter a valid stock quantity'); return; }
+    const numShippingFee = shippingFee === '' ? 0 : parseFloat(shippingFee);
+    if (isNaN(numShippingFee) || numShippingFee < 0) { setError('Enter a valid shipping fee'); return; }
 
     setSaving(true); setError('');
 
     try {
       if (editing) {
         // PATCH existing
-        const payload: any = { id: editing.id, title: title.trim(), description, price: numPrice, stock: numStock, sizes: selectedSizes };
+        const payload: any = { id: editing.id, title: title.trim(), description, price: numPrice, shippingFee: numShippingFee, stock: numStock, sizes: selectedSizes };
         if (imageFile) {
           // Get a new upload URL for the image
           const initRes = await fetch('/api/dashboard/merch', {
@@ -142,7 +147,7 @@ export default function DashboardMerchPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: title.trim(), description, price: numPrice, stock: numStock,
+            title: title.trim(), description, price: numPrice, shippingFee: numShippingFee, stock: numStock,
             sizes: selectedSizes,
             imageMime: imageFile?.type || null,
           }),
@@ -310,6 +315,17 @@ export default function DashboardMerchPage() {
               </div>
             </div>
 
+            {/* Shipping fee */}
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>
+                Shipping fee (ZAR) <span className="font-normal" style={{ color: 'var(--text-muted)' }}>(flat fee per order, shown separately at checkout)</span>
+              </label>
+              <input value={shippingFee} onChange={e => setShippingFee(e.target.value)}
+                type="number" min="0" step="0.01" placeholder="0"
+                className="w-full px-3 py-2 rounded-xl text-sm"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+
             {/* Sizes */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>
@@ -388,7 +404,7 @@ export default function DashboardMerchPage() {
                   )}
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  R{item.price} · {item.stock} in stock
+                  R{item.price}{item.shippingFee > 0 ? ` + R${item.shippingFee} shipping` : ''} · {item.stock} in stock
                   {item.sizes?.length > 0 && ` · ${item.sizes.join(', ')}`}
                 </p>
               </div>
