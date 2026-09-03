@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Music2 } from 'lucide-react';
 
-export const metadata = { title: 'Refund Policy — Vuka Music', description: 'Vuka Music refund and return policy for digital goods.' };
+export const metadata = { title: 'Refund Policy — Vuka Music', description: 'Vuka Music refund and return policy for digital goods and merch.' };
 
 export default function RefundsPage() {
   return (
@@ -16,7 +16,7 @@ export default function RefundsPage() {
       </header>
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Refund Policy</h1>
-        <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: January 2025</p>
+        <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026</p>
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
           <p className="font-bold mb-1" style={{ color: 'var(--gold)' }}>Digital goods: all sales are final</p>
