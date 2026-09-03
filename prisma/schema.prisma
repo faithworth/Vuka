@@ -279,6 +279,7 @@ model Merch {
   description String     @default("")
   imageUrl    String     @default("")
   price       Float
+  shippingFee Float      @default(0) // flat per-item fee set by the artist at listing; excluded from platform commission, passed through to buyer as a separate checkout line item
   stock       Int        @default(0)
   sizes       String[]
   isActive    Boolean    @default(true)
@@ -326,11 +327,19 @@ model Purchase {
   downloadCount      Int          @default(0)
   platformFee        Float        @default(0)
   netAmount          Float        @default(0)
+  // ── Shipping / fulfilment — populated only for itemType='merch' ──
+  shippingFee        Float        @default(0) // copied from Merch.shippingFee at checkout; charged on top of `amount`, excluded from platformFee calc
+  shippingAddress    Json?        // { name, line1, line2, city, province, postalCode, phone, country }
+  fulfillmentStatus  String       @default("") // '' (n/a for non-physical items), awaiting_shipment, shipped, delivered
+  trackingCarrier    String       @default("")
+  trackingRef        String       @default("")
+  shippedAt          DateTime?
   beatLicense        BeatLicense?
   invoices           Invoice[]
   createdAt          DateTime     @default(now())
 
   @@index([status, createdAt])
+  @@index([fulfillmentStatus])
   @@index([buyerEmail])
   @@index([downloadToken])
   @@index([artistId])
