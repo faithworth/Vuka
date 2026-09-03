@@ -48,13 +48,15 @@ export async function POST(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { title, description, price, stock, sizes, imageMime } = await req.json();
+    const { title, description, price, stock, sizes, imageMime, shippingFee } = await req.json();
 
     if (!title?.trim())               return NextResponse.json({ error: 'Title required' }, { status: 400 });
     const numPrice = Number(price);
     if (isNaN(numPrice) || numPrice < 0)  return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
     const numStock = Number(stock);
     if (isNaN(numStock) || numStock < 0)  return NextResponse.json({ error: 'Invalid stock' }, { status: 400 });
+    const numShippingFee = shippingFee === undefined ? 0 : Number(shippingFee);
+    if (isNaN(numShippingFee) || numShippingFee < 0) return NextResponse.json({ error: 'Invalid shipping fee' }, { status: 400 });
 
     const slug = await uniqueSlug(title);
     const id   = `merch_${Date.now()}`;
@@ -76,6 +78,7 @@ export async function POST(req: NextRequest) {
         slug,
         description: description?.trim() || '',
         price:       numPrice,
+        shippingFee: numShippingFee,
         stock:       numStock,
         sizes:       Array.isArray(sizes) ? sizes.filter(Boolean) : [],
         imageUrl:    imagePublicUrl || '',
@@ -102,7 +105,7 @@ export async function PATCH(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { id, title, description, price, stock, sizes, isActive, imageUrl } = await req.json();
+    const { id, title, description, price, stock, sizes, isActive, imageUrl, shippingFee } = await req.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const existing = await prisma.merch.findUnique({ where: { id } });
@@ -113,6 +116,7 @@ export async function PATCH(req: NextRequest) {
     if (title       !== undefined) data.title       = title.trim();
     if (description !== undefined) data.description = description.trim();
     if (price       !== undefined) data.price       = Number(price);
+    if (shippingFee !== undefined) data.shippingFee = Number(shippingFee);
     if (stock       !== undefined) data.stock       = Number(stock);
     if (sizes       !== undefined) data.sizes       = Array.isArray(sizes) ? sizes.filter(Boolean) : [];
     if (isActive    !== undefined) data.isActive    = Boolean(isActive);
