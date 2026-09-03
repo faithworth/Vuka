@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const {
       itemType, itemId, licenseType,
       buyerEmail, buyerName, currency = 'ZAR',
-      customAmount, userId,
+      customAmount, userId, shippingAddress,
     } = body;
 
     if (!itemType || !itemId || !buyerEmail || !buyerName) {
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     let itemName    = '';
     let amount      = 0;
     let artistEmail = '';
+    let shippingFee = 0; // merch only — flat fee set by the artist, added on top, excluded from platform commission
 
     if (itemType === 'beat') {
       const beat = await prisma.beat.findUnique({
@@ -73,7 +74,14 @@ export async function POST(req: NextRequest) {
       const item = await prisma.merch.findUnique({ where: { id: itemId }, include: { artist: { include: { user: true } } } });
       if (!item?.isActive) return NextResponse.json({ error: 'Merch not found or unavailable' }, { status: 404 });
       if (item.stock <= 0)  return NextResponse.json({ error: 'Out of stock' }, { status: 400 });
-      amount = item.price; itemName = item.title; artistEmail = item.artist.user.email;
+      // Merch is a physical item — require a shipping address before we'll charge for it.
+      const addr = shippingAddress || {};
+      const missing = ['name', 'line1', 'city', 'postalCode', 'phone'].filter(k => !String(addr[k] || '').trim());
+      if (missing.length) {
+        return NextResponse.json({ error: `Missing shipping details: ${missing.join(', ')}` }, { status: 400 });
+      }
+      shippingFee = item.shippingFee || 0;
+      amount = item.price + shippingFee; itemName = item.title; artistEmail = item.artist.user.email;
 
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
@@ -95,6 +103,7 @@ export async function POST(req: NextRequest) {
           merchId:               itemType === 'merch'   ? itemId : null,
           amount: 0, currency, licenseType: licenseType || '', licenseId,
           status: 'confirmed', platformFee: 0, netAmount: 0,
+          ...(itemType === 'merch' ? { shippingFee: 0, shippingAddress, fulfillmentStatus: 'awaiting_shipment' } : {}),
         },
       });
       try {
@@ -122,6 +131,7 @@ export async function POST(req: NextRequest) {
         merchId:               itemType === 'merch'   ? itemId : null,
         amount, currency, licenseType: licenseType || '', licenseId,
         status: 'pending',
+        ...(itemType === 'merch' ? { shippingFee, shippingAddress } : {}),
       },
     });
 

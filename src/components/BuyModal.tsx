@@ -43,10 +43,12 @@ interface BuyModalProps {
     artist: { name: string };
   };
   itemType?: string;  // override for video/sample; defaults to 'beat' or 'release'
+  shippingFeeAmount?: number; // merch only — flat courier fee set by the artist
   onClose: () => void;
 }
 
-export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: BuyModalProps) {
+export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmount = 0, onClose }: BuyModalProps) {
+  const isMerch = itemTypeProp === 'merch';
   const [license, setLicense]           = useState('basic');
   const [email, setEmail]               = useState('');
   const [name, setName]                 = useState('');
@@ -54,6 +56,12 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
+  const [shipLine1, setShipLine1]       = useState('');
+  const [shipLine2, setShipLine2]       = useState('');
+  const [shipCity, setShipCity]         = useState('');
+  const [shipPostal, setShipPostal]     = useState('');
+  const [shipProvince, setShipProvince] = useState('');
+  const [shipPhone, setShipPhone]       = useState('');
 
   // Auto-fill from logged-in session if available
   useEffect(() => {
@@ -74,12 +82,17 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
   const prices: Record<string, number> = beat
     ? { basic: beat.basicPrice, premium: beat.premiumPrice, exclusive: beat.exclPrice }
     : {};
-  const price = beat
+  const itemPrice = beat
     ? prices[license]
     : (parseFloat(customAmount) || release!.price);
+  const price = itemPrice + (isMerch ? shippingFeeAmount : 0);
 
   async function handleBuy() {
     if (!email || !name) { setError('Please enter your name and email'); return; }
+    if (isMerch && (!shipLine1 || !shipCity || !shipPostal || !shipPhone)) {
+      setError('Please fill in your shipping address');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -96,6 +109,10 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
           buyerName:    name,
           currency:     'ZAR',
           userId:       loggedInUserId ?? undefined,  // links purchase to account
+          shippingAddress: isMerch ? {
+            name, line1: shipLine1, line2: shipLine2, city: shipCity,
+            postalCode: shipPostal, province: shipProvince, phone: shipPhone,
+          } : undefined,
         }),
       });
 
@@ -225,10 +242,25 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="Email address (for download link)"
+            placeholder={isMerch ? 'Email address (for order updates)' : 'Email address (for download link)'}
             className="input"
           />
         </div>
+
+        {/* Shipping address (merch only) */}
+        {isMerch && (
+          <div className="mb-6 space-y-2">
+            <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>Shipping address</p>
+            <input value={shipLine1} onChange={e => setShipLine1(e.target.value)} placeholder="Street address" className="input" />
+            <input value={shipLine2} onChange={e => setShipLine2(e.target.value)} placeholder="Apartment, suite, etc. (optional)" className="input" />
+            <div className="grid grid-cols-2 gap-2">
+              <input value={shipCity} onChange={e => setShipCity(e.target.value)} placeholder="City" className="input" />
+              <input value={shipPostal} onChange={e => setShipPostal(e.target.value)} placeholder="Postal code" className="input" />
+            </div>
+            <input value={shipProvince} onChange={e => setShipProvince(e.target.value)} placeholder="Province" className="input" />
+            <input value={shipPhone} onChange={e => setShipPhone(e.target.value)} placeholder="Phone number" className="input" />
+          </div>
+        )}
 
         {/* Paystack badge */}
         {price > 0 && (
@@ -265,6 +297,18 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, onClose }: Buy
           className="mb-5 p-4 rounded-lg"
           style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-strong)' }}
         >
+          {isMerch && shippingFeeAmount > 0 && (
+            <>
+              <div className="flex justify-between text-sm mb-2">
+                <span style={{ color: 'var(--color-text-secondary)' }}>Item price</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(itemPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span style={{ color: 'var(--color-text-secondary)' }}>Shipping</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(shippingFeeAmount)}</span>
+              </div>
+            </>
+          )}
           <div className="flex justify-between font-bold text-lg">
             <span style={{ color: 'var(--color-text-primary)' }}>Total</span>
             <span className="font-mono" style={{ color: 'var(--color-accent-green)' }}>

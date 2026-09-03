@@ -760,6 +760,29 @@ export async function sendPurchaseConfirmation({
   return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
+export async function sendMerchShipped({
+  to, buyerName, itemName, artistName, trackingRef, ordersUrl,
+}: {
+  to: string; buyerName: string; itemName: string; artistName: string; trackingRef: string; ordersUrl: string;
+}) {
+  const subject = `📦 Your order has shipped — ${itemName}`;
+  const html = layout(card(`
+    ${icon('📦')}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${heading(`Sharp, ${buyerName}! It's on its way.`)}
+      ${sub(`${artistName} has shipped your order.`)}
+    </div>
+    ${infoTable(`
+      ${row('Item', `<strong>${itemName}</strong>`)}
+      ${trackingRef ? row('Tracking reference', `<span style="font-family:monospace;">${trackingRef}</span>`, true) : ''}
+      ${row('Status', '<span style="color:#A0E87C;">Shipped ✓</span>')}
+    `)}
+    ${btn(ordersUrl, 'View Order →', 'secondary')}
+    <p style="color:#6B6B6B;font-size:12px;text-align:center;margin-top:16px;">Shipped by the artist via their chosen courier. Contact them directly through Vuka Messages for delivery questions.</p>
+  `));
+  return getResend().emails.send({ from: FROM(), to, subject, html });
+}
+
 export async function sendTicketConfirmation({
   to, buyerName, eventTitle, eventVenue, eventCity, eventStartDate, ticketName, quantity, amount, currency, ticketUrls,
 }: {

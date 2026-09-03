@@ -33,6 +33,10 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 200,
       });
+      // shippingFee/shippingAddress/fulfillmentStatus/trackingRef/shippedAt are
+      // already present on each `purchase` row via findMany's default select-all
+      // (no explicit `select` used above), so the artist dashboard can read them
+      // directly for merch orders without an extra query.
       return NextResponse.json({ purchases, role: 'artist' });
     } else {
       // Fan: show every confirmed purchase they made — match by userId OR email
@@ -94,6 +98,10 @@ export async function GET() {
             },
           },
           artist: { select: { name: true, slug: true } },
+          shippingFee:       true,
+          fulfillmentStatus: true,
+          trackingRef:       true,
+          shippedAt:         true,
         },
         orderBy: { createdAt: 'desc' },
         take: 200,

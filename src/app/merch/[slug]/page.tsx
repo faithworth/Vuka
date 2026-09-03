@@ -175,6 +175,7 @@ export default function MerchDetailPage() {
       {buyOpen && merch && (
         <BuyModal
           itemType="merch"
+          shippingFeeAmount={merch.shippingFee || 0}
           release={{
             id: merch.id,
             title: merch.title + (selectedSize ? ` — ${selectedSize}` : ''),
