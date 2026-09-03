@@ -124,17 +124,13 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
     await prisma.marketplaceOrder.update({ where: { id: orderId }, data: { status: 'active' } });
     await prisma.marketplaceService.update({ where: { id: order.serviceId }, data: { totalOrders: { increment: 1 } } }).catch(() => {});
 
-    await prisma.artistPayout.create({
-      data: {
-        artistId,
-        amount:    net,
-        method:    'paystack',
-        currency:  'ZAR',
-        status:    'pending',
-        reference,
-        notes:     `Marketplace order ${orderId} — held pending delivery (fee: R${fee.toFixed(2)} kept by Vuka Music)`,
-      },
-    });
+    // NOTE: no ArtistPayout is created here on purpose. Marketplace orders
+    // are a true escrow flow — funds are held, not paid out, until the
+    // buyer confirms delivery. The single ArtistPayout row for this order
+    // is created exactly once, in completeOrder() (src/lib/marketplace.ts),
+    // at that later point. Creating one here too was the double-payout bug
+    // this change fixes — checkout only records the sale (Purchase row +
+    // lifetimeGrossSales), it does not release money to the seller.
 
     await prisma.purchase.create({
       data: {
