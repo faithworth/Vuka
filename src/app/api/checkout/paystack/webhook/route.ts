@@ -182,8 +182,11 @@ export async function POST(req: NextRequest) {
     artistPlanExpiresAt = merchItem?.artist?.planExpiresAt ?? null;
   }
 
-  const platformFeeAmt = calcPlatformFee(purchase.amount, artistPlanSlug, artistPlanExpiresAt);
-  const netAmount      = Math.round((purchase.amount - platformFeeAmt) * 100) / 100;
+  // Shipping fee is a pass-through to the artist (courier cost) — never commissioned.
+  const shippingFeeAmt   = (purchase as any).shippingFee || 0;
+  const commissionBase   = purchase.amount - shippingFeeAmt;
+  const platformFeeAmt   = calcPlatformFee(commissionBase, artistPlanSlug, artistPlanExpiresAt);
+  const netAmount        = Math.round((commissionBase - platformFeeAmt + shippingFeeAmt) * 100) / 100;
 
   // Link userId if not set
   let resolvedUserId = purchase.userId;
@@ -208,6 +211,7 @@ export async function POST(req: NextRequest) {
       platformFee: platformFeeAmt,
       netAmount,
       ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
+      ...(purchase.itemType === 'merch' ? { fulfillmentStatus: 'awaiting_shipment' } : {}),
     },
   });
 
