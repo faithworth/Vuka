@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     // ── FREE item ───────────────────────────────────────────────────────────
-    if (amount === 0) {
+    if (amount === 0 && shippingFee === 0) {
       const purchase  = await prisma.purchase.create({
         data: {
           userId:                userId || null,
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
           merchId:               itemType === 'merch'   ? itemId : null,
           amount: 0, currency, licenseType: licenseType || '', licenseId,
           status: 'confirmed', platformFee: 0, netAmount: 0,
+          ...(itemType === 'merch' ? { shippingAddress, fulfillmentStatus: 'awaiting_shipment' } : {}),
         },
       });
       try {
@@ -126,6 +127,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── PAID item ───────────────────────────────────────────────────────────
+    // (also covers a free-price merch item with a nonzero shippingFee —
+    // amount===0 but there's still a real charge to collect)
     const purchase = await prisma.purchase.create({
       data: {
         userId:                userId || null,
@@ -137,14 +140,21 @@ export async function POST(req: NextRequest) {
         merchId:               itemType === 'merch'   ? itemId : null,
         amount, currency, licenseType: licenseType || '', licenseId,
         status: 'pending',
+        ...(itemType === 'merch' ? { shippingFee, shippingAddress, fulfillmentStatus: 'awaiting_shipment' } : {}),
       },
     });
 
     const reference = generateReference('VKB');
 
+    // Paystack is charged item price + shipping fee together (one charge,
+    // one reference) — but `purchase.amount` stays as the item price alone
+    // so platformFee/netAmount calculations in the webhook are unaffected.
+    // The webhook's amount-verification check adds shippingFee back in.
+    const chargeAmount = amount + shippingFee;
+
     const result = await initializeTransaction({
       email:       buyerEmail,
-      amountZAR:   amount,
+      amountZAR:   chargeAmount,
       reference,
       callbackUrl: `${appUrl}/checkout/success?purchaseId=${purchase.id}`,
       metadata: {
