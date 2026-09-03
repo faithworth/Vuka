@@ -19,8 +19,8 @@ export default function RefundsPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: January 2025</p>
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
-          <p className="font-bold mb-1" style={{ color: 'var(--gold)' }}>All sales are final</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Vuka Music sells digital goods. Once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable. This is consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp).</p>
+          <p className="font-bold mb-1" style={{ color: 'var(--gold)' }}>Digital goods: all sales are final</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable. This is consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp). Physical merch orders are handled differently — see the Merch section below.</p>
         </div>
 
         <div className="space-y-6 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
@@ -43,6 +43,13 @@ export default function RefundsPage() {
           <div>
             <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text)' }}>Chargebacks</h2>
             <p>Filing a fraudulent chargeback for a digital good you received and downloaded constitutes fraud. We will contest all fraudulent chargebacks and may report repeat offenders to Paystack and relevant authorities.</p>
+          </div>
+
+          <div>
+            <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text)' }}>Merch (physical goods)</h2>
+            <p>Merch is fulfilled by the artist who sells it, not by Vuka Music — see our <a href="/legal/shipping" className="underline" style={{ color: 'var(--sky)' }}>Shipping Policy</a> for how orders ship. Because these are physical goods rather than instantly-delivered digital files, the ECT Act digital-goods exclusion above does not apply to them.</p>
+            <p className="mt-2">We will arrange a replacement or refund of the item price plus shipping if: (a) your order arrives damaged or defective; (b) you received the wrong item or size; (c) your order never arrives and the artist cannot show proof of shipment; or (d) you were charged twice for the same order.</p>
+            <p className="mt-2">To raise a merch issue, email <a href="mailto:support@vukamusic.com" className="underline" style={{ color: 'var(--sky)' }}>support@vukamusic.com</a> within 7 days of delivery (or of the expected delivery date, if it never arrives) with your order reference and photos where relevant. Change-of-mind returns are not covered — the artist sets sizing and product details on the listing, so check these before ordering.</p>
           </div>
         </div>
 
