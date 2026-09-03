@@ -15,7 +15,11 @@ const CRON_SECRET = process.env.CRON_SECRET;
  * GET /api/workers/cron?job=<name>
  *
  * Protected by CRON_SECRET (set in Doppler / Vercel env).
- * Vercel Cron invokes with the secret embedded in the request URL or header.
+ * Vercel Cron invokes this route with `Authorization: Bearer <CRON_SECRET>`
+ * (Vercel's documented convention for the CRON_SECRET env var) — that header
+ * is checked first. `x-cron-secret` header / `?secret=` query param are also
+ * accepted as a fallback for any other internal invocation, though nothing
+ * in this codebase currently uses them.
  *
  * Jobs:
  *   search_sync   — sync Meilisearch / SearchIndex table
@@ -33,7 +37,10 @@ const CRON_SECRET = process.env.CRON_SECRET;
  */
 export async function GET(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────
+  const authHeader = req.headers.get('authorization') ?? '';
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const secret =
+    bearerSecret ??
     req.headers.get('x-cron-secret') ??
     req.nextUrl.searchParams.get('secret');
 
