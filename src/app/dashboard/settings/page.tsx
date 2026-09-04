@@ -20,12 +20,12 @@ const PLAN_DEFS = [
     color: 'var(--text-muted)', Icon: Zap,
   },
   {
-    slug: 'pro', name: 'Pro', priceZAR: 249, artistSharePct: 92, platformFeePct: 8,
+    slug: 'pro', name: 'Pro', priceZAR: 170, artistSharePct: 92, platformFeePct: 8,
     features: ['Unlimited releases', 'Only 8% platform fee', 'Priority support', 'Advanced analytics', 'Industry marketplace'],
     color: 'var(--sky)', Icon: Crown,
   },
   {
-    slug: 'label', name: 'Label', priceZAR: 999, artistSharePct: 95, platformFeePct: 5,
+    slug: 'label', name: 'Label', priceZAR: 549, artistSharePct: 95, platformFeePct: 5,
     features: ['Unlimited releases', 'Lowest 5% platform fee', 'Multi-artist management', 'Bulk payouts', 'White-label storefront'],
     color: 'var(--gold)', Icon: Star,
   },
@@ -583,7 +583,7 @@ function SettingsContent() {
           Upgrade to keep more of every sale and unlock unlimited releases.
         </p>
         <p className="text-xs mb-5" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>
-          Paid plans renew automatically every month using your saved card until you cancel. If a renewal fails, you'll get 3 days to update your payment details before dropping to Free.
+          Paid plans renew automatically every 2 months using your saved card until you cancel. If a renewal fails, you'll get 3 days to update your payment details before dropping to Free.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-4">
@@ -613,7 +613,7 @@ function SettingsContent() {
                       {p.priceZAR === 0
                         ? <span className="text-xl font-black" style={{ color: p.color }}>Free</span>
                         : <><span className="text-xl font-black" style={{ color: p.color }}>R{p.priceZAR}</span>
-                           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/mo</span></>
+                           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/2mo</span></>
                       }
                     </div>
                   </div>
