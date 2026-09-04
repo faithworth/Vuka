@@ -87,7 +87,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         subheading: 'Upload your music in minutes. Set your price. Fans buy directly. Start on Free — upgrade to keep more.',
         columns:    4,
         features: [
-          { icon: '💵', title: 'Dual Payments',    desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. Flutterwave for Pan-African payments. Both fully automated.' },
+          { icon: '💵', title: 'Dual Payments',    desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. PayPal for international payments. Both fully automated.' },
           { icon: '⚡', title: 'Instant Downloads', desc: 'Fans receive secure download links the moment payment clears. No manual work needed.' },
           { icon: '🛡️', title: 'Beat Licensing',   desc: 'Basic, Premium, and Exclusive tiers. Auto-generated PDF license agreements sent to every buyer.' },
           { icon: '👥', title: 'Fan Support',       desc: 'Let fans tip you and back your recording goals. Build a real community around your music.' },
@@ -99,7 +99,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         heading:    'Honest pricing. Always.',
         subheading: "Start free. Upgrade when you're ready to keep more of what you earn.",
-        footnote:   'All plans include Paystack + Flutterwave payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.',
+        footnote:   'All plans include Paystack + PayPal payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.',
         tiers: [
           {
             name: 'Free', price: 'R0', period: 'forever', keep: '90%', highlight: false,
@@ -108,13 +108,13 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
               'Beat store & licensing',
               'Fan memberships',
               'PDF license generation',
-              'Paystack + Flutterwave',
+              'Paystack + PayPal',
               'Fee drops to 8.5% automatically as you sell more',
             ],
             cta: { label: 'Get Started Free', href: '/auth/register' },
           },
           {
-            name: 'Pro', price: 'R249', period: 'per month', keep: '92%', highlight: true,
+            name: 'Pro', price: 'R170', period: 'every 2 months', keep: '92%', highlight: true,
             features: [
               'Unlimited releases',
               '8% platform fee',
@@ -126,7 +126,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
             cta: { label: 'Start Pro', href: '/auth/register' },
           },
           {
-            name: 'Label', price: 'R999', period: 'per month', keep: '95%', highlight: false,
+            name: 'Label', price: 'R549', period: 'every 2 months', keep: '95%', highlight: false,
             features: [
               'Unlimited releases',
               '5% platform fee',
@@ -156,9 +156,9 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         heading: 'Frequently Asked Questions',
         items: [
-          { q: 'How do I get paid?',          a: 'Payments are processed via Paystack (South Africa) and Flutterwave (rest of Africa). Money is sent to your bank account within 48 hours of a sale.' },
+          { q: 'How do I get paid?',          a: 'Payments are processed via Paystack (South Africa) and PayPal (international). Money is sent to your bank account within 48 hours of a sale.' },
           { q: 'What is the platform fee?',   a: 'Free plan: 10% (auto-drops to 8.5% as you sell more). Pro: 8%. Label: 5%. Fees are deducted automatically at checkout.' },
-          { q: 'Can I sell internationally?', a: 'Yes — Vuka Music supports international buyers via card through Flutterwave. Your earnings are converted to ZAR.' },
+          { q: 'Can I sell internationally?', a: 'Yes — Vuka Music supports international buyers via card through PayPal. Your earnings are converted to ZAR.' },
         ],
       };
 
@@ -181,7 +181,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         items: [
           { n: '01', title: 'Upload your music',  desc: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
           { n: '02', title: 'Share your link',    desc: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
-          { n: '03', title: 'Get paid directly',  desc: 'Paystack and Flutterwave move money directly to your bank account. Keep up to 95% of every sale.' },
+          { n: '03', title: 'Get paid directly',  desc: 'Paystack and PayPal move money directly to your bank account. Keep up to 95% of every sale.' },
         ],
       };
 

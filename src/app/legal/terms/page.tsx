@@ -48,7 +48,7 @@ export default function TermsPage() {
 
         <Section title="5. Payments & Fees">
           <p>All prices are displayed in South African Rand (ZAR). Payments are processed via Paystack for domestic transactions. International payment options may be added in future.</p>
-          <p>Vuka Music charges a platform fee on each transaction. Free accounts start at 10% and reduce automatically as lifetime sales grow — to 9% at R2,000 lifetime gross, and to 8.5% permanently above R10,000. Pro plan (R249/month) is charged at a flat 8%. Label plan (R999/month) is charged at a flat 5%. No additional fees are charged on crowdfunding or event sales. The applicable fee is deducted before funds are disbursed; artists can view net earnings in their Payouts dashboard.</p>
+          <p>Vuka Music charges a platform fee on each transaction. Free accounts start at 10% and reduce automatically as lifetime sales grow — to 9% at R2,000 lifetime gross, and to 8.5% permanently above R10,000. Pro plan (R170 every 2 months) is charged at a flat 8%. Label plan (R549 every 2 months) is charged at a flat 5%. No additional fees are charged on crowdfunding or event sales. The applicable fee is deducted before funds are disbursed; artists can view net earnings in their Payouts dashboard.</p>
           <p>Vuka Music does not store payment card information. All payment data is handled by Paystack in accordance with PCI DSS standards.</p>
         </Section>
 

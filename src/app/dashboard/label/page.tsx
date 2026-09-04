@@ -178,7 +178,7 @@ export default function LabelPage() {
         <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           The Label feature lets you manage multiple artists, set revenue splits, issue invite links, and see aggregated
           roster analytics no other plan offers — all under one roof.
-          It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Music Label plan</strong> (R999/mo, 5% platform fee).
+          It's available on the <strong style={{ color: 'var(--gold)' }}>Vuka Music Label plan</strong> (R549 every 2 months, 5% platform fee).
         </p>
         <Link href="/pricing"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black"

@@ -116,7 +116,7 @@ export default function LandingPage() {
                 {
                   icon: DollarSign,
                   title: 'Dual Payments',
-                  desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. Flutterwave for Pan-African payments. Both fully automated.',
+                  desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. PayPal for international payments. Both fully automated.',
                 },
                 {
                   icon: Zap,
@@ -167,7 +167,7 @@ export default function LandingPage() {
               {[
                 { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
                 { n: '02', t: 'Share your link', d: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
-                { n: '03', t: 'Keep most of every sale', d: 'Paystack and Flutterwave move money directly to your bank account. Free starts at 90% and steps up automatically as you sell more — Pro and Label keep even more.' },
+                { n: '03', t: 'Keep most of every sale', d: 'Paystack and PayPal move money directly to your bank account. Free starts at 90% and steps up automatically as you sell more — Pro and Label keep even more.' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
@@ -275,7 +275,7 @@ export default function LandingPage() {
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>90%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
-                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'Paystack + Flutterwave', 'Fee drops to 8.5% automatically as you sell more'].map(f => (
+                  {['Up to 2 releases/month', 'Beat store & licensing', 'Fan memberships', 'PDF license generation', 'Paystack + PayPal', 'Fee drops to 8.5% automatically as you sell more'].map(f => (
                     <div key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                       <span style={{ color: 'var(--green)' }}>✓</span> {f}
                     </div>
@@ -290,8 +290,8 @@ export default function LandingPage() {
               <div className="p-8 rounded-2xl text-left flex flex-col relative" style={{ background: 'var(--bg)', border: '2px solid var(--sky)', boxShadow: '0 0 30px rgba(56,182,232,0.1)' }}>
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold" style={{ background: 'var(--sky)', color: 'white' }}>Most Popular</div>
                 <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Pro</div>
-                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R249</div>
-                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>per month</div>
+                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R170</div>
+                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>every 2 months</div>
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--sky)' }}>92%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
@@ -309,8 +309,8 @@ export default function LandingPage() {
               {/* LABEL */}
               <div className="p-8 rounded-2xl text-left flex flex-col" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                 <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--gold)' }}>Label</div>
-                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R999</div>
-                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>per month</div>
+                <div className="text-5xl font-bold mb-1" style={{ color: 'var(--text)' }}>R549</div>
+                <div className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>every 2 months</div>
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--gold)' }}>95%</div>
                 <div className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>artist keeps per sale</div>
                 <div className="space-y-2 flex-1 mb-8">
@@ -327,7 +327,7 @@ export default function LandingPage() {
             </div>
 
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              All plans include Paystack + Flutterwave payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.
+              All plans include Paystack + PayPal payments, PDF license generation, secure download delivery, and full analytics. No hidden charges.
             </p>
           </div>
         </section>

@@ -13,12 +13,54 @@ export interface VukaPlan {
   slug:             string;
   name:             string;
   priceZAR:         number;                    // 0 = free tier
-  billingPeriod:    'MONTHLY' | 'YEARLY' | 'FREE';
+  billingPeriod:    'MONTHLY' | 'EVERY_2_MONTHS' | 'YEARLY' | 'FREE';
   platformFeePct:   number;                    // what Vuka Music keeps (e.g. 10 = 10%)
   artistSharePct:   number;                    // what artist keeps
   releasesPerMonth: number | null;             // null = unlimited
   releasesPerYear?: number | null;
   features:         string[];
+}
+
+// ── Billing period helpers ─────────────────────────────────────────────
+//
+// Single source of truth for "how far does a renewal push the period end
+// out" — every call site that activates or renews a paid plan (Paystack
+// webhook, client-verify fallback, and the renewal cron) should go through
+// this instead of hardcoding setMonth(+1), so changing a plan's cadence
+// here is guaranteed to be reflected everywhere billing dates are computed.
+
+/** Advance `from` by one full billing cycle for the given period. */
+export function addBillingPeriod(
+  from:           Date,
+  billingPeriod:  VukaPlan['billingPeriod'],
+): Date {
+  const next = new Date(from);
+  switch (billingPeriod) {
+    case 'YEARLY':         next.setFullYear(next.getFullYear() + 1); break;
+    case 'EVERY_2_MONTHS':  next.setMonth(next.getMonth() + 2);        break;
+    case 'MONTHLY':
+    case 'FREE':
+    default:                next.setMonth(next.getMonth() + 1);        break;
+  }
+  return next;
+}
+
+/** Lowercase, DB-friendly token for the `billingInterval` TEXT column. */
+export function billingIntervalDbValue(billingPeriod: VukaPlan['billingPeriod']): string {
+  switch (billingPeriod) {
+    case 'YEARLY':          return 'yearly';
+    case 'EVERY_2_MONTHS':  return 'every_2_months';
+    default:                return 'monthly';
+  }
+}
+
+/** Human-readable suffix for UI price displays, e.g. "R170 {label}". */
+export function billingPeriodLabel(billingPeriod: VukaPlan['billingPeriod']): string {
+  switch (billingPeriod) {
+    case 'YEARLY':          return 'per year';
+    case 'EVERY_2_MONTHS':  return 'every 2 months';
+    default:                return 'per month';
+  }
 }
 
 export const PLANS: VukaPlan[] = [
@@ -44,8 +86,8 @@ export const PLANS: VukaPlan[] = [
   {
     slug:             'pro',
     name:             'Pro',
-    priceZAR:         249,
-    billingPeriod:    'MONTHLY',
+    priceZAR:         170,
+    billingPeriod:    'EVERY_2_MONTHS',
     platformFeePct:   8,
     artistSharePct:   92,
     releasesPerMonth: null,
@@ -61,8 +103,8 @@ export const PLANS: VukaPlan[] = [
   {
     slug:             'label',
     name:             'Label',
-    priceZAR:         999,
-    billingPeriod:    'MONTHLY',
+    priceZAR:         549,
+    billingPeriod:    'EVERY_2_MONTHS',
     platformFeePct:   5,
     artistSharePct:   95,
     releasesPerMonth: null,

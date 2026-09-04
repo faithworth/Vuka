@@ -28,8 +28,8 @@ export default function ArtistAgreementPage() {
                 ['Free plan — R0–R2,000 lifetime sales', '10% platform fee (you keep 90%)'],
                 ['Free plan — R2,001–R10,000 lifetime', '9% platform fee (you keep 91%)'],
                 ['Free plan — R10,001+ lifetime', '8.5% platform fee (you keep 91.5%)'],
-                ['Pro plan — R249/month', '8% platform fee (you keep 92%)'],
-                ['Label plan — R999/month', '5% platform fee (you keep 95%)'],
+                ['Pro plan — R170 every 2 months', '8% platform fee (you keep 92%)'],
+                ['Label plan — R549 every 2 months', '5% platform fee (you keep 95%)'],
               ].map(([plan, fee], i) => (
                 <div key={i} className="flex items-center justify-between px-5 py-3.5" style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
                   <span className="text-sm" style={{ color:'var(--text)' }}>{plan}</span>
@@ -42,7 +42,7 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>How you get paid</h2>
-            <p>Your earnings accumulate in your Vuka Music wallet after each confirmed sale. You request a withdrawal whenever you want — minimum R50, processed within 1–3 business days via your registered South African bank account. We use Paystack and Flutterwave to process payments; both are PCI-DSS compliant.</p>
+            <p>Your earnings accumulate in your Vuka Music wallet after each confirmed sale. You request a withdrawal whenever you want — minimum R50, processed within 1–3 business days via your registered South African bank account. We use Paystack and PayPal to process payments; both are PCI-DSS compliant.</p>
           </section>
 
           <section>

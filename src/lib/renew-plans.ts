@@ -10,7 +10,7 @@ import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
 import { chargeAuthorization, generateReference } from '@/lib/paystack';
-import { PLANS } from '@/lib/plans';
+import { PLANS, addBillingPeriod } from '@/lib/plans';
 import { sendBroadcast } from '@/lib/emails';
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
@@ -43,8 +43,7 @@ export async function renewSubscription(sub: any, now: Date = new Date()): Promi
     });
 
     if (charge.status === 'success') {
-      const newPeriodEnd = new Date(now);
-      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+      const newPeriodEnd = addBillingPeriod(now, plan.billingPeriod);
 
       await prisma.$transaction([
         (prisma as any).artistPlanSubscription.update({

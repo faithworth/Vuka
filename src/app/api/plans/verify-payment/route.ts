@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { verifyTransaction } from '@/lib/paystack';
-import { PLANS } from '@/lib/plans';
+import { PLANS, addBillingPeriod, billingIntervalDbValue } from '@/lib/plans';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -55,8 +55,7 @@ export async function POST(req: NextRequest) {
     const artistId = user.artist.id;
 
     const now       = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    const periodEnd = addBillingPeriod(now, plan.billingPeriod);
 
     await prisma.artist.update({
       where: { id: artistId },
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest) {
         paystackReference:  reference,
         amount:             plan.priceZAR,
         currency:           'ZAR',
-        billingInterval:    'monthly',
+        billingInterval:    billingIntervalDbValue(plan.billingPeriod),
         currentPeriodStart: now,
         currentPeriodEnd:   periodEnd,
       },
