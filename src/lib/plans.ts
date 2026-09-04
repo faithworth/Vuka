@@ -86,8 +86,8 @@ export const PLANS: VukaPlan[] = [
   {
     slug:             'pro',
     name:             'Pro',
-    priceZAR:         249,
-    billingPeriod:    'MONTHLY',
+    priceZAR:         170,
+    billingPeriod:    'EVERY_2_MONTHS',
     platformFeePct:   8,
     artistSharePct:   92,
     releasesPerMonth: null,
@@ -103,8 +103,8 @@ export const PLANS: VukaPlan[] = [
   {
     slug:             'label',
     name:             'Label',
-    priceZAR:         999,
-    billingPeriod:    'MONTHLY',
+    priceZAR:         549,
+    billingPeriod:    'EVERY_2_MONTHS',
     platformFeePct:   5,
     artistSharePct:   95,
     releasesPerMonth: null,
