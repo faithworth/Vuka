@@ -394,8 +394,8 @@ function SubscriptionsTab() {
   useEffect(() => { load(); }, [load]);
 
   const PLAN_LABELS: Record<string, string> = {
-    pro:   'Pro — R249/mo',
-    label: 'Label — R999/mo',
+    pro:   'Pro — R170/2mo',
+    label: 'Label — R549/2mo',
   };
 
   return (
