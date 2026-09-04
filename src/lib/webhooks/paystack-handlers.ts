@@ -17,7 +17,7 @@
 
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 import { verifyTransaction } from '@/lib/paystack';
-import { PLANS } from '@/lib/plans';
+import { PLANS, addBillingPeriod, billingIntervalDbValue } from '@/lib/plans';
 import { platformFee as calcFee, artistNet as calcNet } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
@@ -63,8 +63,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
     if (verification.status !== 'success') return;
 
     const now       = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    const periodEnd = addBillingPeriod(now, plan.billingPeriod);
 
     await prisma.artist.update({
       where: { id: artistId },
@@ -79,7 +78,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
         paystackReference:  reference,
         amount:             plan.priceZAR,
         currency:           'ZAR',
-        billingInterval:    'monthly',
+        billingInterval:    billingIntervalDbValue(plan.billingPeriod),
         currentPeriodStart: now,
         currentPeriodEnd:   periodEnd,
         // Only set when Paystack actually returned a reusable authorization
