@@ -84,7 +84,7 @@ export async function approvePayoutRequest(requestId: string, notes?: string) {
 
   await prisma.payoutRequest.update({
     where: { id: requestId },
-    data: { status: 'approved', ...(notes ? { adminNotes: notes } : {}) },
+    data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
 
   // Auto-dispatch immediately — fire-and-forget so the admin response
