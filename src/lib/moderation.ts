@@ -485,7 +485,7 @@ export async function getVerificationRequestByArtist(artistId: string): Promise<
 export async function listVerificationRequests(status = 'pending'): Promise<object[]> {
   return prisma.verificationRequest.findMany({
     where: { status },
-    include: { artist: { select: { id: true, name: true, slug: true, email: true } } },
+    include: { artist: { select: { id: true, name: true, slug: true, user: { select: { email: true } } } } },
     orderBy: { createdAt: 'asc' },
   });
 }
