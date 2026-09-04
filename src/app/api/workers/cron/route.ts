@@ -80,12 +80,17 @@ export async function GET(req: NextRequest) {
     //  this job only handles status transitions and reminders)
     if (job === 'payout_process' || job === 'all') {
       try {
-        // Find payouts approved >24h ago but not yet marked processing
+        // Find payouts stuck in 'approved' status: either approved >24h ago,
+        // OR approvedAt is null (a bug elsewhere left it unset — treat as
+        // stale immediately rather than silently excluding it forever).
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const stalePayouts = await prisma.payoutRequest.findMany({
           where: {
             status: 'approved',
-            approvedAt: { lt: twentyFourHoursAgo },
+            OR: [
+              { approvedAt: { lt: twentyFourHoursAgo } },
+              { approvedAt: null },
+            ],
           },
           include: {
             artist: {
@@ -99,6 +104,9 @@ export async function GET(req: NextRequest) {
 
         results.payoutProcess = {
           staleApprovedCount: stalePayouts.length,
+          staleApprovedAmount: stalePayouts.reduce((sum, p: any) => sum + p.amount, 0),
+          staleIds: stalePayouts.map((p: any) => p.id),
+          missingApprovedAtCount: stalePayouts.filter((p: any) => !p.approvedAt).length,
           note: 'Stale approved payouts flagged — admin action required',
         };
       } catch (e: any) {
