@@ -402,9 +402,15 @@ export async function submitVerification(
   if (!data.legalName?.trim()) throw new Error('Legal name is required');
   if (!data.idDocumentUrl?.trim()) throw new Error('ID document is required');
 
-  // Validate URL is from own bucket
-  if (!validateAttachmentUrl(data.idDocumentUrl)) {
-    throw new Error('ID document must be uploaded via Vuka Music file upload');
+  // ID documents are PRIVATE — idDocumentUrl holds an R2 *key* under
+  // private/verification/{artistId}.{ext}, never a public URL. This is
+  // deliberately different from validateAttachmentUrl (used for abuse-report
+  // evidence, which IS meant to be publicly viewable). Scoping the key to
+  // the submitting artist's own id prevents one artist referencing another's
+  // already-uploaded document, and the prefix check blocks path traversal.
+  const expectedPrefix = `private/verification/${artistId}.`;
+  if (!data.idDocumentUrl.startsWith(expectedPrefix) || data.idDocumentUrl.includes('..')) {
+    throw new Error('ID document must be uploaded via Vuka Music\'s secure verification upload');
   }
 
   const request = await prisma.verificationRequest.upsert({
