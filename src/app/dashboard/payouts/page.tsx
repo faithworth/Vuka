@@ -20,6 +20,7 @@ export default function PayoutsPage() {
   const [requestingPayout, setRequestingPayout] = useState(false);
   const [payoutError, setPayoutError]           = useState('');
   const [payoutSuccess, setPayoutSuccess]       = useState('');
+  const [retryingId, setRetryingId]             = useState<string | null>(null);
 
   // Bank account form
   const [showBankForm, setShowBankForm] = useState(false);
@@ -102,6 +103,29 @@ export default function PayoutsPage() {
       setPayoutError('Network error — please try again.');
     }
     setRequestingPayout(false);
+  }
+
+  async function retryPayout(requestId: string) {
+    setRetryingId(requestId);
+    setPayoutError('');
+    setPayoutSuccess('');
+    try {
+      const res = await fetch('/api/payouts/request', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) {
+        setPayoutSuccess('Payout request resubmitted.');
+        await load();
+      } else {
+        const d = await res.json();
+        setPayoutError(d.error || 'Failed to retry payout request.');
+      }
+    } catch {
+      setPayoutError('Network error — please try again.');
+    }
+    setRetryingId(null);
   }
 
   if (loading) return (
@@ -523,6 +547,15 @@ export default function PayoutsPage() {
                         {r.bankAccount && ` · ${r.bankAccount.bankName}`}
                       </p>
                     </div>
+                    {r.status === 'rejected' && (
+                      <button
+                        onClick={() => retryPayout(r.id)}
+                        disabled={retryingId === r.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                        style={{ background: 'var(--surface2)', color: 'var(--sky)', border: '1px solid var(--border)' }}>
+                        {retryingId === r.id ? <><VukaLoader size={12} /> Retrying…</> : <><RefreshCw size={12} /> Retry</>}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
