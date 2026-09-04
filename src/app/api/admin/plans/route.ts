@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
-import { PLANS } from '@/lib/plans';
+import { PLANS, billingIntervalDbValue } from '@/lib/plans';
 import { auditLog } from '@/lib/audit';
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
 
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
                  "currentPeriodStart", "currentPeriodEnd", "createdAt", "updatedAt")
               VALUES
                 (gen_random_uuid()::text, ${artistId}, ${plan.slug}, 'active', ${plan.priceZAR},
-                 'ZAR', 'monthly', ${now}, ${periodEnd}, ${now}, ${now})
+                 'ZAR', ${billingIntervalDbValue(plan.billingPeriod)}, ${now}, ${periodEnd}, ${now}, ${now})
             `;
           } catch { /* table may not exist — non-fatal */ }
         }
