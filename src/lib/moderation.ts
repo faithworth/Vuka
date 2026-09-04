@@ -478,6 +478,18 @@ export async function reviewVerification(
 
 // ── ADMIN DASHBOARD ──────────────────────────────────────────
 
+export async function getVerificationRequestByArtist(artistId: string): Promise<object | null> {
+  return prisma.verificationRequest.findUnique({ where: { artistId } });
+}
+
+export async function listVerificationRequests(status = 'pending'): Promise<object[]> {
+  return prisma.verificationRequest.findMany({
+    where: { status },
+    include: { artist: { select: { id: true, name: true, slug: true, email: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
 export async function getAdminDashboard(): Promise<object> {
   const [
     pendingReports,
