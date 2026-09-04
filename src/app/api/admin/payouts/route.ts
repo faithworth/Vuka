@@ -5,12 +5,22 @@
  * Payout security: approve and mark_paid are gated on the destination
  * bank account being verified and past its 48h eligibility cooldown.
  * See /api/admin/bank-accounts/verify for how accounts get verified.
+ *
+ * All state transitions delegate to src/lib/payouts.ts (approvePayoutRequest /
+ * rejectPayoutRequest / markPayoutPaid) instead of duplicating the logic here.
+ * This used to have its own inline copy of each transition, which drifted out
+ * of sync with lib/payouts.ts in at least two ways: approve didn't set
+ * approvedAt (hid approved payouts from the stale-check cron forever), and
+ * reject didn't release claimed ArtistPayout ledger rows (leaving the money
+ * stuck, unclaimable by a fresh request). One implementation now, so a future
+ * fix only has to happen in one place.
  */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { auditLog } from '@/lib/audit';
+import { approvePayoutRequest, rejectPayoutRequest, markPayoutPaid } from '@/lib/payouts';
 import {
   sendPayoutApproved,
   sendPayoutProcessed,
@@ -127,10 +137,7 @@ export async function POST(req: NextRequest) {
       case 'approve': {
         if (request.status !== 'pending')
           return NextResponse.json({ error: 'Can only approve pending requests' }, { status: 409 });
-        await prisma.payoutRequest.update({
-          where: { id: requestId },
-          data: { status: 'approved', approvedAt: new Date(), adminNotes: notes || '' },
-        });
+        await approvePayoutRequest(requestId, notes || '');
         await auditLog.adminAction('payment.payout_approved', 'PayoutRequest', requestId, user.id, notes || '');
         // Phase 9: notify artist
         try {
@@ -153,10 +160,7 @@ export async function POST(req: NextRequest) {
       case 'reject': {
         if (!['pending', 'approved'].includes(request.status))
           return NextResponse.json({ error: 'Can only reject pending or approved requests' }, { status: 409 });
-        await prisma.payoutRequest.update({
-          where: { id: requestId },
-          data: { status: 'rejected', adminNotes: notes || 'Rejected by admin' },
-        });
+        await rejectPayoutRequest(requestId, notes || 'Rejected by admin');
         await auditLog.adminAction('payment.payout_rejected', 'PayoutRequest', requestId, user.id, notes || '');
         // Phase 9: notify artist of failure
         try {
@@ -178,29 +182,14 @@ export async function POST(req: NextRequest) {
       case 'mark_paid': {
         if (request.status !== 'approved')
           return NextResponse.json({ error: 'Can only mark approved requests as paid' }, { status: 409 });
-        await prisma.payoutRequest.update({
-          where: { id: requestId },
-          data: { status: 'paid', processedAt: new Date(), adminNotes: notes || '' },
-        });
-        // Record in ArtistPayout ledger
-        await prisma.artistPayout.create({
-          data: {
-            artistId:    request.artistId,
-            amount:      request.amount,
-            currency:    request.currency,
-            status:      'paid',
-            method:      request.bankAccountId ? 'bank' : 'paystack',
-            reference:   reference || '',
-            notes:       notes || `Payout request ${requestId}`,
-            processedAt: new Date(),
-          },
-        });
+        const ref = reference || `manual-${Date.now()}`;
+        await markPayoutPaid(requestId, ref);
         await auditLog.adminAction(
           'payment.payout_processed',
           'PayoutRequest',
           requestId,
           user.id,
-          `ref=${reference || 'none'}`,
+          `ref=${ref}`,
         );
         // Phase 9: notify artist payment sent
         try {
@@ -212,7 +201,7 @@ export async function POST(req: NextRequest) {
               amount: Number(request.amount),
               currency: request.currency || 'ZAR',
               payoutMethod: request.bankAccountId ? 'Bank Transfer' : 'Paystack',
-              referenceNumber: reference || request.id,
+              referenceNumber: ref,
               bankLast4: (request as any).bankAccount?.maskedNumber?.slice(-4),
               payoutsUrl: `${APP_URL()}/dashboard/payouts`,
             });

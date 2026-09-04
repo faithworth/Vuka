@@ -10,12 +10,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockRequireAdmin = vi.fn();
 const mockFindUnique = vi.fn();
 const mockUpdate = vi.fn();
-const mockArtistPayoutCreate = vi.fn();
+const mockArtistPayoutUpdateMany = vi.fn();
 const mockAdminAction = vi.fn();
 
 vi.mock('@/lib/auth', () => ({
   requireAdmin: () => mockRequireAdmin(),
 }));
+
+// approve/reject/mark_paid now delegate to src/lib/payouts.ts, which runs
+// mark_paid and reject inside prisma.$transaction(tx => ...). The tx object
+// needs the same mocked methods as top-level prisma so assertions can see
+// what happened inside the transaction too.
+const txLike = {
+  payoutRequest: {
+    update: (...args: any[]) => mockUpdate(...args),
+  },
+  artistPayout: {
+    updateMany: (...args: any[]) => mockArtistPayoutUpdateMany(...args),
+  },
+};
 
 vi.mock('@/lib/prisma', () => ({
   default: {
@@ -24,9 +37,17 @@ vi.mock('@/lib/prisma', () => ({
       update: (...args: any[]) => mockUpdate(...args),
     },
     artistPayout: {
-      create: (...args: any[]) => mockArtistPayoutCreate(...args),
+      updateMany: (...args: any[]) => mockArtistPayoutUpdateMany(...args),
     },
+    $transaction: (fn: (tx: typeof txLike) => unknown) => fn(txLike),
   },
+}));
+
+// dispatchPayout is fired-and-forgotten from approvePayoutRequest after a
+// successful approve. Stub it so tests don't make real Paystack calls or
+// leave unhandled async work running past the test.
+vi.mock('@/lib/earnings', () => ({
+  dispatchPayout: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('@/lib/audit', () => ({
@@ -109,7 +130,7 @@ describe('POST /api/admin/payouts — bank account verification gate', () => {
     );
     const res = await POST(postRequest({ requestId: 'req_1', action: 'mark_paid' }));
     expect(res.status).toBe(409);
-    expect(mockArtistPayoutCreate).not.toHaveBeenCalled();
+    expect(mockArtistPayoutUpdateMany).not.toHaveBeenCalled();
   });
 
   it('blocks approve when the account is verified but still inside the 48h cooldown', async () => {
@@ -164,17 +185,22 @@ describe('POST /api/admin/payouts — status transition guards', () => {
     mockFindUnique.mockResolvedValue(basePayoutRequest({ status: 'pending' }));
     const res = await POST(postRequest({ requestId: 'req_1', action: 'mark_paid' }));
     expect(res.status).toBe(409);
-    expect(mockArtistPayoutCreate).not.toHaveBeenCalled();
+    expect(mockArtistPayoutUpdateMany).not.toHaveBeenCalled();
   });
 
-  it('writes an ArtistPayout ledger row exactly once on mark_paid, with the request amount', async () => {
-    mockFindUnique.mockResolvedValue(basePayoutRequest({ status: 'approved' }));
+  it('settles the claimed ArtistPayout ledger rows in place on mark_paid, instead of creating a new row', async () => {
+    // This is the actual bug this PR fixes: the old inline mark_paid created a
+    // brand-new ArtistPayout row and never touched the rows the request had
+    // claimed, leaving them dangling as 'pending' forever. markPayoutPaid()
+    // settles the original claimed rows via updateMany instead.
+    mockFindUnique.mockResolvedValue(basePayoutRequest({ status: 'approved', id: 'req_1' }));
     const res = await POST(postRequest({ requestId: 'req_1', action: 'mark_paid', reference: 'ref-123' }));
     expect(res.status).toBe(200);
-    expect(mockArtistPayoutCreate).toHaveBeenCalledTimes(1);
-    expect(mockArtistPayoutCreate).toHaveBeenCalledWith(
+    expect(mockArtistPayoutUpdateMany).toHaveBeenCalledTimes(1);
+    expect(mockArtistPayoutUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ amount: 1000, artistId: 'artist_1', reference: 'ref-123' }),
+        where: expect.objectContaining({ claimedByPayoutRequestId: 'req_1' }),
+        data: expect.objectContaining({ status: 'paid', reference: 'ref-123' }),
       })
     );
   });
@@ -184,7 +210,7 @@ describe('POST /api/admin/payouts — status transition guards', () => {
     const res = await POST(postRequest({ requestId: 'req_1', action: 'delete_everything' }));
     expect(res.status).toBe(400);
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockArtistPayoutCreate).not.toHaveBeenCalled();
+    expect(mockArtistPayoutUpdateMany).not.toHaveBeenCalled();
   });
 });
 
