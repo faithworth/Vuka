@@ -31,6 +31,9 @@ export const r2Keys = {
   trackFullWav: (id: string) => `private/tracks/${id}.wav`,
   license: (id: string) => `licenses/${id}.pdf`,
   receipt: (id: string) => `receipts/${id}.pdf`,
+  // Government ID documents — PRIVATE. Never pass through getPublicUrl().
+  // Served only via the admin-only presigned-download route.
+  verificationDoc: (artistId: string, ext: string) => `private/verification/${artistId}.${ext}`,
 };
 
 export function getPublicUrl(key: string): string {
