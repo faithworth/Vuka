@@ -7,8 +7,9 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
-  CheckCircle2, Mic2, ExternalLink, QrCode, Download, Building2, Plus, Trash2, Wallet, Crown, Zap, Star, Check, ArrowRight, AlertTriangle,
+  CheckCircle2, Mic2, ExternalLink, QrCode, Download, Building2, Plus, Trash2, Wallet, Crown, Zap, Star, Check, ArrowRight, AlertTriangle, ShieldCheck, Clock,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
@@ -273,6 +274,25 @@ function SettingsContent() {
           {planActivateMsg}
         </div>
       )}
+
+      {/* ── Verification ── */}
+      <Link href="/dashboard/verification"
+        className="flex items-center gap-3 p-4 rounded-2xl mb-6 transition-opacity hover:opacity-90"
+        style={{
+          background: artist.isVerified ? 'rgba(160,232,124,0.08)' : 'var(--surface)',
+          border: `1px solid ${artist.isVerified ? 'rgba(160,232,124,0.25)' : 'var(--border)'}`,
+        }}>
+        <ShieldCheck size={20} style={{ color: artist.isVerified ? 'var(--green)' : 'var(--text-muted)' }} />
+        <div className="flex-1">
+          <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>
+            {artist.isVerified ? 'Verified artist' : 'Get Verified'}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {artist.isVerified ? 'Your profile shows the verified badge' : 'Submit your legal name and ID for review'}
+          </p>
+        </div>
+        {!artist.isVerified && <ArrowRight size={16} style={{ color: 'var(--text-muted)' }} />}
+      </Link>
 
       {/* ── Payment Setup ── */}
       <div className="rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
