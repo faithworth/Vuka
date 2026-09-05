@@ -8,6 +8,7 @@ import {
   checkMilestones,
 } from '@/lib/workers/jobs';
 import { autoReleaseEscrow } from '@/lib/marketplace';
+import { runWeeklyRoyaltyRun } from '@/lib/royalty-run';
 import prisma from '@/lib/prisma';
 
 const CRON_SECRET = process.env.CRON_SECRET;
