@@ -68,10 +68,20 @@ export async function approveIndustryPayoutRequest(requestId: string, notes?: st
   if (!req) throw new Error('Payout request not found');
   if (req.status !== 'pending') throw new Error(`Already ${req.status}`);
 
-  return prisma.industryPayoutRequest.update({
+  await prisma.industryPayoutRequest.update({
     where: { id: requestId },
     data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
+
+  // Auto-dispatch immediately — fire-and-forget, mirroring approvePayoutRequest
+  // in payouts.ts (artist side). Dynamic import avoids a circular dependency
+  // (earnings.ts imports from this file for its webhook handlers).
+  const { dispatchIndustryPayout } = await import('./earnings');
+  dispatchIndustryPayout(requestId).catch((err) => {
+    console.error('[industry-payouts] auto-dispatch failed', requestId, err);
+  });
+
+  return req;
 }
 
 // ── Admin: Mark Payout Paid ───────────────────────────────────
