@@ -7,6 +7,7 @@ import {
   cleanupStaleData,
   checkMilestones,
 } from '@/lib/workers/jobs';
+import { autoReleaseEscrow } from '@/lib/marketplace';
 import prisma from '@/lib/prisma';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -111,6 +112,17 @@ export async function GET(req: NextRequest) {
         };
       } catch (e: any) {
         results.payoutProcess = { error: e.message };
+      }
+    }
+
+    // ── marketplace_release ──────────────────────────────
+    // Auto-releases marketplace escrow orders that have sat in 'delivered'
+    // for 7+ days with no buyer confirmation and no dispute.
+    if (job === 'marketplace_release' || job === 'all') {
+      try {
+        results.marketplaceRelease = await autoReleaseEscrow();
+      } catch (e: any) {
+        results.marketplaceRelease = { error: e.message };
       }
     }
 
