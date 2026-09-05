@@ -6,6 +6,7 @@ import prisma from './prisma';
 import { logger } from './logger';
 import { getPlan } from './plans';
 import { markPayoutPaid, rejectPayoutRequest } from './payouts';
+import { markIndustryPayoutPaid, rejectIndustryPayoutRequest } from './industry-payouts';
 
 // ── REVENUE SHARE CALCULATION ─────────────────────────────────
 
@@ -310,7 +311,7 @@ export async function processPayPalPayout(params: {
   }
 }
 
-// ── PAYOUT DISPATCHER ─────────────────────────────────────────
+// ── PAYOUT DISPATCHER (ARTISTS) ───────────────────────────────
 // Routes an approved PayoutRequest to the correct processor.
 
 export type PayoutMethod = 'paystack' | 'payfast' | 'flutterwave' | 'paypal' | 'bank_transfer';
@@ -413,10 +414,115 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
   return result;
 }
 
+// ── PAYOUT DISPATCHER (INDUSTRY) ──────────────────────────────
+// Mirrors dispatchPayout() above, routing an approved
+// IndustryPayoutRequest to the correct processor. Industry has no
+// per-transaction ledger (see src/lib/industry-payouts.ts) — the request
+// amount itself is what gets dispatched.
+
+export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
+  success: boolean;
+  referenceId?: string;
+  error?: string;
+}> {
+  const request = await prisma.industryPayoutRequest.findUnique({
+    where: { id: payoutRequestId },
+    include: {
+      bankAccount: true,
+      industryUser: { include: { user: { select: { email: true } } } },
+    },
+  });
+
+  if (!request) return { success: false, error: 'Payout request not found' };
+  if (request.status !== 'approved') {
+    return { success: false, error: `Cannot dispatch: status is ${request.status}` };
+  }
+
+  await prisma.industryPayoutRequest.update({
+    where: { id: payoutRequestId },
+    data: { status: 'processing' },
+  });
+
+  // Distinct prefix from artist payouts (VUKA-) so the transfer webhook
+  // can tell which table to settle against without an extra lookup.
+  const reference = `VUKA-IND-${payoutRequestId.slice(-8).toUpperCase()}`;
+  let result: { success: boolean; referenceId?: string; error?: string };
+
+  const method = (request.bankAccount?.accountType || 'bank_transfer') as PayoutMethod;
+
+  if (method === 'paypal') {
+    const paypalEmail = request.paypalEmail || request.industryUser.user?.email || '';
+    result = await processPayPalPayout({
+      payoutRequestId,
+      amount: request.amount,
+      currency: request.currency,
+      paypalEmail,
+      reference,
+    });
+  } else if (method === 'flutterwave') {
+    const ba = request.bankAccount;
+    result = await processFlutterwavePayout({
+      payoutRequestId,
+      amount: request.amount,
+      currency: request.currency,
+      accountNumber: ba?.accountNumber || '',
+      bankCode: ba?.branchCode || '',
+      accountHolder: ba?.accountHolder || '',
+      reference,
+      country: 'ZA',
+    });
+  } else if (method === 'payfast') {
+    const ba = request.bankAccount;
+    result = await processPayFastPayout({
+      payoutRequestId,
+      amount: request.amount,
+      currency: request.currency,
+      accountNumber: ba?.accountNumber || '',
+      bankCode: ba?.branchCode || '',
+      accountHolder: ba?.accountHolder || '',
+      reference,
+    });
+  } else {
+    const ba = request.bankAccount;
+    result = await processPaystackPayout({
+      payoutRequestId,
+      amount: request.amount,
+      currency: request.currency,
+      accountNumber: ba?.accountNumber || '',
+      bankCode: ba?.branchCode || '',
+      accountHolder: ba?.accountHolder || '',
+      reference,
+    });
+  }
+
+  if (result.success) {
+    await prisma.industryPayoutRequest.update({
+      where: { id: payoutRequestId },
+      data: {
+        status: 'processing',
+        adminNotes: `Dispatched via ${method} — ref: ${result.referenceId || reference}`,
+        processedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.industryPayoutRequest.update({
+      where: { id: payoutRequestId },
+      data: {
+        status: 'rejected',
+        adminNotes: `Dispatch failed: ${result.error}`,
+      },
+    });
+  }
+
+  return result;
+}
+
 // ── WEBHOOK STATUS HANDLERS ────────────────────────────────────
-// All handlers use markPayoutPaid() / rejectPayoutRequest() from payouts.ts
-// so the original claimed ledger rows are settled in place instead of
-// creating duplicate 'paid' rows.
+// All handlers use markPayoutPaid()/rejectPayoutRequest() (artists) or
+// markIndustryPayoutPaid()/rejectIndustryPayoutRequest() (industry) so the
+// original claimed/requested amounts are settled in place instead of
+// creating duplicate 'paid' rows. Reference prefix (VUKA-IND- vs VUKA-)
+// decides which table a given transfer belongs to.
 
 // ── Paystack transfer webhook ─────────────────────────────────
 export async function handlePaystackTransferWebhook(payload: {
@@ -431,8 +537,29 @@ export async function handlePaystackTransferWebhook(payload: {
   const { event, data } = payload;
   if (event !== 'transfer.success' && event !== 'transfer.failed') return;
 
+  const rawRef = data.reference || '';
+  if (!rawRef) return;
+
+  if (rawRef.startsWith('VUKA-IND-')) {
+    const refSuffix = rawRef.replace('VUKA-IND-', '').toLowerCase();
+    if (!refSuffix) return;
+    const request = await prisma.industryPayoutRequest.findFirst({ where: { id: { endsWith: refSuffix } } });
+    if (!request) {
+      logger.warn('[earnings] Paystack transfer webhook — no matching IndustryPayoutRequest', { ref: rawRef });
+      return;
+    }
+    if (event === 'transfer.success') {
+      await markIndustryPayoutPaid(request.id, data.transfer_code || data.reference);
+      logger.info('[earnings] Paystack transfer succeeded (industry)', { requestId: request.id, ref: rawRef });
+    } else {
+      await rejectIndustryPayoutRequest(request.id, `Paystack transfer failed — ${data.reason || data.status}`);
+      logger.warn('[earnings] Paystack transfer failed (industry)', { requestId: request.id, ref: rawRef });
+    }
+    return;
+  }
+
   // Reference format: VUKA-XXXXXXXX (last 8 chars of payoutRequestId, upper)
-  const refSuffix = (data.reference || '').replace('VUKA-', '').toLowerCase();
+  const refSuffix = rawRef.replace('VUKA-', '').toLowerCase();
   if (!refSuffix) return;
 
   const request = await prisma.payoutRequest.findFirst({
@@ -466,7 +593,23 @@ export async function handleFlutterwaveWebhook(payload: {
   const { event, data } = payload;
   if (event !== 'transfer.completed' && event !== 'transfer.failed') return;
 
-  const refSuffix = data.reference?.replace('VUKA-', '').toLowerCase();
+  const rawRef = data.reference || '';
+  if (!rawRef) return;
+
+  if (rawRef.startsWith('VUKA-IND-')) {
+    const refSuffix = rawRef.replace('VUKA-IND-', '').toLowerCase();
+    if (!refSuffix) return;
+    const request = await prisma.industryPayoutRequest.findFirst({ where: { id: { endsWith: refSuffix } } });
+    if (!request) return;
+    if (data.status === 'SUCCESSFUL') {
+      await markIndustryPayoutPaid(request.id, rawRef);
+    } else {
+      await rejectIndustryPayoutRequest(request.id, `Flutterwave transfer failed — ${data.complete_message || data.status}`);
+    }
+    return;
+  }
+
+  const refSuffix = rawRef.replace('VUKA-', '').toLowerCase();
   if (!refSuffix) return;
 
   const request = await prisma.payoutRequest.findFirst({
@@ -497,6 +640,24 @@ export async function handlePayPalWebhook(payload: {
   if (!event_type.startsWith('PAYMENT.PAYOUTS-ITEM')) return;
 
   const senderBatchId = resource.batch_header?.sender_batch_header?.sender_batch_id || '';
+  if (!senderBatchId) return;
+
+  const success = event_type === 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED';
+  const failed  = event_type === 'PAYMENT.PAYOUTS-ITEM.FAILED' || event_type === 'PAYMENT.PAYOUTS-ITEM.RETURNED';
+
+  if (senderBatchId.startsWith('VUKA-IND-')) {
+    const refSuffix = senderBatchId.replace('VUKA-IND-', '').toLowerCase();
+    if (!refSuffix) return;
+    const request = await prisma.industryPayoutRequest.findFirst({ where: { id: { endsWith: refSuffix } } });
+    if (!request) return;
+    if (success) {
+      await markIndustryPayoutPaid(request.id, senderBatchId);
+    } else if (failed) {
+      await rejectIndustryPayoutRequest(request.id, `PayPal payout failed — ${event_type}`);
+    }
+    return;
+  }
+
   const refSuffix = senderBatchId.replace('VUKA-', '').toLowerCase();
   if (!refSuffix) return;
 
@@ -504,9 +665,6 @@ export async function handlePayPalWebhook(payload: {
     where: { id: { endsWith: refSuffix } },
   });
   if (!request) return;
-
-  const success = event_type === 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED';
-  const failed  = event_type === 'PAYMENT.PAYOUTS-ITEM.FAILED' || event_type === 'PAYMENT.PAYOUTS-ITEM.RETURNED';
 
   if (success) {
     await markPayoutPaid(request.id, senderBatchId);

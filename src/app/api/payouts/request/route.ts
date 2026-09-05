@@ -44,50 +44,19 @@ export async function GET() {
   }
 }
 
-// POST — submit a new payout request
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireArtist();
-    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const ip = getClientIp(req.headers);
-    const limited = await rateLimit(user.id, RATE_LIMITS.payout_request, ip);
-    if (limited) return NextResponse.json({ error: 'Too many payout requests. Please wait before trying again.' }, { status: 429 });
-
-    const raw = await req.json();
-    const parsed = schemas.payout.request.safeParse(raw);
-    if (!parsed.success) return validationError(parsed.error);
-
-    const { amount, currency, method, bankAccountId, paypalEmail } = parsed.data;
-
-    const request = await requestPayout({
-      artistId: user.artist.id,
-      amount,
-      currency,
-      method,
-      bankAccountId,
-      paypalEmail,
-    });
-
-    // Phase 9: notify artist payout request received
-    try {
-      await sendPayoutRequested({
-        to: user.email,
-        artistName: user.artist.name || user.name || 'Artist',
-        amount: Number(amount),
-        currency: currency || 'ZAR',
-        payoutMethod: method === 'bank_transfer' ? 'Bank Transfer' : method === 'paypal' ? 'PayPal' : 'Paystack',
-        referenceNumber: request.id,
-        payoutsUrl: `${APP_URL()}/dashboard/payouts`,
-      });
-    } catch (e) { console.error('[payouts/request] email failed:', e); }
-
-    return NextResponse.json({ request }, { status: 201 });
-  } catch (err: any) {
-    console.error('[payouts/request] POST error:', err?.message);
-    const code = err?.message?.includes('exceeds available') ? 422 : 503;
-    return NextResponse.json({ error: err?.message || 'Payout request failed' }, { status: code });
-  }
+// POST — disabled. Payouts are no longer self-serve: Vuka pays out
+// automatically every Monday to every artist with a clearable balance
+// above the R50 minimum and a verified bank account on file, the way a
+// label pays its roster on schedule rather than on demand. See
+// src/lib/royalty-run.ts and the `royalty_run` cron entry in vercel.json.
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        'Payout requests are automatic now. Vuka pays out to eligible artists every Monday — no action needed once your balance clears R50 and you have a verified bank account on file.',
+    },
+    { status: 410 },
+  );
 }
 
 // PATCH — retry a failed payout request

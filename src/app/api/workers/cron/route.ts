@@ -8,6 +8,7 @@ import {
   checkMilestones,
 } from '@/lib/workers/jobs';
 import { autoReleaseEscrow } from '@/lib/marketplace';
+import { runWeeklyRoyaltyRun } from '@/lib/royalty-run';
 import prisma from '@/lib/prisma';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -123,6 +124,19 @@ export async function GET(req: NextRequest) {
         results.marketplaceRelease = await autoReleaseEscrow();
       } catch (e: any) {
         results.marketplaceRelease = { error: e.message };
+      }
+    }
+
+    // —— royalty_run ——
+    // Weekly automatic payout for artists + industry users. Not run as part
+    // of 'all' — it has its own weekly cron entry in vercel.json (Mondays)
+    // so it never fires accidentally alongside the daily jobs. This is now
+    // the ONLY way payouts are triggered — self-serve requests were removed.
+    if (job === 'royalty_run') {
+      try {
+        results.royaltyRun = await runWeeklyRoyaltyRun();
+      } catch (e: any) {
+        results.royaltyRun = { error: e.message };
       }
     }
 

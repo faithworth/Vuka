@@ -16,8 +16,8 @@ export default function PayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab]       = useState<'overview' | 'history'>('overview');
 
-  // Payout request
-  const [requestingPayout, setRequestingPayout] = useState(false);
+  // Payout status (self-serve requests removed — payouts are automatic;
+  // retry still exists for a request an admin rejected)
   const [payoutError, setPayoutError]           = useState('');
   const [payoutSuccess, setPayoutSuccess]       = useState('');
   const [retryingId, setRetryingId]             = useState<string | null>(null);
@@ -74,35 +74,6 @@ export default function PayoutsPage() {
       await load();
     } catch {}
     setBankSaving(false);
-  }
-
-  async function requestPayout() {
-    setRequestingPayout(true);
-    setPayoutError('');
-    setPayoutSuccess('');
-    try {
-      const defaultBank = bankAccounts.find((a: any) => a.isDefault) || bankAccounts[0];
-      const res = await fetch('/api/payouts/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: summary.totalPending,
-          method: 'bank_transfer',
-          bankAccountId: defaultBank?.id,
-          currency: 'ZAR',
-        }),
-      });
-      if (res.ok) {
-        setPayoutSuccess('Payout request submitted! We\'ll process it within 1–3 business days.');
-        await load();
-      } else {
-        const d = await res.json();
-        setPayoutError(d.error || 'Failed to submit payout request.');
-      }
-    } catch {
-      setPayoutError('Network error — please try again.');
-    }
-    setRequestingPayout(false);
   }
 
   async function retryPayout(requestId: string) {
@@ -246,8 +217,8 @@ export default function PayoutsPage() {
                     </p>
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Paystack collects payments on your behalf. Payouts are processed to your
-                    SA bank account based on your payout requests below.
+                    Paystack collects payments on your behalf. Payouts to your SA bank
+                    account are sent automatically every Monday.
                   </p>
                   <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -259,7 +230,7 @@ export default function PayoutsPage() {
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
                     Add your bank account so SA buyers can pay you via card, EFT, or bank transfer through Paystack.
-                    Paystack collects payments on your behalf and you request payouts to this account.
+                    Paystack collects payments on your behalf and payouts to this account are sent automatically every Monday.
                   </p>
                   <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
                     style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
@@ -374,8 +345,8 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Manual EFT payouts are processed within 2–5 business days.
-                    Request a payout from your History tab once your balance is confirmed.
+                    Manual EFT payouts are sent automatically every Monday, 2–5 business days
+                    to clear, once your balance is confirmed.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -475,8 +446,8 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Paystack: once connected, request a payout and funds are sent to your SA bank account.',
-                'SA Bank EFT: save your bank details, then request a payout when your balance is ready.',
+                'Paystack: once connected, payouts are sent automatically to your SA bank account every Monday.',
+                'SA Bank EFT: save your bank details — payouts are sent automatically every Monday once your balance clears R50.',
                 'Ozow and Yoco integrations are coming — they will appear here once live.',
                 'All amounts are in ZAR. International buyers pay via card and funds convert automatically.',
               ].map((item, i) => (
@@ -493,25 +464,20 @@ export default function PayoutsPage() {
       {tab === 'history' && (
         <div className="space-y-4">
 
-          {/* ── Request Payout button ── */}
+          {/* ── Automatic weekly payout notice (self-serve requests removed) ── */}
           {(summary.totalPending > 0 || summary.totalEarned > 0) && (
             <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>Ready to withdraw</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{formatCurrency(summary.totalPending || 0)} ready</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Processed within 1–3 business days after approval.
+                    Paid out automatically every Monday once your balance clears R50 and you have a verified bank account on file — no need to request it.
                   </p>
                 </div>
-                <button
-                  onClick={requestPayout}
-                  disabled={requestingPayout || summary.totalPending <= 0}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50"
-                  style={{ background: summary.totalPending > 0 ? 'linear-gradient(135deg,#d4a000,#b38600)' : 'var(--surface2)' }}>
-                  {requestingPayout
-                    ? <><VukaLoader size={14} /> Submitting…</>
-                    : <><ArrowUpRight size={14} /> Request Payout {summary.totalPending > 0 ? `· ${formatCurrency(summary.totalPending)}` : ''}</>}
-                </button>
+                <span className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
+                  style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--green)' }}>
+                  <Clock size={13} /> Next royalty run: Monday
+                </span>
               </div>
               {payoutSuccess && (
                 <div className="mt-3 flex items-center gap-2 text-sm p-3 rounded-xl"
