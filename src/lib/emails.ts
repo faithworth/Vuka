@@ -1186,3 +1186,40 @@ export async function sendAllSessionsRevokedEmail({
     console.error('[email] sendAllSessionsRevokedEmail:', e);
   }
 }
+
+export async function sendMarketplaceAutoReleased({
+  buyerEmail,
+  sellerEmail,
+  orderTitle,
+  ordersUrl,
+}: {
+  buyerEmail: string;
+  sellerEmail: string;
+  orderTitle: string;
+  ordersUrl: string;
+}) {
+  const subject = `Order auto-completed: ${orderTitle}`;
+  try {
+    await getResend().emails.send({
+      from: FROM(), to: buyerEmail, subject,
+      html: layout(card(
+        icon('✅') +
+        heading('Order Marked Complete') +
+        sub(`Your order "${orderTitle}" was delivered over 7 days ago and hasn't been marked complete or disputed, so it's been automatically completed and the seller has been paid.`) +
+        sub('If there was a problem with this order, contact us right away and we can look into it.') +
+        btn(ordersUrl, 'View Order', 'secondary')
+      )),
+    });
+    await getResend().emails.send({
+      from: FROM(), to: sellerEmail, subject: `Payout released: ${orderTitle}`,
+      html: layout(card(
+        icon('💰') +
+        heading('Order Auto-Completed — Payout Released') +
+        sub(`Your order "${orderTitle}" sat 7+ days with no buyer response, so it's auto-completed and your payout has been queued.`) +
+        btn(ordersUrl, 'View Order', 'primary')
+      )),
+    });
+  } catch (e) {
+    console.error('[email] sendMarketplaceAutoReleased:', e);
+  }
+}
