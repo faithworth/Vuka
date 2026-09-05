@@ -60,75 +60,16 @@ export async function GET() {
   return NextResponse.json({ artists: rows });
 }
 
-// POST — trigger payout requests for a set of artists.
-// Body: { artistIds: string[] } — requests each artist's full available
-// balance to their default bank account. Artists without a default bank
-// account or below the R50 minimum are silently skipped and reported back,
-// not treated as a hard failure of the whole batch.
-export async function POST(req: NextRequest) {
-  const user = await requireArtist();
-  if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const gate = await requirePlanAtLeast(user.artist.id, 'label');
-  if (!gate.ok) return gate.response;
-
-  const { artistIds } = await req.json();
-  if (!Array.isArray(artistIds) || artistIds.length === 0) {
-    return NextResponse.json({ error: 'artistIds array required' }, { status: 400 });
-  }
-
-  const label = await prisma.label.findUnique({
-    where: { ownerId: user.id },
-    include: { roster: { where: { status: 'active' } } },
-  });
-  if (!label) return NextResponse.json({ error: 'No label found' }, { status: 404 });
-
-  // Only allow requesting payouts for artists actually on this label's
-  // active roster — prevents a label owner from requesting payouts for
-  // arbitrary artistIds outside their own roster.
-  const rosterIds = new Set(label.roster.map(r => r.artistId));
-  const validIds = artistIds.filter((id: string) => rosterIds.has(id));
-
-  const results: { artistId: string; ok: boolean; amount?: number; error?: string }[] = [];
-
-  for (const artistId of validIds) {
-    try {
-      const defaultBank = await prisma.artistBankAccount.findFirst({ where: { artistId, isDefault: true } });
-      if (!defaultBank) {
-        results.push({ artistId, ok: false, error: 'No default bank account on file' });
-        continue;
-      }
-
-      const [pendingLedger, alreadyRequested] = await Promise.all([
-        prisma.artistPayout.aggregate({ where: { artistId, status: 'pending' }, _sum: { amount: true } }),
-        prisma.payoutRequest.aggregate({ where: { artistId, status: { in: ['pending', 'approved'] } }, _sum: { amount: true } }),
-      ]);
-      const available = Math.round(((pendingLedger._sum.amount ?? 0) - (alreadyRequested._sum.amount ?? 0)) * 100) / 100;
-
-      if (available < 50) {
-        results.push({ artistId, ok: false, error: `Below R50 minimum (available: R${available.toFixed(2)})` });
-        continue;
-      }
-
-      await requestPayout({
-        artistId,
-        amount: available,
-        currency: 'ZAR',
-        bankAccountId: defaultBank.id,
-        bankName: defaultBank.bankName,
-        accountHolder: defaultBank.accountHolder,
-      });
-      results.push({ artistId, ok: true, amount: available });
-    } catch (err: any) {
-      results.push({ artistId, ok: false, error: err?.message || 'Payout request failed' });
-    }
-  }
-
-  const skipped = artistIds.filter((id: string) => !rosterIds.has(id));
-  return NextResponse.json({
-    ok: true,
-    results,
-    skippedNotOnRoster: skipped,
-    succeeded: results.filter(r => r.ok).length,
-    failed: results.filter(r => !r.ok).length,
-  });
+// POST — disabled. Payouts are no longer self-serve or label-triggered:
+// every roster artist is paid automatically every Monday once their
+// balance clears R50 and they have a verified bank account on file. See
+// src/lib/royalty-run.ts and the `royalty_run` cron entry in vercel.json.
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        'Bulk payout requests are automatic now. Every roster artist with a clearable balance and a verified bank account is paid every Monday — no action needed.',
+    },
+    { status: 410 },
+  );
 }
