@@ -12,6 +12,7 @@
 
 import prisma from './prisma';
 import { platformFee as calcFee, artistNet as calcNet, getPlan } from './plans';
+import { sendMarketplaceAutoReleased } from './emails';
 
 function getPeriod(): string {
   const now = new Date();
@@ -220,20 +221,28 @@ export async function autoReleaseEscrow(): Promise<{ released: string[]; failed:
 
   const eligible = await prisma.marketplaceOrder.findMany({
     where: { status: 'delivered', deliveredAt: { not: null, lte: cutoff } },
-    select: { id: true, buyerUserId: true },
+    select: {
+      id: true, buyerUserId: true, packageName: true,
+      buyer: { select: { email: true } },
+      service: { select: { title: true } },
+      seller: { select: { user: { select: { email: true } } } },
+    },
   });
 
   const released: string[] = [];
   const failed: { orderId: string; error: string }[] = [];
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
 
   for (const order of eligible) {
     try {
-      // completeOrder re-checks status==='delivered' inside its own
-      // transaction, so a dispute raised between the query above and here
-      // (status would have flipped to 'disputed') safely throws and is
-      // caught below rather than being silently released.
       await completeOrder(order.id, order.buyerUserId);
       released.push(order.id);
+      await sendMarketplaceAutoReleased({
+        buyerEmail: order.buyer.email,
+        sellerEmail: order.seller.user.email,
+        orderTitle: order.service?.title || order.packageName,
+        ordersUrl: `${appUrl}/dashboard/purchases`,
+      });
     } catch (err) {
       failed.push({ orderId: order.id, error: err instanceof Error ? err.message : 'unknown error' });
     }
