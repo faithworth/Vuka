@@ -90,7 +90,7 @@ export async function deliverOrder(
 
   return prisma.marketplaceOrder.update({
     where: { id: orderId },
-    data: { status: 'delivered', deliverables },
+    data: { status: 'delivered', deliverables, deliveredAt: new Date() },
   });
 }
 
@@ -122,7 +122,7 @@ export async function completeOrder(orderId: string, buyerUserId: string) {
 
     const updated = await tx.marketplaceOrder.update({
       where: { id: orderId },
-      data: { status: 'complete' },
+      data: { status: 'complete', completedAt: new Date() },
     });
 
     // Use the fee/net already locked in on the order at checkout time —
