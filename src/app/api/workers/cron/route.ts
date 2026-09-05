@@ -126,6 +126,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // —— royalty_run ——
+    // Weekly automatic payout for artists + industry users. Not run as part
+    // of 'all' — it has its own weekly cron entry in vercel.json (Mondays)
+    // so it never fires accidentally alongside the daily jobs. This is now
+    // the ONLY way payouts are triggered — self-serve requests were removed.
+    if (job === 'royalty_run') {
+      try {
+        results.royaltyRun = await runWeeklyRoyaltyRun();
+      } catch (e: any) {
+        results.royaltyRun = { error: e.message };
+      }
+    }
+
     const durationMs = Date.now() - startTime;
     return NextResponse.json({
       ok: true,
