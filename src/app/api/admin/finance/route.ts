@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { platformFeeRate } from '@/lib/plans';
+import { approvePayoutRequest, rejectPayoutRequest } from '@/lib/payouts';
 
 // Default rate used ONLY for aggregate tip calculations in the overview,
 // where we don't load per-artist plan data. Per-artist views always use
@@ -668,20 +669,26 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Approve ───────────────────────────────────────────────────────────────
+    // Delegates to lib/payouts.ts, which sets approvedAt (required for the
+    // stale-check cron to ever see this request) and fires dispatchPayout()
+    // (required for money to actually move at all). This used to be a fully
+    // separate inline implementation that did neither, so approving a payout
+    // from this admin screen could never result in a payment going out.
     if (action === 'approve') {
       const { requestId, notes } = body;
       if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
       const r = await prisma.payoutRequest.findUnique({ where: { id: requestId } });
       if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       if (r.status !== 'pending') return NextResponse.json({ error: `Already ${r.status}` }, { status: 409 });
-      await prisma.payoutRequest.update({
-        where: { id: requestId },
-        data:  { status: 'approved', adminNotes: notes || '' },
-      });
+      await approvePayoutRequest(requestId, notes || '');
       return NextResponse.json({ ok: true });
     }
 
     // ── Reject ────────────────────────────────────────────────────────────────
+    // Delegates to lib/payouts.ts, which releases any ArtistPayout ledger
+    // rows this request had claimed. The old inline version here rejected
+    // the request but left claimed rows claimed forever — unclaimable by any
+    // future payout request, with no way to see the money again in the UI.
     if (action === 'reject') {
       const { requestId, notes } = body;
       if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
@@ -690,10 +697,7 @@ export async function POST(req: NextRequest) {
       if (!['pending', 'approved'].includes(r.status)) {
         return NextResponse.json({ error: `Cannot reject ${r.status} request` }, { status: 409 });
       }
-      await prisma.payoutRequest.update({
-        where: { id: requestId },
-        data:  { status: 'rejected', adminNotes: notes || 'Rejected by admin' },
-      });
+      await rejectPayoutRequest(requestId, notes || 'Rejected by admin');
       return NextResponse.json({ ok: true });
     }
 
