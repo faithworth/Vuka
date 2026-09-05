@@ -24,6 +24,10 @@
       "schedule": "0 9 * * 1-5"
     },
     {
+      "path": "/api/workers/cron?job=marketplace_release",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/renew-plans",
       "schedule": "45 23 * * *"
     },
