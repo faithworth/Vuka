@@ -28,6 +28,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/workers/cron?job=royalty_run",
+      "schedule": "0 9 * * 1"
+    },
+    {
       "path": "/api/cron/renew-plans",
       "schedule": "45 23 * * *"
     },
