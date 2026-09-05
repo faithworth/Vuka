@@ -26,7 +26,7 @@ export default function AcceptableUsePage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to all users of vukamusic.com — artists, fans, labels, and industry professionals.</p>
 
         <Section title="1. Who this applies to">
-          <p>This policy applies to every account on Vuka Music: independent artists and labels selling through the platform, fans and buyers, and industry professionals (managers, engineers, producers) offering services through the marketplace. It sits alongside our <Link href="/legal/terms" className="underline" style={{ color: 'var(--sky)' }}>Terms of Service</Link> — this page focuses specifically on conduct and content rules.</p>
+          <p>This policy applies to every account on Vuka Music: independent artists and labels whose music, merch, and services are sold through the platform by Vuka Music, fans and buyers, and industry professionals (managers, engineers, producers) whose services are booked through Vuka Music's marketplace. It sits alongside our <Link href="/legal/terms" className="underline" style={{ color: 'var(--sky)' }}>Terms of Service</Link> — this page focuses specifically on conduct and content rules.</p>
         </Section>
 
         <Section title="2. Account conduct">
@@ -43,7 +43,7 @@ export default function AcceptableUsePage() {
         </Section>
 
         <Section title="5. Marketplace-specific conduct">
-          <p>Industry professionals offering services (mixing, mastering, vocal features, and similar) through the marketplace must deliver what was described in the listing, within the stated delivery window, or communicate delays proactively. Buyers must provide accurate requirements at the time of ordering. Disputes are raised through the order itself and reviewed case by case — see the order status flow in your dashboard.</p>
+          <p>Marketplace services (mixing, mastering, vocal features, and similar) are sold by Vuka Music as fixed-fee catalog products, the same as everything else on the platform — the professional performs and delivers the work as the creator earning a royalty on the booking, not as the contracting seller. Professionals must deliver what was described in the listing, within the stated delivery window, or communicate delays proactively. Buyers must provide accurate requirements at the time of ordering. Disputes are raised through the order itself and reviewed case by case — see the order status flow in your dashboard.</p>
         </Section>
 
         <Section title="6. Enforcement">
