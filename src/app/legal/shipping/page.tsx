@@ -26,14 +26,14 @@ export default function ShippingPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to physical merch purchases only.</p>
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(56,182,232,0.08)', border: '1px solid rgba(56,182,232,0.25)' }}>
-          <p className="font-bold mb-1" style={{ color: 'var(--sky)' }}>Vuka Music is not a fulfilment centre</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Every merch item on Vuka is fulfilled directly by the artist who sells it. We process the payment and pass your order details to the artist — they pack it, book the courier, and ship it to you.</p>
+          <p className="font-bold mb-1" style={{ color: 'var(--sky)' }}>Vuka Music sells it, the artist ships it</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Merch on Vuka Music is sold by Vuka Music as seller of record, and fulfilled on our behalf by the artist you bought it from — they pack it, book the courier, and ship it to you. Vuka Music is not a fulfilment centre and doesn't handle the physical item at any point.</p>
         </div>
 
         <div className="space-y-6 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           <div>
             <h2 className="text-base font-bold mb-2" style={{ color: 'var(--text)' }}>Who ships what</h2>
-            <p>Digital items — beats, releases, samples, videos — are delivered instantly and are never shipped; this page doesn't apply to them. Physical merch (t-shirts, hoodies, and similar) is shipped by the artist you bought it from, not by Vuka Music centrally.</p>
+            <p>Digital items — beats, releases, samples, videos — are delivered instantly and are never shipped; this page doesn't apply to them. Physical merch (t-shirts, hoodies, and similar) is sold by Vuka Music and fulfilled by the artist you bought it from on Vuka Music's behalf, not shipped by Vuka Music centrally.</p>
           </div>
 
           <div>
