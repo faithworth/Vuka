@@ -208,6 +208,40 @@ export async function submitReview(
   });
 }
 
+// ── Auto-release escrow ─────────────────────────────────────
+// Orders sitting in 'delivered' with no buyer action and no dispute for
+// AUTO_RELEASE_DAYS auto-complete on the buyer's behalf, releasing payout
+// to the seller the same way a manual buyer confirmation would. Anything
+// disputed is excluded — that stays with manual admin resolution.
+const AUTO_RELEASE_DAYS = 7;
+
+export async function autoReleaseEscrow(): Promise<{ released: string[]; failed: { orderId: string; error: string }[] }> {
+  const cutoff = new Date(Date.now() - AUTO_RELEASE_DAYS * 24 * 60 * 60 * 1000);
+
+  const eligible = await prisma.marketplaceOrder.findMany({
+    where: { status: 'delivered', deliveredAt: { not: null, lte: cutoff } },
+    select: { id: true, buyerUserId: true },
+  });
+
+  const released: string[] = [];
+  const failed: { orderId: string; error: string }[] = [];
+
+  for (const order of eligible) {
+    try {
+      // completeOrder re-checks status==='delivered' inside its own
+      // transaction, so a dispute raised between the query above and here
+      // (status would have flipped to 'disputed') safely throws and is
+      // caught below rather than being silently released.
+      await completeOrder(order.id, order.buyerUserId);
+      released.push(order.id);
+    } catch (err) {
+      failed.push({ orderId: order.id, error: err instanceof Error ? err.message : 'unknown error' });
+    }
+  }
+
+  return { released, failed };
+}
+
 // ── List Services ─────────────────────────────────────────────
 
 export async function listServices(filters: {
