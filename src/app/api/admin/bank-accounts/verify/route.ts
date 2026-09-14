@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         if (code) {
           await prisma.artistBankAccount.update({
             where: { id: acc.id },
-            data: { paystackAccountCode: code, isVerified: true },
+            // Creating a Paystack transfer recipient does not verify account ownership.\n            // Keep isVerified false until an explicit admin verification action.\n            data: { paystackAccountCode: code },
           });
           results.push({ id: acc.id, status: 'created', code });
         } else {
