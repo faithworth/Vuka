@@ -14,9 +14,16 @@ import prisma from '@/lib/prisma';
 import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { logger } from '@/lib/logger';
 import { sendPurchaseConfirmation } from '@/lib/emails';
+import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
+
+  const ip = getClientIp(req.headers);
+  const limited = await rateLimit(ip, RATE_LIMITS.checkout_init, ip);
+  if (limited) {
+    return NextResponse.json({ error: 'Too many checkout attempts. Please try again shortly.' }, { status: 429 });
+  }
 
   try {
     const body = await req.json();

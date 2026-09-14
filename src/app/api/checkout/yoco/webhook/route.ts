@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
 
   let reference: string | undefined;
   let verifiedAmountZAR: number | undefined;
+  let verifiedCurrency: string | undefined;
 
   // ── Shape A: Checkout-API style ────────────────────────────────────
   if (event.type === 'payment.succeeded' && event.payload) {
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
       try {
         const checkout = await fetchYocoCheckout(checkoutId);
         verifiedAmountZAR = checkout.amount / 100;
+        verifiedCurrency = checkout.currency;
       } catch (err) {
         logger.error('[yoco/webhook] Shape A checkout re-fetch failed, falling back to payload amount', { traceId, checkoutId, error: String(err) });
         verifiedAmountZAR = event.payload.amount / 100;
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
       const payment = await res.json();
       reference = payment.metadata?.reference;
       verifiedAmountZAR = (payment.amount ?? 0) / 100;
+      verifiedCurrency = payment.currency;
     } catch (err) {
       logger.error('[yoco/webhook] Shape B fetch error', { traceId, error: String(err) });
       return NextResponse.json({ ok: true });
@@ -118,13 +121,15 @@ export async function POST(req: NextRequest) {
   const result = await confirmDirectPurchase({
     reference,
     verifiedAmountZAR,
+    verifiedCurrency,
     payoutMethod: 'yoco',
     traceId,
   });
 
-  if (!result.ok && result.reason === 'amount_mismatch') {
-    return new NextResponse('Amount mismatch', { status: 400 });
+  if (!result.ok && (result.reason === 'amount_mismatch' || result.reason === 'currency_mismatch')) {
+    return new NextResponse(result.reason === 'currency_mismatch' ? 'Currency mismatch' : 'Amount mismatch', { status: 400 });
   }
+  if (!result.ok) return new NextResponse('Purchase processing failed; retry required', { status: 500 });
 
   return NextResponse.json({ ok: true });
 }
