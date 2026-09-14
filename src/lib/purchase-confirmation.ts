@@ -33,10 +33,11 @@ export type PayoutMethod = 'paystack' | 'yoco';
 export async function confirmDirectPurchase(params: {
   reference: string;
   verifiedAmountZAR: number;
+  verifiedCurrency?: string;
   payoutMethod: PayoutMethod;
   traceId: string;
 }): Promise<{ ok: boolean; reason?: string }> {
-  const { reference, verifiedAmountZAR, payoutMethod, traceId } = params;
+  const { reference, verifiedAmountZAR, verifiedCurrency, payoutMethod, traceId } = params;
 
   const purchaseOrNull = await prisma.purchase.findFirst({
     where: { paystackReference: reference }, // column reused as a generic gateway-reference lookup across processors
@@ -52,6 +53,12 @@ export async function confirmDirectPurchase(params: {
   if (purchase.status !== 'pending') {
     logger.info('[purchase-confirmation] Duplicate — already processed', { traceId, reference, payoutMethod });
     return { ok: true };
+  }
+
+  if (verifiedCurrency && verifiedCurrency !== purchase.currency) {
+    logger.error('[purchase-confirmation] Currency mismatch', { traceId, reference, paidCurrency: verifiedCurrency, expectedCurrency: purchase.currency, payoutMethod });
+    await auditLog.securityEvent('security.invalid_download_attempt', `Currency mismatch purchaseId=${purchase.id}`, payoutMethod);
+    return { ok: false, reason: 'currency_mismatch' };
   }
 
   if (Math.abs(verifiedAmountZAR - purchase.amount) > 0.01) {
@@ -232,8 +239,17 @@ export async function confirmDirectPurchase(params: {
     try {
       await prisma.$transaction(txOps);
     } catch (e) {
-      logger.error('[purchase-confirmation] Ledger transaction failed — purchase confirmed but payout/counters may be incomplete', { traceId, purchaseId: purchase.id, artistId, payoutMethod, error: String(e) });
-      await auditLog.securityEvent('security.invalid_download_attempt', `Ledger transaction failed for purchaseId=${purchase.id}, artistId=${artistId}: ${String(e)}`, payoutMethod).catch(() => {});
+      logger.error('[purchase-confirmation] Ledger transaction failed — releasing purchase claim for safe retry', { traceId, purchaseId: purchase.id, artistId, payoutMethod, error: String(e) });
+      await auditLog.securityEvent('security.invalid_download_attempt', `Ledger transaction failed for purchaseId=${purchase.id}, artistId=${artistId}; claim released for retry: ${String(e)}`, payoutMethod).catch(() => {});
+      try {
+        await prisma.purchase.updateMany({
+          where: { id: purchase.id, status: 'confirmed' },
+          data: { status: 'pending' },
+        });
+      } catch (releaseErr) {
+        logger.error('[purchase-confirmation] CRITICAL: failed to release purchase claim after ledger failure', { traceId, purchaseId: purchase.id, error: String(releaseErr) });
+      }
+      return { ok: false, reason: 'ledger_failed' };
     }
   }
 
