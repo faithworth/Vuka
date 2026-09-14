@@ -36,9 +36,11 @@ export async function POST(req: NextRequest) {
         const plain = decrypt(acc.accountNumber); // decrypt stored number
         const code = await createTransferRecipient({ name: acc.accountHolder, accountNumber: plain, bankCode });
         if (code) {
+          // Creating a Paystack transfer recipient does not verify account ownership.
+          // Keep isVerified false until an explicit admin verification action.
           await prisma.artistBankAccount.update({
             where: { id: acc.id },
-            // Creating a Paystack transfer recipient does not verify account ownership.\n            // Keep isVerified false until an explicit admin verification action.\n            data: { paystackAccountCode: code },
+            data: { paystackAccountCode: code },
           });
           results.push({ id: acc.id, status: 'created', code });
         } else {
