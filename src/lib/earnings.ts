@@ -350,10 +350,12 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
 
   if (method === 'paypal') {
     const paypalEmail = request.paypalEmail || request.artist.paypalEmail || request.artist.user?.email || '';
+    const fx = request.currency === 'USD' ? null : await getZarToUsdRate();
+    const amountUSD = request.currency === 'USD' ? request.amount : zarToUsd(request.amount, fx!.zarToUsdRate);
     result = await processPayPalPayout({
       payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
+      amount: amountUSD,
+      currency: 'USD',
       paypalEmail,
       reference,
     });
@@ -455,10 +457,12 @@ export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
 
   if (method === 'paypal') {
     const paypalEmail = request.paypalEmail || request.industryUser.user?.email || '';
+    const fx = request.currency === 'USD' ? null : await getZarToUsdRate();
+    const amountUSD = request.currency === 'USD' ? request.amount : zarToUsd(request.amount, fx!.zarToUsdRate);
     result = await processPayPalPayout({
       payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
+      amount: amountUSD,
+      currency: 'USD',
       paypalEmail,
       reference,
     });
