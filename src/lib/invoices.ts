@@ -47,10 +47,10 @@ export async function createInvoiceFromPurchase(purchaseId: string) {
         purchaseId: purchase.id,
         buyerName:  purchase.buyerName,
         buyerEmail: purchase.buyerEmail,
-        // Vuka Music Platform (Pty) Ltd is the seller of record on every
+        // Vuka Music - The Rise Up (Pty) Ltd is the seller of record on every
         // invoice — the artist is named as the creator/royalty recipient,
         // not as the contracting seller. See legal/terms Section 1.
-        lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1, soldBy: 'Vuka Music Platform (Pty) Ltd', creator: artist?.name || '' }],
+        lineItems:  [{ description: itemName, amount: purchase.amount, quantity: 1, soldBy: 'Vuka Music - The Rise Up (Pty) Ltd', creator: artist?.name || '' }],
         subtotal:   purchase.amount,
         total:      purchase.amount,
         currency:   purchase.currency,
@@ -95,7 +95,7 @@ export async function createInvoiceFromOrder(orderId: string) {
         orderId:    order.id,
         buyerName:  order.buyer?.name ?? 'Unknown',
         buyerEmail: order.buyer?.email ?? '',
-        lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1, soldBy: 'Vuka Music Platform (Pty) Ltd', creator: order.seller?.name || '' }],
+        lineItems:  [{ description: order.packageName, amount: order.packagePrice, quantity: 1, soldBy: 'Vuka Music - The Rise Up (Pty) Ltd', creator: order.seller?.name || '' }],
         subtotal:   order.packagePrice,
         total:      order.packagePrice,
         currency:   order.currency,

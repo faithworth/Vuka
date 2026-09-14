@@ -26,8 +26,8 @@ export default function TermsPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Governing law: Republic of South Africa</p>
 
         <Section title="1. About Vuka Music">
-          <p>Vuka Music ("we", "us", "the platform") is a digital-content and creator-services platform operated by Vuka Music Platform (Pty) Ltd (Registration pending, CIPC), Republic of South Africa.</p>
-          <p><strong style={{ color: 'var(--text)' }}>Vuka Music is the seller of record for everything sold through vukamusic.com</strong> — digital content (beats, releases, videos, samples), physical merchandise, event tickets, memberships, and marketplace services booked through the platform. When you buy something on Vuka Music, you are entering into a sale agreement with Vuka Music Platform (Pty) Ltd, not directly with the artist or professional whose work or service you're buying. Artists and industry professionals are creators and royalty recipients under these Terms, not the contracting seller.</p>
+          <p>Vuka Music ("we", "us", "the platform") is a digital-content and creator-services platform operated by Vuka Music - The Rise Up (Pty) Ltd, Republic of South Africa.</p>
+          <p><strong style={{ color: 'var(--text)' }}>Vuka Music is the seller of record for everything sold through vukamusic.com</strong> — digital content (beats, releases, videos, samples), physical merchandise, event tickets, memberships, and marketplace services booked through the platform. When you buy something on Vuka Music, you are entering into a sale agreement with Vuka Music - The Rise Up (Pty) Ltd, not directly with the artist or professional whose work or service you're buying. Artists and industry professionals are creators and royalty recipients under these Terms, not the contracting seller.</p>
           <p>By creating an account or making a purchase, you confirm you are at least 18 years old and agree to these Terms in full.</p>
         </Section>
 
@@ -49,7 +49,7 @@ export default function TermsPage() {
         </Section>
 
         <Section title="5. Payments, Artist Royalties & Payouts">
-          <p>All prices are displayed in South African Rand (ZAR). Buyers pay Vuka Music directly via Paystack for domestic transactions. International payment options may be added in future.</p>
+          <p>All prices are displayed in South African Rand (ZAR). Buyers pay Vuka Music directly via Paystack for South African transactions. International buyers and artists may use PayPal where enabled for the relevant transaction and account.</p>
           <p>Artists and industry professionals earn a royalty on each sale of their content, service order, or listing — the applicable royalty rate depends on your plan (see below) and is disclosed before you list anything for sale. This royalty is a payment from Vuka Music to you as the creator, distinct from the sale Vuka Music makes to the buyer.</p>
           <p>Free accounts earn a royalty starting at 90% of the sale price (10% platform share), rising automatically as lifetime sales grow — to 91% at R2,000 lifetime gross, and to 91.5% permanently above R10,000. Pro plan (R170 every 2 months) earns a flat 92%. Label plan (R549 every 2 months) earns a flat 95%. No platform share is deducted from crowdfunding or event sales.</p>
           <p>Royalties accumulate in your Vuka Music balance and are paid out automatically every Monday to your verified bank account, once your balance clears the R50 minimum — the way a label pays its roster, not an on-demand withdrawal. You can view your accumulated balance and payout history in your dashboard at any time; there is no manual "request a payout" step.</p>

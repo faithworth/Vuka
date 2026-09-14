@@ -23,7 +23,8 @@ export default function ShippingPage() {
       </header>
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Shipping Policy</h1>
-        <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to physical merch purchases only.</p>
+        <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to physical merch purchases only.</p>
+        <p className="text-xs mb-10" style={{ color: 'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color: 'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(56,182,232,0.08)', border: '1px solid rgba(56,182,232,0.25)' }}>
           <p className="font-bold mb-1" style={{ color: 'var(--sky)' }}>Vuka Music sells it, the artist ships it</p>

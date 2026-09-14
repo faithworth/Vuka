@@ -23,7 +23,8 @@ export default function AcceptableUsePage() {
       </header>
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Acceptable Use Policy</h1>
-        <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to all users of vukamusic.com — artists, fans, labels, and industry professionals.</p>
+        <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Applies to all users of vukamusic.com — artists, fans, labels, and industry professionals.</p>
+        <p className="text-xs mb-10" style={{ color: 'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color: 'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
 
         <Section title="1. Who this applies to">
           <p>This policy applies to every account on Vuka Music: independent artists and labels whose music, merch, and services are sold through the platform by Vuka Music, fans and buyers, and industry professionals (managers, engineers, producers) whose services are booked through Vuka Music's marketplace. It sits alongside our <Link href="/legal/terms" className="underline" style={{ color: 'var(--sky)' }}>Terms of Service</Link> — this page focuses specifically on conduct and content rules.</p>

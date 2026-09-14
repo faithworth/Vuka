@@ -10,7 +10,8 @@ export default function ArtistAgreementPage() {
         <div className="mb-10">
           <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color:'var(--gold)' }}>Vuka Music</p>
           <h1 className="text-4xl font-black mb-3" style={{ color:'var(--text)' }}>Artist Agreement</h1>
-          <p className="text-sm" style={{ color:'var(--text-muted)' }}>Plain English. No legal gymnastics. Last updated June 2026.</p>
+          <p className="text-sm" style={{ color:'var(--text-muted)' }}>Plain English. No legal gymnastics. Last updated September 2026.</p>
+          <p className="text-xs mt-2" style={{ color:'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color:'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
         </div>
 
         <div className="space-y-8" style={{ color:'var(--text-muted)', lineHeight:'1.75', fontSize:'0.9375rem' }}>
@@ -42,12 +43,12 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>How you get paid</h2>
-            <p>Your earnings accumulate in your Vuka Music wallet after each confirmed sale. You request a withdrawal whenever you want — minimum R50, processed within 1–3 business days via your registered South African bank account. We use Paystack and PayPal to process payments; both are PCI-DSS compliant.</p>
+            <p>Your earnings are recorded in your Vuka Music royalty ledger after each confirmed sale. Royalties are paid once a week in a scheduled batch when your cleared balance meets the R50 minimum and you have a verified bank account on file; there is no on-demand withdrawal button. Vuka Music is the seller of record, and your payment is a royalty from Vuka Music to you as the creator. We use Paystack for South African payments and PayPal for international payments.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>What you can sell on Vuka Music</h2>
-            <p>Singles, EPs, albums, instrumentals/beats (with licensing), exclusive content behind a membership paywall, event tickets, and crowdfunding campaigns. All sold directly to fans — no middlemen between you and your money.</p>
+            <p>Singles, EPs, albums, instrumentals/beats (with licensing), exclusive content behind a membership paywall, event tickets, and crowdfunding campaigns. Vuka Music is the seller of record for transactions on the platform, while you retain ownership of your creative rights and receive the applicable royalty.</p>
           </section>
 
           <section>
