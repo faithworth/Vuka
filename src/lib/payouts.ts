@@ -7,6 +7,7 @@
 // ============================================================
 
 import prisma from './prisma';
+import { encrypt } from './encryption';
 
 function getPeriod(): string {
   const now = new Date();
@@ -52,6 +53,8 @@ export async function requestPayout(params: {
         currency:     params.currency || 'ZAR',
         bankAccountId: params.bankAccountId,
         status:       'pending',
+        method:       params.method || 'bank_transfer',
+        paypalEmail:  params.paypalEmail,
         adminNotes:   '',
       },
     });
@@ -218,13 +221,16 @@ export async function addBankAccount(params: {
       artistId:            params.artistId,
       bankName:            params.bankName      || '',
       accountHolder:       params.accountHolder || '',
-      accountNumber:       accountNumber,
+      accountNumber:       encrypt(accountNumber),
       maskedNumber:        masked,
       branchCode:          params.branchCode    || '',
       accountType:         params.accountType   || 'bank',
       paypalEmail:         params.paypalEmail,
       paystackAccountCode: params.paystackAccountCode,
       isDefault:           params.setAsDefault  || false,
+      // Keep this legacy helper safe if it is ever re-enabled by a caller.
+      // accountNumber must never be persisted in plaintext.
+      eligibleForPayoutAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
     },
   });
 }

@@ -68,17 +68,40 @@ async function runArtistRoyalties(): Promise<RunResult> {
       continue;
     }
 
-    const bank = await prisma.artistBankAccount.findFirst({
-      where: {
-        artistId,
-        isDefault: true,
-        isVerified: true,
-        OR: [{ eligibleForPayoutAt: null }, { eligibleForPayoutAt: { lte: new Date() } }],
-      },
+    const artist = await prisma.artist.findUnique({
+      where: { id: artistId },
+      select: { country: true, paypalEmail: true },
     });
-    if (!bank) {
-      result.skipped.push({ id: artistId, reason: 'No verified default bank account past cooldown' });
-      continue;
+
+    // South African artists are paid to a verified bank account through
+    // Paystack. Artists outside ZA use PayPal when an explicit PayPal
+    // recipient is configured. Never silently route an international artist
+    // to a ZAR bank-transfer path.
+    const isInternational = !!artist && artist.country.toUpperCase() !== 'ZA';
+    let bank = null;
+    let payoutMethod: 'bank_transfer' | 'paypal' = 'bank_transfer';
+    let paypalEmail: string | undefined;
+
+    if (isInternational) {
+      if (!artist?.paypalEmail) {
+        result.skipped.push({ id: artistId, reason: 'International artist has no PayPal payout email' });
+        continue;
+      }
+      payoutMethod = 'paypal';
+      paypalEmail = artist.paypalEmail;
+    } else {
+      bank = await prisma.artistBankAccount.findFirst({
+        where: {
+          artistId,
+          isDefault: true,
+          isVerified: true,
+          OR: [{ eligibleForPayoutAt: null }, { eligibleForPayoutAt: { lte: new Date() } }],
+        },
+      });
+      if (!bank) {
+        result.skipped.push({ id: artistId, reason: 'No verified default bank account past cooldown' });
+        continue;
+      }
     }
 
     // Don't stack a new request on top of one still in flight (e.g. a
@@ -97,7 +120,9 @@ async function runArtistRoyalties(): Promise<RunResult> {
         artistId,
         amount: available,
         currency: 'ZAR',
-        bankAccountId: bank.id,
+        bankAccountId: bank?.id,
+        method: payoutMethod,
+        paypalEmail,
       });
       await approvePayoutRequest(request.id, 'Auto-approved by weekly royalty run');
       result.paid.push({ id: artistId, amount: available });

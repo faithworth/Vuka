@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
         if (code) {
           await prisma.artistBankAccount.update({
             where: { id: acc.id },
-            data: { paystackAccountCode: code, isVerified: true },
+            // Recipient creation is not the same as KYC/ownership verification.
+            // Keep isVerified false until an explicit admin verification action.
+            data: { paystackAccountCode: code },
           });
           results.push({ id: acc.id, status: 'created', code });
         } else {

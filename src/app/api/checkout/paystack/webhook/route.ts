@@ -146,6 +146,22 @@ export async function POST(req: NextRequest) {
 
   if (verification.status !== 'success') return NextResponse.json({ ok: true });
 
+  // Verify the gateway currency and reference as well as the amount. A valid
+  // Paystack signature only proves the request came from Paystack; it does not
+  // prove that the payment belongs to this exact purchase in the expected
+  // currency.
+  if (verification.reference !== reference || verification.currency !== purchase.currency) {
+    logger.error('[paystack/webhook] Reference/currency mismatch', {
+      traceId,
+      reference,
+      verifiedReference: verification.reference,
+      paidCurrency: verification.currency,
+      expectedCurrency: purchase.currency,
+    });
+    await auditLog.securityEvent('security.invalid_download_attempt', `Reference/currency mismatch purchaseId=${purchase.id}`, 'paystack');
+    return new NextResponse('Payment verification mismatch', { status: 400 });
+  }
+
   // Amount check
   if (Math.abs(verification.amountZAR - purchase.amount) > 0.01) {
     logger.error('[paystack/webhook] Amount mismatch', { traceId, paid: verification.amountZAR, expected: purchase.amount });
@@ -371,8 +387,37 @@ export async function POST(req: NextRequest) {
     try {
       await prisma.$transaction(txOps);
     } catch (e) {
-      logger.error('[paystack/webhook] Ledger transaction failed — purchase confirmed but payout/counters may be incomplete', { traceId, purchaseId: purchase.id, artistId, error: String(e) });
-      await auditLog.securityEvent('security.invalid_download_attempt', `Ledger transaction failed for purchaseId=${purchase.id}, artistId=${artistId}: ${String(e)}`, 'paystack').catch(() => {});
+      // The purchase was claimed before the ledger transaction. If the
+      // ledger fails, do NOT acknowledge the webhook as successfully handled:
+      // release the claim back to pending so a Paystack retry can safely
+      // re-run the complete financial side effects. Prisma transactions are
+      // atomic, so none of txOps committed when this catch executes.
+      logger.error('[paystack/webhook] Ledger transaction failed — releasing purchase claim for safe retry', {
+        traceId,
+        purchaseId: purchase.id,
+        artistId,
+        error: String(e),
+      });
+      await auditLog.securityEvent(
+        'security.invalid_download_attempt',
+        `Ledger transaction failed for purchaseId=${purchase.id}, artistId=${artistId}; claim released for retry: ${String(e)}`,
+        'paystack'
+      ).catch(() => {});
+
+      try {
+        await prisma.purchase.updateMany({
+          where: { id: purchase.id, status: 'confirmed' },
+          data: { status: 'pending' },
+        });
+      } catch (releaseErr) {
+        logger.error('[paystack/webhook] CRITICAL: failed to release purchase claim after ledger failure', {
+          traceId,
+          purchaseId: purchase.id,
+          error: String(releaseErr),
+        });
+      }
+
+      return new NextResponse('Ledger processing failed; retry required', { status: 500 });
     }
   }
 
