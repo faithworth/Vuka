@@ -49,7 +49,7 @@ export default function TermsPage() {
         </Section>
 
         <Section title="5. Payments, Artist Royalties & Payouts">
-          <p>All prices are displayed in South African Rand (ZAR). Buyers pay Vuka Music directly via Paystack for domestic transactions. International payment options may be added in future.</p>
+          <p>All prices are displayed in South African Rand (ZAR). Buyers pay Vuka Music directly via Paystack for South African transactions. International buyers and artists may use PayPal where enabled for the relevant transaction and account.</p>
           <p>Artists and industry professionals earn a royalty on each sale of their content, service order, or listing — the applicable royalty rate depends on your plan (see below) and is disclosed before you list anything for sale. This royalty is a payment from Vuka Music to you as the creator, distinct from the sale Vuka Music makes to the buyer.</p>
           <p>Free accounts earn a royalty starting at 90% of the sale price (10% platform share), rising automatically as lifetime sales grow — to 91% at R2,000 lifetime gross, and to 91.5% permanently above R10,000. Pro plan (R170 every 2 months) earns a flat 92%. Label plan (R549 every 2 months) earns a flat 95%. No platform share is deducted from crowdfunding or event sales.</p>
           <p>Royalties accumulate in your Vuka Music balance and are paid out automatically every Monday to your verified bank account, once your balance clears the R50 minimum — the way a label pays its roster, not an on-demand withdrawal. You can view your accumulated balance and payout history in your dashboard at any time; there is no manual "request a payout" step.</p>
