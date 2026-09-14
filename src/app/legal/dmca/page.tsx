@@ -33,9 +33,10 @@ export default function DMCAPage() {
       </header>
       <main className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>DMCA Takedown Notice</h1>
-        <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
           If you believe your copyrighted work has been uploaded to Vuka Music without authorisation, complete this form. We will investigate within 72 hours.
         </p>
+        <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color: 'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
 
         {submitted ? (
           <div className="text-center py-16">
