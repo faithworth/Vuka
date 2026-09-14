@@ -196,7 +196,11 @@ export async function POST(req: NextRequest) {
           if (recipientCode) {
             await prisma.artistBankAccount.update({
               where: { id: created.id },
-              data: { paystackAccountCode: recipientCode, isVerified: true },
+              // Creating a Paystack recipient proves the account can be registered,
+              // but it is NOT our KYC/ownership verification step. Keep the account
+              // unverified until the admin verification flow explicitly approves it;
+              // the 48h cooldown is enforced by royalty-run.ts as well.
+              data: { paystackAccountCode: recipientCode },
             });
           }
         } catch (e) {
