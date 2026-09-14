@@ -1,8 +1,11 @@
 'use client';
 // src/components/BuyModal.tsx
-// Phase 12 — Paystack-only checkout (Stripe removed, PayFast replaced by Paystack)
-// All purchases route to /api/checkout/paystack/initialize
-// Paystack handles ZAR card, instant EFT, bank transfer, and mobile money
+// Yoco checkout — replaces Paystack as the buyer-facing processor for
+// direct purchases (beats, releases, videos, samples, merch). Paystack is
+// still used elsewhere (plans, marketplace orders, memberships, industry
+// orders, tips, tickets, campaigns) and remains the artist payout rail
+// regardless — see src/lib/earnings.ts.
+// All purchases route to /api/checkout/yoco/initialize
 
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
@@ -97,7 +100,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     setError('');
 
     try {
-      const res = await fetch('/api/checkout/paystack/initialize', {
+      const res = await fetch('/api/checkout/yoco/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -125,9 +128,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
         return;
       }
 
-      // Paid item — redirect user to Paystack's hosted checkout page
-      if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
+      // Paid item — redirect user to Yoco's hosted checkout page
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
         return;
       }
 
@@ -262,7 +265,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
           </div>
         )}
 
-        {/* Paystack badge */}
+        {/* Yoco badge */}
         {price > 0 && (
           <div
             className="mb-4 px-3 py-2 rounded-lg flex items-center gap-2"
@@ -270,8 +273,8 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
           >
             <span style={{ fontSize: 18 }}>🇿🇦</span>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
-              Secure payment via <strong style={{ color: 'var(--color-text-primary)' }}>Paystack</strong> — 
-              card, instant EFT, bank transfer &amp; more accepted.
+              Secure payment via <strong style={{ color: 'var(--color-text-primary)' }}>Yoco</strong> — 
+              card, Apple Pay &amp; more accepted.
             </p>
           </div>
         )}
@@ -340,7 +343,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
             ? 'Processing…'
             : price === 0
             ? 'Download Free →'
-            : `Buy via Paystack — ${formatCurrency(price)} →`}
+            : `Buy via Yoco — ${formatCurrency(price)} →`}
         </button>
       </div>
     </div>
