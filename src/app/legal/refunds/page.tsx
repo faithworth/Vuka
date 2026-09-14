@@ -20,7 +20,7 @@ export default function RefundsPage() {
 
         <div className="p-5 rounded-2xl mb-8" style={{ background: 'rgba(201,162,39,0.08)', border: '1px solid rgba(201,162,39,0.25)' }}>
           <p className="font-bold mb-1" style={{ color: 'var(--gold)' }}>Vuka Music is the seller of record on every purchase</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Whatever you buy on Vuka Music — digital content, merch, tickets, memberships, or a marketplace service — you're buying it from Vuka Music Platform (Pty) Ltd, and refund decisions are made by Vuka Music. Digital goods: once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable, consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp). Merch and marketplace services are handled differently — see below.</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Whatever you buy on Vuka Music — digital content, merch, tickets, memberships, or a marketplace service — you're buying it from Vuka Music - The Rise Up (Pty) Ltd, and refund decisions are made by Vuka Music. Digital goods: once a purchase is confirmed and download access is granted, the transaction is complete and non-refundable, consistent with how all major digital music platforms operate (Beatstars, TuneCore, Bandcamp). Merch and marketplace services are handled differently — see below.</p>
         </div>
 
         <div className="space-y-6 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
