@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     data: {
       isVerified: verified,
       verifiedAt: verified ? new Date() : null,
-      verificationMethod: verified ? (method || 'manual_admin_review') : '',
+      verificationMethod: verified ? (method || 'manual_admin_review') : null,
     },
   });
 
