@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
 
   const ip = getClientIp(req.headers);
-  const limited = await rateLimit(userId ?? ip, RATE_LIMITS.checkout_init, ip);
+  const limited = await rateLimit(ip, RATE_LIMITS.checkout_init, ip);
   if (limited) {
     return NextResponse.json({ error: 'Too many checkout attempts. Please try again shortly.' }, { status: 429 });
   }
