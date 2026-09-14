@@ -7,6 +7,7 @@
 // ============================================================
 
 import prisma from './prisma';
+import { encrypt } from './encryption';
 
 function getPeriod(): string {
   const now = new Date();
@@ -220,7 +221,7 @@ export async function addBankAccount(params: {
       artistId:            params.artistId,
       bankName:            params.bankName      || '',
       accountHolder:       params.accountHolder || '',
-      accountNumber:       accountNumber,
+      accountNumber:       encrypt(accountNumber),
       maskedNumber:        masked,
       branchCode:          params.branchCode    || '',
       accountType:         params.accountType   || 'bank',
