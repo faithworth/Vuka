@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
       const payment = await res.json();
       reference = payment.metadata?.reference;
       verifiedAmountZAR = (payment.amount ?? 0) / 100;
+      verifiedCurrency = payment.currency;
     } catch (err) {
       logger.error('[yoco/webhook] Shape B fetch error', { traceId, error: String(err) });
       return NextResponse.json({ ok: true });
