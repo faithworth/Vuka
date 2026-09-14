@@ -7,6 +7,7 @@ import { logger } from './logger';
 import { getPlan } from './plans';
 import { markPayoutPaid, rejectPayoutRequest } from './payouts';
 import { markIndustryPayoutPaid, rejectIndustryPayoutRequest } from './industry-payouts';
+import { getZarToUsdRate, zarToUsd } from './fx';
 
 // ── REVENUE SHARE CALCULATION ─────────────────────────────────
 
@@ -343,10 +344,12 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
   const reference = `VUKA-${payoutRequestId.slice(-8).toUpperCase()}`;
   let result: { success: boolean; referenceId?: string; error?: string };
 
-  const method = (request.bankAccount?.accountType || 'bank_transfer') as PayoutMethod;
+  // The payout method belongs to the request, not the bank account's
+  // accountType (current/savings/etc.).
+  const method = (request.method || 'bank_transfer') as PayoutMethod;
 
   if (method === 'paypal') {
-    const paypalEmail = request.artist.user?.email || '';
+    const paypalEmail = request.paypalEmail || request.artist.paypalEmail || request.artist.user?.email || '';
     result = await processPayPalPayout({
       payoutRequestId,
       amount: request.amount,
@@ -448,7 +451,7 @@ export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
   const reference = `VUKA-IND-${payoutRequestId.slice(-8).toUpperCase()}`;
   let result: { success: boolean; referenceId?: string; error?: string };
 
-  const method = (request.bankAccount?.accountType || 'bank_transfer') as PayoutMethod;
+  const method = (request.method || 'bank_transfer') as PayoutMethod;
 
   if (method === 'paypal') {
     const paypalEmail = request.paypalEmail || request.industryUser.user?.email || '';
