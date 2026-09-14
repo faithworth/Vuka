@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
 
   let reference: string | undefined;
   let verifiedAmountZAR: number | undefined;
+  let verifiedCurrency: string | undefined;
 
   // ── Shape A: Checkout-API style ────────────────────────────────────
   if (event.type === 'payment.succeeded' && event.payload) {
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
       try {
         const checkout = await fetchYocoCheckout(checkoutId);
         verifiedAmountZAR = checkout.amount / 100;
+        verifiedCurrency = checkout.currency;
       } catch (err) {
         logger.error('[yoco/webhook] Shape A checkout re-fetch failed, falling back to payload amount', { traceId, checkoutId, error: String(err) });
         verifiedAmountZAR = event.payload.amount / 100;
@@ -118,6 +120,7 @@ export async function POST(req: NextRequest) {
   const result = await confirmDirectPurchase({
     reference,
     verifiedAmountZAR,
+    verifiedCurrency,
     payoutMethod: 'yoco',
     traceId,
   });
