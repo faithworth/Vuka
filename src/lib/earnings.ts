@@ -354,8 +354,8 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
     const amountUSD = request.currency === 'USD' ? request.amount : zarToUsd(request.amount, fx!.zarToUsdRate);
     result = await processPayPalPayout({
       payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
+      amount: amountUSD,
+      currency: 'USD',
       paypalEmail,
       reference,
     });
@@ -461,8 +461,8 @@ export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
     const amountUSD = request.currency === 'USD' ? request.amount : zarToUsd(request.amount, fx!.zarToUsdRate);
     result = await processPayPalPayout({
       payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
+      amount: amountUSD,
+      currency: 'USD',
       paypalEmail,
       reference,
     });
