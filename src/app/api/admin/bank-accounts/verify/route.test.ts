@@ -88,7 +88,7 @@ describe('POST /api/admin/bank-accounts/verify', () => {
     await POST(postRequest({ bankAccountId: 'bank_1', verified: false }));
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ isVerified: false, verifiedAt: null, verificationMethod: null }),
+        data: expect.objectContaining({ isVerified: false, verifiedAt: null, verificationMethod: '' }),
       })
     );
   });
