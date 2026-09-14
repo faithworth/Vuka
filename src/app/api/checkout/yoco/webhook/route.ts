@@ -122,9 +122,10 @@ export async function POST(req: NextRequest) {
     traceId,
   });
 
-  if (!result.ok && result.reason === 'amount_mismatch') {
-    return new NextResponse('Amount mismatch', { status: 400 });
+  if (!result.ok && (result.reason === 'amount_mismatch' || result.reason === 'currency_mismatch')) {
+    return new NextResponse(result.reason === 'currency_mismatch' ? 'Currency mismatch' : 'Amount mismatch', { status: 400 });
   }
+  if (!result.ok) return new NextResponse('Purchase processing failed; retry required', { status: 500 });
 
   return NextResponse.json({ ok: true });
 }
