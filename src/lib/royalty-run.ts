@@ -68,6 +68,11 @@ async function runArtistRoyalties(): Promise<RunResult> {
       continue;
     }
 
+    // International artists with a configured PayPal recipient are paid via
+    // PayPal; South African artists continue to use their verified bank account.
+    const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { country: true, paypalEmail: true } });
+    const internationalPayPal = artist?.country && artist.country.toUpperCase() !== 'ZA' && !!artist.paypalEmail;
+
     const bank = await prisma.artistBankAccount.findFirst({
       where: {
         artistId,
@@ -76,7 +81,7 @@ async function runArtistRoyalties(): Promise<RunResult> {
         OR: [{ eligibleForPayoutAt: null }, { eligibleForPayoutAt: { lte: new Date() } }],
       },
     });
-    if (!bank) {
+    if (!bank && !internationalPayPal) {
       result.skipped.push({ id: artistId, reason: 'No verified default bank account past cooldown' });
       continue;
     }
@@ -97,7 +102,9 @@ async function runArtistRoyalties(): Promise<RunResult> {
         artistId,
         amount: available,
         currency: 'ZAR',
-        bankAccountId: bank.id,
+        bankAccountId: bank?.id,
+        method: internationalPayPal ? 'paypal' : 'bank_transfer',
+        paypalEmail: internationalPayPal ? artist!.paypalEmail! : undefined,
       });
       await approvePayoutRequest(request.id, 'Auto-approved by weekly royalty run');
       result.paid.push({ id: artistId, amount: available });
