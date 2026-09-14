@@ -23,7 +23,8 @@ export default function PrivacyPage() {
       </header>
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Privacy Policy</h1>
-        <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: January 2025 · POPIA & GDPR aware</p>
+        <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · POPIA & GDPR aware</p>
+        <p className="text-xs mb-10" style={{ color: 'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color: 'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
 
         <Section title="1. Data We Collect">
           <p><strong style={{ color: 'var(--text)' }}>Account data:</strong> name, email address, and role when you register.</p>
