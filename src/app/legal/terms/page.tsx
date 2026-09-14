@@ -26,8 +26,8 @@ export default function TermsPage() {
         <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>Last updated: September 2026 · Governing law: Republic of South Africa</p>
 
         <Section title="1. About Vuka Music">
-          <p>Vuka Music ("we", "us", "the platform") is a digital-content and creator-services platform operated by Vuka Music Platform (Pty) Ltd (Registration pending, CIPC), Republic of South Africa.</p>
-          <p><strong style={{ color: 'var(--text)' }}>Vuka Music is the seller of record for everything sold through vukamusic.com</strong> — digital content (beats, releases, videos, samples), physical merchandise, event tickets, memberships, and marketplace services booked through the platform. When you buy something on Vuka Music, you are entering into a sale agreement with Vuka Music Platform (Pty) Ltd, not directly with the artist or professional whose work or service you're buying. Artists and industry professionals are creators and royalty recipients under these Terms, not the contracting seller.</p>
+          <p>Vuka Music ("we", "us", "the platform") is a digital-content and creator-services platform operated by Vuka Music - The Rise Up (Pty) Ltd, Republic of South Africa.</p>
+          <p><strong style={{ color: 'var(--text)' }}>Vuka Music is the seller of record for everything sold through vukamusic.com</strong> — digital content (beats, releases, videos, samples), physical merchandise, event tickets, memberships, and marketplace services booked through the platform. When you buy something on Vuka Music, you are entering into a sale agreement with Vuka Music - The Rise Up (Pty) Ltd, not directly with the artist or professional whose work or service you're buying. Artists and industry professionals are creators and royalty recipients under these Terms, not the contracting seller.</p>
           <p>By creating an account or making a purchase, you confirm you are at least 18 years old and agree to these Terms in full.</p>
         </Section>
 
