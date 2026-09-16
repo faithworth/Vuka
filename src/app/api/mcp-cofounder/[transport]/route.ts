@@ -38,6 +38,29 @@ const DEFAULT_STATE = {
   updatedAt: isoNow(),
 };
 
+const DEFAULT_CAMPAIGN_LAB = {
+  campaignId: "traction-lab-3000",
+  name: "Vuka Traction Lab",
+  budgetZAR: 3000,
+  status: "planning",
+  tracks: {
+    artists: {
+      label: "Artist acquisition + activation",
+      allocationZAR: 1800,
+      objective: "Recruit artists, get music live, and create the conditions for first genuine fan purchases.",
+    },
+    friends: {
+      label: "Friends/fans + transaction activation",
+      allocationZAR: 1200,
+      objective: "Recruit real early fans/friends and turn attention into genuine purchases and repeat activity.",
+    },
+  },
+  reserveZAR: 0,
+  events: [],
+  commitments: [],
+  createdAt: isoNow(),
+};
+
 const DEFAULT_FOUNDING15 = {
   campaignId: "founding-15-3000",
   name: "Founding 15",
@@ -154,6 +177,131 @@ const server = createMcpHandler(
         await appendCofounderSettingArray("cofounder.actions", item);
         await writeAdminLog("cofounder.action", "CofounderAction", item.id, JSON.stringify(item));
         return { content: [{ type: "text", text: JSON.stringify(item, null, 2) }] };
+      }
+    );
+
+    mcp.tool(
+      "initialize_campaign_lab",
+      "Create the flexible R3,000 traction experiment with separate artist and friends/fans budgets. The split is adjustable before commitments, but total allocation can never exceed the hard budget ceiling.",
+      {
+        budgetZAR: z.number().min(0).max(3000).default(3000),
+        artistsAllocationZAR: z.number().min(0).default(1800),
+        friendsAllocationZAR: z.number().min(0).default(1200),
+        reserveZAR: z.number().min(0).default(0),
+      },
+      async ({ budgetZAR, artistsAllocationZAR, friendsAllocationZAR, reserveZAR }) => {
+        if (artistsAllocationZAR + friendsAllocationZAR + reserveZAR > budgetZAR) {
+          return { content: [{ type: "text", text: `Budget guard blocked initialization: R${(artistsAllocationZAR + friendsAllocationZAR + reserveZAR).toFixed(2)} allocated against R${budgetZAR.toFixed(2)}.` }], isError: true };
+        }
+        const existing = await getCofounderSetting<any>("cofounder.campaign.lab", null);
+        if (existing?.events?.length || existing?.commitments?.length) {
+          return { content: [{ type: "text", text: "Campaign lab already has activity. Refusing to reset it; update the allocation instead." }], isError: true };
+        }
+        const lab = {
+          ...DEFAULT_CAMPAIGN_LAB,
+          budgetZAR,
+          tracks: {
+            artists: { ...DEFAULT_CAMPAIGN_LAB.tracks.artists, allocationZAR: artistsAllocationZAR },
+            friends: { ...DEFAULT_CAMPAIGN_LAB.tracks.friends, allocationZAR: friendsAllocationZAR },
+          },
+          reserveZAR,
+          createdAt: isoNow(),
+          updatedAt: isoNow(),
+        };
+        await setCofounderSetting("cofounder.campaign.lab", lab);
+        await writeAdminLog("cofounder.campaign_lab_initialized", "Campaign", lab.campaignId, JSON.stringify(lab));
+        return { content: [{ type: "text", text: JSON.stringify(lab, null, 2) }] };
+      }
+    );
+
+    mcp.tool(
+      "get_campaign_lab_status",
+      "Return the current artist/friends experiment split, committed spend, remaining budget, transaction activity, and whether the experiment is financially safe.",
+      {},
+      async () => {
+        const lab = await getCofounderSetting<any>("cofounder.campaign.lab", DEFAULT_CAMPAIGN_LAB);
+        const commitments = lab.commitments ?? [];
+        const events = lab.events ?? [];
+        const committed = commitments.reduce((s: number, c: any) => s + (c.amountZAR ?? 0), 0);
+        const byTrack = ["artists", "friends"].reduce((acc: any, track: string) => {
+          acc[track] = {
+            allocationZAR: lab.tracks?.[track]?.allocationZAR ?? 0,
+            committedZAR: commitments.filter((c: any) => c.track === track).reduce((s: number, c: any) => s + (c.amountZAR ?? 0), 0),
+            events: events.filter((e: any) => e.track === track).length,
+            transactions: events.filter((e: any) => e.track === track && e.type === "genuine_transaction").length,
+            transactionValueZAR: events.filter((e: any) => e.track === track && e.type === "genuine_transaction").reduce((s: number, e: any) => s + (e.valueZAR ?? 0), 0),
+          };
+          return acc;
+        }, {});
+        const allocation = (lab.tracks?.artists?.allocationZAR ?? 0) + (lab.tracks?.friends?.allocationZAR ?? 0) + (lab.reserveZAR ?? 0);
+        return { content: [{ type: "text", text: JSON.stringify({ lab, byTrack, allocatedZAR: allocation, committedZAR: committed, uncommittedZAR: lab.budgetZAR - committed, unallocatedZAR: lab.budgetZAR - allocation, budgetSafe: committed <= lab.budgetZAR && allocation <= lab.budgetZAR, generatedAt: isoNow() }, null, 2) }] };
+      }
+    );
+
+    mcp.tool(
+      "allocate_campaign_lab_budget",
+      "Rebalance the artist and friends/fans experiment budgets before new commitments. Existing commitments are protected and the total allocation must stay under the R3,000 ceiling.",
+      {
+        artistsAllocationZAR: z.number().min(0),
+        friendsAllocationZAR: z.number().min(0),
+        reserveZAR: z.number().min(0).default(0),
+      },
+      async ({ artistsAllocationZAR, friendsAllocationZAR, reserveZAR }) => {
+        const lab = await getCofounderSetting<any>("cofounder.campaign.lab", DEFAULT_CAMPAIGN_LAB);
+        const totalAllocation = artistsAllocationZAR + friendsAllocationZAR + reserveZAR;
+        const committed = (lab.commitments ?? []).reduce((s: number, c: any) => s + (c.amountZAR ?? 0), 0);
+        if (totalAllocation > lab.budgetZAR) return { content: [{ type: "text", text: `Allocation blocked: R${totalAllocation.toFixed(2)} exceeds the hard R${lab.budgetZAR.toFixed(2)} budget.` }], isError: true };
+        if (totalAllocation < committed) return { content: [{ type: "text", text: `Allocation blocked: R${totalAllocation.toFixed(2)} is below R${committed.toFixed(2)} already committed. Existing commitments cannot be unfunded.` }], isError: true };
+        const next = { ...lab, tracks: { ...lab.tracks, artists: { ...lab.tracks.artists, allocationZAR: artistsAllocationZAR }, friends: { ...lab.tracks.friends, allocationZAR: friendsAllocationZAR } }, reserveZAR, updatedAt: isoNow() };
+        await setCofounderSetting("cofounder.campaign.lab", next);
+        await writeAdminLog("cofounder.campaign_lab_reallocated", "Campaign", lab.campaignId, JSON.stringify({ artistsAllocationZAR, friendsAllocationZAR, reserveZAR }));
+        return { content: [{ type: "text", text: JSON.stringify({ ...next, committedZAR: committed, remainingZAR: lab.budgetZAR - committed }, null, 2) }] };
+      }
+    );
+
+    mcp.tool(
+      "commit_campaign_lab_reward",
+      "Create a bounded campaign reward/incentive commitment for either the artist or friends/fans track. This reserves budget but never sends money.",
+      {
+        track: z.enum(["artists", "friends"]),
+        recipient: z.string().min(1).max(300),
+        amountZAR: z.number().min(0),
+        reason: z.string().min(3).max(1000),
+        evidence: z.string().min(3).max(2000),
+      },
+      async ({ track, recipient, amountZAR, reason, evidence }) => {
+        const lab = await getCofounderSetting<any>("cofounder.campaign.lab", DEFAULT_CAMPAIGN_LAB);
+        const commitments = lab.commitments ?? [];
+        const committed = commitments.reduce((s: number, c: any) => s + (c.amountZAR ?? 0), 0);
+        const trackCommitted = commitments.filter((c: any) => c.track === track).reduce((s: number, c: any) => s + (c.amountZAR ?? 0), 0);
+        const allocation = lab.tracks?.[track]?.allocationZAR ?? 0;
+        if (committed + amountZAR > lab.budgetZAR) return { content: [{ type: "text", text: `Commitment blocked: total would be R${(committed + amountZAR).toFixed(2)} against the hard R${lab.budgetZAR.toFixed(2)} ceiling.` }], isError: true };
+        if (trackCommitted + amountZAR > allocation) return { content: [{ type: "text", text: `Track budget blocked: ${track} would reach R${(trackCommitted + amountZAR).toFixed(2)} against its current R${allocation.toFixed(2)} allocation. Rebalance first with founder approval.` }], isError: true };
+        const commitment = { id: crypto.randomUUID(), track, recipient, amountZAR, reason, evidence, status: "reserved_pending_approval", createdAt: isoNow() };
+        await setCofounderSetting("cofounder.campaign.lab", { ...lab, commitments: [commitment, ...commitments], updatedAt: isoNow() });
+        await writeAdminLog("cofounder.campaign_lab_commitment", "Campaign", lab.campaignId, JSON.stringify(commitment));
+        return { content: [{ type: "text", text: JSON.stringify({ commitment, committedZAR: committed + amountZAR, remainingZAR: lab.budgetZAR - committed - amountZAR, approvalRequired: true, instruction: "Do not pay or externally promise this reward until the founder approves the specific commitment." }, null, 2) }] };
+      }
+    );
+
+    mcp.tool(
+      "record_campaign_lab_event",
+      "Record a measurable campaign event for the artist or friends/fans track. A genuine transaction must include evidence and value; recording it never creates a payment.",
+      {
+        track: z.enum(["artists", "friends"]),
+        type: z.enum(["prospect", "contacted", "signup", "artist_activated", "fan_activated", "genuine_transaction", "repeat_transaction", "referral"]),
+        subject: z.string().min(1).max(300),
+        evidence: z.string().min(3).max(2000),
+        valueZAR: z.number().min(0).optional(),
+      },
+      async (input) => {
+        if (input.type === "genuine_transaction" && (!input.valueZAR || input.valueZAR <= 0)) return { content: [{ type: "text", text: "A genuine_transaction event requires a positive valueZAR." }], isError: true };
+        const lab = await getCofounderSetting<any>("cofounder.campaign.lab", DEFAULT_CAMPAIGN_LAB);
+        const event = { id: crypto.randomUUID(), ...input, recordedAt: isoNow() };
+        const next = { ...lab, events: [event, ...(lab.events ?? [])], updatedAt: isoNow() };
+        await setCofounderSetting("cofounder.campaign.lab", next);
+        await writeAdminLog("cofounder.campaign_lab_event", "Campaign", lab.campaignId, JSON.stringify(event));
+        return { content: [{ type: "text", text: JSON.stringify(event, null, 2) }] };
       }
     );
 
