@@ -32,3 +32,15 @@ Code health: `find_todos_and_fixmes`, `find_large_files`, `get_test_coverage_sna
 Performance: `explain_query`
 Meta: `health_check_full` (one-call rollup of DB/issues/subscriptions/CI status)
 Note: `get_billing_status` documents the real gap — no cron currently re-charges artist_plan_subscriptions.paystackToken on renewal; expire-plans only downgrades.
+
+## 2026-09-16
+Added the ChatGPT co-founder control plane at `/api/mcp-cofounder`.
+- `get_cofounder_state` — durable company/operating state
+- `set_cofounder_goal` — company objectives
+- `propose_cofounder_decision` / `approve_cofounder_decision` — explicit authority boundary
+- `record_cofounder_action` — execution audit trail with approval enforcement for external side effects
+- `get_cofounder_decision_queue` — unresolved founder decisions
+- `get_company_dashboard` — live platform/company snapshot
+- Founding 15 campaign tools: `initialize_founding15_campaign`, `get_founding15_status`, `update_founding15_candidate`, `record_founding15_event`, `analyze_founding15_budget`, `draft_founding15_email`
+- `log_cofounder_research` — durable research findings with confidence/source/implication
+The new control plane does not call another AI API: ChatGPT remains the reasoning layer and Vuka MCP provides the operational tools/state. No rewards, payments, emails, public posts, or production changes are executed by these tools without the relevant approval path.
