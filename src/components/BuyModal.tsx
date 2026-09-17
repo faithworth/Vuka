@@ -115,7 +115,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
           itemType,
           itemId,
           licenseType:  beat ? license : undefined,
-          customAmount: release?.payWhatYouWant ? parseFloat(customAmount) : undefined,
+          customAmount: release?.payWhatWant ? parseFloat(customAmount) : undefined,
           buyerEmail:   email,
           buyerName:    name,
           currency:     'ZAR',
@@ -210,7 +210,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
         )}
 
         {/* Pay what you want (releases) */}
-        {release?.payWhatYouWant && (
+        {release?.payWhatWant && (
           <div className="mb-4">
             <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>Your price (min R{release.minPrice})</label>
             <input type="number" value={customAmount} onChange={e => setCustomAmount(e.target.value)} placeholder={String(release.price)} className="input" />
