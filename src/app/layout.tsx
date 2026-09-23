@@ -6,15 +6,15 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
-  title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
+  title: 'Vuka Music — Africa\'s Digital Music Store',
   description:
-    "Vuka Music is the direct-to-fan sales platform for South African independent artists and producers. Sell beats, releases, event tickets, merch and more — keep up to 95% of every sale, paid straight to your bank via Paystack.",
+    "Vuka Music sells beats, releases, merch, event tickets, and creator services from South African independent artists. Buyers purchase from Vuka Music — artists earn a weekly royalty of up to 95% per sale, paid to their bank account.",
   keywords: [
-    'vuka', 'vuka music', 'sell beats south africa',
-    'south african music platform', 'african beat marketplace',
-    'sell music direct to fans', 'independent music artist sa',
-    'amapiano beats', 'gqom beats', 'afrobeats producer marketplace',
-    'paystack music', 'sell tickets south africa', 'artist crowdfunding south africa',
+    'vuka', 'vuka music', 'buy beats south africa',
+    'south african music store', 'african music platform',
+    'buy music online south africa', 'independent music artist sa',
+    'amapiano beats', 'gqom beats', 'afrobeats producer',
+    'music store south africa', 'buy tickets south africa', 'artist crowdfunding south africa',
   ],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com'),
   alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com' },
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
+    title: 'Vuka Music — Africa\'s Digital Music Store',
     description:
-      "South Africa's direct-to-fan sales platform for independent artists and producers. Keep up to 95% of every sale, paid straight to your bank via Paystack.",
+      "South Africa's digital music store. Buy beats, releases, merch and creator services. Artists earn up to 95% royalty per sale, paid weekly.",
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
     siteName: 'Vuka Music',
     type: 'website',
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vuka Music — Sell Beats, Releases & Tickets Direct to Fans',
+    title: 'Vuka Music — Africa\'s Digital Music Store',
     description:
-      "South Africa's direct-to-fan sales platform for independent artists and producers. Keep up to 95% of every sale.",
+      "South Africa's digital music store. Buy beats, releases, merch and creator services. Artists earn up to 95% royalty per sale.",
   },
   icons: { icon: '/favicon.svg' },
 };
@@ -81,7 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   url: 'https://www.vukamusic.com',
                   logo: 'https://www.vukamusic.com/favicon.svg',
                   description:
-                    'Vuka Music is the direct-to-fan sales platform for South African independent artists and producers to sell beats, releases, event tickets, and merch.',
+                    'Vuka Music is Africa\'s digital music store. We sell beats, releases, event tickets, merch and creator services from South African independent artists. Artists earn a weekly royalty of up to 95% per sale.',
                   areaServed: 'ZA',
                   sameAs: [],
                 },

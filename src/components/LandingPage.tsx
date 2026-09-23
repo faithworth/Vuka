@@ -20,7 +20,7 @@ export default function LandingPage() {
               "@type": "WebSite",
               "name": "Vuka Music",
               "url": "https://www.vukamusic.com",
-              "description": "Africa's independent music platform. Buy beats and music directly from African artists.",
+              "description": "Africa's digital music store. Buy beats, releases, merch and creator services sold by Vuka Music.",
               "potentialAction": {
                 "@type": "SearchAction",
                 "target": "https://www.vukamusic.com/store?q={search_term_string}",
@@ -39,7 +39,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
               style={{ background: 'rgba(56,182,232,0.1)', border: '1px solid rgba(56,182,232,0.25)', color: 'var(--sky)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--sky)' }} />
-              Africa's independent music platform
+              Africa's digital music store
             </div>
 
             <div className="flex justify-center -mb-2 px-2">
@@ -53,17 +53,17 @@ export default function LandingPage() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
-              }}>Your terms.</span><br />
-              Your money.
+              }}>On your terms.</span><br />
+              Your royalty.
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Sell beats and releases directly to your fans — in South Africa and worldwide.
-              Keep up to 95% of every sale.
+              List your music on Vuka Music's store — we sell it to fans across South Africa and worldwide.
+              You earn up to 95% of every sale as a weekly royalty, paid straight to your bank.
             </p>
 
             <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              Paystack for South African buyers. Money goes directly to your bank. Start free — upgrade anytime for a lower platform fee.
+              Vuka Music is the seller on every transaction. Artists earn royalties — paid weekly, the way a label pays its roster.
             </p>
 
             {/* Fee transparency notice */}
@@ -116,7 +116,7 @@ export default function LandingPage() {
                 {
                   icon: DollarSign,
                   title: 'Dual Payments',
-                  desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. PayPal for international payments. Both fully automated.',
+                  desc: 'Yoco and Paystack for South African buyers — card, instant EFT, and bank transfer. PayPal for international payments. Vuka Music collects all payments and pays artist royalties weekly.',
                 },
                 {
                   icon: Zap,
@@ -165,9 +165,9 @@ export default function LandingPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-10">
               {[
-                { n: '01', t: 'Upload your music', d: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
-                { n: '02', t: 'Share your link', d: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
-                { n: '03', t: 'Keep most of every sale', d: 'Paystack and PayPal move money directly to your bank account. Free starts at 90% and steps up automatically as you sell more — Pro and Label keep even more.' },
+                { n: '01', t: 'List your music', d: 'Add your beats, releases, or services to the Vuka Music catalog. Set your prices and license tiers — we handle the rest.' },
+                { n: '02', t: 'We sell it', d: 'Vuka Music is the seller of record on every transaction. Buyers purchase from us — you focus on making music.' },
+                { n: '03', t: 'Earn your royalty', d: 'Your earnings accumulate and are paid out every Monday to your bank account — Free starts at 90% and steps up as you sell more.' },
               ].map(s => (
                 <div key={s.n} className="text-center">
                   <div className="text-5xl font-bold mb-4 font-mono" style={{ color: 'var(--border)' }}>{s.n}</div>
@@ -216,12 +216,12 @@ export default function LandingPage() {
                   Support the artists you love
                 </h2>
                 <p className="leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
-                  Discover independent artists from across Africa and the diaspora. Buy their music directly — money goes straight to the artist.
+                  Discover independent artists from across Africa and the diaspora. Buy their music and merch from Vuka Music's store — every purchase goes toward the artist's weekly royalty.
                 </p>
                 <div className="space-y-3 mb-8">
                   {[
                     'Browse and stream previews before you buy',
-                    'Secure checkout via Paystack or card',
+                    'Secure checkout via Yoco, Paystack or PayPal',
                     'Instant download links in your inbox',
                     'Follow artists and get notified of new drops',
                     'Tip artists and back their recording goals',
