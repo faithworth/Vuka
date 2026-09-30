@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import VukaLogo from '@/components/brand/VukaLogo';
-import GlobalCurrencySelector from '@/components/GlobalCurrencySelector';
 import {
   Menu, X, Rss, Compass, MessageSquare, Bell, ChevronDown,
   LayoutDashboard, BookOpen, Briefcase, ShieldCheck, Users,
@@ -197,7 +196,6 @@ export function Navbar() {
   // ── Right-side action buttons (desktop/tablet) ───────────────────────────
   const RightActions = () => (
     <div className="flex items-center gap-2">
-      <div className="hidden xl:block"><GlobalCurrencySelector /></div>
       {user ? (
         <>
           <Link href="/messages" className="relative p-2 rounded-lg transition-colors"
