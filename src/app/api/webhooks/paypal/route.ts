@@ -60,7 +60,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
   } else {
-    logger.warn('[PayPal webhook] PAYPAL_WEBHOOK_ID not set — skipping verification (unsafe in production)');
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[PayPal webhook] PAYPAL_WEBHOOK_ID is required in production');
+      return NextResponse.json({ error: 'Webhook verification is not configured' }, { status: 503 });
+    }
+    logger.warn('[PayPal webhook] PAYPAL_WEBHOOK_ID not set — development-only bypass');
   }
 
   // ── Idempotency ─────────────────────────────────────────────────────────
