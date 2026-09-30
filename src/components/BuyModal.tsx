@@ -145,9 +145,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const item = beat || release!;
 
   const tabs: { key: PaymentTab; label: string; flag?: string }[] = [
-    { key: 'yoco',     label: 'Yoco',     flag: '🇿🇦' },
-    { key: 'paystack', label: 'Paystack', flag: '🇿🇦' },
-    { key: 'paypal',   label: 'PayPal',   flag: '🌍' },
+    { key: 'yoco', label: 'Yoco', flag: '💳' },
   ];
 
   return (
