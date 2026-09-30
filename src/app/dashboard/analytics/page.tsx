@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import { LineChart } from '@/components/analytics/LineChart';
 import { BarChart } from '@/components/analytics/BarChart';
 import { DonutChart } from '@/components/analytics/DonutChart';
@@ -145,6 +146,7 @@ function downloadCSV(rows: string[][], filename: string) {
 // ── Main Component ────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [tab, setTab] = useState<Tab>('overview');
   const [period, setPeriod] = useState<Period>('30d');
   const [days, setDays] = useState(30);
@@ -219,7 +221,7 @@ export default function AnalyticsPage() {
           <StatCard label="Total Plays" value={totalPlays.toLocaleString()} icon={Play} color="var(--sky)"
             change={s ? undefined : undefined} subLabel={`${days}d period`} />
           <StatCard label="Profile Views" value={(s?.profileViews ?? 0).toLocaleString()} icon={Eye} color="var(--sky)" />
-          <StatCard label="Revenue" value={formatCurrency(s?.totalRevenue ?? 0)} icon={DollarSign} color="var(--gold)" />
+          <StatCard label="Revenue" value={displayCurrency(s?.totalRevenue ?? 0)} icon={DollarSign} color="var(--gold)" />
           <StatCard label="New Followers" value={(s?.newFollowers ?? 0).toLocaleString()} icon={Users} color="var(--green)" />
           <StatCard label="Likes" value={(s?.likes ?? 0).toLocaleString()} icon={Heart} color="var(--sky)" />
           <StatCard label="Total Followers" value={(s?.followerCount ?? 0).toLocaleString()} icon={Activity} color="var(--green)" />
@@ -241,7 +243,7 @@ export default function AnalyticsPage() {
           <Section title="Revenue Trend">
             {revenueChartData.length > 0 ? (
               <BarChart data={revenueChartData} colors={['var(--gold)']}
-                formatValue={(v) => formatCurrency(v)} />
+                formatValue={(v) => displayCurrency(v)} />
             ) : (
               <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No revenue data</div>
             )}
@@ -293,7 +295,7 @@ export default function AnalyticsPage() {
                     {sale.buyerName && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sale.buyerName}</p>}
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)' }}>
-                    {formatCurrency(sale.amount, sale.currency)}
+                    {displayCurrency(sale.amount, sale.currency)}
                   </span>
                 </div>
               ))}
@@ -411,7 +413,7 @@ export default function AnalyticsPage() {
           <Section title="Monthly Revenue">
             {monthlyChartData.length > 0 ? (
               <BarChart data={monthlyChartData} colors={['var(--gold)']}
-                formatValue={(v) => formatCurrency(v)} height={220} />
+                formatValue={(v) => displayCurrency(v)} height={220} />
             ) : (
               <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No revenue data</div>
             )}
@@ -421,7 +423,7 @@ export default function AnalyticsPage() {
             {breakdownData.length > 0 ? (
               <DonutChart
                 data={breakdownData}
-                centerValue={formatCurrency(totalRevAll)}
+                centerValue={displayCurrency(totalRevAll)}
                 centerLabel="Total"
                 size={160}
                 thickness={32}
