@@ -457,6 +457,21 @@ function SettingsContent() {
         </div>
       </div>
 
+      {/* PayPal payout destination */}
+      <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h2 className="font-bold text-base mb-1" style={{ color: 'var(--text)' }}>PayPal — Manual Payouts</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Save the PayPal address Vuka should use when you choose PayPal as your payout destination.</p>
+        <div className="flex gap-2">
+          <input type="email" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
+            placeholder="you@example.com" className="flex-1 px-4 py-3 rounded-xl text-sm"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          <button type="button" onClick={savePaypalEmail} disabled={paypalSaving}
+            className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60" style={{ background: 'var(--sky)' }}>
+            {paypalSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Currency Preference */}
       <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="font-bold text-base mb-3" style={{ color: 'var(--text)' }}>Default Currency</h2>
