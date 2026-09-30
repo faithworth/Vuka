@@ -246,8 +246,7 @@ export default function PayoutsPage() {
                     </p>
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Paystack collects payments on your behalf. Payouts to your SA bank
-                    account are sent automatically every Monday.
+                    Paystack is not used for direct purchase settlement. Direct purchases are processed through Yoco; your bank account is only a manual payout destination.
                   </p>
                   <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -259,7 +258,7 @@ export default function PayoutsPage() {
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
                     Add your bank account so SA buyers can pay you via card, EFT, or bank transfer through Paystack.
-                    Paystack collects payments on your behalf and payouts to this account are sent automatically every Monday.
+                    Direct purchases are processed through Yoco. This bank account is only a manual payout destination.
                   </p>
                   <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
                     style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
@@ -374,8 +373,7 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Manual EFT payouts are sent automatically every Monday, 2–5 business days
-                    to clear, once your balance is confirmed.
+                    Vuka manually settles approved EFT requests after confirming the cleared sales balance.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -475,10 +473,10 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Paystack: once connected, payouts are sent automatically to your SA bank account every Monday.',
-                'SA Bank EFT: save your bank details — payouts are sent automatically every Monday once your balance clears R50.',
-                'Ozow and Yoco integrations are coming — they will appear here once live.',
-                'All amounts are in ZAR. International buyers pay via card and funds convert automatically.',
+                'Direct purchases are processed through Yoco and settle into Vuka\'s company balance.',
+                'Choose Bank Account or PayPal in your payout request; Vuka manually pays the selected destination.',
+                'Bank accounts have a security verification/cooldown before they can receive payouts.',
+                'Amounts are stored and settled in ZAR; your selected display currency only changes presentation.',
               ].map((item, i) => (
                 <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-muted)' }}>
                   <span style={{ color: 'var(--green)' }}>✓</span> {item}
