@@ -1,5 +1,3 @@
---- src/app/api/webhooks/paypal/route.ts (sha: 952e6c026f1dbfbadf0f792a803e296909db9166) ---
-
 /**
  * POST /api/webhooks/paypal
  *
