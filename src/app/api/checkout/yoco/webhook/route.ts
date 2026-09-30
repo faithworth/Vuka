@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // ── Shape A: Checkout-API style ────────────────────────────────────
   if (event.type === 'payment.succeeded' && event.payload) {
     reference = event.payload.metadata?.reference;
-    const checkoutId = event.payload.metadata?.checkoutId;
+    const checkoutId = event.payload.metadata?.checkoutId || event.payload.id;
 
     if (!reference) {
       logger.warn('[yoco/webhook] Shape A payload missing metadata.reference', { traceId, checkoutId });
