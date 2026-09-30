@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
           purchaseId: purchase.id,
           amount:     netAmount,
           method:     'paypal',
-          currency:   'USD',     // PayPal payouts are in USD
+          currency:   purchase.currency, // Artist balance stays in Vuka's ledger currency; PayPal payout converts at dispatch
           status:     'pending',
           reference:  `paypal:${orderId}`,
           notes:      `${purchase.itemType} sale via PayPal — ${itemTitle}`,
@@ -444,6 +444,25 @@ export async function POST(req: NextRequest) {
       logger.warn('[PayPal capture] Artist email failed', { e, traceId });
     }
   }
+
+  // ── Internal business notification ─────────────────────────────────────
+  await sendInternalBusinessUpdate({
+    subject: 'New PayPal sale — ' + itemTitle,
+    title: 'New Vuka PayPal sale confirmed',
+    summary: 'A PayPal customer payment was captured and the artist earnings ledger was updated.',
+    details: [
+      { label: 'Artist', value: artistName || 'Unknown artist' },
+      { label: 'Item', value: itemTitle },
+      { label: 'Gross', value: purchase.currency + ' ' + purchase.amount.toFixed(2) },
+      { label: 'Vuka fee', value: purchase.currency + ' ' + platformFeeAmt.toFixed(2) },
+      { label: 'Artist net', value: purchase.currency + ' ' + netAmount.toFixed(2) },
+      { label: 'PayPal capture', value: capture?.id || 'unknown' },
+      { label: 'Buyer', value: buyerEmail },
+      { label: 'Purchase', value: purchase.id },
+    ],
+    url: appUrl + '/admin/finance',
+    buttonLabel: 'Open Finance →',
+  }).catch((e) => logger.warn('[PayPal capture] Internal notification failed', { e, traceId }));
 
   // ── Audit ───────────────────────────────────────────────────────────────
   await auditLog.purchaseConfirmed(
