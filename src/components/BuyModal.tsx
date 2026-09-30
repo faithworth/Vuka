@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
+import { useCurrency } from '@/components/CurrencyProvider';
 
 const LICENSES = [
   {
@@ -68,6 +69,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const [shipPostal, setShipPostal]     = useState('');
   const [shipProvince, setShipProvince] = useState('');
   const [shipPhone, setShipPhone]       = useState('');
+  const { formatCurrency: displayCurrency } = useCurrency();
 
   useEffect(() => {
     const supabase = createClient();
@@ -193,7 +195,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               >
                 <div className="flex justify-between items-center">
                   <span className="font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-display)' }}>{l.name}</span>
-                  <span className="font-bold font-mono" style={{ color: 'var(--color-accent-green)' }}>{formatCurrency(prices[l.key])}</span>
+                  <span className="font-bold font-mono" style={{ color: 'var(--color-accent-green)' }}>{displayCurrency(prices[l.key])}</span>
                 </div>
                 <ul className="mt-1">
                   {l.rights.map((r) => (
@@ -219,17 +221,17 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
             <>
               <div className="flex justify-between text-sm mb-2">
                 <span style={{ color: 'var(--color-text-secondary)' }}>Item price</span>
-                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(itemPrice)}</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{displayCurrency(itemPrice)}</span>
               </div>
               <div className="flex justify-between text-sm mb-2">
                 <span style={{ color: 'var(--color-text-secondary)' }}>Shipping</span>
-                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(shippingFeeAmount)}</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{displayCurrency(shippingFeeAmount)}</span>
               </div>
             </>
           )}
           <div className="flex justify-between font-bold text-lg">
             <span style={{ color: 'var(--color-text-primary)' }}>Total</span>
-            <span className="font-mono" style={{ color: 'var(--color-accent-green)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
+            <span className="font-mono" style={{ color: 'var(--color-accent-green)' }}>{price === 0 ? 'Free' : displayCurrency(price)}</span>
           </div>
         </div>
 
@@ -323,7 +325,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
                 className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
                 style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
               >
-                {loading ? 'Processing…' : `Pay with Yoco — ${formatCurrency(price)} →`}
+                {loading ? 'Processing…' : `Pay with Yoco — ${displayCurrency(price)} →`}
               </button>
             )}
 
