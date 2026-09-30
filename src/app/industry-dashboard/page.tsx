@@ -69,6 +69,12 @@ export default function IndustryDashboardPage() {
 
   // Settings form
   const [settingsForm, setSettingsForm]   = useState({ name: '', companyName: '', role: '', website: '', currency: 'ZAR', paypalEmail: '' });
+  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutBankId, setPayoutBankId] = useState('');
+  const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
+  const [industryBankAccounts, setIndustryBankAccounts] = useState<any[]>([]);
+  const [payoutMsg, setPayoutMsg] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg]     = useState('');
   const [settingsError, setSettingsError] = useState('');
