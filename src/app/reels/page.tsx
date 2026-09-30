@@ -71,6 +71,18 @@ function ReelSlide({
     else { v.pause(); setPaused(true); }
   }
 
+  function toggleMute() {
+    const v = videoRef.current;
+    if (!v) return;
+    const nextMuted = !v.muted;
+    v.muted = nextMuted;
+    onToggleMute();
+    // The click is a user gesture, so retry playback immediately when audio
+    // is being enabled. This avoids browsers leaving the video silent after
+    // an autoplay start.
+    if (!nextMuted && v.paused) v.play().catch(() => {});
+  }
+
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black snap-start snap-always" style={{ scrollSnapStop: 'always' }}>
       <video
@@ -92,8 +104,14 @@ function ReelSlide({
       )}
 
       {/* Mute toggle */}
-      <button onClick={onToggleMute} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white">
-        {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+      <button
+        type="button"
+        aria-label={muted ? 'Unmute reel' : 'Mute reel'}
+        onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+        className="absolute top-4 right-4 z-30 w-12 h-12 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white shadow-lg cursor-pointer touch-manipulation"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
       </button>
 
       {/* Bottom info */}
