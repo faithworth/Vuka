@@ -77,7 +77,7 @@ function SettingsContent() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); if (d.role) setRole(d.role); }),
+      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); setPaypalEmail(d.artist?.paypalEmail || ''); if (d.role) setRole(d.role); }),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
