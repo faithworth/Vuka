@@ -23,7 +23,7 @@ export default function CelebrationBadge() {
     } catch {
       // localStorage unavailable — just show it
     }
-    const t = setTimeout(() => setVisible(true), 900);
+    const t = setTimeout(() => setVisible(false), 0);
     return () => clearTimeout(t);
   }, []);
 
@@ -88,9 +88,9 @@ export default function CelebrationBadge() {
         <Link href="/store" aria-label="Browse the Vuka store" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <VukaCelebration variant="badge" size={52} />
           <span style={{ fontSize: 11, lineHeight: 1.25, color: '#F5F5F5', maxWidth: 108 }}>
-            <strong style={{ color: '#A0E87C' }}>Someone just rose 🎉</strong>
+            <strong style={{ color: '#A0E87C' }}>Vuka Music</strong>
             <br />
-            <span style={{ color: '#A0A0A0' }}>bought a record on Vuka</span>
+            <span style={{ color: '#A0A0A0' }}>Discover independent music</span>
           </span>
         </Link>
       </div>
