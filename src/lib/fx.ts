@@ -58,15 +58,19 @@ async function fetchFromOpenErApi(): Promise<Record<string, number> | null> {
 
     if (data.result !== 'success') return null;
 
-    const rate = data.rates?.USD;
-    return typeof rate === 'number' && rate > 0 ? rate : null;
+    const rates: Record<string, number> = { ZAR: 1 };
+    for (const code of SUPPORTED_CURRENCIES) {
+      const rate = data.rates?.[code];
+      if (typeof rate === 'number' && rate > 0) rates[code] = rate;
+    }
+    return rates.USD ? rates : null;
 
   } catch {
     return null;
   }
 }
 
-async function fetchFromFrankfurter(): Promise<number | null> {
+async function fetchFromFrankfurter(): Promise<Record<string, number> | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -84,7 +88,7 @@ async function fetchFromFrankfurter(): Promise<number | null> {
     };
 
     const rate = data.rates?.USD;
-    return typeof rate === 'number' && rate > 0 ? rate : null;
+    return typeof rate === 'number' && rate > 0 ? { ZAR: 1, USD: rate } : null;
 
   } catch {
     return null;
@@ -96,6 +100,8 @@ async function fetchFromFrankfurter(): Promise<number | null> {
 export interface FxRate {
   /** 1 ZAR expressed in USD, e.g. 0.054 */
   zarToUsdRate: number;
+  /** 1 ZAR expressed in supported currencies */
+  rates: Record<string, number>;
   /** Source of the rate */
   source: 'open.er-api.com' | 'frankfurter.app' | 'hardcoded-fallback' | 'cache';
   /** When this rate was fetched */
@@ -111,42 +117,34 @@ export async function getZarToUsdRate(): Promise<FxRate> {
   // Return cache if still fresh
   if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
     return {
-      zarToUsdRate: _cache.rate,
+      zarToUsdRate: _cache.rates.USD ?? SAFETY_RATE,
+      rates:        _cache.rates,
       source:       'cache',
       fetchedAt:    new Date(_cache.fetchedAt),
     };
   }
 
   // Try primary source
-  let rate = await fetchFromOpenErApi();
+  let rates = await fetchFromOpenErApi();
   let source: FxRate['source'] = 'open.er-api.com';
 
   // Try fallback
-  if (!rate) {
-    rate   = await fetchFromFrankfurter();
+  if (!rates) {
+    rates  = await fetchFromFrankfurter();
     source = 'frankfurter.app';
   }
 
   // Safety fallback — never fail a checkout over a missing FX rate
-  if (!rate) {
-    // If we have a stale cache, use it rather than the hardcoded value
+  if (!rates) {
     if (_cache) {
-      return {
-        zarToUsdRate: _cache.rate,
-        source:       'cache',
-        fetchedAt:    new Date(_cache.fetchedAt),
-      };
+      return { zarToUsdRate: _cache.rates.USD ?? SAFETY_RATE, rates: _cache.rates, source: 'cache', fetchedAt: new Date(_cache.fetchedAt) };
     }
-    return {
-      zarToUsdRate: SAFETY_RATE,
-      source:       'hardcoded-fallback',
-      fetchedAt:    new Date(),
-    };
+    rates = { ZAR: 1, USD: SAFETY_RATE };
+    source = 'hardcoded-fallback';
   }
 
-  _cache = { rate, fetchedAt: Date.now(), source };
-
-  return { zarToUsdRate: rate, source, fetchedAt: new Date(_cache.fetchedAt) };
+  _cache = { rates, fetchedAt: Date.now(), source };
+  return { zarToUsdRate: rates.USD ?? SAFETY_RATE, rates, source, fetchedAt: new Date(_cache.fetchedAt) };
 }
 
 /**
@@ -182,4 +180,10 @@ export function formatUsd(amount: number): string {
  */
 export function formatZar(amount: number): string {
   return `R${amount.toFixed(2)}`;
+}
+
+export function convertFromZar(amountZar: number, currency: string, rates: Record<string, number>): number {
+  const rate = currency === 'ZAR' ? 1 : rates[currency];
+  if (!rate || !Number.isFinite(rate)) return amountZar;
+  return Math.round(amountZar * rate * 100) / 100;
 }
