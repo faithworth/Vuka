@@ -341,6 +341,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
                 itemId={itemId}
                 itemTitle={item.title}
                 priceZAR={price}
+                customAmount={release?.payWhatWant ? parseFloat(customAmount) : undefined}
                 licenseType={beat ? license as any : 'basic'}
               />
             )}
