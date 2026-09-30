@@ -1,5 +1,3 @@
---- src/app/api/support/create-session/route.ts (sha: c54df4abcfbc868c03a4198a50a8d9d876208ac5) ---
-
 /**
  * POST /api/support/create-session
  * Paystack support/tip payments — replaces PayFast form-POST flow.
