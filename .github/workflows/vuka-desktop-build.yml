@@ -1,0 +1,66 @@
+name: Vuka Music Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - production/global-payout-currency-seo
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/vuka-desktop-build.yml"
+  pull_request:
+    branches:
+      - production/global-payout-currency-seo
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/vuka-desktop-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build desktop - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: npx electron-builder --win nsis --publish never
+            artifact: vuka-music-windows
+            path: apps/desktop/dist/*.exe
+          - os: macos-latest
+            command: npx electron-builder --mac dmg --universal --publish never
+            artifact: vuka-music-macos
+            path: apps/desktop/dist/*.dmg
+
+    defaults:
+      run:
+        working-directory: apps/desktop
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: ${{ matrix.command }}
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 30

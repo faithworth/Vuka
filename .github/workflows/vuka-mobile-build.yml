@@ -1,0 +1,101 @@
+name: Vuka Music Mobile
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - production/global-payout-currency-seo
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/vuka-mobile-build.yml"
+  pull_request:
+    branches:
+      - production/global-payout-currency-seo
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/vuka-mobile-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Build Android test APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+      - name: Install dependencies
+        run: npm install
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --non-interactive
+      - name: Build debug APK
+        run: cd android && ./gradlew --no-daemon assembleDebug
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-android-test
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  ios-simulator:
+    name: Build iPhone/iPad simulator app
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+      - name: Install dependencies
+        run: npm install
+      - name: Generate native iOS project
+        run: npx expo prebuild --platform ios --non-interactive
+      - name: Install CocoaPods
+        run: cd ios && pod install
+      - name: Build iOS simulator
+        run: |
+          xcodebuild \
+            -workspace ios/VukaMusic.xcworkspace \
+            -scheme VukaMusic \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Package simulator app
+        run: |
+          cd build/ios/Build/Products/Debug-iphonesimulator
+          zip -r VukaMusic-iOS-Simulator.zip VukaMusic.app
+      - name: Upload iOS simulator build
+        uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-ios-simulator
+          path: apps/mobile/build/ios/Build/Products/Debug-iphonesimulator/VukaMusic-iOS-Simulator.zip
+          if-no-files-found: error
+          retention-days: 30
