@@ -1,5 +1,3 @@
---- src/lib/webhooks/paystack-handlers.ts (sha: 85b9071d475b70857a357688c4d62419678602b8) ---
-
 // src/lib/webhooks/paystack-handlers.ts
 //
 // Shared Paystack `charge.success` event handlers, extracted so they can be
