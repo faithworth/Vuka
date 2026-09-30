@@ -278,7 +278,6 @@ export default function PayoutsPage() {
           </div>
 
           {/* ── Ozow — coming soon ── */}
-          {
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -306,10 +305,8 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
-          )}
 
           {/* ── Yoco ── */}
-          {
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -337,9 +334,8 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
-          )}
 
-          {/* ── SA Bank EFT / Manual Payout ── */}
+          {/* ── SA Bank payout destination ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
