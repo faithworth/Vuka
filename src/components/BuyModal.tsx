@@ -1,5 +1,3 @@
---- src/components/BuyModal.tsx (sha: 8295d3ae55c08675e90bd642b3c1ceb20a252987) ---
-
 'use client';
 // src/components/BuyModal.tsx
 // Three payment options on every direct purchase:
