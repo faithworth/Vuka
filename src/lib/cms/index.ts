@@ -47,7 +47,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         badge:        "Africa's independent music platform",
         headline:     "Your music.\nYour terms.\nYour money.",
         subheadline:  'Sell beats and releases directly to your fans — in South Africa and worldwide. Keep up to 95% of every sale.',
-        subline:      'Paystack for South African buyers. Money goes directly to your bank. Start free — upgrade anytime for a lower platform fee.',
+        subline:      'Choose from available checkout methods including Yoco, Paystack and PayPal. Ozow bank-account payments are coming soon.',
         notice:       'Free plan: 10% platform fee, auto-reduces to 8.5% as you sell more. Pro plan: 8%. Label plan: 5%. No hidden charges.',
         cta_primary:   { label: "Start Selling — It's Free", href: '/auth/register' },
         cta_secondary: { label: 'Browse the Store',          href: '/store' },
@@ -87,7 +87,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         subheading: 'Upload your music in minutes. Set your price. Fans buy directly. Start on Free — upgrade to keep more.',
         columns:    4,
         features: [
-          { icon: '💵', title: 'Dual Payments',    desc: 'Paystack for South African buyers with instant EFT, card, and bank transfer support. PayPal for international payments. Both fully automated.' },
+          { icon: '💵', title: 'Payment Choice',    desc: 'Buyers choose from the enabled payment methods: Yoco, Paystack and PayPal, with Ozow bank-account payments coming soon.' },
           { icon: '⚡', title: 'Instant Downloads', desc: 'Fans receive secure download links the moment payment clears. No manual work needed.' },
           { icon: '🛡️', title: 'Beat Licensing',   desc: 'Basic, Premium, and Exclusive tiers. Auto-generated PDF license agreements sent to every buyer.' },
           { icon: '👥', title: 'Fan Support',       desc: 'Let fans tip you and back your recording goals. Build a real community around your music.' },
@@ -156,7 +156,7 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         heading: 'Frequently Asked Questions',
         items: [
-          { q: 'How do I get paid?',          a: 'Payments are processed via Paystack (South Africa) and PayPal (international). Money is sent to your bank account within 48 hours of a sale.' },
+          { q: 'How do I get paid?',          a: 'Customer payments can use the available checkout providers. Your earnings accumulate in Vuka and eligible payouts are processed through your configured payout destination and provider.' },
           { q: 'What is the platform fee?',   a: 'Free plan: 10% (auto-drops to 8.5% as you sell more). Pro: 8%. Label: 5%. Fees are deducted automatically at checkout.' },
           { q: 'Can I sell internationally?', a: 'Yes — Vuka Music supports international buyers via card through PayPal. Your earnings are converted to ZAR.' },
         ],
@@ -180,8 +180,8 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
         heading: 'From studio to sold — in minutes',
         items: [
           { n: '01', title: 'Upload your music',  desc: 'Add your beats or releases. Set your prices, license tiers, and artwork. We handle the rest.' },
-          { n: '02', title: 'Share your link',    desc: 'Get your personal store link — vukamusic.com/artist/you. Share it everywhere you already are.' },
-          { n: '03', title: 'Get paid directly',  desc: 'Paystack and PayPal move money directly to your bank account. Keep up to 95% of every sale.' },
+          { n: '02', title: 'Promote your music',    desc: 'Share your Vuka store link everywhere you already reach your fans. Vuka provides the tools; your audience and promotion drive sales.' },
+          { n: '03', title: 'Earn from sales',  desc: 'Completed sales are recorded in your Vuka earnings balance. Eligible payouts are sent to your configured payout destination through the available payout provider.' },
         ],
       };
 
@@ -200,10 +200,10 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
       return {
         eyebrow: 'For Fans & Listeners',
         heading: 'Support the artists you love',
-        body:    'Discover independent artists from across Africa and the diaspora. Buy their music directly — money goes straight to the artist.',
+        body:    'Discover independent artists from around the world. Buy their music directly. Artists promote their work and bring their audience; Vuka provides the storefront, checkout, delivery and royalty accounting.',
         checklist: [
           'Browse and stream previews before you buy',
-          'Secure checkout via Paystack or card',
+          'Choose an available checkout method: Yoco, Paystack or PayPal; Ozow coming soon',
           'Instant download links in your inbox',
           'Follow artists and get notified of new drops',
           'Tip artists and back their recording goals',
