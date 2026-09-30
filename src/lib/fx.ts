@@ -21,9 +21,12 @@
 // Vercel serverless functions share nothing between invocations, but within
 // a warm instance this prevents hammering the FX API on every checkout.
 
+export const SUPPORTED_CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS', 'BWP', 'ZMW', 'AUD', 'CAD'] as const;
+export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
+
 interface RateCache {
-  rate:       number;  // 1 ZAR in USD, e.g. 0.054
-  fetchedAt:  number;  // Date.now()
+  rates:      Record<string, number>;
+  fetchedAt:  number;
   source:     string;
 }
 
