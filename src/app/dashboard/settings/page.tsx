@@ -249,6 +249,24 @@ function SettingsContent() {
     } catch {}
   }
 
+  async function savePaypalEmail() {
+    setPaypalSaving(true);
+    try {
+      const res = await fetch('/api/dashboard/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paypalEmail }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Could not save PayPal email');
+      setArtist((p: any) => ({ ...p, paypalEmail: d.artist?.paypalEmail ?? paypalEmail }));
+    } catch (err: any) {
+      alert(err?.message || 'Could not save PayPal email');
+    } finally {
+      setPaypalSaving(false);
+    }
+  }
+
   if (loading) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
       <VukaLoader size={20} /> Loading your profile…
