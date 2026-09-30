@@ -71,6 +71,7 @@ function SettingsContent() {
   const [cancellingPlan, setCancellingPlan] = useState(false);
   const [planActivating, setPlanActivating] = useState(false);
   const [planActivateMsg, setPlanActivateMsg] = useState('');
+  const [upgradeChoice, setUpgradeChoice] = useState<{ slug: string; name: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -113,25 +114,27 @@ function SettingsContent() {
       .finally(() => setPlanActivating(false));
   }, [searchParams]);
 
-  async function upgradePlan(planSlug: string) {
+  async function upgradePlan(planSlug: string, provider: 'paystack' | 'yoco' | 'paypal') {
     setPlanLoading(true);
     try {
-      const res = await fetch('/api/plans/subscribe', {
+      const endpoint = provider === 'paystack' ? '/api/plans/subscribe' : provider === 'yoco' ? '/api/plans/subscribe-yoco' : '/api/plans/subscribe-paypal';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planSlug }),
       });
-      const { authorizationUrl, error } = await res.json();
-      if (error) { alert(error); return; }
-
-      // Redirect to Paystack's hosted checkout page
-      if (authorizationUrl) {
-        window.location.href = authorizationUrl;
-      }
-    } catch {
-      alert('Failed to start upgrade payment');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) { alert(data.error || 'Failed to initiate payment'); return; }
+      const url = data.authorizationUrl || data.redirectUrl || data.approveUrl;
+      if (url) window.location.href = url;
+      else alert('Payment gateway did not return a checkout URL.');
+    } catch (err) {
+      console.error('[settings] plan upgrade failed', err);
+      alert('Failed to start upgrade payment. Please try another payment method.');
+    } finally {
+      setPlanLoading(false);
+      setUpgradeChoice(null);
     }
-    setPlanLoading(false);
   }
 
   async function cancelPlan() {
@@ -637,7 +640,7 @@ function SettingsContent() {
                 {/* Action */}
                 {!isActive && p.priceZAR > 0 && (
                   <button
-                    onClick={() => upgradePlan(p.slug)}
+                    onClick={() => setUpgradeChoice({ slug: p.slug, name: p.name })}
                     disabled={planLoading}
                     className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60"
                     style={{ background: p.color }}>
@@ -665,6 +668,25 @@ function SettingsContent() {
           })}
         </div>
       </div>
+
+      {upgradeChoice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.72)' }} onClick={() => !planLoading && setUpgradeChoice(null)}>
+          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-black" style={{ color: 'var(--text)' }}>Choose payment method</h3>
+              <button type="button" onClick={() => setUpgradeChoice(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
+            </div>
+            <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+              Upgrade to {upgradeChoice.name}. Paystack supports Vuka's automatic card renewal; Yoco and PayPal are available as one-time upgrade payments.
+            </p>
+            <div className="space-y-2">
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="w-full py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>Pay with Paystack</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account Security */}
       <div className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
