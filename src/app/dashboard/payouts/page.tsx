@@ -80,6 +80,31 @@ export default function PayoutsPage() {
     setBankSaving(false);
   }
 
+  async function submitPayoutRequest() {
+    const amount = Number(payoutAmount);
+    if (!Number.isFinite(amount) || amount <= 0) { setPayoutError('Enter a valid payout amount.'); return; }
+    if (payoutMethod === 'bank_transfer' && !payoutBankId) { setPayoutError('Select a bank account.'); return; }
+    if (payoutMethod === 'paypal' && !payoutPaypalEmail) { setPayoutError('Enter your PayPal email.'); return; }
+    setPayoutError(''); setPayoutSuccess('');
+    try {
+      const res = await fetch('/api/payouts/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          method: payoutMethod,
+          bankAccountId: payoutMethod === 'bank_transfer' ? payoutBankId : undefined,
+          paypalEmail: payoutMethod === 'paypal' ? payoutPaypalEmail : undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setPayoutError(d.error || 'Could not submit payout request.'); return; }
+      setPayoutSuccess('Payout request submitted. Vuka will manually settle it to your selected destination after confirming the cleared balance.');
+      setPayoutAmount('');
+      await load();
+    } catch { setPayoutError('Network error — please try again.'); }
+  }
+
   async function retryPayout(requestId: string) {
     setRetryingId(requestId);
     setPayoutError('');
