@@ -90,14 +90,9 @@ export async function approvePayoutRequest(requestId: string, notes?: string) {
     data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
 
-  // Auto-dispatch immediately — fire-and-forget so the admin response
-  // is not blocked, but errors are logged and the request falls back
-  // to 'rejected' with claimed ledger rows released.
-  const { dispatchPayout } = await import('./earnings');
-  dispatchPayout(requestId).catch((err) => {
-    console.error('[payouts] auto-dispatch failed', requestId, err);
-  });
-
+  // Vuka's payout policy is manual settlement: the admin pays the
+  // selected destination (bank account or PayPal) after confirming
+  // that the corresponding Yoco-funded balance is available.
   return req;
 }
 
