@@ -28,7 +28,7 @@ const LICENSES = [
   },
 ];
 
-type PaymentTab = 'yoco' | 'paystack' | 'paypal';
+type PaymentTab = 'yoco';
 
 interface Beat {
   id: string; title: string; artworkUrl: string;
