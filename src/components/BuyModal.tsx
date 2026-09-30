@@ -327,32 +327,8 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </button>
             )}
 
-            {activeTab === 'paystack' && (
-              <button
-                onClick={() => handleBuy('paystack')}
-                disabled={loading}
-                className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
-                style={{ background: '#011B33', color: '#fff', fontFamily: 'var(--font-display)', border: '2px solid #00C3F7' }}
-              >
-                {loading ? 'Processing…' : `Pay with Paystack — ${formatCurrency(price)} →`}
-              </button>
-            )}
-
-            {activeTab === 'paypal' && (
-              <PayPalBuyButton
-                itemType={itemType as any}
-                itemId={itemId}
-                itemTitle={item.title}
-                priceZAR={price}
-                customAmount={release?.payWhatWant ? parseFloat(customAmount) : undefined}
-                licenseType={beat ? license as any : 'basic'}
-              />
-            )}
-
             <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-              {activeTab === 'yoco' && '🔒 Card, Apple Pay & more · Powered by Yoco'}
-              {activeTab === 'paystack' && '🔒 Card, EFT & bank transfer · Powered by Paystack'}
-              {activeTab === 'paypal' && '🌍 International payments in USD · Powered by PayPal'}
+              🔒 Card, Apple Pay & more · Powered by Yoco
             </p>
           </>
         )}
