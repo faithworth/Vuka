@@ -228,6 +228,7 @@ export async function POST(req: NextRequest) {
       platformFee: platformFeeAmt,
       netAmount,
       paystackReference: `paypal:${orderId}`,
+      paypalCaptureId: capture?.id ?? null,
       ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
     },
   });
