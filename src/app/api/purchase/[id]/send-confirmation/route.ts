@@ -131,6 +131,7 @@ export async function POST(
           const pdfKey = r2Keys.license(purchase.licenseId);
           await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
           resolvedLicenseUrl = getPublicUrl(pdfKey);
+          resolvedLicensePdf = pdfBuffer;
           await prisma.purchase.update({ where: { id }, data: { licenseUrl: resolvedLicenseUrl } });
           logger.info('[send-confirmation] PDF generated', { purchaseId: id });
         }
