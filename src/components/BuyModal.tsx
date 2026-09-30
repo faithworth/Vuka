@@ -266,8 +266,8 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </div>
             )}
 
-            {/* Shipping address (merch only, non-PayPal) */}
-            {isMerch && activeTab !== 'paypal' && (
+            {/* Shipping address (merch only) */}
+            {isMerch && activeTab === 'yoco' && (
               <div className="mb-4 space-y-2">
                 <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>Shipping address</p>
                 <input value={shipLine1} onChange={e => setShipLine1(e.target.value)} placeholder="Street address" className="input" />
