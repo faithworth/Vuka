@@ -12,10 +12,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import Link from 'next/link';
 import { Plus, ExternalLink, Music, Trash2, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, Hash, Copy, Check, Pencil } from 'lucide-react';
 
 export default function DashboardReleasesPage() {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [releases, setReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export default function DashboardReleasesPage() {
                   <span>{release.tracks?.length || 0} tracks</span>
                   <span>{release.plays ?? 0} plays</span>
                   <span>{release.sales ?? 0} sales</span>
-                  <span>{formatCurrency(release.price)}</span>
+                  <span>{displayCurrency(release.price)}</span>
                   {/* UPC display */}
                   {release.upc && (
                     <button
