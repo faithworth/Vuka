@@ -4,6 +4,7 @@
 // an admin chooses on the CMS "landing" page.
 import Link from 'next/link';
 import VukaLogo from '@/components/brand/VukaLogo';
+import GlobalCurrencySelector from '@/components/GlobalCurrencySelector';
 
 export default function Footer() {
   return (
