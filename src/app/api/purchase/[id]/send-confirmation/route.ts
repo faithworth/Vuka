@@ -170,6 +170,7 @@ export async function POST(
       licenseId:   purchase.licenseId,
       artworkUrl:  artworkUrl || undefined,
       licenseUrl:  resolvedLicenseUrl,
+      licensePdf: resolvedLicensePdf,
     });
 
     // Mark as sent so notify (if it runs later) doesn't double-send
