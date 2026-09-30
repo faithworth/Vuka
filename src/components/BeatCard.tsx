@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { formatCurrency, generateWaveformFallback } from '@/lib/utils';
 import { usePlayer, PreviewPlayButton, type PreviewTrack } from '@/components/NowPlayingBar';
+import { useCurrency } from '@/components/CurrencyProvider';
 
 interface Beat {
   id: string;
@@ -30,6 +31,7 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
   onWishlist?: (e: React.MouseEvent) => void;
 }) {
   const { isTrackPlaying } = usePlayer();
+  const { formatCurrency: displayCurrency } = useCurrency();
   const isPlaying = isTrackPlaying(beat.id);
   const waveform = beat.waveformData?.length ? beat.waveformData : generateWaveformFallback(beat.id.charCodeAt(0), 40);
 
@@ -166,7 +168,7 @@ export function BeatCard({ beat, onBuy, wishlisted = false, onWishlist }: {
           <div>
             <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>From</p>
             <span className="font-black text-base" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
-              {formatCurrency(beat.basicPrice)}
+              {displayCurrency(beat.basicPrice)}
             </span>
           </div>
           <button
