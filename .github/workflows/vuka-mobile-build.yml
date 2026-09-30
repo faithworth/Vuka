@@ -40,7 +40,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -82,7 +81,13 @@ jobs:
         run: cd ios && pod install
       - name: Build iOS simulator
         run: |
-          xcodebuild             -workspace ios/VukaMusic.xcworkspace             -scheme VukaMusic             -configuration Debug             -sdk iphonesimulator             -derivedDataPath build/ios             CODE_SIGNING_ALLOWED=NO
+          xcodebuild \
+            -workspace ios/VukaMusic.xcworkspace \
+            -scheme VukaMusic \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO
       - name: Package simulator app
         run: |
           cd build/ios/Build/Products/Debug-iphonesimulator
