@@ -29,6 +29,7 @@ import { confirmDirectPurchase } from '@/lib/purchase-confirmation';
 import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { activatePlanPayment } from '@/lib/plan-payments';
+import { handleSupportPayment } from '@/lib/webhooks/paystack-handlers';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -118,6 +119,11 @@ export async function POST(req: NextRequest) {
 
   if (!reference || verifiedAmountZAR === undefined) {
     return NextResponse.json({ ok: true });
+  }
+
+  if (reference.startsWith('SUPY_')) {
+    const ok = await handleSupportPayment(reference, verifiedAmountZAR, verifiedCurrency || 'ZAR', 'yoco', traceId);
+    return ok ? NextResponse.json({ ok: true, type: 'support' }) : new NextResponse('Support processing failed', { status: 500 });
   }
 
   // Artist-plan checkout uses the same Yoco gateway but must not be
