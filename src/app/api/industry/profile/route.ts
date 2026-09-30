@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
     const iu = await prisma.industryUser.findUnique({ where: { userId: user.id } });
     if (!iu) return NextResponse.json({ error: 'Industry profile not found' }, { status: 404 });
 
-    const { companyName, role: position, website, name } = await req.json();
+    const { companyName, role: position, website, name, currency } = await req.json();
 
     // Update IndustryUser fields
     const updated = await prisma.industryUser.update({
