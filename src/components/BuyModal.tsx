@@ -61,7 +61,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
-  const [activeTab, setActiveTab]       = useState<PaymentTab>('yoco');
+  // Never silently choose a card-based gateway for the buyer.
+  // The buyer must explicitly select Yoco, Paystack, or PayPal.
+  const [activeTab, setActiveTab]       = useState<PaymentTab | null>(null);
   const [shipLine1, setShipLine1]       = useState('');
   const [shipLine2, setShipLine2]       = useState('');
   const [shipCity, setShipCity]         = useState('');
@@ -313,6 +315,13 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
             )}
 
             {/* Tab content */}
+            {!activeTab && (
+              <div className="w-full py-4 rounded-lg text-center text-sm font-semibold"
+                style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Select a payment method above to continue.
+              </div>
+            )}
+
             {activeTab === 'yoco' && (
               <button
                 onClick={() => handleBuy('yoco')}
