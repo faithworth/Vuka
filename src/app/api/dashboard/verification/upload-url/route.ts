@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireArtist } from '@/lib/auth';
 import { getPresignedUploadUrl, r2Keys } from '@/lib/r2';
+import prisma from '@/lib/prisma';
 
 // POST /api/dashboard/verification/upload-url
 // Returns a presigned PUT URL for a PRIVATE key (private/verification/{artistId}.{ext}).
@@ -14,6 +15,20 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Once a submission is pending or approved, its document reference is
+    // immutable. This prevents accidental replacement of the evidence tied to
+    // an in-flight or permanently retained approval.
+    const existing = await prisma.verificationRequest.findUnique({
+      where: { artistId: user.artist.id },
+      select: { status: true },
+    });
+    if (existing?.status === 'pending' || existing?.status === 'approved') {
+      return NextResponse.json(
+        { error: existing.status === 'approved' ? 'Your verification is already approved' : 'Your verification is already under review' },
+        { status: 409 },
+      );
+    }
 
     const { contentType } = await req.json();
     if (!contentType) return NextResponse.json({ error: 'contentType required' }, { status: 400 });
