@@ -1,5 +1,3 @@
---- src/app/dashboard/earnings/page.tsx (sha: 00f5f165ff064168748c92519e6bc961d533953a) ---
-
 'use client';
 // ============================================================
 // VUKA — Earnings Dashboard (Phase 3)
