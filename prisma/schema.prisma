@@ -1231,11 +1231,16 @@ model VerificationRequest {
   additionalInfo  String    @default("")
   monthlyListeners Int      @default(0)
   totalStreams     Int      @default(0)
-  reviewedBy      String    @default("")
-  reviewedAt      DateTime?
-  adminNotes      String    @default("")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now())
+  reviewedBy          String    @default("")
+  reviewedAt          DateTime?
+  adminNotes          String    @default("")
+  approvedAt          DateTime?
+  approvedBy          String    @default("")
+  documentRetainedAt  DateTime?
+  documentMimeType    String    @default("")
+  retentionLocked     Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now())
 }
 
 // ── PHASE 4: MODERATION & TRUST ──────────────────────────────
