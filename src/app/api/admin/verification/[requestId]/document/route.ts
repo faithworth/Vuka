@@ -24,6 +24,12 @@ export async function GET(
   });
   if (!request?.idDocumentUrl) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  // Defense in depth: only verification objects may ever be exposed through
+  // this admin document endpoint. Never sign arbitrary R2 keys from the DB.
+  if (!request.idDocumentUrl.startsWith('private/verification/') || request.idDocumentUrl.includes('..')) {
+    return NextResponse.json({ error: 'Invalid verification document reference' }, { status: 500 });
+  }
+
   const signedUrl = await getPresignedDownloadUrl(request.idDocumentUrl, 300); // 5 min
   return NextResponse.redirect(signedUrl);
 }
