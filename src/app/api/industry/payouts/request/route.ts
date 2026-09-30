@@ -79,6 +79,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const iu = await prisma.industryUser.findUnique({
+      where: { id: user.industryUser.id },
+      select: { totalEarnings: true, totalWithdrawn: true },
+    });
+    const pending = await prisma.industryPayoutRequest.aggregate({
+      where: { industryUserId: user.industryUser.id, status: { in: ['pending', 'approved', 'processing'] } },
+      _sum: { amount: true },
+    });
+    const available = Math.max(0, Number(iu?.totalEarnings || 0) - Number(iu?.totalWithdrawn || 0) - Number(pending._sum.amount || 0));
+    if (amount > available + 0.01) {
+      return NextResponse.json({ error: `Requested amount exceeds your available cleared balance of R${available.toFixed(2)}.` }, { status: 409 });
+    }
+
     const result = await requestIndustryPayout({
       industryUserId: user.industryUser.id,
       amount,
