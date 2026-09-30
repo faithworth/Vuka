@@ -27,6 +27,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyYocoWebhook, fetchYocoCheckout } from '@/lib/yoco';
 import { confirmDirectPurchase } from '@/lib/purchase-confirmation';
 import { logger } from '@/lib/logger';
+import prisma from '@/lib/prisma';
+import { activatePlanPayment } from '@/lib/plan-payments';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -116,6 +118,29 @@ export async function POST(req: NextRequest) {
 
   if (!reference || verifiedAmountZAR === undefined) {
     return NextResponse.json({ ok: true });
+  }
+
+  // Artist-plan checkout uses the same Yoco gateway but must not be
+  // processed as a store Purchase. Activate it idempotently from the
+  // server-side amount/reference instead.
+  const planPurchase = await prisma.purchase.findFirst({
+    where: { paystackReference: reference, itemType: 'subscription' },
+    select: { id: true, artistId: true, licenseType: true, amount: true, currency: true, status: true },
+  });
+  if (planPurchase?.artistId) {
+    if (planPurchase.status !== 'confirmed') {
+      if (verifiedCurrency && verifiedCurrency !== 'ZAR') return new NextResponse('Currency mismatch', { status: 400 });
+      await activatePlanPayment({
+        artistId: planPurchase.artistId,
+        planSlug: planPurchase.licenseType,
+        reference,
+        amountZAR: verifiedAmountZAR,
+        currency: 'ZAR',
+        provider: 'yoco',
+      });
+      await prisma.purchase.update({ where: { id: planPurchase.id }, data: { status: 'confirmed' } });
+    }
+    return NextResponse.json({ ok: true, type: 'plan_subscription' });
   }
 
   const result = await confirmDirectPurchase({
