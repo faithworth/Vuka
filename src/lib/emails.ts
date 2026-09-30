@@ -1223,3 +1223,60 @@ export async function sendMarketplaceAutoReleased({
     console.error('[email] sendMarketplaceAutoReleased:', e);
   }
 }
+
+// Internal business updates are intentionally separate from customer/artist mail.
+export function getInternalNotificationRecipients(): string[] {
+  const configured = (process.env.VUKA_INTERNAL_NOTIFICATION_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  const fallback = [
+    'tshepang@vukamusic.com',
+    'admin@vukamusic.com',
+    'accounts@vukamusic.com',
+    'support@vukamusic.com',
+  ];
+
+  return [...new Set(configured.length ? configured : fallback)];
+}
+
+export async function sendInternalBusinessUpdate({
+  subject,
+  title,
+  summary,
+  details,
+  url,
+  buttonLabel = 'Open Vuka Admin →',
+}: {
+  subject: string;
+  title: string;
+  summary: string;
+  details?: Array<{ label: string; value: string }>;
+  url?: string;
+  buttonLabel?: string;
+}) {
+  const detailRows = (details ?? [])
+    .map((d) => row(d.label, d.value))
+    .join('');
+
+  const html = layout(card(
+    icon('🔔') +
+    heading(title) +
+    sub(summary) +
+    (detailRows ? infoTable(detailRows) : '') +
+    (url ? btn(url, buttonLabel, 'primary') : '')
+  ));
+
+  try {
+    return await getResend().emails.send({
+      from: FROM(),
+      to: getInternalNotificationRecipients(),
+      subject,
+      html,
+    });
+  } catch (error) {
+    console.error('[email] sendInternalBusinessUpdate:', error);
+    return null;
+  }
+}
