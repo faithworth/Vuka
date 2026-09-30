@@ -511,19 +511,19 @@ export default function PayoutsPage() {
             <button onClick={submitPayoutRequest} className="w-full py-3 rounded-lg font-bold text-sm text-white" style={{ background: 'var(--sky)' }}>Submit payout request</button>
           </div>
 
-          {/* ── Automatic weekly payout notice (self-serve requests removed) ── */}
+          {/* ── Cleared balance notice ── */}
           {(summary.totalPending > 0 || summary.totalEarned > 0) && (
             <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{formatCurrency(summary.totalPending || 0)} ready</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Paid out automatically every Monday once your balance clears R50 and you have a verified bank account on file — no need to request it.
+                    Vuka manually settles approved payout requests after confirming the cleared sales balance.
                   </p>
                 </div>
                 <span className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
                   style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--green)' }}>
-                  <Clock size={13} /> Next royalty run: Monday
+                  <Clock size={13} /> Manual settlement
                 </span>
               </div>
               {payoutSuccess && (
