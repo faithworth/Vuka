@@ -109,6 +109,7 @@ export async function POST(
 
     // ── Step 2: Generate license PDF if missing (beat purchases only) ──
     let resolvedLicenseUrl = purchase.licenseUrl || undefined;
+    var resolvedLicensePdf: Buffer | undefined;
     if (purchase.itemType === 'beat' && purchase.beatId && !resolvedLicenseUrl) {
       try {
         const beat = await prisma.beat.findUnique({
