@@ -184,6 +184,7 @@ export async function GET(req: NextRequest) {
       width: W,
       height: H,
       headers: {
+        'Content-Disposition': `attachment; filename="vuka-${tier}-${dim}-plaque.png"`,
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
     },
