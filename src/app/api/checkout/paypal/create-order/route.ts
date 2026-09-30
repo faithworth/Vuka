@@ -39,6 +39,7 @@ const artistSelect = {
 };
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json({ error: 'Direct purchases are processed through Yoco. PayPal is reserved for manual payout settlement.' }, { status: 410 });
   const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
   const ip      = getClientIp(req.headers);
 
