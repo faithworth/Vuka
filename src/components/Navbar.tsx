@@ -251,87 +251,28 @@ export function Navbar() {
           <VukaLogo size={28} />
         </Link>
 
-        {/* ── DESKTOP CENTER NAV (lg+) ──────────────────────────────────── */}
-        {/* min-w-0 lets this flex child actually shrink instead of forcing
-            the whole nav row wider than the viewport; overflow-x-auto is a
-            safety net so if it ever gets too tight again it scrolls instead
-            of clipping/pushing the Dashboard button off-screen. */}
-        <div className="hidden lg:flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
-          {/* Store dropdown */}
-          <div ref={storeRef} className="relative flex-shrink-0">
-            <button
-              onClick={() => setStoreOpen(v => !v)}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-              style={lnk(storeActive)}>
-              Store
-              <ChevronDown size={13} style={{
-                opacity: 0.7,
-                transform: storeOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.15s',
-              }} />
-            </button>
-            {storeOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50"
-                style={{ minWidth: 160, background: 'rgba(10,10,10,0.97)', border: '1px solid var(--border)', borderRadius: 12, padding: 6 }}>
-                {storeDropLinks.map(l => (
-                  <Link key={l.href} href={l.href}
-                    onClick={() => setStoreOpen(false)}
-                    className="block px-4 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
-                    style={{ color: isActive(l.href) ? 'var(--green)' : 'var(--text-muted)' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                    {l.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Top-level links */}
-          {[{ href: '/campaigns', label: 'Campaigns' }, { href: '/events', label: 'Events' }, { href: '/services', label: 'Services' }, { href: '/industry', label: 'For Industry' }].map(l => (
+        {/* ── DESKTOP BROWSE NAV (lg+) ───────────────────────────────────── */}
+        {/* Keep the primary catalogue visible. No hover/scroll dropdown is
+            required to discover Beats, Releases, Videos, etc. */}
+        <div className="hidden lg:flex items-center gap-0.5 min-w-0 flex-1 justify-center">
+          {publicLinks.map(l => (
             <Link key={l.href} href={l.href}
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
+              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
               style={lnk(isActive(l.href))}>
               {l.label}
             </Link>
           ))}
-
-          {/* Social dropdown (Feed / Reels / Discover) — logged in only */}
-          {user && (
-            <div ref={socialRef} className="relative flex-shrink-0">
-              <button
-                onClick={() => setSocialOpen(v => !v)}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-                style={lnk(socialActive)}>
-                Social
-                <ChevronDown size={13} style={{
-                  opacity: 0.7,
-                  transform: socialOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.15s',
-                }} />
-              </button>
-              {socialOpen && (
-                <div className="absolute top-full left-0 mt-1 z-50"
-                  style={{ minWidth: 160, background: 'rgba(10,10,10,0.97)', border: '1px solid var(--border)', borderRadius: 12, padding: 6 }}>
-                  {socialDropLinks.map(l => (
-                    <Link key={l.href} href={l.href}
-                      onClick={() => setSocialOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
-                      style={{ color: isActive(l.href) ? 'var(--green)' : 'var(--text-muted)' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                      <l.icon size={14} /> {l.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Role links when logged in */}
+          {user && socialDropLinks.map(l => (
+            <Link key={l.href} href={l.href}
+              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-1"
+              style={lnk(isActive(l.href))}>
+              <l.icon size={13} />
+              {l.label}
+            </Link>
+          ))}
           {roleLinks.map(l => (
             <Link key={l.href} href={l.href}
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-1"
               style={lnk(isActive(l.href))}>
               {'icon' in l && <l.icon size={13} />}
               {l.label}
