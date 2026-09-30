@@ -161,18 +161,26 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="flex items-center justify-between mt-5">
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Don't have an account?{' '}
-              <Link href="/auth/register" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">
-                Sign up free
+          <div className="flex flex-col gap-3 mt-5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Don't have an account?{' '}
+                <Link href="/auth/register" style={{ color: 'var(--sky)' }} className="hover:underline font-medium">
+                  Sign up free
+                </Link>
+              </p>
+              <Link href="/auth/forgot-password"
+                className="text-sm hover:underline flex-shrink-0"
+                style={{ color: 'var(--sky)' }}>
+                Forgot password?
               </Link>
+            </div>
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+              Need help?{' '}
+              <a href="mailto:support@vukamusic.com" style={{ color: 'var(--sky)' }} className="hover:underline">
+                support@vukamusic.com
+              </a>
             </p>
-            <Link href="/auth/forgot-password"
-              className="text-sm hover:underline flex-shrink-0"
-              style={{ color: 'var(--text-muted)' }}>
-              Forgot password?
-            </Link>
           </div>
         </div>
       </div>
