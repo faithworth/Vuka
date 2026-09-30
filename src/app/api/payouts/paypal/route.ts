@@ -21,6 +21,8 @@ import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import paypal, { isPayPalConfigured } from '@/lib/paypal';
 import { audit } from '@/lib/audit';
+import { getZarToUsdRate } from '@/lib/fx';
+import { sendInternalBusinessUpdate } from '@/lib/emails';
 import { logger } from '@/lib/logger';
 import { captureException } from '@/lib/monitoring/sentry';
 import crypto from 'crypto';
@@ -114,9 +116,10 @@ export async function POST(req: NextRequest) {
   // ── Convert amount to USD ──────────────────────────────────────────────
   // Payouts are always processed in USD for international artists
   const amountZAR = payoutRequest.amount;
+  const fx = payoutRequest.currency === 'USD' ? null : await getZarToUsdRate();
   const amountUSD = payoutRequest.currency === 'USD'
     ? amountZAR
-    : parseFloat((amountZAR * 0.054).toFixed(2)); // ZAR→USD, update rate periodically
+    : parseFloat((amountZAR * fx!.zarToUsdRate).toFixed(2));
 
   if (amountUSD < 1.00) {
     return NextResponse.json(
@@ -171,6 +174,21 @@ export async function POST(req: NextRequest) {
   logger.info('[PayPal payout] Sent', {
     requestId, batchId, amountUSD, paypalEmail, traceId,
   });
+
+  sendInternalBusinessUpdate({
+    subject: 'PayPal payout submitted — ' + (payoutRequest.artist?.name || 'Artist'),
+    title: 'PayPal artist payout submitted',
+    summary: 'A PayPal payout batch was submitted for an approved Vuka artist payout request.',
+    details: [
+      { label: 'Artist', value: payoutRequest.artist?.name || 'Artist' },
+      { label: 'Amount', value: amountUSD.toFixed(2) + ' USD' },
+      { label: 'PayPal', value: paypalEmail },
+      { label: 'Batch', value: batchId },
+      { label: 'Request', value: requestId },
+    ],
+    url: (process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com') + '/admin/finance',
+    buttonLabel: 'Open Finance →',
+  }).catch(console.error);
 
   return NextResponse.json({
     ok:      true,

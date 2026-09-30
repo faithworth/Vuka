@@ -25,6 +25,7 @@ import {
   sendPayoutApproved,
   sendPayoutProcessed,
   sendPayoutFailed,
+  sendInternalBusinessUpdate,
 } from '@/lib/emails';
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
@@ -155,6 +156,19 @@ export async function POST(req: NextRequest) {
             });
           }
         } catch (e) { console.error('[admin/payouts] approve email failed:', e); }
+        sendInternalBusinessUpdate({
+          subject: 'Payout approved — ' + (request.artist?.name || 'Artist'),
+          title: 'Artist payout approved',
+          summary: 'A Vuka payout request was approved and dispatched into the payout workflow.',
+          details: [
+            { label: 'Artist', value: request.artist?.name || 'Artist' },
+            { label: 'Amount', value: String(request.amount) + ' ' + (request.currency || 'ZAR') },
+            { label: 'Method', value: request.bankAccountId ? 'Bank Transfer' : 'Paystack' },
+            { label: 'Request', value: requestId },
+          ],
+          url: APP_URL() + '/admin/finance',
+          buttonLabel: 'Open Finance →',
+        }).catch(console.error);
         return NextResponse.json({ ok: true, status: 'approved' });
       }
       case 'reject': {
@@ -177,6 +191,19 @@ export async function POST(req: NextRequest) {
             });
           }
         } catch (e) { console.error('[admin/payouts] reject email failed:', e); }
+        sendInternalBusinessUpdate({
+          subject: 'Payout rejected — ' + (request.artist?.name || 'Artist'),
+          title: 'Artist payout rejected',
+          summary: 'A Vuka payout request was rejected. The ledger claim was released.',
+          details: [
+            { label: 'Artist', value: request.artist?.name || 'Artist' },
+            { label: 'Amount', value: String(request.amount) + ' ' + (request.currency || 'ZAR') },
+            { label: 'Reason', value: notes || 'Rejected by admin' },
+            { label: 'Request', value: requestId },
+          ],
+          url: APP_URL() + '/admin/finance',
+          buttonLabel: 'Open Finance →',
+        }).catch(console.error);
         return NextResponse.json({ ok: true, status: 'rejected' });
       }
       case 'mark_paid': {
@@ -207,6 +234,19 @@ export async function POST(req: NextRequest) {
             });
           }
         } catch (e) { console.error('[admin/payouts] mark_paid email failed:', e); }
+        sendInternalBusinessUpdate({
+          subject: 'Payout marked paid — ' + (request.artist?.name || 'Artist'),
+          title: 'Artist payout paid',
+          summary: 'A Vuka payout has been marked paid and the corresponding ledger rows were settled.',
+          details: [
+            { label: 'Artist', value: request.artist?.name || 'Artist' },
+            { label: 'Amount', value: String(request.amount) + ' ' + (request.currency || 'ZAR') },
+            { label: 'Reference', value: ref },
+            { label: 'Request', value: requestId },
+          ],
+          url: APP_URL() + '/admin/finance',
+          buttonLabel: 'Open Finance →',
+        }).catch(console.error);
         return NextResponse.json({ ok: true, status: 'paid' });
       }
       default:

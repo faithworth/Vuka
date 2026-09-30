@@ -84,6 +84,7 @@ const ENV_MANIFEST: EnvVar[] = [
   // ── Email ─────────────────────────────────────────────────────────────
   { key: 'RESEND_API_KEY', required: true,  description: 'Resend API key for transactional email' },
   { key: 'EMAIL_FROM',     required: false, description: 'From address (default: noreply@mail.vukamusic.com)' },
+  { key: 'VUKA_INTERNAL_NOTIFICATION_EMAILS', required: false, description: 'Comma-separated internal Vuka business notification recipients' },
 
   // ── Payments — Paystack (ZA — primary) ───────────────────────────────
   {
@@ -95,6 +96,18 @@ const ENV_MANIFEST: EnvVar[] = [
     key:         'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY',
     required:    false,
     description: 'Paystack public key for client-side Paystack.js pop-up',
+  },
+
+  // ── Payments — Yoco (South Africa) ───────────────────────────────────
+  {
+    key:         'YOCO_SECRET_KEY',
+    required:    'production',
+    description: 'Yoco live secret key for hosted checkout',
+  },
+  {
+    key:         'YOCO_WEBHOOK_SECRET',
+    required:    'production',
+    description: 'Yoco webhook signing secret',
   },
 
   // ── Payments — PayPal (International) ────────────────────────────────

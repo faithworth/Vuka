@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/utils';
-import { sendWelcomeArtist } from '@/lib/emails';
+import { sendWelcomeArtist, sendInternalBusinessUpdate } from '@/lib/emails';
 import { registerDeviceSession, getIpFromHeaders } from '@/lib/security/deviceSessions';
 import { user2FAEnabled } from '@/lib/security/twoFactor';
 
@@ -92,6 +92,19 @@ export async function GET(req: NextRequest) {
           to: email!,
           artistName: name,
           dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        }).catch(console.error);
+
+        sendInternalBusinessUpdate({
+          subject: 'New artist registration — ' + name,
+          title: 'New Vuka artist registration',
+          summary: name + ' just completed an artist registration through OAuth.',
+          details: [
+            { label: 'Name', value: name },
+            { label: 'Email', value: email || '' },
+            { label: 'Role', value: assignedRole },
+          ],
+          url: (process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com') + '/admin/users',
+          buttonLabel: 'Open Admin Users →',
         }).catch(console.error);
       }
 

@@ -18,7 +18,7 @@
 import prisma from './prisma';
 import { generateLicensePDF } from './pdf';
 import { uploadBuffer, r2Keys, getPublicUrl } from './r2';
-import { sendPurchaseConfirmation, sendArtistSaleNotification } from './emails';
+import { sendPurchaseConfirmation, sendArtistSaleNotification, sendInternalBusinessUpdate } from './emails';
 import { auditLog } from './audit';
 import { logger } from './logger';
 import { incrementDailyRollup } from './social';
@@ -302,6 +302,24 @@ export async function confirmDirectPurchase(params: {
       await sendArtistSaleNotification({ to: artistEmail, artistName, buyerName: purchase.buyerName, itemName, licenseType: purchase.licenseType || undefined, amount: purchase.amount, currency: purchase.currency, dashboardUrl: `${appUrl}/dashboard`, planSlug: artistPlanSlug || undefined, planExpiresAt: artistPlanExpiresAt });
     } catch (e) { logger.error('[purchase-confirmation] Artist email failed', { traceId, error: String(e) }); }
   }
+
+  await sendInternalBusinessUpdate({
+    subject: 'New sale — ' + itemName + ' — ' + payoutMethod,
+    title: 'New Vuka sale confirmed',
+    summary: 'A customer payment was confirmed and the artist ledger was credited.',
+    details: [
+      { label: 'Artist', value: artistName || 'Unknown artist' },
+      { label: 'Item', value: itemName },
+      { label: 'Gross', value: purchase.currency + ' ' + purchase.amount.toFixed(2) },
+      { label: 'Vuka fee', value: purchase.currency + ' ' + platformFeeAmt.toFixed(2) },
+      { label: 'Artist net', value: purchase.currency + ' ' + netAmount.toFixed(2) },
+      { label: 'Payment', value: payoutMethod },
+      { label: 'Buyer', value: purchase.buyerEmail },
+      { label: 'Purchase', value: purchase.id },
+    ],
+    url: appUrl + '/admin/finance',
+    buttonLabel: 'Open Finance →',
+  }).catch((e) => logger.error('[purchase-confirmation] Internal notification failed', { traceId, error: String(e) }));
 
   logger.info('[purchase-confirmation] Purchase confirmed', { traceId, purchaseId: purchase.id, payoutMethod });
   return { ok: true };

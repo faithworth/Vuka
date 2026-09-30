@@ -26,26 +26,26 @@ const env = {
   DATABASE_URL: process.env.DIRECT_URL || process.env.DATABASE_URL,
 };
 
-// In production/CI: resolve any previously-failed migrations before deploying.
-// This handles the case where a migration failed mid-way in a previous deploy
-// (e.g. 20250527_platform_settings_and_email failed due to wrong column order).
-// `migrate resolve --applied` marks it as successfully applied so deploy can continue.
+// In production/CI: recover migrations that are recorded as rolled back.
+// Prisma blocks every later migration while one migration is left in a failed
+// state. These historical migrations are already represented by the live schema,
+// so they must be marked rolled back before migrate deploy can continue.
+// If a migration is already applied/clean, the resolve command simply fails and
+// we continue.
 if (isCI) {
   const migrationsToResolve = [
     '20250527_platform_settings_and_email',
-    // Phase 12 cleanup migrations — safe to re-resolve if already applied
     '20260604_phase12_cleanup',
     '20260604_role_repair',
     '20260612_paystack_migration',
-    // Phase 10b — failed due to wrong table name (artists vs Artist), resolve before re-apply
     'phase10b_paystack_recipient',
   ];
   for (const name of migrationsToResolve) {
     try {
-      console.log(`[migrate] Resolving previously-failed migration: ${name}`);
-      execSync(`npx prisma migrate resolve --applied "${name}"`, { stdio: 'inherit', env });
+      console.log(`[migrate] Clearing historical rolled-back migration: ${name}`);
+      execSync(`npx prisma migrate resolve --rolled-back "${name}"`, { stdio: 'inherit', env });
     } catch {
-      // Ignore — resolve fails if migration isn't in a failed state (already applied or not run)
+      // Ignore — the migration may already be clean/applied or not present.
     }
   }
 }

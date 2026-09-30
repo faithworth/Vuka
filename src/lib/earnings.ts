@@ -349,7 +349,11 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
   const method = (request.method || 'bank_transfer') as PayoutMethod;
 
   if (method === 'paypal') {
-    const paypalEmail = request.paypalEmail || request.artist.paypalEmail || request.artist.user?.email || '';
+    const paypalEmail = request.paypalEmail || request.artist.paypalEmail || '';
+    if (!paypalEmail) {
+      await prisma.payoutRequest.update({ where: { id: payoutRequestId }, data: { status: 'rejected', adminNotes: 'PayPal payout requires an explicit PayPal email address.' } });
+      return { success: false, error: 'No explicit PayPal email configured for this artist payout' };
+    }
     const fx = request.currency === 'USD' ? null : await getZarToUsdRate();
     const amountUSD = request.currency === 'USD' ? request.amount : zarToUsd(request.amount, fx!.zarToUsdRate);
     result = await processPayPalPayout({
