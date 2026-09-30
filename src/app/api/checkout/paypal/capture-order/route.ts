@@ -38,7 +38,7 @@ import { getZarToUsdRate } from '@/lib/fx';
 import { platformFee as calcPlatformFee } from '@/lib/plans';
 import { generateLicensePDF } from '@/lib/pdf';
 import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
-import { sendPurchaseConfirmation, sendArtistSaleNotification } from '@/lib/emails';
+import { sendPurchaseConfirmation, sendArtistSaleNotification, sendInternalBusinessUpdate } from '@/lib/emails';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
