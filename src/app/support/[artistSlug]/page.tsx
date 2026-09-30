@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { formatCurrency, getTierFromAmount } from '@/lib/utils';
 
@@ -14,6 +14,7 @@ const TIERS = [
 
 export default function SupportPage() {
   const { artistSlug } = useParams<{ artistSlug: string }>();
+  const searchParams = useSearchParams();
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(50);
@@ -24,10 +25,26 @@ export default function SupportPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'yoco' | 'paystack' | 'paypal' | 'ozow'>('yoco');
 
   useEffect(() => {
     fetch(`/api/artist/${artistSlug}/profile`).then(r => r.json()).then(d => { setArtist(d); setLoading(false); }).catch(() => setLoading(false));
   }, [artistSlug]);
+
+  useEffect(() => {
+    const orderId = searchParams.get('token');
+    const txnId = searchParams.get('txnId');
+    if (searchParams.get('paypal') !== '1' || !txnId || !orderId) return;
+    fetch('/api/support/paypal/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ txnId, orderId }),
+    }).then(async r => {
+      const d = await r.json();
+      if (!r.ok) setError(d.error || 'PayPal support payment could not be confirmed.');
+      else window.location.href = `/support/${artistSlug}?success=1&txnId=${txnId}`;
+    }).catch(() => setError('PayPal support payment could not be confirmed.'));
+  }, [artistSlug, searchParams]);
 
   const effectiveAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const tier = getTierFromAmount(effectiveAmount);
@@ -37,7 +54,16 @@ export default function SupportPage() {
     if (effectiveAmount < 5) { setError('Minimum support is R5'); return; }
     setSubmitting(true); setError('');
     try {
-      const res = await fetch('/api/support/create-session', {
+      const endpoint = paymentMethod === 'paypal'
+        ? '/api/support/paypal/create-order'
+        : '/api/support/create-session';
+
+      if (paymentMethod === 'ozow') {
+        setError('Ozow bank-account payments are coming soon.');
+        return;
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artistSlug, amount: effectiveAmount, message, fanName: name, fanEmail: email, isPublic, tier }),
@@ -115,6 +141,24 @@ export default function SupportPage() {
           <div className="flex items-center gap-3 mb-6">
             <input type="checkbox" id="pub" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
             <label htmlFor="pub" className="text-sm" style={{ color: 'var(--text-muted)' }}>Show my support on the public wall</label>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Choose how you want to support</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { key: 'yoco', label: 'Yoco', note: 'Card / wallet' },
+                { key: 'paystack', label: 'Paystack', note: 'Card / EFT' },
+                { key: 'paypal', label: 'PayPal', note: 'International' },
+                { key: 'ozow', label: 'Ozow', note: 'Coming soon' },
+              ].map((m) => (
+                <button key={m.key} type="button" onClick={() => setPaymentMethod(m.key as any)} disabled={m.key === 'ozow'}
+                  className="p-2 rounded-lg text-xs font-bold"
+                  style={{ background: paymentMethod === m.key ? 'var(--sky)' : 'var(--surface2)', color: paymentMethod === m.key ? 'white' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                  {m.label}<span className="block text-[10px] font-normal opacity-80">{m.note}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-400 mb-4">Eish — {error}</p>}
