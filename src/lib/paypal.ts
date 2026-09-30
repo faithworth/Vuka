@@ -210,7 +210,10 @@ const orders = {
               return_url:          input.returnUrl,
               cancel_url:          input.cancelUrl,
             },
-            ...(input.buyerEmail ? { email_address: input.buyerEmail } : {}),
+            // Do not bind the PayPal payer to the email typed into Vuka.
+            // PayPal must authenticate the account that actually pays. Binding
+            // this field can trigger PayPal's "account is associated with the
+            // merchant you're trying to pay" error when the buyer is different.
           },
         },
       },
