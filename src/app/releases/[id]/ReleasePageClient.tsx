@@ -8,6 +8,7 @@ import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import {
   ShoppingCart, Calendar, Music,
   Share2, AtSign, Link2, Check,
@@ -16,6 +17,7 @@ import Link from 'next/link';
 import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
 export default function ReleasePageClient({ release }: { release: any }) {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [buyOpen, setBuyOpen]       = useState(false);
   const [copied, setCopied]         = useState(false);
   const { isTrackPlaying, elapsed } = usePlayer();
