@@ -389,7 +389,10 @@ export default function ReelsPage() {
           ))}
         </div>
         {myArtist && (
-          <button onClick={() => setUploadOpen(true)} className="text-white flex items-center gap-1 text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-full pointer-events-auto">
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="text-white flex items-center gap-1 text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-full pointer-events-auto absolute top-16 left-1/2 -translate-x-1/2 z-20 shadow-lg border border-white/10"
+          >
             <Plus size={16} /> New
           </button>
         )}
