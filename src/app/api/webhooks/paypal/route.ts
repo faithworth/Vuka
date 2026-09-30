@@ -172,7 +172,8 @@ export async function POST(req: NextRequest) {
         const resource = event.resource as Record<string, unknown> | undefined;
         const item = (resource?.payout_item as Record<string, unknown> | undefined) ?? resource;
         const senderItemId = String(item?.sender_item_id ?? '');
-        const batchId = String(resource?.payout_batch_id ?? resource?.batch_header?.payout_batch_id ?? '');
+        const batchHeader = resource?.batch_header as Record<string, unknown> | undefined;
+        const batchId = String(resource?.payout_batch_id ?? batchHeader?.payout_batch_id ?? '');
         const payoutRequest = senderItemId
           ? await prisma.payoutRequest.findUnique({ where: { id: senderItemId } })
           : batchId
