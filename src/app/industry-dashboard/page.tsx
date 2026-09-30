@@ -245,7 +245,7 @@ export default function IndustryDashboardPage() {
     if (!res.ok) { setSettingsError(d.error || 'Failed to save'); setSavingSettings(false); return; }
     setData((prev: any) => ({
       ...prev,
-      user:         { ...prev.user, name: settingsForm.name },
+      user:         { ...prev.user, name: settingsForm.name, currency: settingsForm.currency },
       industryUser: { ...prev.industryUser, ...d.profile },
     }));
     setSettingsMsg('Profile updated successfully.');
