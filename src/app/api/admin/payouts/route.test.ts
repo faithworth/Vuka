@@ -58,6 +58,7 @@ vi.mock('@/lib/emails', () => ({
   sendPayoutApproved: vi.fn(),
   sendPayoutProcessed: vi.fn(),
   sendPayoutFailed: vi.fn(),
+  sendInternalBusinessUpdate: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { POST } from './route';
