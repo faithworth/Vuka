@@ -1,3 +1,5 @@
+--- src/app/api/webhooks/paypal/route.ts (sha: 952e6c026f1dbfbadf0f792a803e296909db9166) ---
+
 /**
  * POST /api/webhooks/paypal
  *
@@ -18,6 +20,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyWebhookSignature, PAYPAL_WEBHOOK_ID } from '@/lib/paypal';
 import { logger } from '@/lib/logger';
+import { markPayoutPaid, rejectPayoutRequest } from '@/lib/payouts';
+import { sendInternalBusinessUpdate } from '@/lib/emails';
 import { captureException } from '@/lib/monitoring/sentry';
 
 
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest) {
             // Admin can see these via the status field discrepancy.
             await prisma.purchase.update({
               where: { id: purchase.id },
-              data:  { status: 'confirmed' },
+              data:  { status: 'confirmed', paypalCaptureId: captureId ?? null },
             });
             logger.warn('[PayPal webhook] Recovered pending purchase via webhook', {
               purchaseId: purchase.id, orderId: orderIdStr,
@@ -114,26 +118,32 @@ export async function POST(req: NextRequest) {
       }
 
       case 'PAYMENT.CAPTURE.REFUNDED': {
-        const resource  = event.resource as Record<string, unknown> | undefined;
-        // The refunded capture's orderId is in the links array (rel: "up" points to the capture)
-        const captureId = (resource?.links as Array<{ rel: string; href: string }> | undefined)
-                          ?.find((l) => l.rel === 'up')?.href?.split('/').at(-1);
+        const resource = event.resource as Record<string, unknown> | undefined;
+        const captureId = resource?.id as string | undefined;
 
-        // We store `paypal:<orderId>` not captureId — look it up by status first
-        // and match via the capture ID in the PayPal order resource
         if (captureId) {
-          // Best effort: find most-recently confirmed PayPal purchase
-          // A future improvement would store the captureId on the Purchase row
           const purchase = await prisma.purchase.findFirst({
-            where:   { paystackReference: { startsWith: 'paypal:' }, status: 'confirmed' },
-            orderBy: { createdAt: 'desc' },
+            where: { paypalCaptureId: captureId },
+            select: { id: true, amount: true, currency: true, status: true },
           });
           if (purchase) {
             await prisma.purchase.update({
               where: { id: purchase.id },
-              data:  { status: 'refunded' },
+              data: { status: 'refunded' },
             });
             logger.info('[PayPal webhook] Purchase refunded', { purchaseId: purchase.id, captureId });
+            sendInternalBusinessUpdate({
+              subject: 'PayPal purchase refunded',
+              title: 'PayPal purchase refunded',
+              summary: 'PayPal reported a completed purchase as refunded.',
+              details: [
+                { label: 'Purchase', value: purchase.id },
+                { label: 'Amount', value: String(purchase.amount) + ' ' + purchase.currency },
+                { label: 'Capture', value: captureId },
+              ],
+              url: (process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com') + '/admin/finance',
+              buttonLabel: 'Open Finance →',
+            }).catch(console.error);
           }
         }
 
@@ -143,6 +153,73 @@ export async function POST(req: NextRequest) {
           targetId:   captureId ?? 'unknown',
           notes:      JSON.stringify({ eventType, captureId }),
         } }).catch(() => {});
+        break;
+      }
+
+      case 'PAYMENT.PAYOUTSBATCH.SUCCESS':
+      case 'PAYMENT.PAYOUTSBATCH.DENIED':
+      case 'PAYMENT.PAYOUTSBATCH.PROCESSING':
+      case 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED':
+      case 'PAYMENT.PAYOUTS-ITEM.FAILED':
+      case 'PAYMENT.PAYOUTS-ITEM.BLOCKED':
+      case 'PAYMENT.PAYOUTS-ITEM.CANCELED':
+      case 'PAYMENT.PAYOUTS-ITEM.HELD':
+      case 'PAYMENT.PAYOUTS-ITEM.RETURNED':
+      case 'PAYMENT.PAYOUTS-ITEM.REFUNDED':
+      case 'PAYMENT.PAYOUTS-ITEM.UNCLAIMED': {
+        const resource = event.resource as Record<string, unknown> | undefined;
+        const item = (resource?.payout_item as Record<string, unknown> | undefined) ?? resource;
+        const senderItemId = String(item?.sender_item_id ?? '');
+        const batchId = String(resource?.payout_batch_id ?? resource?.batch_header?.payout_batch_id ?? '');
+        const payoutRequest = senderItemId
+          ? await prisma.payoutRequest.findUnique({ where: { id: senderItemId } })
+          : batchId
+            ? await prisma.payoutRequest.findFirst({ where: { paystackReference: `paypal_batch:${batchId}` } })
+            : null;
+
+        if (payoutRequest) {
+          if (eventType === 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED' || eventType === 'PAYMENT.PAYOUTSBATCH.SUCCESS') {
+            if (payoutRequest.status !== 'paid') {
+              await markPayoutPaid(
+                payoutRequest.id,
+                String(item?.transaction_id ?? batchId ?? payoutRequest.id),
+              );
+            }
+          } else if (
+            ['PAYMENT.PAYOUTS-ITEM.FAILED','PAYMENT.PAYOUTS-ITEM.BLOCKED','PAYMENT.PAYOUTS-ITEM.CANCELED','PAYMENT.PAYOUTSBATCH.DENIED'].includes(eventType)
+            && payoutRequest.status !== 'paid'
+          ) {
+            await rejectPayoutRequest(payoutRequest.id, 'PayPal payout failed: ' + eventType);
+          } else if (
+            ['PAYMENT.PAYOUTS-ITEM.RETURNED','PAYMENT.PAYOUTS-ITEM.REFUNDED'].includes(eventType)
+            && payoutRequest.status === 'paid'
+          ) {
+            await prisma.$transaction(async (tx) => {
+              await tx.payoutRequest.update({
+                where: { id: payoutRequest.id },
+                data: { status: 'rejected', processedAt: null, adminNotes: 'PayPal payout returned/refunded; artist balance reopened.' },
+              });
+              await tx.artistPayout.updateMany({
+                where: { claimedByPayoutRequestId: payoutRequest.id },
+                data: { status: 'pending', claimedByPayoutRequestId: null, processedAt: null },
+              });
+            });
+          }
+
+          sendInternalBusinessUpdate({
+            subject: 'PayPal payout update — ' + eventType,
+            title: 'PayPal payout status update',
+            summary: 'PayPal sent a payout status webhook to Vuka.',
+            details: [
+              { label: 'Event', value: eventType },
+              { label: 'Request', value: payoutRequest.id },
+              { label: 'Amount', value: String(payoutRequest.amount) + ' ' + payoutRequest.currency },
+              { label: 'Batch', value: batchId || 'n/a' },
+            ],
+            url: (process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com') + '/admin/finance',
+            buttonLabel: 'Open Finance →',
+          }).catch(console.error);
+        }
         break;
       }
 
