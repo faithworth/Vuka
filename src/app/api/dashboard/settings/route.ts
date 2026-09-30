@@ -82,7 +82,7 @@ export async function PATCH(req: NextRequest) {
       return tx.artist.update({
         where: { id: user.artist!.id },
         data: {
-          name: name || undefined,
+          name: normalizedName || undefined,
           ...(newSlug && { slug: newSlug }),
           bio: bio !== undefined ? bio : undefined,
           city: city !== undefined ? city : undefined,
