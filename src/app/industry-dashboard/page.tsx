@@ -662,7 +662,7 @@ export default function IndustryDashboardPage() {
               {payoutMsg && <p className="text-xs mt-2" style={{ color: payoutMsg.includes('submitted') ? 'var(--green)' : 'var(--red)' }}>{payoutMsg}</p>}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Total Referrals', value: referrals.length, color: 'var(--sky)' },
                 { label: 'Total Commission (referrals)', value: `R${totalCommission.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'var(--gold)' },
