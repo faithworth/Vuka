@@ -46,6 +46,12 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    // Update the global display/default currency for this account.
+    const supported = ['ZAR','USD','EUR','GBP','NGN','KES','GHS','BWP','ZMW','AUD','CAD'];
+    if (currency && supported.includes(String(currency).toUpperCase())) {
+      await prisma.user.update({ where: { id: user.id }, data: { currency: String(currency).toUpperCase() } });
+    }
+
     // Optionally update the User display name
     if (name?.trim()) {
       await prisma.user.update({
