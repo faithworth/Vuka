@@ -318,14 +318,13 @@ export default function PayoutsPage() {
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>SA payment gateway · Cards, QR, online · ZAR</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--sky)', background: 'rgba(56,182,232,0.1)' }}>
-                Coming soon
+              <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--green)', background: 'rgba(16,185,129,0.1)' }}>
+                Connected for customer checkout
               </span>
             </div>
             <div className="px-6 py-5" style={{ background: 'var(--surface2)', borderTop: '1px solid var(--border)' }}>
               <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                Yoco is a South African payment gateway built for local businesses — accept Visa, Mastercard,
-                and QR payments. Payouts go straight to your SA bank account within 1–2 business days.
+                Yoco is enabled for customer checkout. Customer payments settle to Vuka's merchant account; artist earnings are tracked separately and paid through the payout workflow.
               </p>
               <a href="https://www.yoco.com/za/" target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-semibold"
@@ -513,7 +512,7 @@ export default function PayoutsPage() {
                 <div>
                   <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{displayCurrency(summary.totalPending || 0)} ready</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Vuka manually settles approved payout requests after confirming the cleared sales balance.
+                    Eligible earnings are processed through the configured payout provider after account verification and any applicable payout threshold.
                   </p>
                 </div>
                 <span className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
