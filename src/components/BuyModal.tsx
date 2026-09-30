@@ -258,8 +258,8 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
           </button>
         ) : (
           <>
-            {/* Buyer info (shared across Yoco + Paystack tabs) */}
-            {activeTab !== 'paypal' && (
+            {/* Buyer info */}
+            {activeTab === 'yoco' && (
               <div className="space-y-3 mb-4">
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="input" />
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={isMerch ? 'Email address (for order updates)' : 'Email address (for download link)'} className="input" />
