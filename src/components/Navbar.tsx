@@ -252,32 +252,65 @@ export function Navbar() {
         </Link>
 
         {/* ── DESKTOP BROWSE NAV (lg+) ───────────────────────────────────── */}
-        {/* Keep the primary catalogue visible. No hover/scroll dropdown is
-            required to discover Beats, Releases, Videos, etc. */}
-        <div className="hidden lg:flex items-center gap-0.5 min-w-0 flex-1 justify-center">
-          {publicLinks.map(l => (
+        {/* Stable primary nav. Store/Social use a full-width dropdown BELOW the
+            bar, never a side/overflow menu, so links cannot collide with the logo. */}
+        <div className="hidden lg:flex items-center gap-1 flex-1 justify-center min-w-0">
+          <div className="relative" ref={storeRef}>
+            <button type="button" onClick={() => { setStoreOpen(v => !v); setSocialOpen(false); }}
+              className="px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-1.5"
+              style={lnk(storeActive)}>
+              Store <ChevronDown size={14} className={storeOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+            </button>
+            {storeOpen && (
+              <div className="absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2 w-[620px] p-4 rounded-2xl shadow-2xl z-[70]"
+                style={{ background: 'rgba(14,14,14,0.98)', border: '1px solid var(--border)', backdropFilter: 'blur(24px)' }}>
+                <div className="grid grid-cols-3 gap-2">
+                  {storeDropLinks.map(l => (
+                    <Link key={l.href} href={l.href} onClick={() => setStoreOpen(false)}
+                      className="px-4 py-3 rounded-xl text-sm font-semibold transition-colors"
+                      style={{ ...lnk(isActive(l.href)), border: '1px solid var(--border)' }}>
+                      {l.label}
+                    </Link>
+                  ))}
+                  <Link href="/store" onClick={() => setStoreOpen(false)}
+                    className="px-4 py-3 rounded-xl text-sm font-semibold"
+                    style={{ color: 'var(--green)', background: 'rgba(160,232,124,0.08)', border: '1px solid rgba(160,232,124,0.18)' }}>
+                    View full Store →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+          {publicLinks.filter(l => !l.href.startsWith('/store')).map(l => (
             <Link key={l.href} href={l.href}
-              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0"
+              className="px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
               style={lnk(isActive(l.href))}>
               {l.label}
             </Link>
           ))}
-          {user && socialDropLinks.map(l => (
-            <Link key={l.href} href={l.href}
-              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-1"
-              style={lnk(isActive(l.href))}>
-              <l.icon size={13} />
-              {l.label}
-            </Link>
-          ))}
-          {roleLinks.map(l => (
-            <Link key={l.href} href={l.href}
-              className="px-2.5 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-1"
-              style={lnk(isActive(l.href))}>
-              {'icon' in l && <l.icon size={13} />}
-              {l.label}
-            </Link>
-          ))}
+          {user && (
+            <div className="relative" ref={socialRef}>
+              <button type="button" onClick={() => { setSocialOpen(v => !v); setStoreOpen(false); }}
+                className="px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-1.5"
+                style={lnk(socialActive)}>
+                Social <ChevronDown size={14} className={socialOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {socialOpen && (
+                <div className="absolute right-0 top-[calc(100%+10px)] w-[390px] p-3 rounded-2xl shadow-2xl z-[70]"
+                  style={{ background: 'rgba(14,14,14,0.98)', border: '1px solid var(--border)', backdropFilter: 'blur(24px)' }}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {socialDropLinks.map(l => (
+                      <Link key={l.href} href={l.href} onClick={() => setSocialOpen(false)}
+                        className="px-3 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
+                        style={{ ...lnk(isActive(l.href)), border: '1px solid var(--border)' }}>
+                        <l.icon size={14} /> {l.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── DESKTOP RIGHT (lg+) ───────────────────────────────────────── */}
