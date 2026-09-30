@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const parsed = schemas.support.create.safeParse(raw);
     if (!parsed.success) return validationError(parsed.error);
     const { artistSlug, amount, message, fanName, fanEmail, isPublic, tier } = parsed.data;
+    const requestedMethod = raw.paymentMethod === 'yoco' ? 'yoco' : 'paystack';
 
     const artist = await prisma.artist.findUnique({ where: { slug: artistSlug }, include: { user: true } });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
@@ -40,6 +41,21 @@ export async function POST(req: NextRequest) {
 
     const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const reference = generateReference('SUP');
+
+    if (requestedMethod === 'yoco') {
+      const yocoReference = generateYocoReference('SUPY');
+      const checkout = await createYocoCheckout({
+        amountZAR: amount,
+        currency: 'ZAR',
+        reference: yocoReference,
+        successUrl: `${appUrl}/support/${artistSlug}?success=1&txnId=${txn.id}`,
+        cancelUrl: `${appUrl}/support/${artistSlug}?cancelled=1`,
+        failureUrl: `${appUrl}/support/${artistSlug}?failed=1`,
+        metadata: { txnId: txn.id, artistId: artist.id, tier: tier || 'Listener', type: 'support' },
+      });
+      await prisma.supportTxn.update({ where: { id: txn.id }, data: { paystackReference: yocoReference } });
+      return NextResponse.json({ authorizationUrl: checkout.redirectUrl, method: 'yoco' });
+    }
 
     try {
       const result = await initializeTransaction({
