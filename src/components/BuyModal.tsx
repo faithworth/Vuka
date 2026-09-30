@@ -9,7 +9,6 @@
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
-import PayPalBuyButton from './paypal/PayPalBuyButton';
 
 const LICENSES = [
   {
