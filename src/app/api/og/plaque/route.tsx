@@ -45,8 +45,18 @@ export async function GET(req: NextRequest) {
 
   const artist = await prisma.artist.findUnique({
     where:  { slug: artistSlug },
-    select: { name: true, photoUrl: true },
+    select: { id: true, name: true, photoUrl: true },
   }).catch(() => null);
+
+  const earned = artist
+    ? await prisma.artistPlaque.findUnique({
+        where: { artistId_tier_dimension: { artistId: artist.id, tier, dimension: dim } },
+        select: { id: true },
+      }).catch(() => null)
+    : null;
+  if (!artist || !earned) {
+    return new Response('Plaque not found', { status: 404 });
+  }
 
   const meta      = tierMeta(tier);
   const dimLabel  = dimensionLabel(dim);
