@@ -38,6 +38,7 @@ interface Props {
   itemId:       string;
   itemTitle:    string;
   priceZAR:     number;
+  customAmount?: number;
   licenseType?: LicenseType;
   disabled?:    boolean;
   onSuccess?:   (downloadUrl: string) => void;
@@ -49,6 +50,7 @@ export default function PayPalBuyButton({
   itemId,
   itemTitle,
   priceZAR,
+  customAmount,
   licenseType = 'basic',
   disabled,
   onSuccess,
@@ -82,7 +84,7 @@ export default function PayPalBuyButton({
       const res  = await fetch('/api/checkout/paypal/create-order', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ itemType, itemId, licenseType }),
+        body:    JSON.stringify({ itemType, itemId, licenseType, customAmount }),
       });
       const data = await res.json();
 
@@ -99,7 +101,7 @@ export default function PayPalBuyButton({
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [disabled, phase, itemType, itemId, licenseType]);
+  }, [disabled, phase, itemType, itemId, licenseType, customAmount]);
 
   // ── Step 2: create order → redirect ────────────────────────────────────
   const handleProceed = useCallback(async () => {
@@ -121,6 +123,7 @@ export default function PayPalBuyButton({
           itemType,
           itemId,
           licenseType,
+          customAmount,
           buyerEmail: trimmedEmail,
           buyerName:  trimmedName,
         }),
@@ -139,7 +142,7 @@ export default function PayPalBuyButton({
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [email, name, itemType, itemId, licenseType]);
+  }, [email, name, itemType, itemId, licenseType, customAmount]);
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (

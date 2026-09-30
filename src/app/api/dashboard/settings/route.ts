@@ -55,9 +55,10 @@ export async function PATCH(req: NextRequest) {
     });
 
     let newSlug: string | undefined;
-    const nameChanged = name && current && name.trim() && name.trim() !== current.name;
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    const nameChanged = !!normalizedName && !!current && normalizedName !== current.name;
     if (nameChanged && current) {
-      newSlug = await generateUniqueSlug(name.trim(), user.artist.id);
+      newSlug = await generateUniqueSlug(normalizedName, user.artist.id);
     }
 
     // Use a transaction so the slug history write and the artist update
@@ -81,7 +82,7 @@ export async function PATCH(req: NextRequest) {
       return tx.artist.update({
         where: { id: user.artist!.id },
         data: {
-          name: name || undefined,
+          name: normalizedName || undefined,
           ...(newSlug && { slug: newSlug }),
           bio: bio !== undefined ? bio : undefined,
           city: city !== undefined ? city : undefined,

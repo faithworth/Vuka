@@ -28,8 +28,9 @@ const schema = z.object({
   itemId:      z.string().min(1),
   buyerEmail:  z.string().email().max(254).trim().toLowerCase().optional(),
   buyerName:   z.string().min(1).max(200).trim().optional(),
-  licenseType: z.enum(['basic', 'premium', 'exclusive']).optional().default('basic'),
-  userId:      z.string().optional(),
+  licenseType:  z.enum(['basic', 'premium', 'exclusive']).optional().default('basic'),
+  customAmount: z.number().finite().positive().optional(),
+  userId:       z.string().optional(),
 });
 
 const artistSelect = {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { itemType, itemId, buyerEmail, buyerName, licenseType, userId } = parsed.data;
+  const { itemType, itemId, buyerEmail, buyerName, licenseType, customAmount, userId } = parsed.data;
 
   // ── Resolve item, price, and artist ────────────────────────────────────
   let itemTitle   = '';
@@ -93,8 +94,18 @@ export async function POST(req: NextRequest) {
         include: { artist: { select: artistSelect } },
       });
       if (!r?.isActive) return NextResponse.json({ error: 'Release not found' }, { status: 404 });
-      itemTitle   = r.title;
-      priceZAR    = r.price ?? 0;
+      itemTitle = r.title;
+      if (r.payWhatWant) {
+        if (customAmount === undefined) {
+          return NextResponse.json({ error: `Enter an amount of at least R${r.minPrice.toFixed(2)} for this pay-what-you-want release.` }, { status: 400 });
+        }
+        if (customAmount < r.minPrice) {
+          return NextResponse.json({ error: `The minimum price is R${r.minPrice.toFixed(2)}.` }, { status: 400 });
+        }
+        priceZAR = customAmount;
+      } else {
+        priceZAR = r.price ?? 0;
+      }
       artistName  = r.artist?.name ?? '';
       artistEmail = r.artist?.user?.email ?? '';
       artistId    = r.artist?.id ?? '';

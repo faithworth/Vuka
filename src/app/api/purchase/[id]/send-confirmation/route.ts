@@ -109,6 +109,7 @@ export async function POST(
 
     // ── Step 2: Generate license PDF if missing (beat purchases only) ──
     let resolvedLicenseUrl = purchase.licenseUrl || undefined;
+    var resolvedLicensePdf: Buffer | undefined;
     if (purchase.itemType === 'beat' && purchase.beatId && !resolvedLicenseUrl) {
       try {
         const beat = await prisma.beat.findUnique({
@@ -130,6 +131,7 @@ export async function POST(
           const pdfKey = r2Keys.license(purchase.licenseId);
           await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
           resolvedLicenseUrl = getPublicUrl(pdfKey);
+          resolvedLicensePdf = pdfBuffer;
           await prisma.purchase.update({ where: { id }, data: { licenseUrl: resolvedLicenseUrl } });
           logger.info('[send-confirmation] PDF generated', { purchaseId: id });
         }
@@ -168,6 +170,7 @@ export async function POST(
       licenseId:   purchase.licenseId,
       artworkUrl:  artworkUrl || undefined,
       licenseUrl:  resolvedLicenseUrl,
+      licensePdf: resolvedLicensePdf,
     });
 
     // Mark as sent so notify (if it runs later) doesn't double-send

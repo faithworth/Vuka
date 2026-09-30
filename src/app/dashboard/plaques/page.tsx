@@ -89,14 +89,21 @@ export default function PlaquesPage() {
 
   async function downloadImage(url: string, tier: string, dim: string) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Plaque download failed: ${res.status}`);
       const blob = await res.blob();
+      if (!blob.type.includes('image')) throw new Error('Plaque response was not an image');
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      a.href = objectUrl;
       a.download = `vuka-${tier}-${dim}-plaque.png`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
-    } catch {}
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      console.error('[plaques] image download failed', error);
+    }
   }
 
   async function downloadPdf(tier: string, dim: string) {
