@@ -1,9 +1,8 @@
 'use client';
 // src/components/BuyModal.tsx
-// Three payment options on every direct purchase:
-//   Tab 1 — Yoco      (default, SA card/Apple Pay/Google Pay)
-//   Tab 2 — Paystack  (SA card, instant EFT, bank transfer — once activated live)
-//   Tab 3 — PayPal    (international, USD)
+// Direct purchases are settled through Yoco only.
+// Yoco is connected to Vuka's company bank account. Artist/industry
+// payouts are a separate manual settlement process.
 // Merch, beats, releases, videos, samples all go through here.
 
 import { useState, useEffect } from 'react';
