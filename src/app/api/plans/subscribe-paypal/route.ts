@@ -9,7 +9,6 @@ import { PLANS } from '@/lib/plans';
 import { activatePlanPayment } from '@/lib/plan-payments';
 
 export async function POST(req: NextRequest) {
-  return NextResponse.json({ error: 'Plan purchases are processed through Yoco.' }, { status: 410 });
   try {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
