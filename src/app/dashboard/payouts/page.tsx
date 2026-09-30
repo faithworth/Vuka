@@ -1,7 +1,7 @@
 'use client';
 // src/app/dashboard/payouts/page.tsx
-// FIXED: Removed Stripe. Added Ozow, Yoco, SA Bank EFT.
-// FIXED: connected.paystack now reads directly from API (not crashed by Stripe import).
+// Payout destinations: verified bank account or PayPal when enabled.
+// Customer payment providers are shown separately from payout destinations.
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
@@ -181,7 +181,7 @@ export default function PayoutsPage() {
         </button>
       </div>
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-        Connect your payment accounts to receive your earnings from SA and African fans.
+        Choose your payout destination. Customer payments use the enabled checkout providers; eligible earnings are paid to your selected destination.
       </p>
 
       {/* Summary cards */}
@@ -248,7 +248,7 @@ export default function PayoutsPage() {
                     </p>
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Paystack is not used for direct purchase settlement. Direct purchases are processed through Yoco; your bank account is only a manual payout destination.
+                    Paystack is available as a customer payment option when enabled. Your verified bank details can also be used as a payout destination.
                   </p>
                   <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -259,8 +259,7 @@ export default function PayoutsPage() {
               ) : (
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add your bank account so SA buyers can pay you via card, EFT, or bank transfer through Paystack.
-                    Direct purchases are processed through Yoco. This bank account is only a manual payout destination.
+                    Add and verify your bank account to make it available as a payout destination. Customer checkout is separate and can use any enabled payment provider.
                   </p>
                   <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
                     style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
@@ -278,8 +277,8 @@ export default function PayoutsPage() {
             </div>
           </div>
 
-          {/* ── Ozow — hidden until integration is live ── */}
-          {false && (
+          {/* ── Ozow — coming soon ── */}
+          {
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -309,8 +308,8 @@ export default function PayoutsPage() {
           </div>
           )}
 
-          {/* ── Yoco — hidden until integration is live ── */}
-          {false && (
+          {/* ── Yoco ── */}
+          {
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -375,7 +374,7 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Vuka manually settles approved EFT requests after confirming the cleared sales balance.
+                    Your verified bank account is available as a payout destination. Eligible earnings are processed through the configured payout workflow.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -386,7 +385,7 @@ export default function PayoutsPage() {
               ) : (
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add your South African bank account details to receive manual EFT payouts.
+                    Add your bank account details so it can be verified and used as a payout destination.
                     Supports FNB, Absa, Standard Bank, Capitec, Nedbank, and all major SA banks.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
@@ -475,10 +474,10 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Direct purchases are processed through Yoco and settle into Vuka\'s company balance.',
-                'Choose Bank Account or PayPal in your payout request; Vuka manually pays the selected destination.',
+                'Customers choose from the enabled checkout providers: Yoco, Paystack, PayPal, and Ozow when available.',
+                'Payout destinations include a verified bank account or PayPal when enabled for the recipient.',
                 'Bank accounts have a security verification/cooldown before they can receive payouts.',
-                'Amounts are stored and settled in ZAR; your selected display currency only changes presentation.',
+                'Earnings are accounted for in the platform settlement currency; your display currency changes how amounts are shown.',
               ].map((item, i) => (
                 <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-muted)' }}>
                   <span style={{ color: 'var(--green)' }}>✓</span> {item}
@@ -493,8 +492,8 @@ export default function PayoutsPage() {
       {tab === 'history' && (
         <div className="space-y-4">
           <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Request a payout</p>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Purchases are funded through Yoco. Choose Bank Account or PayPal and Vuka will manually settle the cleared amount.</p>
+            <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Payout destination</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Choose where eligible earnings should be sent: verified Bank Account or PayPal. Vuka processes eligible payouts through the configured payout provider.</p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <button onClick={() => setPayoutMethod('bank_transfer')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'bank_transfer' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'bank_transfer' ? 'white' : 'var(--text-muted)' }}>Bank Account</button>
               <button onClick={() => setPayoutMethod('paypal')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'paypal' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'paypal' ? 'white' : 'var(--text-muted)' }}>PayPal</button>
