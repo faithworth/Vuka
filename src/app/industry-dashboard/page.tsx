@@ -265,6 +265,21 @@ export default function IndustryDashboardPage() {
     setSavingSettings(false);
   }
 
+  async function submitIndustryPayout() {
+    const amount = Number(payoutAmount);
+    if (!Number.isFinite(amount) || amount <= 0) { setPayoutMsg('Enter a valid payout amount.'); return; }
+    if (payoutMethod === 'bank_transfer' && !payoutBankId) { setPayoutMsg('Select a bank account.'); return; }
+    if (payoutMethod === 'paypal' && !payoutPaypalEmail) { setPayoutMsg('Enter your PayPal email.'); return; }
+    setPayoutMsg('');
+    const res = await fetch('/api/industry/payouts/request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, method: payoutMethod, bankAccountId: payoutMethod === 'bank_transfer' ? payoutBankId : undefined, paypalEmail: payoutMethod === 'paypal' ? payoutPaypalEmail : undefined }),
+    });
+    const d = await res.json();
+    setPayoutMsg(res.ok ? 'Payout request submitted for manual settlement.' : (d.error || 'Could not submit payout request.'));
+    if (res.ok) setPayoutAmount('');
+  }
+
   // ─── DERIVED ─────────────────────────────────────────────────
   const allInquiries = services.flatMap((s: any) =>
     (s.inquiries || []).map((inq: any) => ({ ...inq, serviceName: s.title }))
