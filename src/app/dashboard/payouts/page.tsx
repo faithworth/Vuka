@@ -21,6 +21,10 @@ export default function PayoutsPage() {
   const [payoutError, setPayoutError]           = useState('');
   const [payoutSuccess, setPayoutSuccess]       = useState('');
   const [retryingId, setRetryingId]             = useState<string | null>(null);
+  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
+  const [payoutBankId, setPayoutBankId] = useState('');
 
   // Bank account form
   const [showBankForm, setShowBankForm] = useState(false);
