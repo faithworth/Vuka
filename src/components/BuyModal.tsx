@@ -103,9 +103,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     setLoading(true);
     setError('');
 
-    const endpoint = processor === 'yoco'
-      ? '/api/checkout/yoco/initialize'
-      : '/api/checkout/paystack/initialize';
+    const endpoint = '/api/checkout/yoco/initialize';
 
     try {
       const res = await fetch(endpoint, {
