@@ -27,6 +27,7 @@ model User {
   email           String               @unique
   name            String
   legalName       String?              // full legal name for payout/KYC identity — distinct from public display name
+  currency        String               @default("ZAR") // preferred display/default currency
   role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
   isSuspended     Boolean              @default(false)
   suspendedAt     DateTime?
