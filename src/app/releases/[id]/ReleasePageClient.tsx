@@ -130,8 +130,8 @@ export default function ReleasePageClient({ release }: { release: any }) {
               <div className="flex items-center gap-4 mb-5 flex-wrap">
                 <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>
                   {release.payWhatWant
-                    ? `Pay what you want — min ${formatCurrency(release.minPrice || 0)}`
-                    : release.price === 0 ? 'Free' : formatCurrency(release.price)}
+                    ? `Pay what you want — min ${displayCurrency(release.minPrice || 0)}`
+                    : release.price === 0 ? 'Free' : displayCurrency(release.price)}
                 </div>
               </div>
             )}
