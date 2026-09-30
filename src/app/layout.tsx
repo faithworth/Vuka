@@ -30,19 +30,19 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   openGraph: {
-    title: 'Vuka Music — Africa\'s Digital Music Store',
+    title: 'Vuka Music — Global Music Marketplace',
     description:
-      "South Africa's digital music store. Buy beats, releases, merch and creator services. Artists earn up to 95% royalty per sale, paid weekly.",
+      "A global music marketplace for independent artists, producers, fans and the music industry.",
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
     siteName: 'Vuka Music',
     type: 'website',
-    locale: 'en_ZA',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vuka Music — Africa\'s Digital Music Store',
+    title: 'Vuka Music — Global Music Marketplace',
     description:
-      "South Africa's digital music store. Buy beats, releases, merch and creator services. Artists earn up to 95% royalty per sale.",
+      "A global music marketplace for independent artists, producers, fans and the music industry.",
   },
   icons: { icon: '/favicon.svg' },
 };
@@ -84,11 +84,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   '@id': 'https://www.vukamusic.com/#organization',
                   name: 'Vuka Music',
                   alternateName: 'VukaMusic',
+                  legalName: 'Voca Music The Rise Up',
                   url: 'https://www.vukamusic.com',
                   logo: 'https://www.vukamusic.com/favicon.svg',
                   description:
-                    'Vuka Music is Africa\'s digital music store. We sell beats, releases, event tickets, merch and creator services from South African independent artists. Artists earn a weekly royalty of up to 95% per sale.',
-                  areaServed: 'ZA',
+                    'Vuka Music is a global music marketplace connecting independent artists, producers, fans and music industry professionals.',
+                  areaServed: 'Worldwide',
                   sameAs: [],
                 },
                 {
