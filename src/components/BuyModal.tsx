@@ -308,7 +308,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </div>
             )}
 
-            {/* Tab content */}
+            {/* Yoco checkout */}
             {!activeTab && (
               <div className="w-full py-4 rounded-lg text-center text-sm font-semibold"
                 style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
