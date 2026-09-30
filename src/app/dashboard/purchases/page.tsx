@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { useCurrency } from '@/components/CurrencyProvider';
 
 const FULFILLMENT_LABEL: Record<string, string> = {
   awaiting_shipment: 'Awaiting shipment',
@@ -10,7 +9,6 @@ const FULFILLMENT_LABEL: Record<string, string> = {
 };
 
 export default function PurchasesPage() {
-  const { formatCurrency: displayCurrency } = useCurrency();
   const [purchases, setPurchases] = useState<any[]>([]);
   const [role, setRole] = useState<'artist' | 'fan' | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +84,7 @@ export default function PurchasesPage() {
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{p.buyerName}</td>
                     <td className="px-4 py-3 text-sm capitalize" style={{ color: 'var(--text-muted)' }}>{p.licenseType || p.itemType}</td>
-                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--green)' }}>{displayCurrency(p.amount)}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--green)' }}>{formatCurrency(p.amount)}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium"
                         style={{ background: p.status === 'confirmed' ? 'rgba(16,185,129,0.15)' : 'var(--surface2)', color: p.status === 'confirmed' ? 'var(--green)' : 'var(--text-muted)' }}>
