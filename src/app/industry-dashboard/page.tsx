@@ -95,7 +95,7 @@ export default function IndustryDashboardPage() {
         role:        d.industryUser?.role || '',
         website:     d.industryUser?.website || '',
         currency:    d.user?.currency || 'ZAR',
-        paypalEmail: d.industryUser?.bankAccounts?.find((a: any) => a.paypalEmail)?.paypalEmail || '',
+        paypalEmail: d.industryUser?.paypalEmail || '',
       });
       setLoading(false);
     });
