@@ -63,9 +63,12 @@ export default function Footer() {
             <Link href="/legal/artist-agreement">Artist Agreement</Link>
           </div>
         </div>
-        <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-          © {new Date().getFullYear()} Vuka Music · Made in South Africa
-        </p>
+        <div className="flex flex-col items-center gap-2">
+          <GlobalCurrencySelector />
+          <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+            © {new Date().getFullYear()} Vuka Music · Global platform · Made in South Africa
+          </p>
+        </div>
       </div>
     </footer>
   );
