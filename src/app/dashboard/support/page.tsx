@@ -1,3 +1,5 @@
+--- src/app/dashboard/support/page.tsx (sha: 535eeb5569c1118db8e2bf3e41ad22ce24064678) ---
+
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -64,7 +66,7 @@ export default function DashboardSupportPage() {
               </div>
               <div className="text-right">
                 <div className="font-black" style={{ color: txn.status === 'confirmed' ? 'var(--gold)' : 'var(--text-muted)' }}>
-                  {displayCurrency(txn.amount, txn.currency)}
+                  {displayCurrency(txn.amount)}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{txn.status}</div>
               </div>

@@ -1,3 +1,5 @@
+--- src/app/dashboard/earnings/page.tsx (sha: 00f5f165ff064168748c92519e6bc961d533953a) ---
+
 'use client';
 // ============================================================
 // VUKA — Earnings Dashboard (Phase 3)
@@ -166,9 +168,9 @@ export default function EarningsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             {[
-              { label: 'Gross',                   value: displayCurrency(totalGross),    color: 'var(--gold)',  icon: TrendingUp },
-              { label: `Net (Your ${artistPct}%)`, value: displayCurrency(totalNet),      color: 'var(--green)', icon: BarChart2 },
-              { label: `Vuka Music ${platformPct}% Fee`, value: displayCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
+              { label: 'Gross',                   value: displayCurrency(totalGross))',  icon: TrendingUp },
+              { label: `Net (Your ${artistPct}%)`, value: displayCurrency(totalNet))', icon: BarChart2 },
+              { label: `Vuka Music ${platformPct}% Fee`, value: displayCurrency(totalVukaFee))',   icon: BarChart2 },
               { label: 'Total Sales',               value: (data?.totalSales ?? 0).toString(), color: 'var(--sky)', icon: BarChart2 },
             ].map(card => (
               <div key={card.label} className="p-5 rounded-2xl"
@@ -283,10 +285,10 @@ export default function EarningsPage() {
                       {row.type.replace(/_/g, ' ')}
                     </span>
                     <span className="md:text-right" style={{ color: 'var(--text-muted)' }}>
-                      {displayCurrency(row.amount, row.currency)}
+                      {displayCurrency(row.amount)}
                     </span>
                     <span className="md:text-right font-semibold" style={{ color: 'var(--green)' }}>
-                      {displayCurrency(row.netAmount || row.amount, row.currency)}
+                      {displayCurrency(row.netAmount || row.amount)}
                     </span>
                     <span className="md:text-right text-xs" style={{ color: 'var(--text-muted)' }}>
                       {row.currency || 'ZAR'}
@@ -334,7 +336,7 @@ export default function EarningsPage() {
                         </p>
                       </div>
                       <span className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--green)' }}>
-                        {displayCurrency(inv.total, inv.currency)}
+                        {displayCurrency(inv.total)}
                       </span>
                     </div>
                   ))}
@@ -372,7 +374,7 @@ export default function EarningsPage() {
                   ].map(row => (
                     <div key={row.label} className="flex justify-between text-sm">
                       <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
-                      <span className="font-semibold" style={{ color: row.color }}>{displayCurrency(row.value, taxRecord.currency)}</span>
+                      <span className="font-semibold" style={{ color: row.color }}>{displayCurrency(row.value)}</span>
                     </div>
                   ))}
                   <p className="text-xs pt-2" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>

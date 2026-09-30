@@ -1,3 +1,5 @@
+--- src/app/dashboard/page.tsx (sha: faef7d34c21581adbb252c8a60418f1f703377e2) ---
+
 'use client';
 import { useEffect, useState } from 'react';
 import { TrendingUp, Calendar, ShoppingBag, Play, Upload, CreditCard, Link2, Crown, Zap, Star, ArrowRight, CheckCircle, Circle, X } from 'lucide-react';
@@ -134,8 +136,8 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Revenue', value: displayCurrency(stats?.totalRevenue || 0), icon: <TrendingUp size={20} />, color: 'var(--green)' },
-              { label: 'This Month',    value: displayCurrency(stats?.monthRevenue  || 0), icon: <Calendar size={20} />,    color: 'var(--sky)' },
+              { label: 'Total Revenue', value: displayCurrency(stats?.totalRevenue || 0))' },
+              { label: 'This Month',    value: displayCurrency(stats?.monthRevenue  || 0))' },
               { label: 'Total Sales',  value: stats?.totalSales || 0,                     icon: <ShoppingBag size={20} />, color: 'var(--gold)' },
               { label: 'Total Plays',  value: stats?.totalPlays || 0,                     icon: <Play size={20} />,        color: 'var(--sky)' },
             ].map(s => (
@@ -201,7 +203,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{sale.buyerName} · {sale.licenseType || sale.itemType}</p>
                     </div>
-                    <span className="font-bold" style={{ color: 'var(--green)' }}>{displayCurrency(sale.amount, sale.currency)}</span>
+                    <span className="font-bold" style={{ color: 'var(--green)' }}>{displayCurrency(sale.amount)}</span>
                   </div>
                 ))}
               </div>

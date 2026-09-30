@@ -1,3 +1,5 @@
+--- src/app/dashboard/analytics/page.tsx (sha: e6f5a2c5617142f999e95b1af9afd261a47f3530) ---
+
 'use client';
 // ============================================================
 // VUKA — Artist Analytics Dashboard (Phase 10)
@@ -295,7 +297,7 @@ export default function AnalyticsPage() {
                     {sale.buyerName && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sale.buyerName}</p>}
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)' }}>
-                    {displayCurrency(sale.amount, sale.currency)}
+                    {displayCurrency(sale.amount)}
                   </span>
                 </div>
               ))}
