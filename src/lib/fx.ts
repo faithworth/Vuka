@@ -38,7 +38,7 @@ const FETCH_TIMEOUT_MS  = 4_000;
 
 // ── Fetchers ──────────────────────────────────────────────────────────────
 
-async function fetchFromOpenErApi(): Promise<number | null> {
+async function fetchFromOpenErApi(): Promise<Record<string, number> | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
