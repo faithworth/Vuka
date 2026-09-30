@@ -1223,3 +1223,67 @@ export async function sendMarketplaceAutoReleased({
     console.error('[email] sendMarketplaceAutoReleased:', e);
   }
 }
+
+// ── Admin: New Artist Registration Alert ──────────────────────
+
+export async function sendAdminNewArtistAlert(params: {
+  adminEmail: string;
+  artistName: string;
+  artistEmail: string;
+  artistId: string;
+  role: string;
+}) {
+  const { adminEmail, artistName, artistEmail, artistId, role } = params;
+  const adminUrl = `${APP_URL()}/admin/users`;
+  try {
+    await getResend().emails.send({
+      from: FROM(),
+      to: adminEmail,
+      subject: `New artist registered — ${artistName}`,
+      html: layout(card(
+        icon('🎵') +
+        heading('New Artist Registration') +
+        sub(`A new ${role} just signed up on Vuka Music.`) +
+        row('Name', artistName) +
+        row('Email', artistEmail) +
+        row('Role', role) +
+        row('User ID', artistId) +
+        btn(adminUrl, 'View in Admin Panel', 'primary')
+      )),
+    });
+  } catch (e) {
+    console.error('[email] sendAdminNewArtistAlert:', e);
+  }
+}
+
+// ── Admin: New Fan / Industry Registration Alert ──────────────
+
+export async function sendAdminNewUserAlert(params: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  userId: string;
+  role: string;
+}) {
+  const { adminEmail, userName, userEmail, userId, role } = params;
+  const adminUrl = `${APP_URL()}/admin/users`;
+  try {
+    await getResend().emails.send({
+      from: FROM(),
+      to: adminEmail,
+      subject: `New ${role} registered — ${userName}`,
+      html: layout(card(
+        icon('👤') +
+        heading('New User Registration') +
+        sub(`A new ${role} just signed up on Vuka Music.`) +
+        row('Name', userName) +
+        row('Email', userEmail) +
+        row('Role', role) +
+        row('User ID', userId) +
+        btn(adminUrl, 'View in Admin Panel', 'secondary')
+      )),
+    });
+  } catch (e) {
+    console.error('[email] sendAdminNewUserAlert:', e);
+  }
+}
