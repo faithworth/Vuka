@@ -73,15 +73,8 @@ export async function approveIndustryPayoutRequest(requestId: string, notes?: st
     data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
 
-  // Auto-dispatch immediately — fire-and-forget, mirroring approvePayoutRequest
-  // in payouts.ts (artist side). Dynamic import avoids a circular dependency
-  // (earnings.ts imports from this file for its webhook handlers).
-  const { dispatchIndustryPayout } = await import('./earnings');
-  dispatchIndustryPayout(requestId).catch((err) => {
-    console.error('[industry-payouts] auto-dispatch failed', requestId, err);
-  });
-
-  return req;
+  // Manual settlement: the admin pays the selected bank/PayPal destination
+  // after confirming the available Yoco-funded balance.
 }
 
 // ── Admin: Mark Payout Paid ───────────────────────────────────
