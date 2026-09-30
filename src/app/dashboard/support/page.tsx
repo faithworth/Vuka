@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { useCurrency } from '@/components/CurrencyProvider';
 import { Heart } from 'lucide-react';
 
 const TIERS: Record<string, string> = {
@@ -9,7 +8,6 @@ const TIERS: Record<string, string> = {
 };
 
 export default function DashboardSupportPage() {
-  const { formatCurrency: displayCurrency } = useCurrency();
   const [txns, setTxns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [totals, setTotals] = useState({ total: 0, count: 0 });
@@ -32,7 +30,7 @@ export default function DashboardSupportPage() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Total Support Received</div>
-          <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>{displayCurrency(totals.total)}</div>
+          <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>{formatCurrency(totals.total)}</div>
         </div>
         <div className="p-4 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Supporters</div>
@@ -64,7 +62,7 @@ export default function DashboardSupportPage() {
               </div>
               <div className="text-right">
                 <div className="font-black" style={{ color: txn.status === 'confirmed' ? 'var(--gold)' : 'var(--text-muted)' }}>
-                  {displayCurrency(txn.amount)}
+                  {formatCurrency(txn.amount)}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{txn.status}</div>
               </div>

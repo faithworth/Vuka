@@ -5,14 +5,12 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
-import { useCurrency } from '@/components/CurrencyProvider';
 import {
   CheckCircle, Clock, TrendingUp, Wallet, ArrowUpRight, RefreshCw, Building2, CreditCard, Zap, ExternalLink, Plus, Banknote,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function PayoutsPage() {
-  const { formatCurrency: displayCurrency } = useCurrency();
   const [data, setData]     = useState<any>(null);
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -195,7 +193,7 @@ export default function PayoutsPage() {
           <div key={card.label} className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <card.icon size={16} style={{ color: card.color }} className="mb-2" />
             <div className="text-xl font-black" style={{ color: card.color }}>
-              {displayCurrency(card.value)}
+              {formatCurrency(card.value)}
             </div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
           </div>
@@ -510,7 +508,7 @@ export default function PayoutsPage() {
             <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{displayCurrency(summary.totalPending || 0)} ready</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{formatCurrency(summary.totalPending || 0)} ready</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                     Eligible earnings are processed through the configured payout provider after account verification and any applicable payout threshold.
                   </p>
@@ -545,7 +543,7 @@ export default function PayoutsPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                          {displayCurrency(r.amount)}
+                          {formatCurrency(r.amount)}
                         </p>
                         {requestBadge(r.status)}
                       </div>
@@ -587,7 +585,7 @@ export default function PayoutsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                            {displayCurrency(p.amount)}
+                            {formatCurrency(p.amount)}
                           </p>
                           {ledgerBadge(p.status, p.claimedByPayoutRequestId)}
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium uppercase"

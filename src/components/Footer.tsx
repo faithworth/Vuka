@@ -4,7 +4,6 @@
 // an admin chooses on the CMS "landing" page.
 import Link from 'next/link';
 import VukaLogo from '@/components/brand/VukaLogo';
-import GlobalCurrencySelector from '@/components/GlobalCurrencySelector';
 
 export default function Footer() {
   return (
@@ -64,7 +63,6 @@ export default function Footer() {
           </div>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <GlobalCurrencySelector />
           <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
             © {new Date().getFullYear()} Vuka Music · Global platform · Made in South Africa
           </p>
