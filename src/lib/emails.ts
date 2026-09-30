@@ -757,7 +757,18 @@ export async function sendPurchaseConfirmation({
     </p>
   `));
 
-  return getResend().emails.send({ from: FROM(), to, subject, html });
+  return getResend().emails.send({
+    from: FROM(),
+    to,
+    subject,
+    html,
+    ...(licensePdf ? {
+      attachments: [{
+        filename: `vuka-${itemName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-license.pdf`,
+        content: licensePdf,
+      }],
+    } : {}),
+  });
 }
 
 export async function sendMerchShipped({
@@ -818,15 +829,7 @@ export async function sendTicketConfirmation({
     </p>
   `));
 
-  return getResend().emails.send({
-    from: FROM(),
-    to,
-    subject,
-    html,
-    ...(licensePdf ? {
-      attachments: [{ filename: `vuka-${itemName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-license.pdf`, content: licensePdf }],
-    } : {}),
-  });
+  return getResend().emails.send({ from: FROM(), to, subject, html });
 }
 
 export async function sendArtistSaleNotification({
