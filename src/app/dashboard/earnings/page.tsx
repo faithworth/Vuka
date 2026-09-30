@@ -166,9 +166,9 @@ export default function EarningsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             {[
-              { label: 'Gross',                   value: displayCurrency(totalGross))',  icon: TrendingUp },
-              { label: `Net (Your ${artistPct}%)`, value: displayCurrency(totalNet))', icon: BarChart2 },
-              { label: `Vuka Music ${platformPct}% Fee`, value: displayCurrency(totalVukaFee))',   icon: BarChart2 },
+              { label: 'Gross',                   value: displayCurrency(totalGross),    color: 'var(--gold)',  icon: TrendingUp },
+              { label: `Net (Your ${artistPct}%)`, value: displayCurrency(totalNet),      color: 'var(--green)', icon: BarChart2 },
+              { label: `Vuka Music ${platformPct}% Fee`, value: displayCurrency(totalVukaFee),  color: 'var(--sky)',   icon: BarChart2 },
               { label: 'Total Sales',               value: (data?.totalSales ?? 0).toString(), color: 'var(--sky)', icon: BarChart2 },
             ].map(card => (
               <div key={card.label} className="p-5 rounded-2xl"
