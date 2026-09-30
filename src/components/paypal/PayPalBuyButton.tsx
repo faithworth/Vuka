@@ -101,7 +101,7 @@ export default function PayPalBuyButton({
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [disabled, phase, itemType, itemId, licenseType]);
+  }, [disabled, phase, itemType, itemId, licenseType, customAmount]);
 
   // ── Step 2: create order → redirect ────────────────────────────────────
   const handleProceed = useCallback(async () => {
@@ -142,7 +142,7 @@ export default function PayPalBuyButton({
       setError('Network error. Check your connection and try again.');
       setPhase('error');
     }
-  }, [email, name, itemType, itemId, licenseType]);
+  }, [email, name, itemType, itemId, licenseType, customAmount]);
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
