@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/utils';
-import { sendWelcomeArtist } from '@/lib/emails';
+import { sendWelcomeArtist, sendAdminNewArtistAlert, sendAdminNewUserAlert } from '@/lib/emails';
 import { registerDeviceSession, getIpFromHeaders } from '@/lib/security/deviceSessions';
 import { user2FAEnabled } from '@/lib/security/twoFactor';
 
@@ -93,10 +93,41 @@ export async function GET(req: NextRequest) {
           artistName: name,
           dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
         }).catch(console.error);
+        // Notify admin of every new artist/producer registration
+        if (ADMIN_EMAIL) {
+          sendAdminNewArtistAlert({
+            adminEmail: ADMIN_EMAIL,
+            artistName: name,
+            artistEmail: email!,
+            artistId: dbUser.id,
+            role: assignedRole,
+          }).catch(console.error);
+        }
       }
 
       if (assignedRole === 'industry') {
         await prisma.industryUser.create({ data: { userId: dbUser.id, companyName: '' } });
+        // Notify admin of new industry user
+        if (ADMIN_EMAIL) {
+          sendAdminNewUserAlert({
+            adminEmail: ADMIN_EMAIL,
+            userName: name,
+            userEmail: email!,
+            userId: dbUser.id,
+            role: 'industry',
+          }).catch(console.error);
+        }
+      }
+
+      // Notify admin of fan registrations too
+      if (assignedRole === 'fan' && ADMIN_EMAIL) {
+        sendAdminNewUserAlert({
+          adminEmail: ADMIN_EMAIL,
+          userName: name,
+          userEmail: email!,
+          userId: dbUser.id,
+          role: 'fan',
+        }).catch(console.error);
       }
     } else {
       // Existing user — self-heal admin role if ADMIN_EMAIL matches and DB role is wrong
