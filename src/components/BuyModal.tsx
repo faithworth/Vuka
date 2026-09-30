@@ -30,7 +30,7 @@ const LICENSES = [
   },
 ];
 
-type PaymentTab = 'yoco' | 'paystack' | 'paypal';
+type PaymentTab = 'yoco' | 'paystack' | 'paypal' | 'ozow';
 
 interface Beat {
   id: string; title: string; artworkUrl: string;
@@ -152,6 +152,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     { key: 'yoco',     label: 'Yoco',     flag: '🇿🇦' },
     { key: 'paystack', label: 'Paystack', flag: '🇿🇦' },
     { key: 'paypal',   label: 'PayPal',   flag: '🌍' },
+    { key: 'ozow',     label: 'Ozow',     flag: '🏦' },
   ];
 
   return (
@@ -294,7 +295,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
                 {tabs.map(t => (
                   <button
                     key={t.key}
-                    onClick={() => { setActiveTab(t.key); setError(''); }}
+                    onClick={() => { if (t.key !== 'ozow') { setActiveTab(t.key); setError(''); } }}
                     className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
                     style={{
                       background: activeTab === t.key ? 'rgba(160,232,124,0.12)' : 'var(--color-bg-tertiary)',
@@ -302,7 +303,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
                       color: activeTab === t.key ? 'var(--color-accent-green)' : 'var(--color-text-secondary)',
                     }}
                   >
-                    {t.flag} {t.label}
+                    {t.flag} {t.label}{t.key === 'ozow' ? ' — Coming soon' : ''}
                   </button>
                 ))}
               </div>
@@ -355,10 +356,17 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               />
             )}
 
+            {activeTab === 'ozow' && (
+              <div className="w-full py-4 rounded-lg text-center text-sm font-semibold" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Ozow bank-account / Instant EFT payments — Coming soon.
+              </div>
+            )}
+
             <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
               {activeTab === 'yoco' && '🔒 Card, Apple Pay & more · Powered by Yoco'}
               {activeTab === 'paystack' && '🔒 Card, EFT & bank transfer · Powered by Paystack'}
               {activeTab === 'paypal' && '🌍 International payments in USD · Powered by PayPal'}
+              {activeTab === 'ozow' && '🏦 Bank-to-bank Instant EFT · Coming soon'}
             </p>
           </>
         )}

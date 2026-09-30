@@ -44,19 +44,64 @@ export async function GET() {
   }
 }
 
-// POST — disabled. Payouts are no longer self-serve: Vuka pays out
-// automatically every Monday to every artist with a clearable balance
-// above the R50 minimum and a verified bank account on file, the way a
-// label pays its roster on schedule rather than on demand. See
-// src/lib/royalty-run.ts and the `royalty_run` cron entry in vercel.json.
-export async function POST() {
-  return NextResponse.json(
-    {
-      error:
-        'Payout requests are automatic now. Vuka pays out to eligible artists every Monday — no action needed once your balance clears R50 and you have a verified bank account on file.',
-    },
-    { status: 410 },
-  );
+// POST — create a payout instruction for manual settlement.
+// The artist chooses Bank Account or PayPal. Vuka does not automatically
+// send money; the admin manually settles approved requests from the
+// Yoco-funded company balance.
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireArtist();
+    if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const method = body.method === 'paypal' ? 'paypal' : 'bank_transfer';
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'A valid payout amount is required' }, { status: 400 });
+    }
+
+    let bankAccountId: string | undefined;
+    let paypalEmail: string | undefined;
+    if (method === 'paypal') {
+      paypalEmail = String(body.paypalEmail || user.artist.paypalEmail || '').trim();
+      if (!paypalEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(paypalEmail)) {
+        return NextResponse.json({ error: 'A valid PayPal email is required' }, { status: 400 });
+      }
+    } else {
+      bankAccountId = String(body.bankAccountId || '');
+      const account = await prisma.artistBankAccount.findFirst({
+        where: { id: bankAccountId, artistId: user.artist.id },
+        select: { id: true, isVerified: true, eligibleForPayoutAt: true },
+      });
+      if (!account) return NextResponse.json({ error: 'Select a bank account' }, { status: 400 });
+      if (!account.isVerified) return NextResponse.json({ error: 'Selected bank account is not verified yet' }, { status: 409 });
+      if (account.eligibleForPayoutAt && account.eligibleForPayoutAt > new Date()) {
+        return NextResponse.json({ error: 'Selected bank account is still in its security cooldown' }, { status: 409 });
+      }
+    }
+
+    const availableRows = await prisma.artistPayout.findMany({
+      where: { artistId: user.artist.id, status: 'pending', method: 'yoco' },
+      select: { amount: true },
+    });
+    const available = availableRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    if (amount > available + 0.01) {
+      return NextResponse.json({ error: `Requested amount exceeds your cleared Yoco-funded balance of R${available.toFixed(2)}.` }, { status: 409 });
+    }
+
+    const result = await requestPayout({
+      artistId: user.artist.id,
+      amount,
+      currency: 'ZAR',
+      method,
+      bankAccountId,
+      paypalEmail,
+    });
+
+    return NextResponse.json({ request: result });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Could not create payout request' }, { status: 400 });
+  }
 }
 
 // PATCH — retry a failed payout request

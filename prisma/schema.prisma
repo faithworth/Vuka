@@ -27,6 +27,7 @@ model User {
   email           String               @unique
   name            String
   legalName       String?              // full legal name for payout/KYC identity — distinct from public display name
+  currency        String               @default("ZAR") // preferred display/default currency
   role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
   isSuspended     Boolean              @default(false)
   suspendedAt     DateTime?
@@ -551,6 +552,7 @@ model IndustryUser {
   role        String             @default("")
   website     String             @default("")
   verified    Boolean            @default(false)
+  paypalEmail String?           // preferred PayPal destination for manual payouts
   // ── Earnings / payout ── running totals credited by handleIndustryOrderEvent
   // (industry service order webhook) and debited as withdrawals are paid out.
   totalEarnings  Float           @default(0)

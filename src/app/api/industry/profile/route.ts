@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
     const iu = await prisma.industryUser.findUnique({ where: { userId: user.id } });
     if (!iu) return NextResponse.json({ error: 'Industry profile not found' }, { status: 404 });
 
-    const { companyName, role: position, website, name } = await req.json();
+    const { companyName, role: position, website, name, currency, paypalEmail } = await req.json();
 
     // Update IndustryUser fields
     const updated = await prisma.industryUser.update({
@@ -43,8 +43,15 @@ export async function PATCH(req: NextRequest) {
         ...(companyName !== undefined && { companyName: companyName.trim() }),
         ...(position !== undefined    && { role: position.trim() }),
         ...(website !== undefined     && { website: website.trim() }),
+        ...(paypalEmail !== undefined  && { paypalEmail: String(paypalEmail).trim() || null }),
       },
     });
+
+    // Update the global display/default currency for this account.
+    const supported = ['ZAR','USD','EUR','GBP','NGN','KES','GHS','BWP','ZMW','AUD','CAD'];
+    if (currency && supported.includes(String(currency).toUpperCase())) {
+      await prisma.user.update({ where: { id: user.id }, data: { currency: String(currency).toUpperCase() } });
+    }
 
     // Optionally update the User display name
     if (name?.trim()) {

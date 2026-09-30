@@ -39,7 +39,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
               style={{ background: 'rgba(56,182,232,0.1)', border: '1px solid rgba(56,182,232,0.25)', color: 'var(--sky)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--sky)' }} />
-              Africa's digital music store
+              Global music marketplace for independent artists
             </div>
 
             <div className="flex justify-center -mb-2 px-2">
@@ -58,12 +58,11 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              List your music on Vuka Music's store — we sell it to fans across South Africa and worldwide.
-              You earn up to 95% of every sale as a weekly royalty, paid straight to your bank.
+              List your music on Vuka Music, set your prices, and share your store with your audience worldwide. Vuka provides the storefront, checkout, secure delivery and royalty accounting — you bring the music and promote it to your fans.
             </p>
 
             <p className="text-sm mb-4 max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
-              Vuka Music is the seller on every transaction. Artists earn royalties — paid weekly, the way a label pays its roster.
+              Vuka Music handles the transaction, payment processing, delivery and royalty accounting. Artists are responsible for promoting their work and bringing their audience; sales depend on fans choosing to buy.
             </p>
 
             {/* Fee transparency notice */}
@@ -115,8 +114,8 @@ export default function LandingPage() {
               {[
                 {
                   icon: DollarSign,
-                  title: 'Dual Payments',
-                  desc: 'Yoco and Paystack for South African buyers — card, instant EFT, and bank transfer. PayPal for international payments. Vuka Music collects all payments and pays artist royalties weekly.',
+                  title: 'Payment Choice',
+                  desc: 'Buyers choose from every enabled payment option: Yoco, Paystack, PayPal, and Ozow when available. Vuka Music handles checkout, confirmation and royalty accounting.',
                 },
                 {
                   icon: Zap,
@@ -221,7 +220,7 @@ export default function LandingPage() {
                 <div className="space-y-3 mb-8">
                   {[
                     'Browse and stream previews before you buy',
-                    'Secure checkout via Yoco, Paystack or PayPal',
+                    'Choose an available checkout method: Yoco, Paystack, PayPal, or Ozow when available',
                     'Instant download links in your inbox',
                     'Follow artists and get notified of new drops',
                     'Tip artists and back their recording goals',
@@ -235,7 +234,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <Link href="/auth/register?role=fan" className="btn btn-secondary inline-flex">
-                  Create a Fan Account <ArrowRight size={16} />
+                  Create a Fan Account — Optional <ArrowRight size={16} />
                 </Link>
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -11,7 +11,7 @@ export default function ArtistAgreementPage() {
           <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color:'var(--gold)' }}>Vuka Music</p>
           <h1 className="text-4xl font-black mb-3" style={{ color:'var(--text)' }}>Artist Agreement</h1>
           <p className="text-sm" style={{ color:'var(--text-muted)' }}>Plain English. No legal gymnastics. Last updated September 2026.</p>
-          <p className="text-xs mt-2" style={{ color:'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color:'var(--text)' }}>Vuka Music - The Rise Up (Pty) Ltd</strong>, Republic of South Africa.</p>
+          <p className="text-xs mt-2" style={{ color:'var(--text-muted)' }}>Vuka Music is operated by <strong style={{ color:'var(--text)' }}>Voca Music The Rise Up</strong>, Republic of South Africa.</p>
         </div>
 
         <div className="space-y-8" style={{ color:'var(--text-muted)', lineHeight:'1.75', fontSize:'0.9375rem' }}>
@@ -43,7 +43,7 @@ export default function ArtistAgreementPage() {
 
           <section>
             <h2 className="text-lg font-black mb-2" style={{ color:'var(--text)' }}>How you get paid</h2>
-            <p>Your earnings are recorded in your Vuka Music royalty ledger after each confirmed sale. Royalties are paid once a week in a scheduled batch when your cleared balance meets the R50 minimum and you have a verified bank account on file; there is no on-demand withdrawal button. Vuka Music is the seller of record, and your payment is a royalty from Vuka Music to you as the creator. We use Paystack for South African payments and PayPal for international payments.</p>
+            <p>Your earnings are recorded in your Vuka Music royalty ledger after each confirmed sale. Royalties are processed through the scheduled payout workflow when your cleared balance meets the applicable minimum and you have a verified payout destination. Available payout destinations can include a bank account or PayPal where enabled. Vuka Music is the seller of record, and your payment is a royalty from Vuka Music to you as the creator.</p>
           </section>
 
           <section>

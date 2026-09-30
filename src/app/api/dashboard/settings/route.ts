@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
-    const { name, bio, city, country, genreTags, photoUrl, coverUrl, socialLinks, currency, paystackRecipient } = body;
+    const { name, bio, city, country, genreTags, photoUrl, coverUrl, socialLinks, currency, paystackRecipient, paypalEmail } = body;
 
     // Fetch current name/slug so we can detect a real change and know what
     // to preserve in history — comparing against the client-sent value
@@ -94,6 +94,7 @@ export async function PATCH(req: NextRequest) {
           currency: currency || undefined,
           // Allow saving empty string to clear, or a real value
           ...(paystackRecipient !== undefined && { paystackRecipient: paystackRecipient.trim() || null }),
+          ...(paypalEmail !== undefined && { paypalEmail: paypalEmail.trim() || null }),
         },
       });
     });

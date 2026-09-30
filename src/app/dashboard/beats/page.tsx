@@ -12,9 +12,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import { Trash2, Lock, ExternalLink, AlertTriangle } from 'lucide-react';
 
 export default function DashboardBeatsPage() {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [beats, setBeats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -104,9 +106,9 @@ export default function DashboardBeatsPage() {
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.genre || '—'}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.bpm || '—'}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{formatCurrency(b.basicPrice)}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{formatCurrency(b.premiumPrice)}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--gold)' }}>{formatCurrency(b.exclPrice)}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{displayCurrency(b.basicPrice)}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--sky)' }}>{displayCurrency(b.premiumPrice)}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--gold)' }}>{displayCurrency(b.exclPrice)}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{b.plays}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--green)' }}>{b.sales}</td>
                     <td className="px-4 py-3">

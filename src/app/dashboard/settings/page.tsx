@@ -64,6 +64,8 @@ function SettingsContent() {
   const [bankForm, setBankForm]         = useState({
     accountHolder: '', bankName: '', branchCode: '', accountNumber: '',
   });
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [paypalSaving, setPaypalSaving] = useState(false);
 
   // Plan management
   const [planInfo, setPlanInfo]         = useState<any>(null);
@@ -75,7 +77,7 @@ function SettingsContent() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); if (d.role) setRole(d.role); }),
+      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); setPaypalEmail(d.artist?.paypalEmail || ''); if (d.role) setRole(d.role); }),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
@@ -247,6 +249,24 @@ function SettingsContent() {
     } catch {}
   }
 
+  async function savePaypalEmail() {
+    setPaypalSaving(true);
+    try {
+      const res = await fetch('/api/dashboard/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paypalEmail }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Could not save PayPal email');
+      setArtist((p: any) => ({ ...p, paypalEmail: d.artist?.paypalEmail ?? paypalEmail }));
+    } catch (err: any) {
+      alert(err?.message || 'Could not save PayPal email');
+    } finally {
+      setPaypalSaving(false);
+    }
+  }
+
   if (loading) return (
     <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
       <VukaLoader size={20} /> Loading your profile…
@@ -302,7 +322,7 @@ function SettingsContent() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Add your bank account so Vuka Music can pay you every Friday via EFT.
+            Choose where Vuka should pay your eligible earnings. Available payout destinations include a verified bank account or PayPal where enabled.
           </p>
         </div>
 
@@ -437,12 +457,35 @@ function SettingsContent() {
         </div>
       </div>
 
+      {/* PayPal payout destination */}
+      <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h2 className="font-bold text-base mb-1" style={{ color: 'var(--text)' }}>PayPal — Payout Destination</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Save the PayPal address Vuka should use when you choose PayPal as your payout destination.</p>
+        <div className="flex gap-2">
+          <input type="email" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
+            placeholder="you@example.com" className="flex-1 px-4 py-3 rounded-xl text-sm"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          <button type="button" onClick={savePaypalEmail} disabled={paypalSaving}
+            className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60" style={{ background: 'var(--sky)' }}>
+            {paypalSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Currency Preference */}
       <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="font-bold text-base mb-3" style={{ color: 'var(--text)' }}>Default Currency</h2>
         <select
           value={artist.currency || 'ZAR'}
-          onChange={e => setArtist((p: any) => ({ ...p, currency: e.target.value }))}
+          onChange={e => {
+            const currency = e.target.value;
+            setArtist((p: any) => ({ ...p, currency }));
+            void fetch('/api/preferences', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currency }),
+            });
+          }}
           className="w-full px-4 py-3 rounded-xl text-sm"
           style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
           <option value="ZAR">ZAR — South African Rand</option>
@@ -677,12 +720,13 @@ function SettingsContent() {
               <button type="button" onClick={() => setUpgradeChoice(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
             <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-              Upgrade to {upgradeChoice.name}. Paystack supports Vuka's automatic card renewal; Yoco and PayPal are available as one-time upgrade payments.
+              Upgrade to {upgradeChoice.name}. Choose any payment method currently enabled for plan checkout. Ozow bank-account payments are coming soon.
             </p>
-            <div className="space-y-2">
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="w-full py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>Pay with Paystack</button>
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#011B33', border: '2px solid #00C3F7' }}>Pay with Paystack</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
+              <button type="button" disabled className="py-3 rounded-xl font-bold opacity-60" style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Ozow — Coming soon</button>
             </div>
           </div>
         </div>

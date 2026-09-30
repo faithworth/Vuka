@@ -8,6 +8,7 @@ import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { BuyModal } from '@/components/BuyModal';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import {
   ShoppingCart, Calendar, Music,
   Share2, AtSign, Link2, Check,
@@ -16,6 +17,7 @@ import Link from 'next/link';
 import { usePlayer, PreviewPlayButton, PREVIEW_SECONDS, type PreviewTrack } from '@/components/NowPlayingBar';
 
 export default function ReleasePageClient({ release }: { release: any }) {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [buyOpen, setBuyOpen]       = useState(false);
   const [copied, setCopied]         = useState(false);
   const { isTrackPlaying, elapsed } = usePlayer();
@@ -128,8 +130,8 @@ export default function ReleasePageClient({ release }: { release: any }) {
               <div className="flex items-center gap-4 mb-5 flex-wrap">
                 <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>
                   {release.payWhatWant
-                    ? `Pay what you want — min ${formatCurrency(release.minPrice || 0)}`
-                    : release.price === 0 ? 'Free' : formatCurrency(release.price)}
+                    ? `Pay what you want — min ${displayCurrency(release.minPrice || 0)}`
+                    : release.price === 0 ? 'Free' : displayCurrency(release.price)}
                 </div>
               </div>
             )}

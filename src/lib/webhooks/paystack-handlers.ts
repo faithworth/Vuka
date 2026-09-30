@@ -584,3 +584,69 @@ export async function handleCampaignEvent(event: PaystackChargeEvent, traceId = 
     logger.error('[campaigns/notify] Error', { traceId, reference, error: err instanceof Error ? err.message : String(err) });
   }
 }
+
+export async function handleSupportPayment(
+  reference: string,
+  verifiedAmountZAR: number,
+  verifiedCurrency = 'ZAR',
+  payoutMethod: 'paystack' | 'yoco' | 'paypal' = 'yoco',
+  traceId = 'no-trace',
+) {
+  const txn = await prisma.supportTxn.findFirst({
+    where: { paystackReference: reference },
+    include: { artist: { include: { user: true } } },
+  });
+  if (!txn) {
+    logger.warn('[support/payment] SupportTxn not found', { traceId, reference });
+    return false;
+  }
+  if (txn.status !== 'pending') {
+    logger.info('[support/payment] Duplicate ignored', { traceId, reference, status: txn.status });
+    return true;
+  }
+  if (Math.abs(txn.amount - verifiedAmountZAR) > 0.01 || verifiedCurrency !== txn.currency) {
+    logger.error('[support/payment] Amount/currency mismatch', {
+      traceId, reference, expectedAmount: txn.amount, actualAmount: verifiedAmountZAR,
+      expectedCurrency: txn.currency, actualCurrency: verifiedCurrency,
+    });
+    return false;
+  }
+
+  const tipFee = calcFee(verifiedAmountZAR, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
+  const tipNet = calcNet(verifiedAmountZAR, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.supportTxn.update({ where: { id: txn.id }, data: { status: 'confirmed' } });
+    await tx.artistPayout.create({
+      data: {
+        artistId: txn.artistId,
+        amount: tipNet,
+        method: payoutMethod,
+        currency: txn.currency,
+        status: 'pending',
+        reference,
+        notes: `Fan tip from ${txn.fanName} (fee: R${tipFee.toFixed(2)} kept by Vuka Music)`,
+      },
+    });
+    await tx.artist.update({
+      where: { id: txn.artistId },
+      data: { lifetimeGrossSales: { increment: verifiedAmountZAR } },
+    });
+  });
+
+  await Promise.all([
+    sendSupportFanConfirmation({
+      to: txn.fanEmail, fanName: txn.fanName, artistName: txn.artist.name,
+      amount: verifiedAmountZAR, currency: txn.currency, tier: txn.tier,
+      message: txn.message || undefined,
+    }),
+    sendSupportArtistNotification({
+      to: txn.artist.user.email, artistName: txn.artist.name, fanName: txn.fanName,
+      amount: verifiedAmountZAR, currency: txn.currency, tier: txn.tier,
+      message: txn.message || undefined,
+    }),
+  ]).catch(err => logger.error('[support/payment] notification failed', { traceId, reference, error: String(err) }));
+
+  logger.info('[support/payment] Support confirmed', { traceId, txnId: txn.id, reference, payoutMethod });
+  return true;
+}

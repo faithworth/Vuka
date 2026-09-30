@@ -48,12 +48,14 @@ export async function requestPayout(params: {
   return prisma.$transaction(async (tx) => {
     const request = await tx.payoutRequest.create({
       data: {
-        artistId:     params.artistId,
-        amount:       params.amount,
-        currency:     params.currency || 'ZAR',
-        bankAccountId: params.bankAccountId,
-        status:       'pending',
-        adminNotes:   '',
+        artistId:       params.artistId,
+        amount:         params.amount,
+        currency:       params.currency || 'ZAR',
+        bankAccountId:  params.bankAccountId,
+        status:         'pending',
+        method:         params.method === 'paypal' ? 'paypal' : 'bank_transfer',
+        paypalEmail:    params.method === 'paypal' ? (params.paypalEmail || artist.paypalEmail || null) : null,
+        adminNotes:     '',
       },
     });
 
@@ -88,14 +90,9 @@ export async function approvePayoutRequest(requestId: string, notes?: string) {
     data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
 
-  // Auto-dispatch immediately — fire-and-forget so the admin response
-  // is not blocked, but errors are logged and the request falls back
-  // to 'rejected' with claimed ledger rows released.
-  const { dispatchPayout } = await import('./earnings');
-  dispatchPayout(requestId).catch((err) => {
-    console.error('[payouts] auto-dispatch failed', requestId, err);
-  });
-
+  // Vuka's payout policy is manual settlement: the admin pays the
+  // selected destination (bank account or PayPal) after confirming
+  // that the corresponding Yoco-funded balance is available.
   return req;
 }
 

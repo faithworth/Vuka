@@ -1,16 +1,18 @@
 'use client';
 // src/app/dashboard/payouts/page.tsx
-// FIXED: Removed Stripe. Added Ozow, Yoco, SA Bank EFT.
-// FIXED: connected.paystack now reads directly from API (not crashed by Stripe import).
+// Payout destinations: verified bank account or PayPal when enabled.
+// Customer payment providers are shown separately from payout destinations.
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/components/CurrencyProvider';
 import {
   CheckCircle, Clock, TrendingUp, Wallet, ArrowUpRight, RefreshCw, Building2, CreditCard, Zap, ExternalLink, Plus, Banknote,
 } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
 export default function PayoutsPage() {
+  const { formatCurrency: displayCurrency } = useCurrency();
   const [data, setData]     = useState<any>(null);
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,10 @@ export default function PayoutsPage() {
   const [payoutError, setPayoutError]           = useState('');
   const [payoutSuccess, setPayoutSuccess]       = useState('');
   const [retryingId, setRetryingId]             = useState<string | null>(null);
+  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
+  const [payoutBankId, setPayoutBankId] = useState('');
 
   // Bank account form
   const [showBankForm, setShowBankForm] = useState(false);
@@ -74,6 +80,31 @@ export default function PayoutsPage() {
       await load();
     } catch {}
     setBankSaving(false);
+  }
+
+  async function submitPayoutRequest() {
+    const amount = Number(payoutAmount);
+    if (!Number.isFinite(amount) || amount <= 0) { setPayoutError('Enter a valid payout amount.'); return; }
+    if (payoutMethod === 'bank_transfer' && !payoutBankId) { setPayoutError('Select a bank account.'); return; }
+    if (payoutMethod === 'paypal' && !payoutPaypalEmail) { setPayoutError('Enter your PayPal email.'); return; }
+    setPayoutError(''); setPayoutSuccess('');
+    try {
+      const res = await fetch('/api/payouts/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          method: payoutMethod,
+          bankAccountId: payoutMethod === 'bank_transfer' ? payoutBankId : undefined,
+          paypalEmail: payoutMethod === 'paypal' ? payoutPaypalEmail : undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setPayoutError(d.error || 'Could not submit payout request.'); return; }
+      setPayoutSuccess('Payout request submitted. Vuka will manually settle it to your selected destination after confirming the cleared balance.');
+      setPayoutAmount('');
+      await load();
+    } catch { setPayoutError('Network error — please try again.'); }
   }
 
   async function retryPayout(requestId: string) {
@@ -150,7 +181,7 @@ export default function PayoutsPage() {
         </button>
       </div>
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-        Connect your payment accounts to receive your earnings from SA and African fans.
+        Choose your payout destination. Customer payments use the enabled checkout providers; eligible earnings are paid to your selected destination.
       </p>
 
       {/* Summary cards */}
@@ -164,7 +195,7 @@ export default function PayoutsPage() {
           <div key={card.label} className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <card.icon size={16} style={{ color: card.color }} className="mb-2" />
             <div className="text-xl font-black" style={{ color: card.color }}>
-              {formatCurrency(card.value)}
+              {displayCurrency(card.value)}
             </div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
           </div>
@@ -217,8 +248,7 @@ export default function PayoutsPage() {
                     </p>
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Paystack collects payments on your behalf. Payouts to your SA bank
-                    account are sent automatically every Monday.
+                    Paystack is available as a customer payment option when enabled. Your verified bank details can also be used as a payout destination.
                   </p>
                   <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -229,8 +259,7 @@ export default function PayoutsPage() {
               ) : (
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add your bank account so SA buyers can pay you via card, EFT, or bank transfer through Paystack.
-                    Paystack collects payments on your behalf and payouts to this account are sent automatically every Monday.
+                    Add and verify your bank account to make it available as a payout destination. Customer checkout is separate and can use any enabled payment provider.
                   </p>
                   <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
                     style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
@@ -248,8 +277,7 @@ export default function PayoutsPage() {
             </div>
           </div>
 
-          {/* ── Ozow — hidden until integration is live ── */}
-          {false && (
+          {/* ── Ozow — coming soon ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -277,10 +305,8 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
-          )}
 
-          {/* ── Yoco — hidden until integration is live ── */}
-          {false && (
+          {/* ── Yoco ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -292,14 +318,13 @@ export default function PayoutsPage() {
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>SA payment gateway · Cards, QR, online · ZAR</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--sky)', background: 'rgba(56,182,232,0.1)' }}>
-                Coming soon
+              <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--green)', background: 'rgba(16,185,129,0.1)' }}>
+                Connected for customer checkout
               </span>
             </div>
             <div className="px-6 py-5" style={{ background: 'var(--surface2)', borderTop: '1px solid var(--border)' }}>
               <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                Yoco is a South African payment gateway built for local businesses — accept Visa, Mastercard,
-                and QR payments. Payouts go straight to your SA bank account within 1–2 business days.
+                Yoco is enabled for customer checkout. Customer payments settle to Vuka's merchant account; artist earnings are tracked separately and paid through the payout workflow.
               </p>
               <a href="https://www.yoco.com/za/" target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-semibold"
@@ -308,9 +333,8 @@ export default function PayoutsPage() {
               </a>
             </div>
           </div>
-          )}
 
-          {/* ── SA Bank EFT / Manual Payout ── */}
+          {/* ── SA Bank payout destination ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
@@ -345,8 +369,7 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Manual EFT payouts are sent automatically every Monday, 2–5 business days
-                    to clear, once your balance is confirmed.
+                    Your verified bank account is available as a payout destination. Eligible earnings are processed through the configured payout workflow.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -357,7 +380,7 @@ export default function PayoutsPage() {
               ) : (
                 <>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add your South African bank account details to receive manual EFT payouts.
+                    Add your bank account details so it can be verified and used as a payout destination.
                     Supports FNB, Absa, Standard Bank, Capitec, Nedbank, and all major SA banks.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
@@ -446,10 +469,10 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Paystack: once connected, payouts are sent automatically to your SA bank account every Monday.',
-                'SA Bank EFT: save your bank details — payouts are sent automatically every Monday once your balance clears R50.',
-                'Ozow and Yoco integrations are coming — they will appear here once live.',
-                'All amounts are in ZAR. International buyers pay via card and funds convert automatically.',
+                'Customers choose from the enabled checkout providers: Yoco, Paystack, PayPal, and Ozow when available.',
+                'Payout destinations include a verified bank account or PayPal when enabled for the recipient.',
+                'Bank accounts have a security verification/cooldown before they can receive payouts.',
+                'Earnings are accounted for in the platform settlement currency; your display currency changes how amounts are shown.',
               ].map((item, i) => (
                 <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-muted)' }}>
                   <span style={{ color: 'var(--green)' }}>✓</span> {item}
@@ -463,20 +486,38 @@ export default function PayoutsPage() {
       {/* ── HISTORY TAB ── */}
       {tab === 'history' && (
         <div className="space-y-4">
+          <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Payout destination</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Choose where eligible earnings should be sent: verified Bank Account or PayPal. Vuka processes eligible payouts through the configured payout provider.</p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button onClick={() => setPayoutMethod('bank_transfer')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'bank_transfer' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'bank_transfer' ? 'white' : 'var(--text-muted)' }}>Bank Account</button>
+              <button onClick={() => setPayoutMethod('paypal')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'paypal' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'paypal' ? 'white' : 'var(--text-muted)' }}>PayPal</button>
+            </div>
+            <input type="number" min="1" step="0.01" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} placeholder="Amount in ZAR" className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            {payoutMethod === 'bank_transfer' ? (
+              <select value={payoutBankId} onChange={e => setPayoutBankId(e.target.value)} className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <option value="">Select verified bank account</option>
+                {bankAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.bankName} · {a.maskedNumber}{a.isVerified ? '' : ' · Not verified'}</option>)}
+              </select>
+            ) : (
+              <input type="email" value={payoutPaypalEmail} onChange={e => setPayoutPaypalEmail(e.target.value)} placeholder="PayPal email" className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            )}
+            <button onClick={submitPayoutRequest} className="w-full py-3 rounded-lg font-bold text-sm text-white" style={{ background: 'var(--sky)' }}>Submit payout request</button>
+          </div>
 
-          {/* ── Automatic weekly payout notice (self-serve requests removed) ── */}
+          {/* ── Cleared balance notice ── */}
           {(summary.totalPending > 0 || summary.totalEarned > 0) && (
             <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{formatCurrency(summary.totalPending || 0)} ready</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>{displayCurrency(summary.totalPending || 0)} ready</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Paid out automatically every Monday once your balance clears R50 and you have a verified bank account on file — no need to request it.
+                    Eligible earnings are processed through the configured payout provider after account verification and any applicable payout threshold.
                   </p>
                 </div>
                 <span className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
                   style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--green)' }}>
-                  <Clock size={13} /> Next royalty run: Monday
+                  <Clock size={13} /> Manual settlement
                 </span>
               </div>
               {payoutSuccess && (
@@ -504,7 +545,7 @@ export default function PayoutsPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                          {formatCurrency(r.amount)}
+                          {displayCurrency(r.amount)}
                         </p>
                         {requestBadge(r.status)}
                       </div>
@@ -546,7 +587,7 @@ export default function PayoutsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                            {formatCurrency(p.amount)}
+                            {displayCurrency(p.amount)}
                           </p>
                           {ledgerBadge(p.status, p.claimedByPayoutRequestId)}
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium uppercase"

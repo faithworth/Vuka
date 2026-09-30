@@ -46,7 +46,7 @@ export async function GET() {
     if (!industryUser) return NextResponse.json({ error: 'Industry profile not found' }, { status: 404 });
 
     return NextResponse.json({
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, currency: (await prisma.user.findUnique({ where: { id: user.id }, select: { currency: true } }))?.currency || 'ZAR' },
       industryUser,
       referrals: industryUser.referrals,
       deals: industryUser.deals,

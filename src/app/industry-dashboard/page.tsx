@@ -68,7 +68,13 @@ export default function IndustryDashboardPage() {
   const [dealError, setDealError]       = useState('');
 
   // Settings form
-  const [settingsForm, setSettingsForm]   = useState({ name: '', companyName: '', role: '', website: '' });
+  const [settingsForm, setSettingsForm]   = useState({ name: '', companyName: '', role: '', website: '', currency: 'ZAR', paypalEmail: '' });
+  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutBankId, setPayoutBankId] = useState('');
+  const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
+  const [industryBankAccounts, setIndustryBankAccounts] = useState<any[]>([]);
+  const [payoutMsg, setPayoutMsg] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg]     = useState('');
   const [settingsError, setSettingsError] = useState('');
@@ -87,6 +93,13 @@ export default function IndustryDashboardPage() {
       if (!res.ok) { router.replace('/'); return; }
       const d = await res.json();
       setData(d);
+      fetch('/api/industry/payouts/bank-accounts').then(r => r.ok ? r.json() : null).then(b => {
+        if (b?.accounts) {
+          setIndustryBankAccounts(b.accounts);
+          const def = b.accounts.find((a: any) => a.isDefault);
+          if (def) setPayoutBankId(def.id);
+        }
+      }).catch(() => {});
       setServices(d.services || []);
       // Pre-fill settings form
       setSettingsForm({
@@ -94,6 +107,8 @@ export default function IndustryDashboardPage() {
         companyName: d.industryUser?.companyName || '',
         role:        d.industryUser?.role || '',
         website:     d.industryUser?.website || '',
+        currency:    d.user?.currency || 'ZAR',
+        paypalEmail: d.industryUser?.paypalEmail || '',
       });
       setLoading(false);
     });
@@ -243,11 +258,26 @@ export default function IndustryDashboardPage() {
     if (!res.ok) { setSettingsError(d.error || 'Failed to save'); setSavingSettings(false); return; }
     setData((prev: any) => ({
       ...prev,
-      user:         { ...prev.user, name: settingsForm.name },
+      user:         { ...prev.user, name: settingsForm.name, currency: settingsForm.currency },
       industryUser: { ...prev.industryUser, ...d.profile },
     }));
     setSettingsMsg('Profile updated successfully.');
     setSavingSettings(false);
+  }
+
+  async function submitIndustryPayout() {
+    const amount = Number(payoutAmount);
+    if (!Number.isFinite(amount) || amount <= 0) { setPayoutMsg('Enter a valid payout amount.'); return; }
+    if (payoutMethod === 'bank_transfer' && !payoutBankId) { setPayoutMsg('Select a bank account.'); return; }
+    if (payoutMethod === 'paypal' && !payoutPaypalEmail) { setPayoutMsg('Enter your PayPal email.'); return; }
+    setPayoutMsg('');
+    const res = await fetch('/api/industry/payouts/request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, method: payoutMethod, bankAccountId: payoutMethod === 'bank_transfer' ? payoutBankId : undefined, paypalEmail: payoutMethod === 'paypal' ? payoutPaypalEmail : undefined }),
+    });
+    const d = await res.json();
+    setPayoutMsg(res.ok ? 'Payout request submitted for manual settlement.' : (d.error || 'Could not submit payout request.'));
+    if (res.ok) setPayoutAmount('');
   }
 
   // ─── DERIVED ─────────────────────────────────────────────────
@@ -612,6 +642,26 @@ export default function IndustryDashboardPage() {
               Track payments from your service orders. Vuka Music deducts a 10% platform fee per order — you keep 90%.
             </p>
 
+            <div className="p-5 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Manual payout</p>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Choose Bank Account or PayPal. Vuka manually settles approved payouts from the cleared Yoco-funded balance.</p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button onClick={() => setPayoutMethod('bank_transfer')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'bank_transfer' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'bank_transfer' ? 'white' : 'var(--text-muted)' }}>Bank Account</button>
+                <button onClick={() => setPayoutMethod('paypal')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'paypal' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'paypal' ? 'white' : 'var(--text-muted)' }}>PayPal</button>
+              </div>
+              <input type="number" min="1" step="0.01" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} placeholder="Amount in ZAR" className="input w-full mb-3" />
+              {payoutMethod === 'bank_transfer' ? (
+                <select value={payoutBankId} onChange={e => setPayoutBankId(e.target.value)} className="input w-full mb-3">
+                  <option value="">Select verified bank account</option>
+                  {industryBankAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.bankName} · {a.maskedNumber}{a.isVerified ? '' : ' · Not verified'}</option>)}
+                </select>
+              ) : (
+                <input type="email" value={payoutPaypalEmail} onChange={e => setPayoutPaypalEmail(e.target.value)} placeholder="PayPal email" className="input w-full mb-3" />
+              )}
+              <button onClick={submitIndustryPayout} className="btn btn-primary w-full">Submit payout request</button>
+              {payoutMsg && <p className="text-xs mt-2" style={{ color: payoutMsg.includes('submitted') ? 'var(--green)' : 'var(--red)' }}>{payoutMsg}</p>}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Total Referrals', value: referrals.length, color: 'var(--sky)' },
@@ -715,6 +765,32 @@ export default function IndustryDashboardPage() {
                 <input className="input w-full" placeholder="https://yoursite.com"
                   value={settingsForm.website}
                   onChange={e => setSettingsForm(f => ({ ...f, website: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>Display / Default Currency</label>
+                <select className="input w-full" value={settingsForm.currency}
+                  onChange={e => setSettingsForm(f => ({ ...f, currency: e.target.value }))}>
+                  <option value="ZAR">ZAR — South African Rand</option>
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="GBP">GBP — British Pound</option>
+                  <option value="NGN">NGN — Nigerian Naira</option>
+                  <option value="KES">KES — Kenyan Shilling</option>
+                  <option value="GHS">GHS — Ghanaian Cedi</option>
+                  <option value="BWP">BWP — Botswana Pula</option>
+                  <option value="ZMW">ZMW — Zambian Kwacha</option>
+                  <option value="AUD">AUD — Australian Dollar</option>
+                  <option value="CAD">CAD — Canadian Dollar</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>PayPal payout email</label>
+                <input className="input w-full" type="email" placeholder="you@example.com"
+                  value={settingsForm.paypalEmail}
+                  onChange={e => setSettingsForm(f => ({ ...f, paypalEmail: e.target.value }))} />
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Used only when you choose PayPal for a manual payout.</p>
               </div>
 
               <div className="pt-1 border-t" style={{ borderColor: 'var(--border)' }}>

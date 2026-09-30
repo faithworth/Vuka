@@ -52,9 +52,9 @@ export async function requestIndustryPayout(params: {
       industryUserId: params.industryUserId,
       amount:         params.amount,
       currency:       params.currency || 'ZAR',
-      bankAccountId:  params.bankAccountId,
-      method:         params.method || 'bank_transfer',
-      paypalEmail:    params.paypalEmail,
+      bankAccountId:  params.method === 'paypal' ? null : params.bankAccountId,
+      method:         params.method === 'paypal' ? 'paypal' : 'bank_transfer',
+      paypalEmail:    params.method === 'paypal' ? (params.paypalEmail || null) : null,
       status:         'pending',
       adminNotes:     '',
     },
@@ -73,15 +73,8 @@ export async function approveIndustryPayoutRequest(requestId: string, notes?: st
     data: { status: 'approved', approvedAt: new Date(), ...(notes ? { adminNotes: notes } : {}) },
   });
 
-  // Auto-dispatch immediately — fire-and-forget, mirroring approvePayoutRequest
-  // in payouts.ts (artist side). Dynamic import avoids a circular dependency
-  // (earnings.ts imports from this file for its webhook handlers).
-  const { dispatchIndustryPayout } = await import('./earnings');
-  dispatchIndustryPayout(requestId).catch((err) => {
-    console.error('[industry-payouts] auto-dispatch failed', requestId, err);
-  });
-
-  return req;
+  // Manual settlement: the admin pays the selected bank/PayPal destination
+  // after confirming the available Yoco-funded balance.
 }
 
 // ── Admin: Mark Payout Paid ───────────────────────────────────
