@@ -1,5 +1,3 @@
---- src/app/dashboard/support/page.tsx (sha: 535eeb5569c1118db8e2bf3e41ad22ce24064678) ---
-
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils';
