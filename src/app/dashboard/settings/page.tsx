@@ -322,7 +322,7 @@ function SettingsContent() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Add your bank account so Vuka Music can pay you every Friday via EFT.
+            Choose where Vuka should pay your earnings. Payouts are manually settled by Vuka from the platform's cleared sales balance.
           </p>
         </div>
 
