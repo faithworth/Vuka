@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
     const normalizedName = typeof name === 'string' ? name.trim() : '';
     const nameChanged = !!normalizedName && !!current && normalizedName !== current.name;
     if (nameChanged && current) {
-      newSlug = await generateUniqueSlug(name.trim(), user.artist.id);
+      newSlug = await generateUniqueSlug(normalizedName, user.artist.id);
     }
 
     // Use a transaction so the slug history write and the artist update
