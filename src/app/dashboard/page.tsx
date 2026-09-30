@@ -134,8 +134,8 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Revenue', value: displayCurrency(stats?.totalRevenue || 0))' },
-              { label: 'This Month',    value: displayCurrency(stats?.monthRevenue  || 0))' },
+              { label: 'Total Revenue', value: displayCurrency(stats?.totalRevenue || 0), icon: <TrendingUp size={20} />, color: 'var(--green)' },
+              { label: 'This Month',    value: displayCurrency(stats?.monthRevenue  || 0), icon: <Calendar size={20} />, color: 'var(--sky)' },
               { label: 'Total Sales',  value: stats?.totalSales || 0,                     icon: <ShoppingBag size={20} />, color: 'var(--gold)' },
               { label: 'Total Plays',  value: stats?.totalPlays || 0,                     icon: <Play size={20} />,        color: 'var(--sky)' },
             ].map(s => (
