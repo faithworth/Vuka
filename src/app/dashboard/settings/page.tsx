@@ -322,7 +322,7 @@ function SettingsContent() {
         <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>💳 Payment Setup</h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Choose where Vuka should pay your earnings. Payouts are manually settled by Vuka from the platform's cleared sales balance.
+            Choose where Vuka should pay your eligible earnings. Available payout destinations include a verified bank account or PayPal where enabled.
           </p>
         </div>
 
@@ -459,7 +459,7 @@ function SettingsContent() {
 
       {/* PayPal payout destination */}
       <div className="p-6 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <h2 className="font-bold text-base mb-1" style={{ color: 'var(--text)' }}>PayPal — Manual Payouts</h2>
+        <h2 className="font-bold text-base mb-1" style={{ color: 'var(--text)' }}>PayPal — Payout Destination</h2>
         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Save the PayPal address Vuka should use when you choose PayPal as your payout destination.</p>
         <div className="flex gap-2">
           <input type="email" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
