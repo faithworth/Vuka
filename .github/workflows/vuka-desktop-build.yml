@@ -9,6 +9,12 @@ on:
     paths:
       - "apps/desktop/**"
       - ".github/workflows/vuka-desktop-build.yml"
+  pull_request:
+    branches:
+      - production/global-payout-currency-seo
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/vuka-desktop-build.yml"
 
 permissions:
   contents: read
