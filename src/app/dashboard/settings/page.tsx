@@ -477,7 +477,15 @@ function SettingsContent() {
         <h2 className="font-bold text-base mb-3" style={{ color: 'var(--text)' }}>Default Currency</h2>
         <select
           value={artist.currency || 'ZAR'}
-          onChange={e => setArtist((p: any) => ({ ...p, currency: e.target.value }))}
+          onChange={e => {
+            const currency = e.target.value;
+            setArtist((p: any) => ({ ...p, currency }));
+            void fetch('/api/preferences', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currency }),
+            });
+          }}
           className="w-full px-4 py-3 rounded-xl text-sm"
           style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
           <option value="ZAR">ZAR — South African Rand</option>
