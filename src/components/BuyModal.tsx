@@ -94,7 +94,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const itemType = itemTypeProp ?? (beat ? 'beat' : 'release');
   const itemId   = beat ? beat.id : release!.id;
 
-  async function handleBuy(processor: 'yoco' | 'paystack') {
+  async function handleBuy(processor: 'yoco') {
     if (!email || !name) { setError('Please enter your name and email'); return; }
     if (isMerch && (!shipLine1 || !shipCity || !shipPostal || !shipPhone)) {
       setError('Please fill in your shipping address');
