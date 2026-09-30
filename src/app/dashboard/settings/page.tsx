@@ -720,10 +720,13 @@ function SettingsContent() {
               <button type="button" onClick={() => setUpgradeChoice(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
             <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-              Upgrade to {upgradeChoice.name}. Plan purchases are processed through Yoco and settle into Vuka's company payment balance.
+              Upgrade to {upgradeChoice.name}. Choose any payment method currently enabled for plan checkout. Ozow bank-account payments are coming soon.
             </p>
-            <div className="space-y-2">
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#011B33', border: '2px solid #00C3F7' }}>Pay with Paystack</button>
+              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
+              <button type="button" disabled className="py-3 rounded-xl font-bold opacity-60" style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Ozow — Coming soon</button>
             </div>
           </div>
         </div>
