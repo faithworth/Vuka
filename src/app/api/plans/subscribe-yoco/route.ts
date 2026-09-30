@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
     const purchase = await prisma.purchase.create({
       data: {
         userId: user.id,
+        buyerEmail: user.email,
+        buyerName: user.name || user.email.split('@')[0],
         artistId: user.artist.id,
         itemType: 'subscription',
         amount: plan.priceZAR,
