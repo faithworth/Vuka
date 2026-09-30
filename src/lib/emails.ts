@@ -727,10 +727,10 @@ export async function sendBroadcast({
 // ═══════════════════════════════════════════════════════════════
 
 export async function sendPurchaseConfirmation({
-  to, buyerName, itemName, itemType, licenseType, downloadUrl, amount, currency, licenseId, artworkUrl, licenseUrl,
+  to, buyerName, itemName, itemType, licenseType, downloadUrl, amount, currency, licenseId, artworkUrl, licenseUrl, licensePdf,
 }: {
   to: string; buyerName: string; itemName: string; itemType: string; licenseType?: string;
-  downloadUrl: string; amount: number; currency: string; licenseId: string; artworkUrl?: string; licenseUrl?: string;
+  downloadUrl: string; amount: number; currency: string; licenseId: string; artworkUrl?: string; licenseUrl?: string; licensePdf?: Buffer;
 }) {
   const isFree = amount === 0;
   const subject = isFree
@@ -818,7 +818,15 @@ export async function sendTicketConfirmation({
     </p>
   `));
 
-  return getResend().emails.send({ from: FROM(), to, subject, html });
+  return getResend().emails.send({
+    from: FROM(),
+    to,
+    subject,
+    html,
+    ...(licensePdf ? {
+      attachments: [{ filename: `vuka-${itemName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-license.pdf`, content: licensePdf }],
+    } : {}),
+  });
 }
 
 export async function sendArtistSaleNotification({
