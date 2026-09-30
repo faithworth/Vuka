@@ -720,12 +720,10 @@ function SettingsContent() {
               <button type="button" onClick={() => setUpgradeChoice(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
             <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-              Upgrade to {upgradeChoice.name}. Paystack supports Vuka's automatic card renewal; Yoco and PayPal are available as one-time upgrade payments.
+              Upgrade to {upgradeChoice.name}. Plan purchases are processed through Yoco and settle into Vuka's company payment balance.
             </p>
             <div className="space-y-2">
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="w-full py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>Pay with Paystack</button>
               <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
             </div>
           </div>
         </div>
