@@ -93,6 +93,13 @@ export default function IndustryDashboardPage() {
       if (!res.ok) { router.replace('/'); return; }
       const d = await res.json();
       setData(d);
+      fetch('/api/industry/payouts/bank-accounts').then(r => r.ok ? r.json() : null).then(b => {
+        if (b?.accounts) {
+          setIndustryBankAccounts(b.accounts);
+          const def = b.accounts.find((a: any) => a.isDefault);
+          if (def) setPayoutBankId(def.id);
+        }
+      }).catch(() => {});
       setServices(d.services || []);
       // Pre-fill settings form
       setSettingsForm({
