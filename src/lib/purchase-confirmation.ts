@@ -129,6 +129,7 @@ export async function confirmDirectPurchase(params: {
   let artworkUrl = '';
   let artistId = '';
   let licenseUrl = '';
+  let licensePdfBuffer: Buffer | undefined;
 
   async function issueLicensePdf(itemTitle: string, itemArtistName: string, itemKind: 'beat' | 'release' | 'video' | 'sample') {
     try {
@@ -148,6 +149,7 @@ export async function confirmDirectPurchase(params: {
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
       const url = getPublicUrl(pdfKey);
       await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: url } });
+      licensePdfBuffer = pdfBuffer;
       return url;
     } catch (e) {
       logger.error('[purchase-confirmation] PDF failed', { traceId, error: String(e) });
@@ -292,7 +294,7 @@ export async function confirmDirectPurchase(params: {
   const freshPurchase = await prisma.purchase.findUnique({ where: { id: purchase.id }, select: { receiptUrl: true } });
   if (freshPurchase?.receiptUrl !== 'email:sent') {
     try {
-      await sendPurchaseConfirmation({ to: purchase.buyerEmail, buyerName: purchase.buyerName, itemName, itemType: purchase.itemType, licenseType: purchase.licenseType || undefined, downloadUrl, amount: purchase.amount, currency: purchase.currency, licenseId: purchase.licenseId, artworkUrl: artworkUrl || undefined, licenseUrl: licenseUrl || undefined });
+      await sendPurchaseConfirmation({ to: purchase.buyerEmail, buyerName: purchase.buyerName, itemName, itemType: purchase.itemType, licenseType: purchase.licenseType || undefined, downloadUrl, amount: purchase.amount, currency: purchase.currency, licenseId: purchase.licenseId, artworkUrl: artworkUrl || undefined, licenseUrl: licenseUrl || undefined, licensePdf: licensePdfBuffer });
       await prisma.purchase.update({ where: { id: purchase.id }, data: { receiptUrl: 'email:sent' } });
     } catch (e) { logger.error('[purchase-confirmation] Buyer email failed', { traceId, error: String(e) }); }
   }
