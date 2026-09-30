@@ -1,14 +1,17 @@
+--- src/components/BuyModal.tsx (sha: 8295d3ae55c08675e90bd642b3c1ceb20a252987) ---
+
 'use client';
 // src/components/BuyModal.tsx
-// Direct purchases are settled through Yoco only.
-// Yoco is connected to Vuka's company bank account. Artist/industry
-// payouts are a separate manual settlement process.
+// Three payment options on every direct purchase:
+//   Tab 1 — Yoco      (default, SA card/Apple Pay/Google Pay)
+//   Tab 2 — Paystack  (SA card, instant EFT, bank transfer — once activated live)
+//   Tab 3 — PayPal    (international, USD)
 // Merch, beats, releases, videos, samples all go through here.
 
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
-import { useCurrency } from '@/components/CurrencyProvider';
+import PayPalBuyButton from './paypal/PayPalBuyButton';
 
 const LICENSES = [
   {
@@ -29,7 +32,7 @@ const LICENSES = [
   },
 ];
 
-type PaymentTab = 'yoco';
+type PaymentTab = 'yoco' | 'paystack' | 'paypal';
 
 interface Beat {
   id: string; title: string; artworkUrl: string;
@@ -69,7 +72,6 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const [shipPostal, setShipPostal]     = useState('');
   const [shipProvince, setShipProvince] = useState('');
   const [shipPhone, setShipPhone]       = useState('');
-  const { formatCurrency: displayCurrency } = useCurrency();
 
   useEffect(() => {
     const supabase = createClient();
@@ -96,7 +98,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const itemType = itemTypeProp ?? (beat ? 'beat' : 'release');
   const itemId   = beat ? beat.id : release!.id;
 
-  async function handleBuy(processor: 'yoco') {
+  async function handleBuy(processor: 'yoco' | 'paystack') {
     if (!email || !name) { setError('Please enter your name and email'); return; }
     if (isMerch && (!shipLine1 || !shipCity || !shipPostal || !shipPhone)) {
       setError('Please fill in your shipping address');
@@ -105,7 +107,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     setLoading(true);
     setError('');
 
-    const endpoint = '/api/checkout/yoco/initialize';
+    const endpoint = processor === 'yoco'
+      ? '/api/checkout/yoco/initialize'
+      : '/api/checkout/paystack/initialize';
 
     try {
       const res = await fetch(endpoint, {
@@ -147,7 +151,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const item = beat || release!;
 
   const tabs: { key: PaymentTab; label: string; flag?: string }[] = [
-    { key: 'yoco', label: 'Yoco', flag: '💳' },
+    { key: 'yoco',     label: 'Yoco',     flag: '🇿🇦' },
+    { key: 'paystack', label: 'Paystack', flag: '🇿🇦' },
+    { key: 'paypal',   label: 'PayPal',   flag: '🌍' },
   ];
 
   return (
@@ -195,7 +201,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               >
                 <div className="flex justify-between items-center">
                   <span className="font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-display)' }}>{l.name}</span>
-                  <span className="font-bold font-mono" style={{ color: 'var(--color-accent-green)' }}>{displayCurrency(prices[l.key])}</span>
+                  <span className="font-bold font-mono" style={{ color: 'var(--color-accent-green)' }}>{formatCurrency(prices[l.key])}</span>
                 </div>
                 <ul className="mt-1">
                   {l.rights.map((r) => (
@@ -221,17 +227,17 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
             <>
               <div className="flex justify-between text-sm mb-2">
                 <span style={{ color: 'var(--color-text-secondary)' }}>Item price</span>
-                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{displayCurrency(itemPrice)}</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(itemPrice)}</span>
               </div>
               <div className="flex justify-between text-sm mb-2">
                 <span style={{ color: 'var(--color-text-secondary)' }}>Shipping</span>
-                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{displayCurrency(shippingFeeAmount)}</span>
+                <span className="font-mono" style={{ color: 'var(--color-text-secondary)' }}>{formatCurrency(shippingFeeAmount)}</span>
               </div>
             </>
           )}
           <div className="flex justify-between font-bold text-lg">
             <span style={{ color: 'var(--color-text-primary)' }}>Total</span>
-            <span className="font-mono" style={{ color: 'var(--color-accent-green)' }}>{price === 0 ? 'Free' : displayCurrency(price)}</span>
+            <span className="font-mono" style={{ color: 'var(--color-accent-green)' }}>{price === 0 ? 'Free' : formatCurrency(price)}</span>
           </div>
         </div>
 
@@ -260,16 +266,16 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
           </button>
         ) : (
           <>
-            {/* Buyer info */}
-            {activeTab === 'yoco' && (
+            {/* Buyer info (shared across Yoco + Paystack tabs) */}
+            {activeTab !== 'paypal' && (
               <div className="space-y-3 mb-4">
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="input" />
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={isMerch ? 'Email address (for order updates)' : 'Email address (for download link)'} className="input" />
               </div>
             )}
 
-            {/* Shipping address (merch only) */}
-            {isMerch && activeTab === 'yoco' && (
+            {/* Shipping address (merch only, non-PayPal) */}
+            {isMerch && activeTab !== 'paypal' && (
               <div className="mb-4 space-y-2">
                 <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>Shipping address</p>
                 <input value={shipLine1} onChange={e => setShipLine1(e.target.value)} placeholder="Street address" className="input" />
@@ -310,7 +316,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </div>
             )}
 
-            {/* Yoco checkout */}
+            {/* Tab content */}
             {!activeTab && (
               <div className="w-full py-4 rounded-lg text-center text-sm font-semibold"
                 style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
@@ -325,12 +331,36 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
                 className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
                 style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
               >
-                {loading ? 'Processing…' : `Pay with Yoco — ${displayCurrency(price)} →`}
+                {loading ? 'Processing…' : `Pay with Yoco — ${formatCurrency(price)} →`}
               </button>
             )}
 
+            {activeTab === 'paystack' && (
+              <button
+                onClick={() => handleBuy('paystack')}
+                disabled={loading}
+                className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
+                style={{ background: '#011B33', color: '#fff', fontFamily: 'var(--font-display)', border: '2px solid #00C3F7' }}
+              >
+                {loading ? 'Processing…' : `Pay with Paystack — ${formatCurrency(price)} →`}
+              </button>
+            )}
+
+            {activeTab === 'paypal' && (
+              <PayPalBuyButton
+                itemType={itemType as any}
+                itemId={itemId}
+                itemTitle={item.title}
+                priceZAR={price}
+                customAmount={release?.payWhatWant ? parseFloat(customAmount) : undefined}
+                licenseType={beat ? license as any : 'basic'}
+              />
+            )}
+
             <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-              🔒 Card, Apple Pay & more · Powered by Yoco
+              {activeTab === 'yoco' && '🔒 Card, Apple Pay & more · Powered by Yoco'}
+              {activeTab === 'paystack' && '🔒 Card, EFT & bank transfer · Powered by Paystack'}
+              {activeTab === 'paypal' && '🌍 International payments in USD · Powered by PayPal'}
             </p>
           </>
         )}
