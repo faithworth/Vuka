@@ -80,6 +80,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const availableRows = await prisma.artistPayout.findMany({
+      where: { artistId: user.artist.id, status: 'pending', method: 'yoco' },
+      select: { amount: true },
+    });
+    const available = availableRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    if (amount > available + 0.01) {
+      return NextResponse.json({ error: `Requested amount exceeds your cleared Yoco-funded balance of R${available.toFixed(2)}.` }, { status: 409 });
+    }
+
     const result = await requestPayout({
       artistId: user.artist.id,
       amount,
