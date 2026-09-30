@@ -492,6 +492,24 @@ export default function PayoutsPage() {
       {/* ── HISTORY TAB ── */}
       {tab === 'history' && (
         <div className="space-y-4">
+          <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Request a payout</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Purchases are funded through Yoco. Choose Bank Account or PayPal and Vuka will manually settle the cleared amount.</p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button onClick={() => setPayoutMethod('bank_transfer')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'bank_transfer' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'bank_transfer' ? 'white' : 'var(--text-muted)' }}>Bank Account</button>
+              <button onClick={() => setPayoutMethod('paypal')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'paypal' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'paypal' ? 'white' : 'var(--text-muted)' }}>PayPal</button>
+            </div>
+            <input type="number" min="1" step="0.01" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} placeholder="Amount in ZAR" className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            {payoutMethod === 'bank_transfer' ? (
+              <select value={payoutBankId} onChange={e => setPayoutBankId(e.target.value)} className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <option value="">Select verified bank account</option>
+                {bankAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.bankName} · {a.maskedNumber}{a.isVerified ? '' : ' · Not verified'}</option>)}
+              </select>
+            ) : (
+              <input type="email" value={payoutPaypalEmail} onChange={e => setPayoutPaypalEmail(e.target.value)} placeholder="PayPal email" className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            )}
+            <button onClick={submitPayoutRequest} className="w-full py-3 rounded-lg font-bold text-sm text-white" style={{ background: 'var(--sky)' }}>Submit payout request</button>
+          </div>
 
           {/* ── Automatic weekly payout notice (self-serve requests removed) ── */}
           {(summary.totalPending > 0 || summary.totalEarned > 0) && (
