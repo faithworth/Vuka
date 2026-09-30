@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { sendWelcome } from '@/lib/emails';
+import { sendWelcome, sendInternalBusinessUpdate } from '@/lib/emails';
 import { slugify } from '@/lib/utils';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { z } from 'zod';
@@ -103,6 +103,20 @@ export async function POST(req: NextRequest) {
         to: email,
         displayName: name,
         verifyUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      }).catch(console.error);
+
+      sendInternalBusinessUpdate({
+        subject: 'New ' + validRole + ' registration — ' + name,
+        title: 'New Vuka registration',
+        summary: name + ' just registered on Vuka. This notification is sent to all internal Vuka business mailboxes.',
+        details: [
+          { label: 'Name', value: name },
+          { label: 'Email', value: email },
+          { label: 'Role', value: validRole },
+          ...(legalName ? [{ label: 'Legal name', value: legalName }] : []),
+        ],
+        url: (process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com') + '/admin/users',
+        buttonLabel: 'Open Admin Users →',
       }).catch(console.error);
     }
 
