@@ -68,7 +68,7 @@ export default function IndustryDashboardPage() {
   const [dealError, setDealError]       = useState('');
 
   // Settings form
-  const [settingsForm, setSettingsForm]   = useState({ name: '', companyName: '', role: '', website: '' });
+  const [settingsForm, setSettingsForm]   = useState({ name: '', companyName: '', role: '', website: '', currency: 'ZAR', paypalEmail: '' });
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg]     = useState('');
   const [settingsError, setSettingsError] = useState('');
