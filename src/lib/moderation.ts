@@ -413,25 +413,41 @@ export async function submitVerification(
     throw new Error('ID document must be uploaded via Vuka Music\'s secure verification upload');
   }
 
-  const request = await prisma.verificationRequest.upsert({
-    where: { artistId },
-    create: {
-      artistId,
-      legalName:      data.legalName.trim(),
-      idDocumentUrl:  data.idDocumentUrl,
-      socialProofUrl: data.socialProofUrl ?? '',
-      additionalInfo: data.additionalInfo ?? '',
-      status:         'pending',
-    },
-    update: {
-      legalName:      data.legalName.trim(),
-      idDocumentUrl:  data.idDocumentUrl,
-      socialProofUrl: data.socialProofUrl ?? '',
-      additionalInfo: data.additionalInfo ?? '',
-      status:         'pending',
-      updatedAt:      new Date(),
-    },
-  });
+  const existing = await prisma.verificationRequest.findUnique({ where: { artistId } });
+
+  // Approved and pending submissions are immutable. An approved record is
+  // the permanent evidence trail for the decision and must never be replaced.
+  if (existing?.status === 'approved') {
+    throw new Error('This verification is already approved and permanently retained');
+  }
+  if (existing?.status === 'pending') {
+    throw new Error('This verification is already under review');
+  }
+
+  const request = existing
+    ? await prisma.verificationRequest.update({
+        where: { id: existing.id },
+        data: {
+          legalName:      data.legalName.trim(),
+          idDocumentUrl:  data.idDocumentUrl,
+          idDocUrl:       data.idDocumentUrl,
+          socialProofUrl: data.socialProofUrl ?? '',
+          additionalInfo: data.additionalInfo ?? '',
+          status:         'pending',
+          updatedAt:      new Date(),
+        },
+      })
+    : await prisma.verificationRequest.create({
+        data: {
+          artistId,
+          legalName:      data.legalName.trim(),
+          idDocumentUrl:  data.idDocumentUrl,
+          idDocUrl:       data.idDocumentUrl,
+          socialProofUrl: data.socialProofUrl ?? '',
+          additionalInfo: data.additionalInfo ?? '',
+          status:         'pending',
+        },
+      });
 
   return request;
 }
@@ -445,9 +461,25 @@ export async function reviewVerification(
   const request = await prisma.verificationRequest.findUnique({ where: { id: requestId } });
   if (!request) throw new Error('Verification request not found');
 
+  if (request.status === 'approved') {
+    if (decision !== 'approved') throw new Error('Approved verification records are permanently retained');
+    return;
+  }
+
+  const reviewedAt = new Date();
   await prisma.verificationRequest.update({
     where: { id: requestId },
-    data: { status: decision, adminNotes: notes ?? '', reviewedAt: new Date() },
+    data: decision === 'approved'
+      ? {
+          status: 'approved',
+          adminNotes: notes ?? '',
+          reviewedAt,
+          approvedAt: reviewedAt,
+          approvedBy: adminId,
+          documentRetainedAt: reviewedAt,
+          retentionLocked: true,
+        }
+      : { status: 'rejected', adminNotes: notes ?? '', reviewedAt },
   });
 
   if (decision === 'approved') {
