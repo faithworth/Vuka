@@ -3,8 +3,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import paypal from '@/lib/paypal';
-import { PLANS, zarToUsd } from '@/lib/plans';
-import { getZarToUsdRate } from '@/lib/fx';
+import { PLANS } from '@/lib/plans';
+import { getZarToUsdRate, zarToUsd } from '@/lib/fx';
 import { activatePlanPayment } from '@/lib/plan-payments';
 
 export async function GET(req: NextRequest) {
