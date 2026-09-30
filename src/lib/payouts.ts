@@ -48,12 +48,14 @@ export async function requestPayout(params: {
   return prisma.$transaction(async (tx) => {
     const request = await tx.payoutRequest.create({
       data: {
-        artistId:     params.artistId,
-        amount:       params.amount,
-        currency:     params.currency || 'ZAR',
-        bankAccountId: params.bankAccountId,
-        status:       'pending',
-        adminNotes:   '',
+        artistId:       params.artistId,
+        amount:         params.amount,
+        currency:       params.currency || 'ZAR',
+        bankAccountId:  params.bankAccountId,
+        status:         'pending',
+        method:         params.method === 'paypal' ? 'paypal' : 'bank_transfer',
+        paypalEmail:    params.method === 'paypal' ? (params.paypalEmail || artist.paypalEmail || null) : null,
+        adminNotes:     '',
       },
     });
 
