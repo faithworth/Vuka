@@ -17,6 +17,7 @@ import { sendPurchaseConfirmation } from '@/lib/emails';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json({ error: 'Direct purchases are processed through Yoco. Paystack remains available for supported account/plan flows.' }, { status: 410 });
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
 
   const ip = getClientIp(req.headers);
