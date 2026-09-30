@@ -1,5 +1,3 @@
---- src/app/dashboard/page.tsx (sha: faef7d34c21581adbb252c8a60418f1f703377e2) ---
-
 'use client';
 import { useEffect, useState } from 'react';
 import { TrendingUp, Calendar, ShoppingBag, Play, Upload, CreditCard, Link2, Crown, Zap, Star, ArrowRight, CheckCircle, Circle, X } from 'lucide-react';
