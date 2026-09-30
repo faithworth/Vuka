@@ -719,6 +719,32 @@ export default function IndustryDashboardPage() {
                   onChange={e => setSettingsForm(f => ({ ...f, website: e.target.value }))} />
               </div>
 
+              <div>
+                <label className="text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>Display / Default Currency</label>
+                <select className="input w-full" value={settingsForm.currency}
+                  onChange={e => setSettingsForm(f => ({ ...f, currency: e.target.value }))}>
+                  <option value="ZAR">ZAR — South African Rand</option>
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="GBP">GBP — British Pound</option>
+                  <option value="NGN">NGN — Nigerian Naira</option>
+                  <option value="KES">KES — Kenyan Shilling</option>
+                  <option value="GHS">GHS — Ghanaian Cedi</option>
+                  <option value="BWP">BWP — Botswana Pula</option>
+                  <option value="ZMW">ZMW — Zambian Kwacha</option>
+                  <option value="AUD">AUD — Australian Dollar</option>
+                  <option value="CAD">CAD — Canadian Dollar</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>PayPal payout email</label>
+                <input className="input w-full" type="email" placeholder="you@example.com"
+                  value={settingsForm.paypalEmail}
+                  onChange={e => setSettingsForm(f => ({ ...f, paypalEmail: e.target.value }))} />
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Used only when you choose PayPal for a manual payout.</p>
+              </div>
+
               <div className="pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-2 py-3">
                   <Mail size={13} style={{ color: 'var(--text-muted)' }} />
