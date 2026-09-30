@@ -6,18 +6,24 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
-  title: 'Vuka Music — Africa\'s Digital Music Store',
+  title: 'Vuka Music — Global Music Marketplace',
   description:
-    "Vuka Music sells beats, releases, merch, event tickets, and creator services from South African independent artists. Buyers purchase from Vuka Music — artists earn a weekly royalty of up to 95% per sale, paid to their bank account.",
+    "Vuka Music is a global music marketplace connecting independent artists, producers, fans and music industry professionals. Buy music, beats, merch, tickets and creator services from artists around the world.",
   keywords: [
-    'vuka', 'vuka music', 'buy beats south africa',
-    'south african music store', 'african music platform',
-    'buy music online south africa', 'independent music artist sa',
-    'amapiano beats', 'gqom beats', 'afrobeats producer',
-    'music store south africa', 'buy tickets south africa', 'artist crowdfunding south africa',
+    'vuka', 'vuka music', 'global music marketplace', 'music marketplace',
+    'buy music online', 'buy beats online', 'independent artists', 'music producers',
+    'artist marketplace', 'music industry marketplace', 'creator marketplace',
+    'music crowdfunding', 'music events', 'global independent music',
+    'african music', 'amapiano', 'gqom', 'afrobeats', 'south african music',
   ],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com'),
-  alternates: { canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com' },
+  alternates: {
+    canonical: process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
+    languages: {
+      'x-default': process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
+      'en': process.env.NEXT_PUBLIC_APP_URL || 'https://www.vukamusic.com',
+    },
+  },
   robots: {
     index: true,
     follow: true,
