@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest) {
         ...(companyName !== undefined && { companyName: companyName.trim() }),
         ...(position !== undefined    && { role: position.trim() }),
         ...(website !== undefined     && { website: website.trim() }),
+        ...(paypalEmail !== undefined  && { paypalEmail: String(paypalEmail).trim() || null }),
       },
     });
 
