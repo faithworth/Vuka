@@ -64,6 +64,8 @@ function SettingsContent() {
   const [bankForm, setBankForm]         = useState({
     accountHolder: '', bankName: '', branchCode: '', accountNumber: '',
   });
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [paypalSaving, setPaypalSaving] = useState(false);
 
   // Plan management
   const [planInfo, setPlanInfo]         = useState<any>(null);
