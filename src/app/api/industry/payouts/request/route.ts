@@ -46,18 +46,52 @@ export async function GET() {
   }
 }
 
-// POST — disabled. Payouts are no longer self-serve: Vuka pays out
-// automatically every Monday to every industry user with a clearable
-// balance above the R50 minimum and a verified bank account on file. See
-// src/lib/royalty-run.ts and the `royalty_run` cron entry in vercel.json.
-export async function POST() {
-  return NextResponse.json(
-    {
-      error:
-        'Payout requests are automatic now. Vuka pays out to eligible accounts every Monday — no action needed once your balance clears R50 and you have a verified bank account on file.',
-    },
-    { status: 410 },
-  );
+// POST — create a payout instruction for manual settlement.
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireIndustry();
+    if (!user?.industryUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const method = body.method === 'paypal' ? 'paypal' : 'bank_transfer';
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'A valid payout amount is required' }, { status: 400 });
+    }
+
+    let bankAccountId: string | undefined;
+    let paypalEmail: string | undefined;
+    if (method === 'paypal') {
+      paypalEmail = String(body.paypalEmail || '').trim();
+      if (!paypalEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(paypalEmail)) {
+        return NextResponse.json({ error: 'A valid PayPal email is required' }, { status: 400 });
+      }
+    } else {
+      bankAccountId = String(body.bankAccountId || '');
+      const account = await prisma.industryBankAccount.findFirst({
+        where: { id: bankAccountId, industryUserId: user.industryUser.id },
+        select: { id: true, isVerified: true, eligibleForPayoutAt: true },
+      });
+      if (!account) return NextResponse.json({ error: 'Select a bank account' }, { status: 400 });
+      if (!account.isVerified) return NextResponse.json({ error: 'Selected bank account is not verified yet' }, { status: 409 });
+      if (account.eligibleForPayoutAt && account.eligibleForPayoutAt > new Date()) {
+        return NextResponse.json({ error: 'Selected bank account is still in its security cooldown' }, { status: 409 });
+      }
+    }
+
+    const result = await requestIndustryPayout({
+      industryUserId: user.industryUser.id,
+      amount,
+      currency: 'ZAR',
+      method,
+      bankAccountId,
+      paypalEmail,
+    });
+
+    return NextResponse.json({ request: result });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Could not create payout request' }, { status: 400 });
+  }
 }
 
 // PATCH — retry a rejected payout request
