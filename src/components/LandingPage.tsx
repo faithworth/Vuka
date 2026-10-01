@@ -1,5 +1,3 @@
---- src/components/LandingPage.tsx (sha: 364242d1aed171052f22c678f49d4cafa2f1357b) ---
-
 'use client';
 import Link from 'next/link';
 import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
