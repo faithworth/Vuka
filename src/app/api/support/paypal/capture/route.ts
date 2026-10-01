@@ -34,3 +34,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'PayPal support capture failed' }, { status: 500 });
   }
 }
+
+
