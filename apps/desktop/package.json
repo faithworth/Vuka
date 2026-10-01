@@ -1,6 +1,6 @@
 {
   "name": "vuka-music-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Vuka Music desktop app for Windows and macOS",
   "main": "main.cjs",
