@@ -84,10 +84,10 @@ jobs:
         run: |
           VERSION="1.0.1"
           TAG="v${VERSION}"
-          gh release create "${TAG}" --title "Vuka Music ${VERSION}" --notes "Vuka Music ${VERSION}. Windows and macOS desktop builds. Current desktop builds are unsigned/notarized." || true
+          gh release create "${TAG}" --repo faithworth/Vuka --title "Vuka Music ${VERSION}" --notes "Vuka Music ${VERSION}. Windows and macOS desktop builds. Current desktop builds are unsigned/notarized." || true
           find release-assets -type f -name '*.exe' -exec cp {} release-assets/Vuka-Music-Windows.exe \;
           find release-assets -type f -name '*.dmg' -exec cp {} release-assets/Vuka-Music-macOS.dmg \;
-          gh release upload "${TAG}" release-assets/Vuka-Music-Windows.exe --clobber
-          gh release upload "${TAG}" release-assets/Vuka-Music-macOS.dmg --clobber
+          gh release upload "${TAG}" release-assets/Vuka-Music-Windows.exe --repo faithworth/Vuka --clobber
+          gh release upload "${TAG}" release-assets/Vuka-Music-macOS.dmg --repo faithworth/Vuka --clobber
 
 
