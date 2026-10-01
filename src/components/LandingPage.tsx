@@ -332,56 +332,14 @@ export default function LandingPage() {
         </section>
 
         {/* ── VUKA APPS ── */}
-        <section className="py-20 px-4" style={{ background: 'var(--surface)' }}>
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-10">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Vuka Music Apps</p>
-              <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
-                Take Vuka Music with you.
-              </h2>
-              <p className="max-w-2xl mx-auto text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                Download the Vuka Music app for your computer or Android phone. Your account, store, purchases and music stay connected to vukamusic.com.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe"
-                className="rounded-2xl p-5 flex flex-col"
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                <Monitor size={24} style={{ color: 'var(--green)' }} className="mb-4" />
-                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Windows</h3>
-                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Windows 10/11 desktop app</p>
-                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
-                  <Download size={16} /> Download Windows
-                </span>
-              </a>
-              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg"
-                className="rounded-2xl p-5 flex flex-col"
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                <Monitor size={24} style={{ color: 'var(--green)' }} className="mb-4" />
-                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>macOS</h3>
-                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Universal Intel + Apple Silicon app</p>
-                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
-                  <Download size={16} /> Download Mac
-                </span>
-              </a>
-              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk"
-                className="rounded-2xl p-5 flex flex-col"
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                <Smartphone size={24} style={{ color: 'var(--green)' }} className="mb-4" />
-                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Android</h3>
-                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Android APK for direct installation</p>
-                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
-                  <Download size={16} /> Download Android
-                </span>
-              </a>
-            </div>
-
-            <div className="text-center mt-6">
-              <Link href="/downloads" className="text-sm font-semibold" style={{ color: 'var(--green)' }}>
-                View all Vuka app downloads →
-              </Link>
-            </div>
+        <section className="py-16 px-4" style={{ background: 'var(--surface)' }}>
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Vuka Music Apps</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--text)' }}>Take Vuka Music with you.</h2>
+            <p className="max-w-2xl mx-auto text-sm md:text-base mb-6" style={{ color: 'var(--text-muted)' }}>Download Vuka Music for Windows, Mac or Android.</p>
+            <Link href="/downloads" className="btn btn-primary inline-flex items-center gap-2">
+              Download Vuka Music <Download size={17} />
+            </Link>
           </div>
         </section>
 
