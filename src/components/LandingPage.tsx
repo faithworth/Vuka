@@ -345,25 +345,36 @@ export default function LandingPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
-              {[
-                { icon: Monitor, title: 'Windows', text: 'Windows 10/11 desktop app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe', label: 'Download Windows' },
-                { icon: Monitor, title: 'macOS', text: 'Universal Intel + Apple Silicon app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg', label: 'Download Mac' },
-                { icon: Smartphone, title: 'Android', text: 'Android APK for direct installation', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk', label: 'Download Android' },
-              ].map(app => {
-                const AppIcon = app.icon;
-                return (
-                <a key={app.title} href={app.href}
-                  className="rounded-2xl p-5 flex flex-col transition-all"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                  <AppIcon size={24} style={{ color: 'var(--green)' }} className="mb-4" />
-                  <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>{app.title}</h3>
-                  <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>{app.text}</p>
-                  <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
-                    <Download size={16} /> {app.label}
-                  </span>
-                </a>
-                );
-              })}
+              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe"
+                className="rounded-2xl p-5 flex flex-col"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <Monitor size={24} style={{ color: 'var(--green)' }} className="mb-4" />
+                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Windows</h3>
+                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Windows 10/11 desktop app</p>
+                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
+                  <Download size={16} /> Download Windows
+                </span>
+              </a>
+              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg"
+                className="rounded-2xl p-5 flex flex-col"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <Monitor size={24} style={{ color: 'var(--green)' }} className="mb-4" />
+                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>macOS</h3>
+                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Universal Intel + Apple Silicon app</p>
+                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
+                  <Download size={16} /> Download Mac
+                </span>
+              </a>
+              <a href="https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk"
+                className="rounded-2xl p-5 flex flex-col"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <Smartphone size={24} style={{ color: 'var(--green)' }} className="mb-4" />
+                <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Android</h3>
+                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Android APK for direct installation</p>
+                <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
+                  <Download size={16} /> Download Android
+                </span>
+              </a>
             </div>
 
             <div className="text-center mt-6">
