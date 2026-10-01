@@ -10,3 +10,4 @@ SET "currency" = COALESCE(NULLIF("currency", ''), 'ZAR')
 WHERE "currency" IS NULL OR "currency" = '';
 
 CREATE INDEX IF NOT EXISTS "User_currency_idx" ON public."User" ("currency");
+

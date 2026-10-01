@@ -4,7 +4,6 @@ import { Providers } from '@/components/Providers';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
-// Production release trigger: keep Vercel main deployment aligned with the merged release.
 export const metadata: Metadata = {
   title: 'Vuka Music — Global Music Marketplace',
   description:
@@ -115,3 +114,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+

@@ -374,3 +374,4 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     </div>
   );
 }
+
