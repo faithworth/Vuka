@@ -349,7 +349,9 @@ export default function LandingPage() {
                 { icon: Monitor, title: 'Windows', text: 'Windows 10/11 desktop app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe', label: 'Download Windows' },
                 { icon: Monitor, title: 'macOS', text: 'Universal Intel + Apple Silicon app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg', label: 'Download Mac' },
                 { icon: Smartphone, title: 'Android', text: 'Android APK for direct installation', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk', label: 'Download Android' },
-              ].map(app => (
+              ].map(app => {
+                const AppIcon = app.icon;
+                return (
                 <a key={app.title} href={app.href}
                   className="rounded-2xl p-5 flex flex-col transition-all"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
@@ -360,7 +362,8 @@ export default function LandingPage() {
                     <Download size={16} /> {app.label}
                   </span>
                 </a>
-              ))}
+                );
+              })}
             </div>
 
             <div className="text-center mt-6">
