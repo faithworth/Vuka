@@ -24,7 +24,8 @@
       "bundler": "metro"
     },
     "extra": {
-      "vukaUrl": "https://www.vukamusic.com"
+      "vukaUrl": "https://www.vukamusic.com",
+      "releaseChannel": "stable"
     }
   }
 }
