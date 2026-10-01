@@ -52,7 +52,9 @@ export default function Footer() {
             <Link href="/notifications">Notifications</Link>
           </div>
           <div className="flex flex-col gap-2">
-            <p className="font-bold" style={{ color: 'var(--text)' }}>Legal & Help</p>
+            <p className="font-bold" style={{ color: 'var(--text)' }}>Vuka Apps</p>
+            <Link href="/downloads">Download Vuka Music</Link>
+            <p className="font-bold mt-3" style={{ color: 'var(--text)' }}>Legal & Help</p>
             <Link href="/legal/terms">Terms</Link>
             <Link href="/legal/privacy">Privacy</Link>
             <Link href="/legal/dmca">DMCA</Link>

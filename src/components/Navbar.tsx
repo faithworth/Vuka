@@ -145,6 +145,7 @@ export function Navbar() {
     { href: '/events',             label: 'Events'      },
     { href: '/services',           label: 'Services'    },
     { href: '/industry',           label: 'For Industry'},
+    { href: '/downloads',          label: 'Download App'},
   ];
 
   // Store sub-links for desktop dropdown
