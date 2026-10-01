@@ -34,3 +34,4 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Could not save currency preference' }, { status: 503 });
   }
 }
+

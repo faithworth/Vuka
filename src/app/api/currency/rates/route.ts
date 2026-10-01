@@ -12,3 +12,4 @@ export async function GET() {
     headers: { 'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400' },
   });
 }
+

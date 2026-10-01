@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Vuka Music",
+    "slug": "vuka-music",
+    "version": "1.0.1",
+    "orientation": "default",
+    "scheme": "vukamusic",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vukamusic.app",
+      "buildNumber": "2"
+    },
+    "android": {
+      "package": "com.vukamusic.app",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "backgroundColor": "#080808"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "vukaUrl": "https://www.vukamusic.com"
+    }
+  }
+}
+
+
