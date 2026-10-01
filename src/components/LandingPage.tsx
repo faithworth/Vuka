@@ -355,7 +355,7 @@ export default function LandingPage() {
                 <a key={app.title} href={app.href}
                   className="rounded-2xl p-5 flex flex-col transition-all"
                   style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                  <app.icon size={24} style={{ color: 'var(--green)' }} className="mb-4" />
+                  <AppIcon size={24} style={{ color: 'var(--green)' }} className="mb-4" />
                   <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>{app.title}</h3>
                   <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>{app.text}</p>
                   <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
