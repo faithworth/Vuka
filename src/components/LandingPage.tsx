@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
+import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones, Download, Monitor, Smartphone } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VukaShopJourney from '@/components/brand/VukaShopJourney';
@@ -331,7 +331,47 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
+        {/* ── VUKA APPS ── */}
+        <section className="py-20 px-4" style={{ background: 'var(--surface)' }}>
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Vuka Music Apps</p>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text)' }}>
+                Take Vuka Music with you.
+              </h2>
+              <p className="max-w-2xl mx-auto text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                Download the Vuka Music app for your computer or Android phone. Your account, store, purchases and music stay connected to vukamusic.com.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { icon: Monitor, title: 'Windows', text: 'Windows 10/11 desktop app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe', label: 'Download Windows' },
+                { icon: Monitor, title: 'macOS', text: 'Universal Intel + Apple Silicon app', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg', label: 'Download Mac' },
+                { icon: Smartphone, title: 'Android', text: 'Android APK for direct installation', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk', label: 'Download Android' },
+              ].map(app => (
+                <a key={app.title} href={app.href}
+                  className="rounded-2xl p-5 flex flex-col transition-all"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <app.icon size={24} style={{ color: 'var(--green)' }} className="mb-4" />
+                  <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>{app.title}</h3>
+                  <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>{app.text}</p>
+                  <span className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-black" style={{ background: 'var(--green)' }}>
+                    <Download size={16} /> {app.label}
+                  </span>
+                </a>
+              ))}
+            </div>
+
+            <div className="text-center mt-6">
+              <Link href="/downloads" className="text-sm font-semibold" style={{ color: 'var(--green)' }}>
+                View all Vuka app downloads →
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */
         <Footer />
 
       </main>
