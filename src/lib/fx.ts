@@ -187,3 +187,5 @@ export function convertFromZar(amountZar: number, currency: string, rates: Recor
   if (!rate || !Number.isFinite(rate)) return amountZar;
   return Math.round(amountZar * rate * 100) / 100;
 }
+
+

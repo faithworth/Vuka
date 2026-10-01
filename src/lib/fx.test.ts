@@ -23,3 +23,5 @@ describe('currency conversion', () => {
     expect(convertFromZar(100, 'CAD', { ZAR: 1 })).toBe(100);
   });
 });
+
+
