@@ -1,3 +1,5 @@
+--- src/components/LandingPage.tsx (sha: 364242d1aed171052f22c678f49d4cafa2f1357b) ---
+
 'use client';
 import Link from 'next/link';
 import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
@@ -79,7 +81,6 @@ export default function LandingPage() {
               <Link href="/store" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
                 Browse the Store <Music size={16} />
               </Link>
-              <Link href="/downloads" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">Download App</Link>
             </div>
 
             <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
@@ -332,12 +333,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── FOOTER ── */
+        {/* ── FOOTER ── */}
         <Footer />
 
       </main>
     </>
   );
 }
-
-
