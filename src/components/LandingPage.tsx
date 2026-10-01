@@ -331,18 +331,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── VUKA APPS ── */}
-        <section className="py-16 px-4" style={{ background: 'var(--surface)' }}>
-          <div className="max-w-4xl mx-auto text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--sky)' }}>Vuka Music Apps</p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--text)' }}>Take Vuka Music with you.</h2>
-            <p className="max-w-2xl mx-auto text-sm md:text-base mb-6" style={{ color: 'var(--text-muted)' }}>Download Vuka Music for Windows, Mac or Android.</p>
-            <Link href="/downloads" className="btn btn-primary inline-flex items-center gap-2">
-              Download Vuka Music <Download size={17} />
-            </Link>
-          </div>
-        </section>
-
         {/* ── FOOTER ── */
         <Footer />
 
