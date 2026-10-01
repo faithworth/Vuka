@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones, Download } from 'lucide-react';
+import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, Star, Headphones } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VukaShopJourney from '@/components/brand/VukaShopJourney';
@@ -78,6 +78,9 @@ export default function LandingPage() {
               </Link>
               <Link href="/store" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
                 Browse the Store <Music size={16} />
+              </Link>
+              <Link href="/downloads" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
+                Download App <ArrowRight size={16} />
               </Link>
             </div>
 
