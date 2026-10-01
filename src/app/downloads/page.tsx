@@ -4,9 +4,9 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const downloads = [
-  { icon: Monitor, title: 'Windows', subtitle: 'Vuka Music for Windows 10/11', description: 'Desktop app for Windows PCs.', href: 'https://github.com/faithworth/Vuka/releases/latest/download/Vuka-Music-Windows.exe', label: 'Download for Windows', note: 'Current build is unsigned. Windows SmartScreen may show a warning until code signing is added.' },
-  { icon: Apple, title: 'macOS', subtitle: 'Vuka Music for Mac', description: 'Universal desktop app for Apple Silicon and Intel Macs.', href: 'https://github.com/faithworth/Vuka/releases/latest/download/Vuka-Music-macOS.dmg', label: 'Download for Mac', note: 'Current build is unsigned/notarized. macOS may require confirmation in Privacy & Security.' },
-  { icon: Smartphone, title: 'Android', subtitle: 'Vuka Music for Android', description: 'Install the current Android APK directly on your device.', href: 'https://github.com/faithworth/Vuka/releases/latest/download/Vuka-Music-Android.apk', label: 'Download Android APK', note: 'Current build is a test APK. Google Play production signing is the next release step.' },
+  { icon: Monitor, title: 'Windows', subtitle: 'Vuka Music for Windows 10/11', description: 'Desktop app for Windows PCs.', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe', label: 'Download for Windows', note: 'Current build is unsigned. Windows SmartScreen may show a warning until code signing is added.' },
+  { icon: Apple, title: 'macOS', subtitle: 'Vuka Music for Mac', description: 'Universal desktop app for Apple Silicon and Intel Macs.', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg', label: 'Download for Mac', note: 'Current build is unsigned/notarized. macOS may require confirmation in Privacy & Security.' },
+  { icon: Smartphone, title: 'Android', subtitle: 'Vuka Music for Android', description: 'Install the current Android APK directly on your device.', href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk', label: 'Download Android APK', note: 'Current build is a test APK. Google Play production signing is the next release step.' },
 ];
 
 export default function DownloadsPage() {
@@ -47,7 +47,7 @@ export default function DownloadsPage() {
                 <p className="text-sm leading-6 mb-4" style={{ color: 'var(--text-muted)' }}>
                   The iPhone/iPad app has been built and tested as an iOS simulator build. A physical-device release requires Apple signing and App Store/TestFlight distribution, which is being prepared separately.
                 </p>
-                <a href="https://github.com/faithworth/Vuka/releases/latest" className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--green)' }}>
+                <a href="https://github.com/faithworth/Vuka/releases/tag/v1.0.1" className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--green)' }}>
                   View Vuka releases <ExternalLink size={14} />
                 </a>
               </div>
