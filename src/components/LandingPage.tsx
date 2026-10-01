@@ -79,9 +79,7 @@ export default function LandingPage() {
               <Link href="/store" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
                 Browse the Store <Music size={16} />
               </Link>
-              <Link href="/downloads" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">
-                Download App <ArrowRight size={16} />
-              </Link>
+              <Link href="/downloads" className="btn btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto">Download App</Link>
             </div>
 
             <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
