@@ -177,7 +177,9 @@ export default function VerificationPage() {
               <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFrontFile(f); setFileName(f.name); setFrontFileName(f.name); } }} />
             </label>
-            {fileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> {fileName} selected</p>}
+            {fileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> Front: {fileName} selected</p>}
+            {country === 'ZA' && <label className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm cursor-pointer" style={{ background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}><Upload size={16} /> {backFileName || 'Choose back of Smart ID'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setBackFile(f); setBackFileName(f.name); } }} /></label>}
+            {backFileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> Back: {backFileName} selected</p>}
           </div>
 
           <div>
