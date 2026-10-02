@@ -1,0 +1,109 @@
+name: Vuka Music Signed Mobile Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v1.0.2"
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    environment: production-release
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+      - run: npm install
+      - name: Authenticate EAS
+        run: npx eas-cli@latest whoami
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Build signed Android APK
+        run: npx eas-cli@latest build --platform android --profile production-apk --non-interactive --wait --json > build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Download signed Android APK
+        run: |
+          BUILD_ID=$(node -e "const x=require('./build.json'); const b=Array.isArray(x)?x[0]:x; process.stdout.write(b.id)")
+          mkdir -p release-assets
+          npx eas-cli@latest build:download --build-id "$BUILD_ID" --non-interactive
+          APK=$(find . -maxdepth 2 -type f -name '*.apk' | head -n 1)
+          if [ -z "$APK" ]; then echo "Signed APK was not produced"; exit 1; fi
+          cp "$APK" release-assets/Vuka-Music-Android.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-android-signed
+          path: apps/mobile/release-assets/Vuka-Music-Android.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-latest
+    environment: production-release
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+      - run: npm install
+      - name: Authenticate EAS
+        run: npx eas-cli@latest whoami
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Build signed iOS production archive
+        run: npx eas-cli@latest build --platform ios --profile production --non-interactive --wait --json > build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Download signed iOS archive
+        run: |
+          BUILD_ID=$(node -e "const x=require('./build.json'); const b=Array.isArray(x)?x[0]:x; process.stdout.write(b.id)")
+          mkdir -p release-assets
+          npx eas-cli@latest build:download --build-id "$BUILD_ID" --non-interactive
+          IPA=$(find . -maxdepth 2 -type f -name '*.ipa' | head -n 1)
+          if [ -z "$IPA" ]; then echo "Signed iOS archive was not produced"; exit 1; fi
+          cp "$IPA" release-assets/Vuka-Music-iOS.ipa
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-ios-signed
+          path: apps/mobile/release-assets/Vuka-Music-iOS.ipa
+          if-no-files-found: error
+
+  release:
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: vuka-music-android-signed
+          path: release-assets
+      - uses: actions/download-artifact@v7
+        with:
+          name: vuka-music-ios-signed
+          path: release-assets
+      - name: Publish signed mobile release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.2 --repo faithworth/Vuka --title "Vuka Music 1.0.2" --notes "Production mobile release. Android is release-signed. iOS is signed for App Store/TestFlight distribution." || true
+          gh release upload v1.0.2 release-assets/Vuka-Music-Android.apk --repo faithworth/Vuka --clobber
+          gh release upload v1.0.2 release-assets/Vuka-Music-iOS.ipa --repo faithworth/Vuka --clobber
