@@ -1,0 +1,100 @@
+name: Vuka Music Signed Desktop Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v1.0.2"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    environment: production-release
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package.json
+      - run: npm install
+      - name: Build signed Windows installer
+        run: npx electron-builder --win nsis --publish never
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - name: Verify Authenticode signature
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { throw "Windows installer not found." }
+          $sig = Get-AuthenticodeSignature $exe.FullName
+          if ($sig.Status -ne "Valid") { throw "Windows installer is not validly signed: $($sig.Status)" }
+          Write-Host "Signed publisher: $($sig.SignerCertificate.Subject)"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-windows-signed
+          path: apps/desktop/dist/*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    environment: production-release
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package.json
+      - run: npm install
+      - name: Build, sign and notarize macOS app
+        run: npx electron-builder --mac dmg --universal --publish never
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Verify Developer ID signature and notarization
+        run: |
+          APP=$(find dist -name "*.app" -type d | head -n 1)
+          if [ -z "$APP" ]; then echo "Signed app bundle not found"; exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl --assess --verbose=2 --type exec "$APP"
+          xcrun stapler validate "$APP"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vuka-music-macos-signed
+          path: apps/desktop/dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: vuka-music-*-signed
+          path: release-assets
+          merge-multiple: true
+      - name: Publish signed release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release-assets/final
+          find release-assets -type f -name '*.exe' -exec cp {} release-assets/final/Vuka-Music-Windows.exe \;
+          find release-assets -type f -name '*.dmg' -exec cp {} release-assets/final/Vuka-Music-macOS.dmg \;
+          gh release create v1.0.2 --repo faithworth/Vuka --title "Vuka Music 1.0.2" --notes "Production signed desktop release. Windows Authenticode-signed; macOS Developer ID-signed and notarized." release-assets/final/*
