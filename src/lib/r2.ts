@@ -35,8 +35,8 @@ export const r2Keys = {
   // Each upload gets a unique immutable key so an approved document can never
   // be overwritten by a later submission. Served only via the admin-only
   // presigned-download route.
-  verificationDoc: (artistId: string, ext: string) =>
-    `private/verification/${artistId}/${crypto.randomUUID()}.${ext}`,
+  verificationDoc: (artistId: string, side: 'front' | 'back', ext: string) =>
+    `private/verification/${artistId}/${side}-${crypto.randomUUID()}.${ext`
 };
 
 export function getPublicUrl(key: string): string {
