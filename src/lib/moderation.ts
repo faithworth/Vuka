@@ -402,15 +402,39 @@ export async function submitVerification(
   if (!data.legalName?.trim()) throw new Error('Legal name is required');
   if (!data.idDocumentUrl?.trim()) throw new Error('ID document is required');
 
-  // ID documents are PRIVATE — idDocumentUrl holds an R2 *key* under
-  // private/verification/{artistId}.{ext}, never a public URL. This is
-  // deliberately different from validateAttachmentUrl (used for abuse-report
-  // evidence, which IS meant to be publicly viewable). Scoping the key to
-  // the submitting artist's own id prevents one artist referencing another's
-  // already-uploaded document, and the prefix check blocks path traversal.
+  // ID documents are PRIVATE R2 keys. The artist-facing flow submits a
+  // JSON object containing separate front/back keys for Smart ID cards, while
+  // older submissions may still contain a single raw key. Validate every key
+  // against the submitting artist's private prefix and reject traversal.
   const expectedPrefix = 'private/verification/' + artistId + '/';
-  if (!data.idDocumentUrl.startsWith(expectedPrefix) || data.idDocumentUrl.includes('..')) {
-    throw new Error('ID document must be uploaded via Vuka Music\'s secure verification upload');
+  const documentKeys: string[] = [];
+
+  try {
+    const parsed = JSON.parse(data.idDocumentUrl);
+    if (parsed && typeof parsed === 'object' && typeof parsed.front === 'string') {
+      documentKeys.push(parsed.front);
+      if (parsed.back) {
+        if (typeof parsed.back !== 'string') {
+          throw new Error('Invalid back document key');
+        }
+        documentKeys.push(parsed.back);
+      }
+    } else {
+      documentKeys.push(data.idDocumentUrl);
+    }
+  } catch {
+    documentKeys.push(data.idDocumentUrl);
+  }
+
+  if (
+    documentKeys.length === 0 ||
+    documentKeys.some((key) =>
+      !key.startsWith(expectedPrefix) ||
+      key.includes('..') ||
+      key.includes('\\')
+    )
+  ) {
+    throw new Error("ID document must be uploaded via Vuka Music's secure verification upload");
   }
 
   const existing = await prisma.verificationRequest.findUnique({ where: { artistId } });
