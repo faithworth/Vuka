@@ -199,16 +199,21 @@ function SettingsContent() {
         body: JSON.stringify({ ...artist, genreTags: genreInput.split(',').map((t: string) => t.trim()).filter(Boolean) }),
       });
       const data = await res.json().catch(() => null);
-      if (res.ok && data?.artist) {
+      if (!res.ok) throw new Error(data?.error || 'Profile could not be saved');
+      if (data?.artist) {
         // Pull the server's copy back in — critically including the new
         // slug if the name change triggered one, so the store-link preview
         // below updates immediately instead of showing a stale URL.
         setArtist(data.artist);
         setSlugChangeNotice(data.slugChanged ? data.artist.slug : null);
       }
-    } catch {}
+    } catch (err) {
+      console.error('[settings] save profile failed', err);
+      setSaved(false);
+      alert(err instanceof Error ? err.message : 'Profile could not be saved');
+    }
     setSaving(false);
-    setSaved(true);
+    if (!saved) setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
 
