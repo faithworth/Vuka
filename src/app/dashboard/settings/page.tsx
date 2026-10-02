@@ -51,6 +51,7 @@ function SettingsContent() {
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
   const [saved, setSaved]               = useState(false);
+  const [genreInput, setGenreInput] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -77,7 +78,7 @@ function SettingsContent() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); setPaypalEmail(d.artist?.paypalEmail || ''); if (d.role) setRole(d.role); }),
+      fetch('/api/dashboard/settings').then(r => r.json()).then(d => { setArtist(d.artist || d); setGenreInput((d.artist?.genreTags || []).join(', ')); setPaypalEmail(d.artist?.paypalEmail || ''); if (d.role) setRole(d.role); }),
       fetch('/api/payouts/bank-accounts').then(r => r.ok ? r.json() : { accounts: [] }).then(d => setBankAccounts(d.accounts || [])),
       fetch(`/api/plans/status?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPlanInfo(d)),
     ]).catch(() => {}).finally(() => setLoading(false));
@@ -190,20 +191,27 @@ function SettingsContent() {
     e.preventDefault();
     setSaving(true);
     try {
+      const parsedGenres = genreInput.split(',').map((t: string) => t.trim()).filter(Boolean);
+      setArtist((p: any) => ({ ...p, genreTags: parsedGenres }));
       const res = await fetch('/api/dashboard/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(artist),
+        body: JSON.stringify({ ...artist, genreTags: genreInput.split(',').map((t: string) => t.trim()).filter(Boolean) }),
       });
       const data = await res.json().catch(() => null);
-      if (res.ok && data?.artist) {
+      if (!res.ok) throw new Error(data?.error || 'Profile could not be saved');
+      if (data?.artist) {
         // Pull the server's copy back in — critically including the new
         // slug if the name change triggered one, so the store-link preview
         // below updates immediately instead of showing a stale URL.
         setArtist(data.artist);
         setSlugChangeNotice(data.slugChanged ? data.artist.slug : null);
       }
-    } catch {}
+    } catch (err) {
+      console.error('[settings] save profile failed', err);
+      setSaved(false);
+      alert(err instanceof Error ? err.message : 'Profile could not be saved');
+    }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -577,9 +585,10 @@ function SettingsContent() {
 
         <div>
           <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Genre Tags (comma separated)</label>
-          <input value={(artist.genreTags || []).join(', ')}
+          <input value={genreInput}
             placeholder="e.g. Amapiano, Afrobeats, Hip Hop, Gqom"
-            onChange={e => setArtist((p: any) => ({ ...p, genreTags: e.target.value.split(',').map((t: string) => t.trim()).filter(Boolean) }))}
+            onChange={e => setGenreInput(e.target.value)}
+            onBlur={() => setArtist((p: any) => ({ ...p, genreTags: genreInput.split(',').map((t: string) => t.trim()).filter(Boolean) }))}
             className="w-full px-4 py-3 rounded-xl"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
         </div>

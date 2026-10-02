@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { contentType } = await req.json();
+    const { contentType, side = 'front' } = await req.json();
+    if (side !== 'front' && side !== 'back') return NextResponse.json({ error: 'Invalid document side' }, { status: 400 });
     if (!contentType) return NextResponse.json({ error: 'contentType required' }, { status: 400 });
 
     const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       : contentType === 'image/webp' ? 'webp'
       : 'jpg';
 
-    const key = r2Keys.verificationDoc(user.artist.id, ext);
+    const key = r2Keys.verificationDoc(user.artist.id, side, ext);
     const uploadUrl = await getPresignedUploadUrl(key, contentType);
 
     return NextResponse.json({ uploadUrl, key });

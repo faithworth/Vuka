@@ -20,8 +20,14 @@ export default function VerificationPage() {
   const [legalName, setLegalName]         = useState('');
   const [socialProofUrl, setSocialProofUrl] = useState('');
   const [notes, setNotes]                 = useState('');
-  const [file, setFile]                   = useState<File | null>(null);
-  const [fileName, setFileName]           = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [frontFile, setFrontFile] = useState<File | null>(null);
+  const [backFile, setBackFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState('');
+  const [frontFileName, setFrontFileName] = useState('');
+  const [backFileName, setBackFileName] = useState('');
+  const [country, setCountry] = useState('ZA');
+  const [idNumber, setIdNumber] = useState('');
 
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +43,7 @@ export default function VerificationPage() {
       if (data.request) {
         setStatus(data.request.status);
         setLegalName(data.request.legalName || '');
+        try { const savedIdentity = JSON.parse(data.request.additionalInfo || '{}'); setCountry(savedIdentity.country || 'ZA'); setIdNumber(savedIdentity.idNumber || ''); setNotes(savedIdentity.notes || ''); } catch {}
         setSocialProofUrl(data.request.socialProofUrl || '');
         setAdminNotes(data.request.adminNotes || '');
       }
@@ -50,27 +57,35 @@ export default function VerificationPage() {
   async function submit() {
     setError('');
     if (!legalName.trim()) { setError('Enter your legal name as it appears on your ID'); return; }
-    if (!file) { setError('Upload a photo or scan of your ID document'); return; }
+    const primaryFile = frontFile || file;
+    if (!primaryFile) { setError('Upload the front of your ID document'); return; }
+    if (country === 'ZA' && !backFile) { setError('For a South African Smart ID, upload both the front and back'); return; }
+    if (!country.trim()) { setError('Select your country'); return; }
+    if (!idNumber.trim()) { setError('Enter your ID number'); return; }
 
     try {
       setUploading(true);
-      const urlRes = await fetch('/api/dashboard/verification/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentType: file.type }),
-      });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok) throw new Error(urlData.error || 'Failed to prepare upload');
-
-      const putRes = await fetch(urlData.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-      if (!putRes.ok) throw new Error('File upload failed');
+      async function uploadSide(file: File, side: 'front' | 'back') {
+        const urlRes = await fetch('/api/dashboard/verification/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentType: file.type, side }),
+        });
+        const urlData = await urlRes.json();
+        if (!urlRes.ok) throw new Error(urlData.error || 'Failed to prepare upload');
+        const putRes = await fetch(urlData.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+        if (!putRes.ok) throw new Error('File upload failed');
+        return urlData.key as string;
+      }
+      const frontKey = await uploadSide(primaryFile, 'front');
+      const backKey = backFile ? await uploadSide(backFile, 'back') : '';
       setUploading(false);
 
       setSubmitting(true);
       const res = await fetch('/api/moderation/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ legalName: legalName.trim(), idDocumentUrl: urlData.key, socialProofUrl: socialProofUrl.trim(), notes: notes.trim() }),
+        body: JSON.stringify({ legalName: legalName.trim(), country, idNumber: idNumber.trim(), idDocumentUrl: JSON.stringify({ front: frontKey, back: backKey }), socialProofUrl: socialProofUrl.trim(), notes: JSON.stringify({ country, idNumber: idNumber.trim(), notes: notes.trim() }) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit');
@@ -140,17 +155,32 @@ export default function VerificationPage() {
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Country *</label>
+              <select value={country} onChange={e => setCountry(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <option value="ZA">South Africa</option><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>ID number *</label>
+              <input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Government ID number" className="w-full px-3 py-2 rounded-xl text-sm" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>ID document *</label>
             <p className="text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>A photo or scan of your government ID or passport. Stored privately — only reviewed by Vuka admins.</p>
             <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm cursor-pointer"
               style={{ background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}>
               <Upload size={16} />
-              {fileName || 'Choose a file (JPG, PNG, or PDF)'}
+              {fileName || 'Choose the front of your ID (JPG, PNG, WebP, or PDF)'}
               <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileName(f.name); } }} />
+                onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFrontFile(f); setFileName(f.name); setFrontFileName(f.name); } }} />
             </label>
-            {fileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> {fileName} selected</p>}
+            {fileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> Front: {fileName} selected</p>}
+            {country === 'ZA' && <label className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm cursor-pointer" style={{ background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}><Upload size={16} /> {backFileName || 'Choose back of Smart ID'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setBackFile(f); setBackFileName(f.name); } }} /></label>}
+            {backFileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> Back: {backFileName} selected</p>}
           </div>
 
           <div>
