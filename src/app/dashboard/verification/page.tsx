@@ -23,6 +23,7 @@ export default function VerificationPage() {
   const [file, setFile] = useState<File | null>(null);
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState('');
   const [frontFileName, setFrontFileName] = useState('');
   const [backFileName, setBackFileName] = useState('');
   const [country, setCountry] = useState('ZA');
