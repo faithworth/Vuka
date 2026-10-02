@@ -8,27 +8,27 @@ const downloads = [
     title: 'Windows',
     subtitle: 'Vuka Music for Windows 10/11',
     description: 'Branded Vuka Music desktop app for Windows PCs.',
-    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.2/Vuka-Music-Windows.exe',
+    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Windows.exe',
     label: 'Download for Windows',
-    status: 'Authenticode signed',
+    status: 'Available now — unsigned',
   },
   {
     icon: Apple,
     title: 'macOS',
     subtitle: 'Vuka Music for Mac',
     description: 'Universal Vuka Music desktop app for Apple Silicon and Intel Macs.',
-    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.2/Vuka-Music-macOS.dmg',
+    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-macOS.dmg',
     label: 'Download for Mac',
-    status: 'Developer ID signed + notarized',
+    status: 'Available now — unsigned',
   },
   {
     icon: Smartphone,
     title: 'Android',
     subtitle: 'Vuka Music for Android',
     description: 'Signed Vuka Music APK for direct installation on Android devices.',
-    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.2/Vuka-Music-Android.apk',
+    href: 'https://github.com/faithworth/Vuka/releases/download/v1.0.1/Vuka-Music-Android.apk',
     label: 'Download Android APK',
-    status: 'Release signed',
+    status: 'Available now — release APK',
   },
 ];
 
@@ -41,11 +41,11 @@ export default function DownloadsPage() {
           <header className="max-w-3xl mx-auto text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-5"
               style={{ color: 'var(--green)', background: 'rgba(160,232,124,0.08)', border: '1px solid rgba(160,232,124,0.18)' }}>
-              <LockKeyhole size={13} /> PRODUCTION RELEASES
+              <LockKeyhole size={13} /> AVAILABLE RELEASES
             </div>
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">Download Vuka Music.</h1>
             <p className="text-base sm:text-lg" style={{ color: 'var(--text-muted)' }}>
-              Official Vuka Music applications for Windows, Mac and Android. Production releases carry the Vuka Music brand and platform metadata.
+              Official Vuka Music applications for Windows, Mac and Android. The current downloadable desktop release is unsigned; signed production builds will replace it when available.
             </p>
           </header>
 
@@ -82,7 +82,7 @@ export default function DownloadsPage() {
                 <p className="text-sm leading-6 mb-4" style={{ color: 'var(--text-muted)' }}>
                   The Vuka Music iPhone/iPad app is being prepared as a signed App Store/TestFlight release. Apple requires a valid Apple Developer signing identity and provisioning for physical-device distribution.
                 </p>
-                <a href="https://github.com/faithworth/Vuka/releases/tag/v1.0.2"
+                <a href="https://github.com/faithworth/Vuka/releases/tag/v1.0.1"
                   className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--green)' }}>
                   View Vuka release status <ExternalLink size={14} />
                 </a>
