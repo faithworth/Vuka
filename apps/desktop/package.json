@@ -1,8 +1,10 @@
 {
   "name": "vuka-music-desktop",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
-  "description": "Vuka Music desktop app for Windows and macOS",
+  "description": "Vuka Music desktop app for artists, fans and the music industry.",
+  "author": "Vuka Music",
+  "homepage": "https://www.vukamusic.com",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
@@ -14,6 +16,10 @@
   },
   "build": {
     "appId": "com.vukamusic.desktop",
+    "artifactName": "Vuka-Music-${version}-${os}-${arch}.${ext}",
+    "buildVersion": "1.0.2",
+    "copyright": "Copyright © 2026 Vuka Music",
+    "buildResources": "build",
     "productName": "Vuka Music",
     "asar": true,
     "directories": {
@@ -24,6 +30,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.svg",
       "target": [
         {
           "target": "nsis",
@@ -32,6 +39,9 @@
       ]
     },
     "mac": {
+      "icon": "build/icon.svg",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": true,
       "category": "public.app-category.music",
       "target": [
         {
@@ -40,6 +50,7 @@
         }
       ]
     },
+    "forceCodeSigning": true,
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
