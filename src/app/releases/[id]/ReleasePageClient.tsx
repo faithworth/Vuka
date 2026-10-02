@@ -128,7 +128,9 @@ export default function ReleasePageClient({ release }: { release: any }) {
               <div className="flex items-center gap-4 mb-5 flex-wrap">
                 <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>
                   {release.payWhatWant
-                    ? `Pay what you want — min ${formatCurrency(release.minPrice || 0)}`
+                    ? (release.minPrice > 0
+                        ? `Pay what you want — min ${formatCurrency(release.minPrice)}`
+                        : 'Pay what you want — free or any amount')
                     : release.price === 0 ? 'Free' : formatCurrency(release.price)}
                 </div>
               </div>
@@ -140,7 +142,7 @@ export default function ReleasePageClient({ release }: { release: any }) {
                 className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
                 style={{ background: 'linear-gradient(135deg, var(--sky), var(--sky-dark))' }}>
                 <ShoppingCart size={18} />
-                {release.price === 0 ? 'Download Free' : 'Buy Now — Yebo ✓'}
+                {release.payWhatWant ? 'Get it — pay what you want' : release.price === 0 ? 'Download Free' : 'Buy Now — Yebo ✓'}
               </button>
 
               {/* Share buttons */}
@@ -246,6 +248,17 @@ export default function ReleasePageClient({ release }: { release: any }) {
             )}
           </div>
         )}
+
+        {/* Rights & licence */}
+        <div className="p-5 rounded-2xl mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <h3 className="font-black text-sm mb-3" style={{ color: 'var(--text)' }}>Rights &amp; licence</h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            © {release.copyrightYear || new Date(release.releaseDate || release.createdAt || Date.now()).getFullYear()} {release.copyrightHolder || release.artist?.name}. All rights reserved.
+          </p>
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Every download is a personal-use licence only. No copying, re-uploading, redistribution or sampling without the artist&apos;s written permission.
+          </p>
+        </div>
 
         {/* Fee note */}
         <div className="text-center text-xs py-4" style={{ color: 'var(--text-muted)' }}>
