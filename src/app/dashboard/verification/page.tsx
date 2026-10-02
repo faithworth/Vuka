@@ -154,6 +154,19 @@ export default function VerificationPage() {
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Country *</label>
+              <select value={country} onChange={e => setCountry(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <option value="ZA">South Africa</option><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>ID number *</label>
+              <input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Government ID number" className="w-full px-3 py-2 rounded-xl text-sm" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>ID document *</label>
             <p className="text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>A photo or scan of your government ID or passport. Stored privately — only reviewed by Vuka admins.</p>
