@@ -255,7 +255,7 @@ export function Navbar() {
         {/* ── DESKTOP BROWSE NAV (lg+) ───────────────────────────────────── */}
         {/* Stable primary nav. Store/Social use a full-width dropdown BELOW the
             bar, never a side/overflow menu, so links cannot collide with the logo. */}
-        <div className="hidden lg:flex items-center gap-1 flex-1 justify-center min-w-0">
+        <div className="hidden xl:flex items-center gap-1 flex-1 justify-center min-w-0 px-2">
           <div className="relative" ref={storeRef}>
             <button type="button" onClick={() => { setStoreOpen(v => !v); setSocialOpen(false); }}
               className="px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-1.5"
@@ -315,12 +315,12 @@ export function Navbar() {
         </div>
 
         {/* ── DESKTOP RIGHT (lg+) ───────────────────────────────────────── */}
-        <div className="hidden lg:flex flex-shrink-0">
+        <div className="hidden xl:flex flex-shrink-0 ml-2">
           <RightActions />
         </div>
 
         {/* ── TABLET: right actions + hamburger (md–lg) ─────────────────── */}
-        <div className="hidden md:flex lg:hidden items-center gap-2">
+        <div className="hidden lg:flex xl:hidden items-center gap-2">
           <RightActions />
           <button
             className="p-2 rounded-xl transition-colors ml-1"
@@ -332,7 +332,7 @@ export function Navbar() {
         </div>
 
         {/* ── MOBILE: icons + hamburger (< md) ──────────────────────────── */}
-        <div className="flex md:hidden items-center gap-1">
+        <div className="flex lg:hidden items-center gap-1">
           {user && (
             <>
               <Link href="/notifications" className="relative p-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
@@ -367,7 +367,7 @@ export function Navbar() {
 
       {/* ── MOBILE / TABLET FULL DRAWER ───────────────────────────────────── */}
       {mobileOpen && (
-        <div className="lg:hidden overflow-y-auto"
+        <div className="xl:hidden overflow-y-auto"
           style={{ maxHeight: '85vh', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
           <div className="flex flex-col">
 
