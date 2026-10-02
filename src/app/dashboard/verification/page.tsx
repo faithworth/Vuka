@@ -43,6 +43,7 @@ export default function VerificationPage() {
       if (data.request) {
         setStatus(data.request.status);
         setLegalName(data.request.legalName || '');
+        try { const savedIdentity = JSON.parse(data.request.additionalInfo || '{}'); setCountry(savedIdentity.country || 'ZA'); setIdNumber(savedIdentity.idNumber || ''); setNotes(savedIdentity.notes || ''); } catch {}
         setSocialProofUrl(data.request.socialProofUrl || '');
         setAdminNotes(data.request.adminNotes || '');
       }
@@ -84,7 +85,7 @@ export default function VerificationPage() {
       const res = await fetch('/api/moderation/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ legalName: legalName.trim(), country, idNumber: idNumber.trim(), idDocumentUrl: JSON.stringify({ front: frontKey, back: backKey }), socialProofUrl: socialProofUrl.trim(), notes: notes.trim() }),
+        body: JSON.stringify({ legalName: legalName.trim(), country, idNumber: idNumber.trim(), idDocumentUrl: JSON.stringify({ front: frontKey, back: backKey }), socialProofUrl: socialProofUrl.trim(), notes: JSON.stringify({ country, idNumber: idNumber.trim(), notes: notes.trim() }) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit');
