@@ -62,23 +62,26 @@ export default function VerificationPage() {
     try {
       setUploading(true);
       async function uploadSide(file: File, side: 'front' | 'back') {
-      const urlRes = await fetch('/api/dashboard/verification/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentType: file.type }),
-      });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok) throw new Error(urlData.error || 'Failed to prepare upload');
-
-      const putRes = await fetch(urlData.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-      if (!putRes.ok) throw new Error('File upload failed');
+        const urlRes = await fetch('/api/dashboard/verification/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentType: file.type, side }),
+        });
+        const urlData = await urlRes.json();
+        if (!urlRes.ok) throw new Error(urlData.error || 'Failed to prepare upload');
+        const putRes = await fetch(urlData.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+        if (!putRes.ok) throw new Error('File upload failed');
+        return urlData.key as string;
+      }
+      const frontKey = await uploadSide(frontFile, 'front');
+      const backKey = backFile ? await uploadSide(backFile, 'back') : '';
       setUploading(false);
 
       setSubmitting(true);
       const res = await fetch('/api/moderation/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ legalName: legalName.trim(), idDocumentUrl: urlData.key, socialProofUrl: socialProofUrl.trim(), notes: notes.trim() }),
+        body: JSON.stringify({ legalName: legalName.trim(), country, idNumber: idNumber.trim(), idDocumentUrl: JSON.stringify({ front: frontKey, back: backKey }), socialProofUrl: socialProofUrl.trim(), notes: notes.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit');
