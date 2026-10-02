@@ -173,9 +173,9 @@ export default function VerificationPage() {
             <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm cursor-pointer"
               style={{ background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}>
               <Upload size={16} />
-              {fileName || 'Choose a file (JPG, PNG, or PDF)'}
+              {fileName || 'Choose the front of your ID (JPG, PNG, WebP, or PDF)'}
               <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileName(f.name); } }} />
+                onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFrontFile(f); setFileName(f.name); setFrontFileName(f.name); } }} />
             </label>
             {fileName && <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--green)' }}><FileText size={12} /> {fileName} selected</p>}
           </div>
