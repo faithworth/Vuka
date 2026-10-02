@@ -20,6 +20,7 @@ export default function VerificationPage() {
   const [legalName, setLegalName]         = useState('');
   const [socialProofUrl, setSocialProofUrl] = useState('');
   const [notes, setNotes]                 = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
   const [frontFileName, setFrontFileName] = useState('');
