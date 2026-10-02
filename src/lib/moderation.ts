@@ -434,7 +434,7 @@ export async function submitVerification(
       key.includes('\\')
     )
   ) {
-    throw new Error('ID document must be uploaded via Vuka Music\\'s secure verification upload');
+    throw new Error("ID document must be uploaded via Vuka Music's secure verification upload");
   }
 
   const existing = await prisma.verificationRequest.findUnique({ where: { artistId } });
