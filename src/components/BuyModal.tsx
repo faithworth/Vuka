@@ -88,9 +88,10 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const prices: Record<string, number> = beat
     ? { basic: beat.basicPrice, premium: beat.premiumPrice, exclusive: beat.exclPrice }
     : {};
+  const chosenAmount = parseFloat(customAmount);
   const itemPrice = beat
     ? prices[license]
-    : (parseFloat(customAmount) || release!.price);
+    : (release!.payWhatWant && Number.isFinite(chosenAmount) && chosenAmount >= 0 ? chosenAmount : release!.price);
   const price = itemPrice + (isMerch ? shippingFeeAmount : 0);
 
   const itemType = itemTypeProp ?? (beat ? 'beat' : 'release');
@@ -215,7 +216,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
         {/* Pay what you want (releases) */}
         {release?.payWhatWant && (
           <div className="mb-4">
-            <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>Your price (min R{release.minPrice})</label>
+            <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
+              {release.minPrice > 0 ? `Your price (min R${release.minPrice})` : 'Pay what you want — enter 0 to download free, or any amount to support the artist'}
+            </label>
             <input type="number" value={customAmount} onChange={e => setCustomAmount(e.target.value)} placeholder={String(release.price)} className="input" />
           </div>
         )}
@@ -255,14 +258,25 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
         {/* Free download — no tabs needed */}
         {price === 0 ? (
-          <button
-            onClick={() => handleBuy('yoco')}
-            disabled={loading}
-            className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
-            style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
-          >
-            {loading ? 'Processing…' : 'Download Free →'}
-          </button>
+          <>
+            <div className="space-y-3 mb-4">
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="input" />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address (we'll send your download link)" className="input" />
+            </div>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.25)', color: 'var(--color-danger)' }}>
+                {error}
+              </div>
+            )}
+            <button
+              onClick={() => handleBuy('yoco')}
+              disabled={loading}
+              className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
+              style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
+            >
+              {loading ? 'Processing…' : 'Download Free →'}
+            </button>
+          </>
         ) : (
           <>
             {/* Buyer info (shared across Yoco + Paystack tabs) */}
