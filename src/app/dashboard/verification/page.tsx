@@ -56,7 +56,8 @@ export default function VerificationPage() {
   async function submit() {
     setError('');
     if (!legalName.trim()) { setError('Enter your legal name as it appears on your ID'); return; }
-    if (!frontFile) { setError('Upload the front of your ID document'); return; }
+    const primaryFile = frontFile || file;
+    if (!primaryFile) { setError('Upload the front of your ID document'); return; }
     if (country === 'ZA' && !backFile) { setError('For a South African Smart ID, upload both the front and back'); return; }
     if (!country.trim()) { setError('Select your country'); return; }
     if (!idNumber.trim()) { setError('Enter your ID number'); return; }
@@ -75,7 +76,7 @@ export default function VerificationPage() {
         if (!putRes.ok) throw new Error('File upload failed');
         return urlData.key as string;
       }
-      const frontKey = await uploadSide(frontFile, 'front');
+      const frontKey = await uploadSide(primaryFile, 'front');
       const backKey = backFile ? await uploadSide(backFile, 'back') : '';
       setUploading(false);
 
