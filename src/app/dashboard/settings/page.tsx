@@ -213,7 +213,7 @@ function SettingsContent() {
       alert(err instanceof Error ? err.message : 'Profile could not be saved');
     }
     setSaving(false);
-    if (!saved) setSaved(true);
+    setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
 
