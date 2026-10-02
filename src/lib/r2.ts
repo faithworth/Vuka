@@ -36,7 +36,7 @@ export const r2Keys = {
   // be overwritten by a later submission. Served only via the admin-only
   // presigned-download route.
   verificationDoc: (artistId: string, side: 'front' | 'back', ext: string) =>
-    `private/verification/${artistId}/${side}-${crypto.randomUUID()}.${ext`
+    `private/verification/${artistId}/${side}-${crypto.randomUUID()}.${ext}`
 };
 
 export function getPublicUrl(key: string): string {
