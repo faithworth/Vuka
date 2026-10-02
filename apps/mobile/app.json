@@ -2,8 +2,12 @@
   "expo": {
     "name": "Vuka Music",
     "slug": "vuka-music",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "default",
+    "description": "Vuka Music — the direct-to-fan music platform for artists, fans and the music industry.",
+    "icon": "./assets/icon.png",
+    "primaryColor": "#A0E87C",
+    "backgroundColor": "#0A0A0A",
     "scheme": "vukamusic",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -11,11 +15,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vukamusic.app",
-      "buildNumber": "2"
+      "buildNumber": "3",
+      "icon": "./assets/icon.png",
+      "config": { "usesNonExemptEncryption": false }
     },
     "android": {
       "package": "com.vukamusic.app",
-      "versionCode": 2,
+      "versionCode": 3,
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#080808"
       }
@@ -24,6 +31,9 @@
       "bundler": "metro"
     },
     "extra": {
+      "appVersion": "1.0.2",
+      "publisher": "Vuka Music",
+      "homepage": "https://www.vukamusic.com",
       "vukaUrl": "https://www.vukamusic.com",
       "releaseChannel": "stable"
     }

@@ -65,29 +65,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  release:
-    if: github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download desktop installers
-        uses: actions/download-artifact@v7
-        with:
-          pattern: vuka-music-*
-          path: release-assets
-          merge-multiple: true
-      - name: Publish desktop release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION="1.0.1"
-          TAG="v${VERSION}"
-          gh release create "${TAG}" --repo faithworth/Vuka --title "Vuka Music ${VERSION}" --notes "Vuka Music ${VERSION}. Windows and macOS desktop builds. Current desktop builds are unsigned/notarized." || true
-          find release-assets -type f -name '*.exe' -exec cp {} release-assets/Vuka-Music-Windows.exe \;
-          find release-assets -type f -name '*.dmg' -exec cp {} release-assets/Vuka-Music-macOS.dmg \;
-          gh release upload "${TAG}" release-assets/Vuka-Music-Windows.exe --repo faithworth/Vuka --clobber
-          gh release upload "${TAG}" release-assets/Vuka-Music-macOS.dmg --repo faithworth/Vuka --clobber
+  # Production publishing is intentionally separated into the signed release workflow.
+  # This workflow only creates CI artifacts for testing.
 
 
