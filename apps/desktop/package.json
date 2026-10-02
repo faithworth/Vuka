@@ -42,6 +42,7 @@
       "icon": "build/icon.svg",
       "hardenedRuntime": true,
       "gatekeeperAssess": true,
+      "notarize": true,
       "category": "public.app-category.music",
       "target": [
         {
