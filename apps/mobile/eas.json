@@ -6,11 +6,17 @@
       "android": { "image": "latest" },
       "ios": { "image": "latest", "simulator": true }
     },
+    "production-apk": {
+      "distribution": "store",
+      "android": {
+        "image": "latest",
+        "buildType": "apk"
+      }
+    },
     "production": {
+      "distribution": "store",
       "android": { "image": "latest" },
       "ios": { "image": "latest" }
     }
   }
 }
-
-
