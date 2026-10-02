@@ -196,7 +196,7 @@ function SettingsContent() {
       const res = await fetch('/api/dashboard/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(artist),
+        body: JSON.stringify({ ...artist, genreTags: genreInput.split(',').map((t: string) => t.trim()).filter(Boolean) }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.artist) {
