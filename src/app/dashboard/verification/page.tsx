@@ -54,10 +54,14 @@ export default function VerificationPage() {
   async function submit() {
     setError('');
     if (!legalName.trim()) { setError('Enter your legal name as it appears on your ID'); return; }
-    if (!file) { setError('Upload a photo or scan of your ID document'); return; }
+    if (!frontFile) { setError('Upload the front of your ID document'); return; }
+    if (country === 'ZA' && !backFile) { setError('For a South African Smart ID, upload both the front and back'); return; }
+    if (!country.trim()) { setError('Select your country'); return; }
+    if (!idNumber.trim()) { setError('Enter your ID number'); return; }
 
     try {
       setUploading(true);
+      async function uploadSide(file: File, side: 'front' | 'back') {
       const urlRes = await fetch('/api/dashboard/verification/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
