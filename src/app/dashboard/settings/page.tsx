@@ -660,6 +660,7 @@ function SettingsContent() {
                     <span className="font-bold text-base" style={{ color: 'var(--text)' }}>{p.name}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
+                    {isActive && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: `${p.color}22`, color: p.color }}>
                         ✓ Active
