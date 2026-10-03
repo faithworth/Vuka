@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { cardFloorError } from '@/lib/pricing-floor';
 import { createYocoCheckout, generateReference } from '@/lib/yoco';
 import { logger } from '@/lib/logger';
 import { sendPurchaseConfirmation } from '@/lib/emails';
@@ -92,6 +93,9 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Invalid item type' }, { status: 400 });
     }
+
+    const floorError = cardFloorError(amount);
+    if (floorError) return NextResponse.json({ error: floorError }, { status: 400 });
 
     const licenseId = `VK-${Date.now().toString(36).toUpperCase()}`;
     const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
