@@ -8,6 +8,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { ShieldCheck, ExternalLink, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import VukaLoader from '@/components/brand/VukaLoader';
 
+function hasBackDoc(raw: unknown): boolean {
+  try { return !!JSON.parse(String(raw))?.back; } catch { return false; }
+}
+
 const TABS = ['pending', 'approved', 'rejected'] as const;
 
 export default function AdminVerificationsPage() {
@@ -103,11 +107,20 @@ export default function AdminVerificationsPage() {
                   )}
                   {r.additionalInfo && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>"{r.additionalInfo}"</p>}
                 </div>
-                <a href={`/api/admin/verification/${r.id}/document`} target="_blank" rel="noreferrer"
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-                  style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
-                  View ID <ExternalLink size={12} />
-                </a>
+                <div className="shrink-0 flex flex-col gap-1.5">
+                  <a href={`/api/admin/verification/${r.id}/document`} target="_blank" rel="noreferrer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                    style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
+                    View ID (front) <ExternalLink size={12} />
+                  </a>
+                  {hasBackDoc(r.idDocumentUrl) && (
+                    <a href={`/api/admin/verification/${r.id}/document?side=back`} target="_blank" rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                      style={{ background: 'var(--surface2)', color: 'var(--text)' }}>
+                      View ID (back) <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
               </div>
 
               {tab === 'pending' && (
