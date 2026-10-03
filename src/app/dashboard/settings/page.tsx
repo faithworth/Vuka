@@ -159,7 +159,7 @@ function SettingsContent() {
     setCancellingPlan(false);
   }
 
-  async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
+  async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string | null) => void) {
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
 
