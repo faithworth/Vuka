@@ -112,7 +112,11 @@ export async function GET(
       || (release.artworkUrl ? await fetchBuffer(release.artworkUrl) : null);
 
     for (const track of release.tracks) {
-      const raw = await fetchR2Buffer(r2Keys.trackFull(track.id));
+      // Releases can contain legacy `uploads/audio/...` URLs in fullUrl.
+      // Prefer the exact stored URL and retain the newer private R2 key as
+      // a fallback for newer uploads.
+      const raw = (track.fullUrl ? await fetchBuffer(track.fullUrl) : null)
+        || await fetchR2Buffer(r2Keys.trackFull(track.id));
       if (!raw) continue;
 
       const meta: TrackMeta = {
