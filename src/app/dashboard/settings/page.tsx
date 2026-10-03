@@ -211,6 +211,8 @@ function SettingsContent() {
       console.error('[settings] save profile failed', err);
       setSaved(false);
       alert(err instanceof Error ? err.message : 'Profile could not be saved');
+      setSaving(false);
+      return;
     }
     setSaving(false);
     setSaved(true);
@@ -287,7 +289,7 @@ function SettingsContent() {
   );
 
   return (
-    <div className="p-6 md:p-10 max-w-2xl">
+    <div className="p-4 sm:p-6 md:p-10 max-w-2xl">
       <h1 className="text-2xl font-black mb-2" style={{ color: 'var(--text)' }}>Settings</h1>
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
         Manage your profile, payments, and public store link.
@@ -629,7 +631,7 @@ function SettingsContent() {
       </form>
 
       {/* ── PLAN MANAGEMENT ─────────────────────────────── */}
-      <div id="plan" className="mt-6 p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div id="plan" className="mt-6 p-4 sm:p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-1">
           <Crown size={18} style={{ color: 'var(--sky)' }} />
           <h2 className="font-bold text-base" style={{ color: 'var(--text)' }}>Your Plan</h2>
@@ -646,18 +648,18 @@ function SettingsContent() {
             const isActive = planInfo?.planSlug === p.slug;
             const Icon = p.Icon;
             return (
-              <div key={p.slug} className="rounded-2xl p-6 flex flex-col"
+              <div key={p.slug} className="rounded-2xl p-4 sm:p-6 flex flex-col min-w-0"
                 style={{
                   background: isActive ? `${p.color}0d` : 'var(--surface2)',
                   border: `1.5px solid ${isActive ? p.color : 'var(--border)'}`,
                 }}>
                 {/* Header row */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Icon size={18} style={{ color: p.color }} />
                     <span className="font-bold text-base" style={{ color: 'var(--text)' }}>{p.name}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {isActive && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: `${p.color}22`, color: p.color }}>
@@ -680,9 +682,9 @@ function SettingsContent() {
                 </p>
 
                 {/* Features */}
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-4">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mb-4">
                   {p.features.map(f => (
-                    <li key={f} className="flex items-start gap-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <li key={f} className="flex items-start gap-1.5 text-sm min-w-0" style={{ color: 'var(--text-muted)' }}>
                       <Check size={13} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--green)' }} />
                       {f}
                     </li>

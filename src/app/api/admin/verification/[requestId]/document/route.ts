@@ -24,12 +24,24 @@ export async function GET(
   });
   if (!request?.idDocumentUrl) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  // The artist form stores '{"front":"private/verification/...","back":"..."}'.
+  // Older submissions may hold a single plain key (treated as the front).
+  const side = req.nextUrl.searchParams.get('side') === 'back' ? 'back' : 'front';
+  let key = '';
+  try {
+    const parsed = JSON.parse(request.idDocumentUrl);
+    key = typeof parsed?.[side] === 'string' ? parsed[side] : '';
+  } catch {
+    key = side === 'front' ? request.idDocumentUrl : '';
+  }
+  if (!key) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
   // Defense in depth: only verification objects may ever be exposed through
   // this admin document endpoint. Never sign arbitrary R2 keys from the DB.
-  if (!request.idDocumentUrl.startsWith('private/verification/') || request.idDocumentUrl.includes('..')) {
+  if (!key.startsWith('private/verification/') || key.includes('..')) {
     return NextResponse.json({ error: 'Invalid verification document reference' }, { status: 500 });
   }
 
-  const signedUrl = await getPresignedDownloadUrl(request.idDocumentUrl, 300); // 5 min
+  const signedUrl = await getPresignedDownloadUrl(key, 300); // 5 min
   return NextResponse.redirect(signedUrl);
 }
