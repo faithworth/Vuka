@@ -162,28 +162,58 @@ function SettingsContent() {
   async function pickImage(file: File, key: 'photoUrl' | 'coverUrl', setPreview: (s: string) => void) {
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
+
     try {
       const type = key === 'coverUrl' ? 'cover' : 'photo';
       const mimeType = file.type || 'image/jpeg';
-      const res = await fetch(`/api/dashboard/settings/upload-url?type=${type}&mimeType=${encodeURIComponent(mimeType)}`);
-      if (!res.ok) throw new Error('Could not get upload URL');
-      const { uploadUrl, publicUrl } = await res.json();
-      const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': mimeType } });
-      if (!uploadRes.ok) throw new Error(`R2 upload failed: ${uploadRes.status}`);
-      const updatedArtist = await new Promise<any>(resolve => {
-        setArtist((p: any) => {
-          const updated = { ...p, [key]: publicUrl };
-          resolve(updated);
-          return updated;
-        });
+
+      // Get a presigned R2 upload URL.
+      const res = await fetch(
+        `/api/dashboard/settings/upload-url?type=${type}&mimeType=${encodeURIComponent(mimeType)}&t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      const uploadData = await res.json().catch(() => ({}));
+      if (!res.ok || !uploadData.uploadUrl || !uploadData.publicUrl) {
+        throw new Error(uploadData.error || 'Could not get upload URL');
+      }
+
+      // Upload the actual image first.
+      const uploadRes = await fetch(uploadData.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': mimeType },
       });
-      await fetch('/api/dashboard/settings', {
+      if (!uploadRes.ok) {
+        throw new Error(`Image upload failed: ${uploadRes.status}`);
+      }
+
+      // R2 uses a stable object key for profile images. Add a cache-buster
+      // so the newly uploaded image is immediately visible through the CDN.
+      const savedUrl = `${uploadData.publicUrl}${uploadData.publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+
+      // IMPORTANT: persist the URL in the database immediately. Previously the
+      // PATCH response was ignored, so an R2 upload could succeed while the
+      // Artist row failed to save and the UI gave no indication.
+      const saveRes = await fetch('/api/dashboard/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [key]: publicUrl }),
+        body: JSON.stringify({ [key]: savedUrl }),
       });
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || !saveData.artist) {
+        throw new Error(saveData.error || `Profile image could not be saved: ${saveRes.status}`);
+      }
+
+      setArtist(saveData.artist);
+      setPreview(savedUrl);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      URL.revokeObjectURL(objectUrl);
     } catch (e: any) {
-      console.error('Image upload failed:', e.message);
+      console.error('Image upload/save failed:', e);
+      // Keep the previous saved image in the profile if persistence failed.
+      setPreview(null);
+      alert(e?.message || 'Image upload failed. Please try again.');
     }
   }
 
