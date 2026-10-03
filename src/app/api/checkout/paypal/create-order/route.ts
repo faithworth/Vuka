@@ -22,6 +22,8 @@ import { getZarToUsdRate, zarToUsd } from '@/lib/fx';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
+import { getEffectivePlan } from '@/lib/plans';
+import { paypalMinZAR } from '@/lib/pricing-floor';
 
 const schema = z.object({
   itemType:    z.enum(['beat', 'release', 'video', 'sample']),
@@ -149,6 +151,27 @@ export async function POST(req: NextRequest) {
   // ── Live FX rate ────────────────────────────────────────────────────────
   const fx        = await getZarToUsdRate();
   const amountUSD = zarToUsd(priceZAR, fx.zarToUsdRate);
+
+  // ── Loss guard ──────────────────────────────────────────────────────────
+  // PayPal charges 4.9% + US$0.30 on every sale. Only allow PayPal when Vuka's
+  // platform cut on this artist's plan covers that fee.
+  const planRow = artistId
+    ? await prisma.artist.findUnique({ where: { id: artistId }, select: { planSlug: true, planExpiresAt: true } }).catch(() => null)
+    : null;
+  const platformFeePct = getEffectivePlan((planRow as any)?.planSlug, (planRow as any)?.planExpiresAt).platformFeePct;
+  const paypalMin = paypalMinZAR(platformFeePct, fx.zarToUsdRate > 0 ? 1 / fx.zarToUsdRate : 18);
+  if (paypalMin === null) {
+    return NextResponse.json(
+      { error: 'PayPal is not available for this item. Please pay with Yoco or Paystack.' },
+      { status: 400 }
+    );
+  }
+  if (priceZAR < paypalMin) {
+    return NextResponse.json(
+      { error: `PayPal's minimum for this item is R${paypalMin}. Please pay with Yoco or Paystack, or choose R${paypalMin} or more.` },
+      { status: 400 }
+    );
+  }
 
   if (amountUSD < 0.01) {
     return NextResponse.json({ error: 'Amount too small for PayPal ($0.01 minimum)' }, { status: 400 });
