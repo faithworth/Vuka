@@ -68,10 +68,13 @@ async function runArtistRoyalties(): Promise<RunResult> {
       continue;
     }
 
-    // International artists with a configured PayPal recipient are paid via
-    // PayPal; South African artists continue to use their verified bank account.
+    // Pay every artist by whichever route they have set up, wherever they live.
+    // South African artists prefer bank EFT (no PayPal/FX fees) and fall back to
+    // PayPal; everyone else prefers PayPal and falls back to a verified bank account.
     const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { country: true, paypalEmail: true } });
-    const internationalPayPal = artist?.country && artist.country.toUpperCase() !== 'ZA' && !!artist.paypalEmail;
+    const paypalEmail = (artist?.paypalEmail ?? '').trim();
+    const countryText = (artist?.country ?? '').trim().toLowerCase();
+    const isSouthAfrican = countryText === 'za' || countryText === 'south africa' || countryText === 'rsa';
 
     const bank = await prisma.artistBankAccount.findFirst({
       where: {
@@ -81,8 +84,11 @@ async function runArtistRoyalties(): Promise<RunResult> {
         OR: [{ eligibleForPayoutAt: null }, { eligibleForPayoutAt: { lte: new Date() } }],
       },
     });
-    if (!bank && !internationalPayPal) {
-      result.skipped.push({ id: artistId, reason: 'No verified default bank account past cooldown' });
+    const usePayPal = isSouthAfrican
+      ? !bank && !!paypalEmail
+      : !!paypalEmail || !bank;
+    if (usePayPal && !paypalEmail) {
+      result.skipped.push({ id: artistId, reason: 'No payout method ready: add a PayPal email or a verified bank account' });
       continue;
     }
 
@@ -102,9 +108,9 @@ async function runArtistRoyalties(): Promise<RunResult> {
         artistId,
         amount: available,
         currency: 'ZAR',
-        bankAccountId: bank?.id,
-        method: internationalPayPal ? 'paypal' : 'bank_transfer',
-        paypalEmail: internationalPayPal ? artist!.paypalEmail! : undefined,
+        bankAccountId: usePayPal ? undefined : bank?.id,
+        method: usePayPal ? 'paypal' : 'bank_transfer',
+        paypalEmail: usePayPal ? paypalEmail : undefined,
       });
       await approvePayoutRequest(request.id, 'Auto-approved by weekly royalty run');
       result.paid.push({ id: artistId, amount: available });
