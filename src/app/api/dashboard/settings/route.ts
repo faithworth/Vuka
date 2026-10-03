@@ -93,8 +93,8 @@ export async function PATCH(req: NextRequest) {
           socialLinks: socialLinks ? JSON.parse(JSON.stringify(socialLinks)) : undefined,
           currency: currency || undefined,
           // Allow saving empty string to clear, or a real value
-          ...(paystackRecipient !== undefined && { paystackRecipient: paystackRecipient.trim() || null }),
-          ...(paypalEmail !== undefined && { paypalEmail: paypalEmail.trim() || null }),
+          ...(typeof paystackRecipient === 'string' && { paystackRecipient: paystackRecipient.trim() || null }),
+          ...(typeof paypalEmail === 'string' && { paypalEmail: paypalEmail.trim() || null }),
         },
       });
     });
