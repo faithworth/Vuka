@@ -87,7 +87,7 @@ async function runArtistRoyalties(): Promise<RunResult> {
     const usePayPal = isSouthAfrican
       ? !bank && !!paypalEmail
       : !!paypalEmail || !bank;
-    if (usePayPal && !paypalEmail) {
+    if ((usePayPal && !paypalEmail) || (!usePayPal && !bank)) {
       result.skipped.push({ id: artistId, reason: 'No payout method ready: add a PayPal email or a verified bank account' });
       continue;
     }
