@@ -19,6 +19,7 @@ import { requireArtist } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
 import { getEffectivePlan, checkMonthlyUploadLimit } from '@/lib/plans';
 import { sendReleaseLive } from '@/lib/emails';
+import { listPriceError } from '@/lib/pricing-floor';
 
 // POST: create release + track records, return presigned R2 PUT URLs for direct browser upload
 export async function POST(req: NextRequest) {
@@ -54,6 +55,9 @@ export async function POST(req: NextRequest) {
 
     if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 });
     if (!tracks?.length) return NextResponse.json({ error: 'At least one track required' }, { status: 400 });
+
+    const priceError = listPriceError(parseFloat(price) || 0) || listPriceError(parseFloat(minPrice) || 0);
+    if (priceError) return NextResponse.json({ error: priceError }, { status: 400 });
 
     // Generate unique slug
     let slug = slugify(title);
