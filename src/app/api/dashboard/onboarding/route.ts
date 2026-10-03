@@ -14,6 +14,25 @@ function hasAnySocialLink(socialLinks: unknown): boolean {
   );
 }
 
+// Live status of each setup step. The payout step counts as done when the artist
+// has a bank account OR a PayPal email OR a Paystack recipient saved.
+async function liveStatus(a: any) {
+  const [bank, release] = await Promise.all([
+    prisma.artistBankAccount.findFirst({ where: { artistId: a.id }, select: { id: true } }),
+    prisma.release.findFirst({ where: { artistId: a.id }, select: { id: true } }),
+  ]);
+  const hasPayoutMethod =
+    !!bank ||
+    String(a.paypalEmail ?? '').trim().length > 0 ||
+    String(a.paystackRecipient ?? '').trim().length > 0;
+  return {
+    hasProfile:     !!(a.bio || a.photoUrl),
+    hasRelease:     !!release,
+    hasBankAccount: hasPayoutMethod,
+    hasSocials:     hasAnySocialLink(a.socialLinks),
+  };
+}
+
 export async function GET() {
   const user = await requireArtist();
   if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,13 +57,24 @@ export async function GET() {
       },
     });
   }
+  // The stored onboarding row is only a snapshot from first load. Re-check live so a
+  // step ticks off as soon as it's done (e.g. a release uploaded after the row existed).
+  const live = await liveStatus(a);
+  const snapshot = ob;
+  if (snapshot && (Object.keys(live) as (keyof typeof live)[]).some(k => snapshot[k] !== live[k])) {
+    const allLive = Object.values(live).every(Boolean);
+    ob = await prisma.artistOnboarding.update({
+      where: { artistId: a.id },
+      data: { ...live, completedAt: allLive ? (snapshot.completedAt ?? new Date()) : null },
+    });
+  }
   const steps = [
     // Profile editing lives entirely on the Settings page now — the old
     // standalone /dashboard/profile editor has been removed since it
     // duplicated (and lagged behind) the working Settings form.
     { key: 'hasProfile',     label: 'Complete your profile', desc: 'Add a bio and profile photo', done: ob.hasProfile, href: '/dashboard/settings' },
     { key: 'hasRelease',     label: 'Upload your first release', desc: 'Get your music live on Vuka Music', done: ob.hasRelease, href: '/dashboard/releases/new' },
-    { key: 'hasBankAccount', label: 'Add your bank account', desc: 'So you can receive payouts', done: ob.hasBankAccount, href: '/dashboard/payouts' },
+    { key: 'hasBankAccount', label: 'Choose your payout settings', desc: 'Add PayPal or a bank account so you can get paid', done: ob.hasBankAccount, href: '/dashboard/settings' },
     { key: 'hasSocials',     label: 'Connect your socials', desc: 'Let fans find you everywhere', done: ob.hasSocials, href: '/dashboard/settings' },
   ];
   const doneCount = steps.filter(s => s.done).length;
