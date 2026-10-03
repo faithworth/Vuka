@@ -61,8 +61,13 @@ export async function POST(req: NextRequest) {
       }).catch(() => null);
 
       if (!storeRelease?.isActive) return NextResponse.json({ error: 'Release not found or inactive' }, { status: 404 });
-      amount = parseFloat(customAmount) || storeRelease.price;
-      if (storeRelease.minPrice > 0 && amount < storeRelease.minPrice)
+      // Only pay-what-you-want releases accept a buyer-chosen amount (R0 is valid when
+      // the artist's minimum is 0). Fixed-price releases always use the listed price.
+      const chosen = Number.parseFloat(customAmount);
+      amount = storeRelease.payWhatWant && Number.isFinite(chosen) && chosen >= 0
+        ? Math.round(chosen * 100) / 100
+        : storeRelease.price;
+      if (amount < (storeRelease.minPrice || 0))
         return NextResponse.json({ error: `Minimum price is R${storeRelease.minPrice}` }, { status: 400 });
       itemName    = storeRelease.title;
       artistEmail = storeRelease.artist.user.email;
