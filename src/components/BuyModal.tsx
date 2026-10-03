@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
 import PayPalBuyButton from './paypal/PayPalBuyButton';
+import { CARD_MIN_ZAR, PAYPAL_MIN_ZAR } from '@/lib/pricing-floor';
 
 const LICENSES = [
   {
@@ -99,6 +100,10 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
   async function handleBuy(processor: 'yoco' | 'paystack') {
     if (!email || !name) { setError('Please enter your name and email'); return; }
+    if (price > 0 && price < CARD_MIN_ZAR) {
+      setError(`Paid purchases start at R${CARD_MIN_ZAR}. Enter R${CARD_MIN_ZAR} or more${release?.payWhatWant && release.minPrice === 0 ? ', or 0 to download free' : ''}.`);
+      return;
+    }
     if (isMerch && (!shipLine1 || !shipCity || !shipPostal || !shipPhone)) {
       setError('Please fill in your shipping address');
       return;
@@ -359,7 +364,13 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </button>
             )}
 
-            {activeTab === 'paypal' && (
+            {activeTab === 'paypal' && price < PAYPAL_MIN_ZAR && (
+              <div className="w-full p-4 rounded-lg text-center text-sm font-semibold" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                PayPal fees are too high for small amounts — the minimum is R{PAYPAL_MIN_ZAR}. Please pay with Yoco or Paystack, or choose R{PAYPAL_MIN_ZAR} or more.
+              </div>
+            )}
+
+            {activeTab === 'paypal' && price >= PAYPAL_MIN_ZAR && (
               <PayPalBuyButton
                 itemType={itemType as any}
                 itemId={itemId}
