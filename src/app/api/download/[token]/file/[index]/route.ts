@@ -145,17 +145,24 @@ export async function GET(
       artworkBuffer: artworkBuf || undefined,
     };
 
-    const isWav = track.fullUrl?.endsWith('.wav') || false;
-    const raw = isWav
-      ? await fetchR2Buffer(r2Keys.trackFullWav(track.id))
-      : await fetchR2Buffer(r2Keys.trackFull(track.id));
-    if (!raw) return new NextResponse('File not found', { status: 404 });
+    // Release uploads may use the legacy `uploads/audio/...` R2 key
+    // stored in fullUrl rather than the newer `private/tracks/<id>.mp3`
+    // convention. Use the exact stored file first, then fall back to the
+    // newer key convention for newer releases.
+    const isWav = track.fullUrl?.toLowerCase().split('?')[0].endsWith('.wav') || false;
+    const raw = track.fullUrl ? await fetchBuffer(track.fullUrl) : null;
+    const fallbackRaw = raw || (
+      isWav
+        ? await fetchR2Buffer(r2Keys.trackFullWav(track.id))
+        : await fetchR2Buffer(r2Keys.trackFull(track.id))
+    );
+    if (!fallbackRaw) return new NextResponse('File not found', { status: 404 });
 
     const trackNum = String(track.trackNumber).padStart(2, '0');
     if (isWav) {
-      return streamResponse(tagWav(raw, meta), `${trackNum} - ${track.title}.wav`, 'audio/wav');
+      return streamResponse(tagWav(fallbackRaw, meta), `${trackNum} - ${track.title}.wav`, 'audio/wav');
     } else {
-      return streamResponse(tagMp3(raw, meta), `${trackNum} - ${track.title}.mp3`, 'audio/mpeg');
+      return streamResponse(tagMp3(fallbackRaw, meta), `${trackNum} - ${track.title}.mp3`, 'audio/mpeg');
     }
   }
 
