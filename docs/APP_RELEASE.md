@@ -21,8 +21,7 @@ Add these to GitHub > Settings > Environments > `production-release` > Secrets:
 | macOS | `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID` (Apple Developer account) |
 
 Android needs only `EXPO_TOKEN` + the keystore. iOS, Windows and Mac each need a
-paid developer/certificate account, and a platform whose secrets are missing is
-skipped without blocking the others.
+paid developer/certificate account, and a platform whose secrets are missing fails on its own and no longer blocks the others from being published.
 
 ## Releasing
 1. Bump the version in `apps/mobile/app.json` and `apps/desktop/package.json`.
