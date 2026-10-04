@@ -350,6 +350,26 @@ model Purchase {
   @@index([subscriptionId])
 }
 
+// One row per file/zip actually served from /api/download/[token]/*.
+// ipHash is a salted hash (no raw IPs) used only for unique-visitor counts.
+model DownloadLog {
+  id         String   @id @default(cuid())
+  purchaseId String
+  itemType   String   @default("")
+  itemId     String   @default("")
+  kind       String   @default("file") // file | zip
+  fileIndex  Int?
+  country    String   @default("")
+  ipHash     String   @default("")
+  userAgent  String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([purchaseId])
+  @@index([itemType, itemId, createdAt])
+  @@index([createdAt])
+  @@map("download_logs")
+}
+
 model SupportTxn {
   id              String   @id @default(cuid())
   fanUserId       String?
