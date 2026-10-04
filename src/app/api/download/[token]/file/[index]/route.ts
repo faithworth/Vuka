@@ -15,6 +15,7 @@ import prisma from '@/lib/prisma';
 import { r2, r2Keys } from '@/lib/r2';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { tagMp3, tagWav, fetchBuffer, TrackMeta } from '@/lib/metadata';
+import { logDownload } from '@/lib/downloadLog';
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'vuka-audio';
 
@@ -43,7 +44,7 @@ async function fetchR2Buffer(key: string): Promise<Buffer | null> {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string; index: string }> }
 ) {
   const { token, index: indexParam } = await params;
@@ -72,6 +73,14 @@ export async function GET(
   await prisma.purchase.update({
     where: { id: purchase.id },
     data: { downloadCount: { increment: 1 } },
+  });
+
+  await logDownload(req, {
+    purchaseId: purchase.id,
+    itemType: purchase.itemType,
+    itemId: purchase.releaseId || purchase.beatId || purchase.videoId || purchase.sampleId,
+    kind: 'file',
+    fileIndex: Number.isNaN(idx) ? null : idx,
   });
 
   // ── BEAT ──────────────────────────────────────────────────
