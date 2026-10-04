@@ -81,6 +81,7 @@ jobs:
 
   release:
     needs: [windows, macos]
+    if: ${{ !cancelled() && (needs.windows.result == 'success' || needs.macos.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -97,4 +98,5 @@ jobs:
           mkdir -p release-assets/final
           find release-assets -type f -name '*.exe' -exec cp {} release-assets/final/Vuka-Music-Windows.exe \;
           find release-assets -type f -name '*.dmg' -exec cp {} release-assets/final/Vuka-Music-macOS.dmg \;
-          gh release create v1.0.2 --repo faithworth/Vuka --title "Vuka Music 1.0.2" --notes "Production signed desktop release. Windows Authenticode-signed; macOS Developer ID-signed and notarized." release-assets/final/*
+          gh release create v1.0.2 --repo faithworth/Vuka --title "Vuka Music 1.0.2" --notes "Production signed release." || true
+          gh release upload v1.0.2 release-assets/final/* --repo faithworth/Vuka --clobber
