@@ -6,7 +6,7 @@ interface LogDownloadInput {
   purchaseId: string;
   itemType: string;
   itemId?: string | null;
-  kind: 'file' | 'zip';
+  kind: 'file' | 'zip' | 'app';
   fileIndex?: number | null;
 }
 

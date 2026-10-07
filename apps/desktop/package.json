@@ -7,12 +7,14 @@
   "homepage": "https://www.vukamusic.com",
   "main": "main.cjs",
   "scripts": {
+    "postinstall": "node scripts/generate-icon.cjs",
     "start": "electron .",
     "build": "electron-builder --publish never"
   },
   "devDependencies": {
     "electron": "44.4.5",
-    "electron-builder": "26.17.0"
+    "electron-builder": "26.17.0",
+    "sharp": "^0.34.3"
   },
   "build": {
     "appId": "com.vukamusic.desktop",
@@ -30,7 +32,7 @@
       "package.json"
     ],
     "win": {
-      "icon": "build/icon.svg",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -39,7 +41,7 @@
       ]
     },
     "mac": {
-      "icon": "build/icon.svg",
+      "icon": "build/icon.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": true,
       "notarize": true,
@@ -60,5 +62,3 @@
     }
   }
 }
-
-

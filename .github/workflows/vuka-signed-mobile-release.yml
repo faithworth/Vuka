@@ -88,6 +88,7 @@ jobs:
 
   release:
     needs: [android, ios]
+    if: ${{ !cancelled() && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -97,6 +98,7 @@ jobs:
           name: vuka-music-android-signed
           path: release-assets
       - uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
           name: vuka-music-ios-signed
           path: release-assets
@@ -106,4 +108,4 @@ jobs:
         run: |
           gh release create v1.0.2 --repo faithworth/Vuka --title "Vuka Music 1.0.2" --notes "Production mobile release. Android is release-signed. iOS is signed for App Store/TestFlight distribution." || true
           gh release upload v1.0.2 release-assets/Vuka-Music-Android.apk --repo faithworth/Vuka --clobber
-          gh release upload v1.0.2 release-assets/Vuka-Music-iOS.ipa --repo faithworth/Vuka --clobber
+          if [ -f release-assets/Vuka-Music-iOS.ipa ]; then gh release upload v1.0.2 release-assets/Vuka-Music-iOS.ipa --repo faithworth/Vuka --clobber; fi
