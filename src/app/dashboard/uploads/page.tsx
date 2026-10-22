@@ -39,6 +39,29 @@ function normalizeContentType(file: File): string {
   return file.type || 'application/octet-stream';
 }
 
+async function getAudioDurationSeconds(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = document.createElement('audio');
+    const objectUrl = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration;
+      cleanup();
+      if (!Number.isFinite(duration) || duration <= 0) reject(new Error(`Could not read duration for ${file.name}`));
+      else resolve(duration);
+    };
+    audio.onerror = () => { cleanup(); reject(new Error(`Could not read audio file ${file.name}`)); };
+    audio.src = objectUrl;
+  });
+}
+
+async function validateShortPreview(file: File | undefined, label: string): Promise<void> {
+  if (!file) throw new Error(`A separate 30-second preview is required for ${label}. Do not use the full song as its preview.`);
+  const duration = await getAudioDurationSeconds(file);
+  if (duration > 30.5) throw new Error(`Preview for ${label} is ${Math.ceil(duration)} seconds. Upload a preview clip of 30 seconds or less; never upload the full song as the preview.`);
+}
+
 async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -141,7 +164,10 @@ export default function UploadPage() {
   // ── BEAT SUBMIT ──
   async function handleBeatSubmit() {
     if (!beatMeta.title) { setError('Title is required'); return; }
-    if (!files.preview) { setError('A preview MP3 is required'); return; }
+    if (!files.preview) { setError('A separate preview clip is required.'); return; }
+    if (!files.wav && !files.mp3) { setError('Upload a separate full-quality WAV or MP3 for buyers. The preview cannot be used as the paid download.'); return; }
+    try { await validateShortPreview(files.preview, beatMeta.title.trim()); }
+    catch (e: any) { setError(e.message || 'Invalid preview file'); return; }
     const clausesByTier = [licenseTerms.basic, licenseTerms.premium, licenseTerms.exclusive].map(value => value.split(String.fromCharCode(10)).map(line => line.trim()).filter(Boolean));
     if (clausesByTier.some(clauses => clauses.length > 6 || clauses.some(clause => clause.length > 78))) {
       setError('Each license can contain up to 6 clauses. Keep every clause to 78 characters or fewer so the full text fits on the PDF.');
@@ -197,11 +223,7 @@ export default function UploadPage() {
         await uploadToR2(uploadUrls.mp3, files.mp3, p => setFileProgress('mp3', p));
         urlPayload.fullMp3Url = publicUrls.fullMp3Url;
       }
-      // If no separate full MP3, use preview as the purchasable file
-      if (!urlPayload.fullMp3Url && urlPayload.previewUrl) {
-        urlPayload.fullMp3Url = urlPayload.previewUrl;
-      }
-
+      // Never fall back to the public preview URL as a paid full-track URL.
       // Step 3: Activate the beat with the public R2 URLs
       const patchRes = await fetch('/api/beats/upload', {
         method: 'PATCH',
@@ -229,6 +251,17 @@ export default function UploadPage() {
     const missingFiles = filled.filter(t => !t.fullFile);
     if (missingFiles.length) {
       setError(`Missing full audio for: ${missingFiles.map(t => t.title).join(', ')}`);
+      return;
+    }
+    const missingPreviews = filled.filter(t => !t.previewFile);
+    if (missingPreviews.length) {
+      setError(`A separate preview clip of 30 seconds or less is required for: ${missingPreviews.map(t => t.title).join(', ')}.`);
+      return;
+    }
+    try {
+      for (const track of filled) await validateShortPreview(track.previewFile, track.title || 'untitled track');
+    } catch (e: any) {
+      setError(e.message || 'Invalid preview file');
       return;
     }
 
@@ -276,8 +309,8 @@ export default function UploadPage() {
           await uploadToR2(uploadUrls[`full_${track.id}`], entry.fullFile, p => setFileProgress(`full_${i}`, p));
           fullUrl = publicUrls[`fullUrl_${track.id}`];
         }
-        // If no separate preview, use the full file as preview too
-        trackUpdates[track.id] = { previewUrl: previewUrl || fullUrl, fullUrl };
+        // Never expose the full sale file as a fallback preview.
+        trackUpdates[track.id] = { previewUrl, fullUrl };
       }
 
       // Step 4: Activate the release
