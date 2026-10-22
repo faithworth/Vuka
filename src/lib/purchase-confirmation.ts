@@ -130,6 +130,7 @@ export async function confirmDirectPurchase(params: {
   let artistId = '';
   let licenseUrl = '';
   let licensePdfBuffer: Buffer | undefined;
+  let licenseTermsSnapshot: string[] | undefined;
 
   async function issueLicensePdf(itemTitle: string, itemArtistName: string, itemKind: 'beat' | 'release' | 'video' | 'sample') {
     try {
@@ -144,6 +145,7 @@ export async function confirmDirectPurchase(params: {
         currency: purchase.currency,
         date: new Date(),
         itemKind,
+        customTerms: licenseTermsSnapshot,
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
@@ -164,6 +166,16 @@ export async function confirmDirectPurchase(params: {
     if (beat) {
       itemName = beat.title; artistEmail = beat.artist.user.email;
       artistName = beat.artist.name; artworkUrl = beat.artworkUrl || ''; artistId = beat.artist.id;
+      const tier = purchase.licenseType === 'premium' ? 'premium' : purchase.licenseType === 'exclusive' ? 'exclusive' : 'basic';
+      const savedTerms = beat.licenseTerms as { [key: string]: { template?: unknown; clauses?: unknown } } | null;
+      const tierTerms = savedTerms && typeof savedTerms === 'object' ? savedTerms[tier] : null;
+      if (tierTerms && Array.isArray(tierTerms.clauses)) {
+        licenseTermsSnapshot = tierTerms.clauses.filter((clause): clause is string => typeof clause === 'string' && clause.trim().length > 0).slice(0, 6);
+        await prisma.purchase.update({
+          where: { id: purchase.id },
+          data: { licenseTermsSnapshot: { template: typeof tierTerms.template === 'string' ? tierTerms.template : tier, clauses: licenseTermsSnapshot } },
+        });
+      }
       licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
       issueBeatLicense({
         purchaseId: purchase.id,
