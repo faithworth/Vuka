@@ -120,9 +120,10 @@ export async function GET(
       if (!raw) return new NextResponse('File not found', { status: 404 });
       const tagged = tagMp3(raw, meta);
       return streamResponse(tagged, `${beat.title}.mp3`, 'audio/mpeg');
-    } else if (purchase.licenseUrl) {
-      const buf = await fetchBuffer(purchase.licenseUrl);
-      if (!buf) return new NextResponse('File not found', { status: 404 });
+    } else if (purchase.licenseId) {
+      const buf = await fetchR2Buffer(r2Keys.license(purchase.licenseId))
+        || (purchase.licenseUrl ? await fetchBuffer(purchase.licenseUrl) : null);
+      if (!buf) return new NextResponse('License PDF not found. Refresh the download page to regenerate it.', { status: 404 });
       return streamResponse(buf, `${beat.title} - License.pdf`, 'application/pdf', 'attachment');
     }
   }
