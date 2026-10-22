@@ -123,7 +123,7 @@ export async function GET(
     } else if (purchase.licenseUrl) {
       const buf = await fetchBuffer(purchase.licenseUrl);
       if (!buf) return new NextResponse('File not found', { status: 404 });
-      return streamResponse(buf, `${beat.title} — License.pdf`, 'application/pdf', 'inline');
+      return streamResponse(buf, `${beat.title} - License.pdf`, 'application/pdf', 'attachment');
     }
   }
 
