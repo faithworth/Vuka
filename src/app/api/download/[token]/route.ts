@@ -61,11 +61,15 @@ export async function GET(
         currency: purchase.currency,
         date: purchase.createdAt,
         itemKind: 'beat',
+        customTerms: (() => {
+          const saved = purchase.licenseTermsSnapshot as { clauses?: unknown } | null;
+          return Array.isArray(saved?.clauses) ? saved.clauses.filter((item): item is string => typeof item === 'string').slice(0, 6) : undefined;
+        })(),
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
       licenseUrl = getPublicUrl(pdfKey);
-      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl } });
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: licenseUrl || null } });
     } catch (e) {
       console.error('[download] lazy license generation failed', purchase.id, e);
     }
