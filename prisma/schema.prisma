@@ -688,7 +688,9 @@ model Deal {
   offerAmount    Float        @default(0)
   currency       String       @default("ZAR")
   status         String       @default("open") // open, closed
+  adminNotes     String       @default("")
   createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([industryUserId])
 }
