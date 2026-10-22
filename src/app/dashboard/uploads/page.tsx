@@ -91,7 +91,7 @@ export default function UploadPage() {
   const [licenseTerms, setLicenseTerms] = useState({
     basic: 'Non-exclusive use of the beat.\nUp to 5,000 streams and 2 music videos.\nProducer credit is required on every release.\nResale or redistribution of the original beat file is prohibited.\nThe producer retains ownership of the instrumental.',
     premium: 'Non-exclusive commercial use of the beat.\nUp to 500,000 streams and unlimited music videos.\nProducer credit is required on every release.\nResale or redistribution of the original beat file is prohibited.\nThe producer retains ownership of the instrumental.',
-    exclusive: 'Exclusive license for the beat; new licenses will no longer be sold after purchase.\nUnlimited streams and music videos.\nProducer credit and any agreed publishing splits must be honored.\nResale of the original beat file is prohibited.\nOwnership transfers only to the extent expressly stated in this agreement.',
+    exclusive: 'Exclusive license; no new licenses sold after purchase.\nUnlimited streams and music videos.\nProducer credit and agreed publishing splits must be honored.\nResale of the original beat file is prohibited.\nOwnership transfers only as stated in this agreement.',
   });
   const [files, setFiles] = useState<{ artwork?: File; preview?: File; wav?: File; mp3?: File }>({});
 
@@ -125,7 +125,7 @@ export default function UploadPage() {
     setLicenseTerms({
       basic: 'Non-exclusive use of the beat.\\nUp to 5,000 streams and 2 music videos.\\nProducer credit is required on every release.\\nResale or redistribution of the original beat file is prohibited.\\nThe producer retains ownership of the instrumental.',
       premium: 'Non-exclusive commercial use of the beat.\\nUp to 500,000 streams and unlimited music videos.\\nProducer credit is required on every release.\\nResale or redistribution of the original beat file is prohibited.\\nThe producer retains ownership of the instrumental.',
-      exclusive: 'Exclusive license for the beat; new licenses will no longer be sold after purchase.\\nUnlimited streams and music videos.\\nProducer credit and any agreed publishing splits must be honored.\\nResale of the original beat file is prohibited.\\nOwnership transfers only to the extent expressly stated in this agreement.',
+      exclusive: 'Exclusive license; no new licenses sold after purchase.\nUnlimited streams and music videos.\nProducer credit and agreed publishing splits must be honored.\nResale of the original beat file is prohibited.\nOwnership transfers only as stated in this agreement.',
     });
     setFiles({});
     setRelMeta({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
