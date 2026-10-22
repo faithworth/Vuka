@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 function safePdfText(value: string): string {
-  return value.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^\\x20-\\x7E\\xA0-\\xFF]/g, '?');
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E\xA0-\xFF]/g, '?');
 }
 
 export async function generateLicensePDF({
