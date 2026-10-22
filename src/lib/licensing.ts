@@ -91,7 +91,15 @@ export async function issueBeatLicense(params: {
     where: { purchaseId: params.purchaseId },
   });
   if (existing) {
-    return { licenseKey: existing.licenseKey, pdfUrl: existing.pdfUrl };
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+    const pdfUrl = existing.pdfUrl || purchase.licenseUrl || `${appUrl}/api/download/${purchase.downloadToken}/license`;
+    if (existing.pdfUrl !== pdfUrl) {
+      await prisma.beatLicense.update({ where: { id: existing.id }, data: { pdfUrl } });
+    }
+    if (purchase.licenseUrl !== pdfUrl) {
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: pdfUrl } });
+    }
+    return { licenseKey: existing.licenseKey, pdfUrl };
   }
 
   const licenseType = purchase.licenseType || 'basic';
