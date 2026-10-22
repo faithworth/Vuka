@@ -109,7 +109,11 @@ export async function GET(req: NextRequest) {
       }
 
       if (assignedRole === 'industry') {
-        await prisma.industryUser.create({ data: { userId: dbUser.id, companyName: '' } });
+        await prisma.industryUser.upsert({
+          where: { userId: dbUser.id },
+          create: { userId: dbUser.id, companyName: '' },
+          update: {},
+        });
       }
     } else {
       // Existing user — self-heal admin role if ADMIN_EMAIL matches and DB role is wrong
