@@ -81,9 +81,8 @@ export async function GET(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
   const base = `${appUrl}/api/download/${token}/file`;
   if (purchase.beat) {
-    const licenseIndex = (purchase.beat.fullWavUrl ? 1 : 0) + (purchase.beat.fullMp3Url ? 1 : 0);
-    // Use the authenticated purchase download endpoint, not a public R2 URL.
-    licenseUrl = `${base}/${licenseIndex}`;
+    // This endpoint repairs missing PDFs before redirecting to the attachment route.
+    licenseUrl = `${appUrl}/api/download/${token}/license`;
   }
 
   const downloads: Array<{ name: string; url: string }> = [];
@@ -97,7 +96,7 @@ export async function GET(
       downloads.push({ name: `${purchase.beat.title}.mp3`, url: `${base}/${i++}` });
     }
     if (purchase.licenseId) {
-      downloads.push({ name: `${purchase.beat.title} - License.pdf`, url: `${base}/${i}` });
+      downloads.push({ name: `${purchase.beat.title} - License.pdf`, url: `${appUrl}/api/download/${token}/license` });
     }
   } else if (purchase.release) {
     purchase.release.tracks.forEach((track: any, i: number) => {
