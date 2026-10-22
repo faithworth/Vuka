@@ -117,6 +117,15 @@ export async function POST(
           include: { artist: true },
         });
         if (beat) {
+          const tier = purchase.licenseType === 'premium' ? 'premium' : purchase.licenseType === 'exclusive' ? 'exclusive' : 'basic';
+          const savedTerms = beat.licenseTerms as { [key: string]: { template?: unknown; clauses?: unknown } } | null;
+          const tierTerms = savedTerms && typeof savedTerms === 'object' ? savedTerms[tier] : null;
+          const customTerms = tierTerms && Array.isArray(tierTerms.clauses)
+            ? tierTerms.clauses.filter((clause): clause is string => typeof clause === 'string' && clause.trim().length > 0).slice(0, 6)
+            : undefined;
+          if (customTerms) {
+            await prisma.purchase.update({ where: { id }, data: { licenseTermsSnapshot: { template: tier, clauses: customTerms } } });
+          }
           const pdfBuffer = await generateLicensePDF({
             licenseId:   purchase.licenseId,
             licenseType: purchase.licenseType || 'basic',
@@ -126,11 +135,13 @@ export async function POST(
             buyerEmail:  purchase.buyerEmail,
             amount:      purchase.amount,
             currency:    purchase.currency,
-            date:        new Date(),
+            date:        purchase.createdAt,
+            customTerms,
           });
           const pdfKey = r2Keys.license(purchase.licenseId);
           await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-          resolvedLicenseUrl = getPublicUrl(pdfKey);
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+          resolvedLicenseUrl = `${appUrl}/api/download/${purchase.downloadToken}/license`;
           resolvedLicensePdf = pdfBuffer;
           await prisma.purchase.update({ where: { id }, data: { licenseUrl: resolvedLicenseUrl } });
           logger.info('[send-confirmation] PDF generated', { purchaseId: id });
