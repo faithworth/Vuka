@@ -214,8 +214,8 @@ export async function generateReceiptPDF({
 
   let y = 310;
   const row = (l: string, v: string, vColor = white) => {
-    page.drawText(l, { x: 40, y, size: 10, font: regular, color: muted });
-    page.drawText(v, { x: 200, y, size: 10, font: regular, color: vColor });
+    page.drawText(safePdfText(l), { x: 40, y, size: 10, font: regular, color: muted });
+    page.drawText(safePdfText(v), { x: 200, y, size: 10, font: regular, color: vColor });
     y -= 26;
   };
 
