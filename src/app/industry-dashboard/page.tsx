@@ -82,6 +82,8 @@ export default function IndustryDashboardPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg]     = useState('');
   const [settingsError, setSettingsError] = useState('');
+  const [verificationMsg, setVerificationMsg] = useState('');
+  const [verificationBusy, setVerificationBusy] = useState(false);
 
   // Messaging
   const [messaging, setMessaging] = useState<string | null>(null);
@@ -282,6 +284,18 @@ export default function IndustryDashboardPage() {
     const d = await res.json();
     setPayoutMsg(res.ok ? 'Payout request submitted for manual settlement.' : (d.error || 'Could not submit payout request.'));
     if (res.ok) setPayoutAmount('');
+  }
+
+  async function requestIndustryVerification() {
+    setVerificationMsg(''); setVerificationBusy(true);
+    try {
+      const res = await fetch('/api/industry/verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyName: settingsForm.companyName, role: settingsForm.role, website: settingsForm.website }) });
+      const d = await res.json();
+      if (!res.ok) { setVerificationMsg(d.error || 'Could not submit verification.'); return; }
+      setData((prev: any) => ({ ...prev, industryUser: { ...prev.industryUser, verificationStatus: d.verificationStatus, verificationSubmittedAt: d.verificationSubmittedAt } }));
+      setVerificationMsg('Verification request submitted for admin review.');
+    } catch { setVerificationMsg('Network error while submitting verification.'); }
+    finally { setVerificationBusy(false); }
   }
 
   async function saveBankAccount() {
@@ -853,7 +867,7 @@ export default function IndustryDashboardPage() {
                       background: iu?.verified ? 'rgba(34,197,94,0.1)' : 'rgba(201,162,39,0.1)',
                       color:      iu?.verified ? 'var(--green)' : 'var(--gold)',
                     }}>
-                    {iu?.verified ? <><BadgeCheck size={11} /> Verified</> : <><Clock size={11} /> Pending</>}
+                    {iu?.verificationStatus === 'approved' || iu?.verified ? <><BadgeCheck size={11} /> Verified</> : iu?.verificationStatus === 'rejected' ? <><XCircle size={11} /> Rejected</> : iu?.verificationStatus === 'pending' ? <><Clock size={11} /> Under review</> : 'Not submitted'}
                   </span>
                 </div>
               </div>
@@ -913,15 +927,11 @@ export default function IndustryDashboardPage() {
             </div>
 
             <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>Need help or want verification?</p>
-              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                Verified industry professionals get a badge on their listings. Contact support to get verified.
-              </p>
-              <a href="mailto:support@vukamusic.com"
-                className="text-xs font-semibold flex items-center gap-1.5"
-                style={{ color: 'var(--sky)' }}>
-                Contact support <ChevronRight size={12} />
-              </a>
+              <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>Industry verification</p>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Submit your company and professional details for admin review.</p>
+              {iu?.verificationNotes && <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Review note: {iu.verificationNotes}</p>}
+              {verificationMsg && <p className="text-xs mb-3" style={{ color: verificationMsg.includes('submitted') ? 'var(--green)' : 'var(--red)' }}>{verificationMsg}</p>}
+              <button onClick={requestIndustryVerification} disabled={verificationBusy || iu?.verificationStatus === 'pending' || iu?.verificationStatus === 'approved'} className="btn btn-primary text-sm">{verificationBusy ? 'Submitting…' : iu?.verificationStatus === 'pending' ? 'Under review' : iu?.verificationStatus === 'approved' ? 'Verified' : iu?.verificationStatus === 'rejected' ? 'Resubmit verification' : 'Request verification'}</button>
             </div>
 
             {/* Account Security */}

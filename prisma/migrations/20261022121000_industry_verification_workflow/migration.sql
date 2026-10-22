@@ -1,0 +1,2 @@
+ALTER TABLE "IndustryUser" ADD COLUMN IF NOT EXISTS "verificationStatus" TEXT NOT NULL DEFAULT 'not_submitted', ADD COLUMN IF NOT EXISTS "verificationSubmittedAt" TIMESTAMP(3), ADD COLUMN IF NOT EXISTS "verificationNotes" TEXT NOT NULL DEFAULT '';
+UPDATE "IndustryUser" SET "verificationStatus" = CASE WHEN "verified" THEN 'approved' ELSE 'not_submitted' END WHERE "verificationStatus" = 'not_submitted';
