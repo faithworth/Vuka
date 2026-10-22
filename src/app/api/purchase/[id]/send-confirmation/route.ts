@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendPurchaseConfirmation } from '@/lib/emails';
 import { generateLicensePDF } from '@/lib/pdf';
-import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
+import { uploadBuffer, r2Keys } from '@/lib/r2';
 import { platformFee } from '@/lib/plans';
 import { logger } from '@/lib/logger';
 
