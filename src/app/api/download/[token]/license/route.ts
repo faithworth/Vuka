@@ -58,10 +58,10 @@ export async function GET(
       customTerms,
     });
     await uploadBuffer(key, pdf, 'application/pdf');
-    const publicBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
     await prisma.purchase.update({
       where: { id: purchase.id },
-      data: { licenseUrl: publicBase ? `${publicBase.endsWith('/') ? publicBase.slice(0, -1) : publicBase}/${key}` : null },
+      data: { licenseUrl: `${appUrl}/api/download/${token}/license` },
     });
   }
 
