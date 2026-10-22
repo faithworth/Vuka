@@ -149,7 +149,12 @@ export async function generateLicensePDF({
 
   y -= 20;
   section('TERMS');
-  const terms = [
+  const terms = safeCustomTerms.length ? [
+    'This agreement applies to the buyer and content identified above.',
+    'Rights not expressly granted in the clauses above remain with their respective rights holders.',
+    'This document records the producer-supplied terms for this purchase.',
+    'Applicable South African law applies, subject to any mandatory law that cannot be excluded.',
+  ] : [
     'The artist retains all publishing and master rights.',
     'Buyer must credit the producer in all commercial releases.',
     'This license is non-transferable and non-sub-licensable.',
