@@ -1,5 +1,9 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+function safePdfText(value: string): string {
+  return value.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^\\x20-\\x7E\\xA0-\\xFF]/g, '?');
+}
+
 export async function generateLicensePDF({
   licenseId,
   licenseType,
@@ -80,7 +84,7 @@ export async function generateLicensePDF({
 
   const row = (label: string, value: string) => {
     page.drawText(label, { x: left, y, size: 10, font: regular, color: muted });
-    page.drawText(value, { x: 200, y, size: 10, font: regular, color: white });
+    page.drawText(safePdfText(value), { x: 200, y, size: 10, font: regular, color: white });
     y -= lineH;
   };
 
@@ -136,7 +140,7 @@ export async function generateLicensePDF({
   };
 
   const safeCustomTerms = Array.isArray(customTerms)
-    ? customTerms.filter((term): term is string => typeof term === 'string' && term.trim().length > 0).slice(0, 6)
+    ? customTerms.filter((term): term is string => typeof term === 'string' && term.trim().length > 0).slice(0, 6).map(term => safePdfText(term))
     : [];
   const selectedRights = safeCustomTerms.length
     ? safeCustomTerms.map(term => `* ${term.trim().slice(0, 78)}`)
