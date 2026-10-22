@@ -11,6 +11,7 @@ export async function generateLicensePDF({
   currency,
   date,
   itemKind = 'beat',
+  customTerms,
 }: {
   licenseId: string;
   licenseType: string;
@@ -23,6 +24,8 @@ export async function generateLicensePDF({
   date: Date;
   /** 'beat' | 'release' | 'video' | 'sample' — controls header/field labels only. Defaults to 'beat' for backward compatibility with existing callers. */
   itemKind?: 'beat' | 'release' | 'video' | 'sample';
+  /** Producer-authored clauses frozen at purchase time. */
+  customTerms?: string[];
 }): Promise<Buffer> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([595, 842]); // A4
@@ -132,7 +135,12 @@ export async function generateLicensePDF({
     ],
   };
 
-  const selectedRights = rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard);
+  const safeCustomTerms = Array.isArray(customTerms)
+    ? customTerms.filter((term): term is string => typeof term === 'string' && term.trim().length > 0).slice(0, 6)
+    : [];
+  const selectedRights = safeCustomTerms.length
+    ? safeCustomTerms.map(term => `• ${term.trim().slice(0, 78)}`)
+    : (rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard));
   for (const right of selectedRights) {
     const color = right.startsWith('✗') ? rgb(0.7, 0.3, 0.3) : rgb(0.2, 0.8, 0.5);
     page.drawText(right, { x: left, y, size: 9.5, font: regular, color });
