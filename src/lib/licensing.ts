@@ -146,7 +146,7 @@ export async function issueBeatLicense(params: {
     where: { id: license.id },
     data: { pdfUrl },
   });
-  if (!purchase.licenseUrl) {
+  if (purchase.licenseUrl !== pdfUrl) {
     await prisma.purchase.update({
       where: { id: params.purchaseId },
       data: { licenseUrl: pdfUrl },
