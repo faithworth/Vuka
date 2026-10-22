@@ -142,7 +142,7 @@ export default function UploadPage() {
   async function handleBeatSubmit() {
     if (!beatMeta.title) { setError('Title is required'); return; }
     if (!files.preview) { setError('A preview MP3 is required'); return; }
-    const clausesByTier = [licenseTerms.basic, licenseTerms.premium, licenseTerms.exclusive].map(value => value.split('\\n').map(line => line.trim()).filter(Boolean));
+    const clausesByTier = [licenseTerms.basic, licenseTerms.premium, licenseTerms.exclusive].map(value => value.split(String.fromCharCode(10)).map(line => line.trim()).filter(Boolean));
     if (clausesByTier.some(clauses => clauses.length > 6 || clauses.some(clause => clause.length > 78))) {
       setError('Each license can contain up to 6 clauses. Keep every clause to 78 characters or fewer so the full text fits on the PDF.');
       return;
