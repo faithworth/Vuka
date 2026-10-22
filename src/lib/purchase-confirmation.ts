@@ -17,7 +17,7 @@
 
 import prisma from './prisma';
 import { generateLicensePDF } from './pdf';
-import { uploadBuffer, r2Keys, getPublicUrl } from './r2';
+import { uploadBuffer, r2Keys } from './r2';
 import { sendPurchaseConfirmation, sendArtistSaleNotification, sendInternalBusinessUpdate } from './emails';
 import { auditLog } from './audit';
 import { logger } from './logger';
