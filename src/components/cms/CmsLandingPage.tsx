@@ -2,6 +2,7 @@
 // Server component — wraps BlockRenderer with SEO meta injection
 import BlockRenderer from './BlockRenderer';
 import Footer from '@/components/Footer';
+import LandingMusicShowcase from '@/components/LandingMusicShowcase';
 
 // content mirrors Prisma's JsonValue: string | number | boolean | object | array | null
 type Block = { id: string; type: string; content: unknown; isVisible: boolean };
@@ -48,6 +49,7 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
         }}
       />
       <BlockRenderer blocks={page.blocks} featuredArtists={featuredArtists} />
+      <LandingMusicShowcase />
       <Footer />
     </>
   );
