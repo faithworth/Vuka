@@ -127,6 +127,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Repair partial industry registrations even when the User row already existed.
+    // Registration can fail after creating User but before creating IndustryUser.
+    if (dbUser.role === 'industry') {
+      await prisma.industryUser.upsert({
+        where: { userId: dbUser.id },
+        create: { userId: dbUser.id, companyName: '' },
+        update: {},
+      });
+    }
+
     // ALWAYS determine redirect from DB role — never from URL params for existing accounts
     const dbRole = dbUser.role;
     if (dbRole === 'admin' || dbRole === 'owner' || dbRole === 'super_admin') {
