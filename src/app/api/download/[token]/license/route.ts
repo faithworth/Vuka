@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateLicensePDF } from '@/lib/pdf';
 import { r2, r2Keys, uploadBuffer } from '@/lib/r2';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,7 @@ const BUCKET = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'vuka-audio';
 
 async function licenseExists(key: string): Promise<boolean> {
   try {
-    await r2.send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: 'bytes=0-0' }));
+    await r2.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
     return true;
   } catch {
     return false;
