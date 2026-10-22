@@ -462,6 +462,18 @@ export default function UploadPage() {
               {files.wav && <SummaryRow label="Full WAV" value={files.wav.name} />}
               {files.mp3 && <SummaryRow label="Full MP3" value={files.mp3.name} />}
             </div>
+            <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border)' }}>
+              <h4 className="font-bold mb-3" style={{ color: 'var(--text)' }}>License agreement preview</h4>
+              {(['basic', 'premium', 'exclusive'] as const).map(tier => (
+                <div key={tier} className="mb-4">
+                  <p className="text-sm font-semibold capitalize mb-1" style={{ color: 'var(--sky)' }}>{tier} license</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {licenseTerms[tier].split(String.fromCharCode(10)).map(term => term.trim()).filter(Boolean).map((term, index) => <li key={`${tier}-${index}`}>{term}</li>)}
+                  </ul>
+                </div>
+              ))}
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>This preview shows the producer-authored clauses. Vuka adds the buyer, beat, transaction, license ID and purchase date to the generated PDF.</p>
+            </div>
           </div>
 
           {loading && (
