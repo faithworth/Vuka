@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────
 
     const body = await req.json();
-    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, hasWav, hasMp3, artworkType } = body;
+    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, licenseTerms, hasWav, hasMp3, artworkType } = body;
 
     if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
 
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
         basicPrice: parseFloat(basicPrice) || 0,
         premiumPrice: parseFloat(premiumPrice) || 0,
         exclPrice: parseFloat(exclPrice) || 0,
+        licenseTerms: licenseTerms && typeof licenseTerms === 'object' ? licenseTerms : null,
         previewUrl: '',
         fullWavUrl: '',
         fullMp3Url: '',
