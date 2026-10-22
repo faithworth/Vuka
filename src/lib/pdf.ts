@@ -139,7 +139,7 @@ export async function generateLicensePDF({
     ? customTerms.filter((term): term is string => typeof term === 'string' && term.trim().length > 0).slice(0, 6)
     : [];
   const selectedRights = safeCustomTerms.length
-    ? safeCustomTerms.map(term => `• ${term.trim().slice(0, 78)}`)
+    ? safeCustomTerms.map(term => `* ${term.trim().slice(0, 78)}`)
     : (rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard));
   for (const right of selectedRights) {
     const color = right.startsWith('✗') ? rgb(0.7, 0.3, 0.3) : rgb(0.2, 0.8, 0.5);
@@ -157,7 +157,7 @@ export async function generateLicensePDF({
     'This agreement is governed by applicable South African and international copyright law.',
   ];
   for (const t of terms) {
-    page.drawText(`• ${t}`, { x: left, y, size: 8.5, font: regular, color: muted });
+    page.drawText(`- ${t}`, { x: left, y, size: 8.5, font: regular, color: muted });
     y -= 20;
   }
 
