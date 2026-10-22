@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
       const previewKey = r2Keys.trackPreview(track.id);
       const fullAudioType = (trackAudioTypes && trackAudioTypes[track.id]) === 'audio/wav' ? 'audio/wav' : 'audio/mpeg';
       const fullKey = fullAudioType === 'audio/wav' ? r2Keys.trackFullWav(track.id) : r2Keys.trackFull(track.id);
-      uploadUrls[`preview_${track.id}`] = await getPresignedUploadUrl(previewKey, 'audio/mpeg');
+      uploadUrls[`preview_${track.id}`] = await getPresignedUploadUrl(previewKey, 'audio/wav');
       uploadUrls[`full_${track.id}`]    = await getPresignedUploadUrl(fullKey, fullAudioType);
       publicUrls[`previewUrl_${track.id}`] = getPublicUrl(previewKey);
       publicUrls[`fullUrl_${track.id}`]    = getPublicUrl(fullKey);
