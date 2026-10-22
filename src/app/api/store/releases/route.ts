@@ -13,11 +13,18 @@ export async function GET(req: NextRequest) {
   // Direct slug lookup — only store releases have slugs
   if (slug) {
     try {
-      const release = await prisma.release.findUnique({
-        where: { slug },
-        include: {
+      const release = await prisma.release.findFirst({
+        where: { slug, isActive: true },
+        select: {
+          id: true, title: true, slug: true, releaseType: true, price: true,
+          minPrice: true, payWhatWant: true, artworkUrl: true, description: true,
+          credits: true, releaseDate: true, plays: true, sales: true, isActive: true,
+          createdAt: true,
           artist: { select: { name: true, slug: true, photoUrl: true } },
-          tracks: { orderBy: { trackNumber: 'asc' } },
+          tracks: {
+            orderBy: { trackNumber: 'asc' },
+            select: { id: true, title: true, trackNumber: true, duration: true, previewUrl: true },
+          },
         },
       });
       return NextResponse.json({ releases: release ? [release] : [] });
@@ -38,7 +45,11 @@ export async function GET(req: NextRequest) {
 
     const storeReleases = await prisma.release.findMany({
       where: storeWhere,
-      include: {
+      select: {
+        id: true, title: true, slug: true, releaseType: true, price: true,
+        minPrice: true, payWhatWant: true, artworkUrl: true, description: true,
+        credits: true, releaseDate: true, plays: true, sales: true, isActive: true,
+        createdAt: true,
         artist: { select: { name: true, slug: true, photoUrl: true } },
         tracks: { select: { id: true, title: true, trackNumber: true, duration: true, previewUrl: true } },
       },
