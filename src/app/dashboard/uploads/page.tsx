@@ -153,9 +153,9 @@ export default function UploadPage() {
           ...beatMeta,
           ...beatPrices,
           licenseTerms: {
-            basic: { template: 'basic', clauses: licenseTerms.basic.split('\\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
-            premium: { template: 'premium', clauses: licenseTerms.premium.split('\\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
-            exclusive: { template: 'exclusive', clauses: licenseTerms.exclusive.split('\\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+            basic: { template: 'basic', clauses: licenseTerms.basic.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+            premium: { template: 'premium', clauses: licenseTerms.premium.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+            exclusive: { template: 'exclusive', clauses: licenseTerms.exclusive.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
           },
           bpm: parseInt(beatMeta.bpm) || 0,
           tags: beatMeta.tags.split(',').map(t => t.trim()).filter(Boolean),
