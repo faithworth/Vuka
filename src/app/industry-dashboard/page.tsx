@@ -74,6 +74,10 @@ export default function IndustryDashboardPage() {
   const [payoutBankId, setPayoutBankId] = useState('');
   const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
   const [industryBankAccounts, setIndustryBankAccounts] = useState<any[]>([]);
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [bankForm, setBankForm] = useState({ accountHolder: '', bankName: '', branchCode: '', accountNumber: '', accountType: 'current', isDefault: true });
+  const [bankError, setBankError] = useState('');
+  const [savingBank, setSavingBank] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg]     = useState('');
@@ -278,6 +282,46 @@ export default function IndustryDashboardPage() {
     const d = await res.json();
     setPayoutMsg(res.ok ? 'Payout request submitted for manual settlement.' : (d.error || 'Could not submit payout request.'));
     if (res.ok) setPayoutAmount('');
+  }
+
+  async function saveBankAccount() {
+    setBankError('');
+    setSavingBank(true);
+    try {
+      const res = await fetch('/api/industry/payouts/bank-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bankForm),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setBankError(d.error || 'Could not save bank account.');
+        return;
+      }
+      const list = await fetch('/api/industry/payouts/bank-accounts');
+      const latest = await list.json();
+      const accounts = latest.accounts || [];
+      setIndustryBankAccounts(accounts);
+      if (d.account?.id) setPayoutBankId(d.account.id);
+      setBankForm({ accountHolder: '', bankName: '', branchCode: '', accountNumber: '', accountType: 'current', isDefault: true });
+      setShowBankForm(false);
+    } catch {
+      setBankError('Network error while saving bank account.');
+    } finally {
+      setSavingBank(false);
+    }
+  }
+
+  async function removeBankAccount(id: string) {
+    if (!confirm('Remove this bank account?')) return;
+    const res = await fetch('/api/industry/payouts/bank-accounts?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { setBankError(d.error || 'Could not remove bank account.'); return; }
+    const list = await fetch('/api/industry/payouts/bank-accounts');
+    const latest = await list.json();
+    const accounts = latest.accounts || [];
+    setIndustryBankAccounts(accounts);
+    if (payoutBankId === id) setPayoutBankId(accounts.find((a: any) => a.isDefault)?.id || '');
   }
 
   // ─── DERIVED ─────────────────────────────────────────────────
@@ -828,6 +872,44 @@ export default function IndustryDashboardPage() {
               <button onClick={saveSettings} disabled={savingSettings} className="btn btn-primary w-full">
                 {savingSettings ? <><VukaLoader size={14} /> Saving…</> : 'Save Profile'}
               </button>
+            </div>
+
+            <div className="p-5 rounded-2xl mb-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="font-bold" style={{ color: 'var(--text)' }}>Bank accounts</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Account numbers are encrypted when saved. New accounts require admin verification and a 48-hour security cooldown.</p>
+                </div>
+                <button onClick={() => { setBankError(''); setShowBankForm(v => !v); }} className="btn btn-secondary text-sm">{showBankForm ? 'Cancel' : 'Add account'}</button>
+              </div>
+              {industryBankAccounts.length === 0 && <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>No bank accounts saved.</p>}
+              <div className="space-y-2">
+                {industryBankAccounts.map((account: any) => (
+                  <div key={account.id} className="flex items-center justify-between gap-3 p-3 rounded-lg" style={{ background: 'var(--surface2)' }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{account.bankName} · {account.maskedNumber} {account.isDefault ? '· Default' : ''}</p>
+                      <p className="text-xs" style={{ color: account.isVerified ? 'var(--green)' : 'var(--gold)' }}>{account.isVerified ? 'Verified' : 'Awaiting admin verification'}</p>
+                    </div>
+                    <button onClick={() => removeBankAccount(account.id)} className="text-xs" style={{ color: 'var(--red)' }}>Remove</button>
+                  </div>
+                ))}
+              </div>
+              {showBankForm && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  <input className="input w-full" placeholder="Account holder name" autoComplete="name" value={bankForm.accountHolder} onChange={e => setBankForm(f => ({ ...f, accountHolder: e.target.value }))} />
+                  <input className="input w-full" placeholder="Bank name" value={bankForm.bankName} onChange={e => setBankForm(f => ({ ...f, bankName: e.target.value }))} />
+                  <input className="input w-full" placeholder="Branch code (optional)" value={bankForm.branchCode} onChange={e => setBankForm(f => ({ ...f, branchCode: e.target.value }))} />
+                  <input className="input w-full" placeholder="Account number" inputMode="numeric" autoComplete="off" value={bankForm.accountNumber} onChange={e => setBankForm(f => ({ ...f, accountNumber: e.target.value }))} />
+                  <select className="input w-full" value={bankForm.accountType} onChange={e => setBankForm(f => ({ ...f, accountType: e.target.value }))}>
+                    <option value="current">Current</option><option value="savings">Savings</option><option value="transmission">Transmission</option><option value="credit">Credit</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <input type="checkbox" checked={bankForm.isDefault} onChange={e => setBankForm(f => ({ ...f, isDefault: e.target.checked }))} /> Set as default payout account
+                  </label>
+                  {bankError && <p className="text-sm sm:col-span-2" style={{ color: 'var(--red)' }}>{bankError}</p>}
+                  <button onClick={saveBankAccount} disabled={savingBank} className="btn btn-primary sm:col-span-2">{savingBank ? 'Saving…' : 'Save bank account'}</button>
+                </div>
+              )}
             </div>
 
             <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
