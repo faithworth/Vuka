@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateLicensePDF } from '@/lib/pdf';
-import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
+import { uploadBuffer, r2Keys } from '@/lib/r2';
 
 export async function GET(
   req: NextRequest,
@@ -61,10 +61,14 @@ export async function GET(
         currency: purchase.currency,
         date: purchase.createdAt,
         itemKind: 'beat',
+        customTerms: (() => {
+          const saved = purchase.licenseTermsSnapshot as { clauses?: unknown } | null;
+          return Array.isArray(saved?.clauses) ? saved.clauses.filter((item): item is string => typeof item === 'string').slice(0, 6) : undefined;
+        })(),
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-      licenseUrl = getPublicUrl(pdfKey);
+      licenseUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com'}/api/download/${token}/license`;
       await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl } });
     } catch (e) {
       console.error('[download] lazy license generation failed', purchase.id, e);
@@ -76,6 +80,10 @@ export async function GET(
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
   const base = `${appUrl}/api/download/${token}/file`;
+  if (purchase.beat) {
+    // This endpoint repairs missing PDFs before redirecting to the attachment route.
+    licenseUrl = `${appUrl}/api/download/${token}/license`;
+  }
 
   const downloads: Array<{ name: string; url: string }> = [];
 
@@ -87,8 +95,8 @@ export async function GET(
     if (purchase.beat.fullMp3Url) {
       downloads.push({ name: `${purchase.beat.title}.mp3`, url: `${base}/${i++}` });
     }
-    if (licenseUrl) {
-      downloads.push({ name: `${purchase.beat.title} — License.pdf`, url: `${base}/${i}` });
+    if (purchase.licenseId) {
+      downloads.push({ name: `${purchase.beat.title} - License.pdf`, url: `${appUrl}/api/download/${token}/license` });
     }
   } else if (purchase.release) {
     purchase.release.tracks.forEach((track: any, i: number) => {

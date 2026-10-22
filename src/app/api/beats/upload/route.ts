@@ -34,9 +34,21 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────
 
     const body = await req.json();
-    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, hasWav, hasMp3, artworkType } = body;
+    const { title, bpm, keySignature, genre, mood, tags, basicPrice, premiumPrice, exclPrice, licenseTerms, hasWav, hasMp3, artworkType } = body;
 
     if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+    if (licenseTerms !== undefined) {
+      const tiers = ['basic', 'premium', 'exclusive'];
+      if (!licenseTerms || typeof licenseTerms !== 'object' || Array.isArray(licenseTerms)) {
+        return NextResponse.json({ error: 'Invalid license terms' }, { status: 400 });
+      }
+      for (const tier of tiers) {
+        const clauses = licenseTerms[tier]?.clauses;
+        if (!Array.isArray(clauses) || clauses.length < 1 || clauses.length > 6 || clauses.some((clause: unknown) => typeof clause !== 'string' || !clause.trim() || clause.length > 78)) {
+          return NextResponse.json({ error: `Invalid ${tier} license terms. Supply 1–6 clauses, each 78 characters or fewer.` }, { status: 400 });
+        }
+      }
+    }
 
     // Generate unique slug
     let slug = slugify(title);
@@ -59,6 +71,7 @@ export async function POST(req: NextRequest) {
         basicPrice: parseFloat(basicPrice) || 0,
         premiumPrice: parseFloat(premiumPrice) || 0,
         exclPrice: parseFloat(exclPrice) || 0,
+        licenseTerms: licenseTerms && typeof licenseTerms === 'object' ? licenseTerms : null,
         previewUrl: '',
         fullWavUrl: '',
         fullMp3Url: '',

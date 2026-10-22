@@ -160,6 +160,9 @@ model Beat {
   basicPrice   Float        @default(0)
   premiumPrice Float        @default(0)
   exclPrice    Float        @default(0)
+  // Producer-authored licensing terms keyed by basic, premium, and exclusive.
+  // Each value is a JSON object containing template and clauses.
+  licenseTerms Json?
   plays        Int          @default(0)
   sales        Int          @default(0)
   isActive     Boolean      @default(true)
@@ -323,6 +326,8 @@ model Purchase {
                                    // the refund webhook can match the exact purchase instead of guessing
   status             String       @default("pending") // pending, confirmed, refunded
   licenseUrl         String?
+  // Immutable copy of the terms used when this purchase was confirmed.
+  licenseTermsSnapshot Json?
   receiptUrl         String?
   downloadToken      String       @unique @default(cuid())
   downloadCount      Int          @default(0)

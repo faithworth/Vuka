@@ -1,5 +1,9 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+function safePdfText(value: string): string {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E\xA0-\xFF]/g, '?');
+}
+
 export async function generateLicensePDF({
   licenseId,
   licenseType,
@@ -11,6 +15,7 @@ export async function generateLicensePDF({
   currency,
   date,
   itemKind = 'beat',
+  customTerms,
 }: {
   licenseId: string;
   licenseType: string;
@@ -23,6 +28,8 @@ export async function generateLicensePDF({
   date: Date;
   /** 'beat' | 'release' | 'video' | 'sample' — controls header/field labels only. Defaults to 'beat' for backward compatibility with existing callers. */
   itemKind?: 'beat' | 'release' | 'video' | 'sample';
+  /** Producer-authored clauses frozen at purchase time. */
+  customTerms?: string[];
 }): Promise<Buffer> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([595, 842]); // A4
@@ -77,7 +84,7 @@ export async function generateLicensePDF({
 
   const row = (label: string, value: string) => {
     page.drawText(label, { x: left, y, size: 10, font: regular, color: muted });
-    page.drawText(value, { x: 200, y, size: 10, font: regular, color: white });
+    page.drawText(safePdfText(value), { x: 200, y, size: 10, font: regular, color: white });
     y -= lineH;
   };
 
@@ -102,46 +109,56 @@ export async function generateLicensePDF({
   section('RIGHTS GRANTED');
   const rights: Record<string, string[]> = {
     basic: [
-      '✓ Non-exclusive rights to use the beat',
-      '✓ Up to 5,000 streams/downloads',
-      '✓ 2 music videos',
-      '✓ Non-profit live performances',
-      '✗ Exclusive rights — others may purchase this beat',
+      '+ Non-exclusive rights to use the beat',
+      '+ Up to 5,000 streams/downloads',
+      '+ 2 music videos',
+      '+ Non-profit live performances',
+      '- Exclusive rights — others may purchase this beat',
     ],
     premium: [
-      '✓ Non-exclusive rights to use the beat',
-      '✓ Up to 500,000 streams/downloads',
-      '✓ Unlimited music videos',
-      '✓ Commercial live performances',
-      '✓ Radio broadcasting rights',
-      '✗ Exclusive rights — others may purchase this beat',
+      '+ Non-exclusive rights to use the beat',
+      '+ Up to 500,000 streams/downloads',
+      '+ Unlimited music videos',
+      '+ Commercial live performances',
+      '+ Radio broadcasting rights',
+      '- Exclusive rights — others may purchase this beat',
     ],
     exclusive: [
-      '✓ EXCLUSIVE rights — no one else may purchase this beat',
-      '✓ Unlimited streams and downloads',
-      '✓ Unlimited music videos',
-      '✓ Full commercial use including sync',
-      '✓ Radio, TV and film licensing',
-      '✓ Songwriter credit: 50% to buyer',
+      '+ EXCLUSIVE rights — no one else may purchase this beat',
+      '+ Unlimited streams and downloads',
+      '+ Unlimited music videos',
+      '+ Full commercial use including sync',
+      '+ Radio, TV and film licensing',
+      '+ Songwriter credit: 50% to buyer',
     ],
     standard: [
-      '✓ Personal and commercial use of the purchased content',
-      '✓ Unlimited streams and downloads by the buyer',
-      '✓ Credit to the original artist/producer required',
-      '✗ Resale or redistribution of the original files',
+      '+ Personal and commercial use of the purchased content',
+      '+ Unlimited streams and downloads by the buyer',
+      '+ Credit to the original artist/producer required',
+      '- Resale or redistribution of the original files',
     ],
   };
 
-  const selectedRights = rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard);
+  const safeCustomTerms = Array.isArray(customTerms)
+    ? customTerms.filter((term): term is string => typeof term === 'string' && term.trim().length > 0).slice(0, 6).map(term => safePdfText(term))
+    : [];
+  const selectedRights = safeCustomTerms.length
+    ? safeCustomTerms.map(term => `* ${term.trim().slice(0, 78)}`)
+    : (rights[licenseType.toLowerCase()] || (itemKind === 'beat' ? rights.basic : rights.standard));
   for (const right of selectedRights) {
-    const color = right.startsWith('✗') ? rgb(0.7, 0.3, 0.3) : rgb(0.2, 0.8, 0.5);
+    const color = right.startsWith('-') ? rgb(0.7, 0.3, 0.3) : rgb(0.2, 0.8, 0.5);
     page.drawText(right, { x: left, y, size: 9.5, font: regular, color });
     y -= 22;
   }
 
   y -= 20;
   section('TERMS');
-  const terms = [
+  const terms = safeCustomTerms.length ? [
+    'This agreement applies to the buyer and content identified above.',
+    'Rights not expressly granted in the clauses above remain with their respective rights holders.',
+    'This document records the producer-supplied terms for this purchase.',
+    'Applicable South African law applies, subject to any mandatory law that cannot be excluded.',
+  ] : [
     'The artist retains all publishing and master rights.',
     'Buyer must credit the producer in all commercial releases.',
     'This license is non-transferable and non-sub-licensable.',
@@ -149,7 +166,7 @@ export async function generateLicensePDF({
     'This agreement is governed by applicable South African and international copyright law.',
   ];
   for (const t of terms) {
-    page.drawText(`• ${t}`, { x: left, y, size: 8.5, font: regular, color: muted });
+    page.drawText(`- ${t}`, { x: left, y, size: 8.5, font: regular, color: muted });
     y -= 20;
   }
 
@@ -197,8 +214,8 @@ export async function generateReceiptPDF({
 
   let y = 310;
   const row = (l: string, v: string, vColor = white) => {
-    page.drawText(l, { x: 40, y, size: 10, font: regular, color: muted });
-    page.drawText(v, { x: 200, y, size: 10, font: regular, color: vColor });
+    page.drawText(safePdfText(l), { x: 40, y, size: 10, font: regular, color: muted });
+    page.drawText(safePdfText(v), { x: 200, y, size: 10, font: regular, color: vColor });
     y -= 26;
   };
 

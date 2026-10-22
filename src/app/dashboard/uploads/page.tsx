@@ -87,6 +87,12 @@ export default function UploadPage() {
   // Beat fields — must be declared before any conditional returns (React rules of hooks)
   const [beatMeta, setBeatMeta] = useState({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
   const [beatPrices, setBeatPrices] = useState({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
+  // Editable starter templates; clauses are frozen into each purchase at checkout.
+  const [licenseTerms, setLicenseTerms] = useState({
+    basic: 'Non-exclusive use of the beat.\nUp to 5,000 streams and 2 music videos.\nProducer credit is required on every release.\nResale or redistribution of the original beat file is prohibited.\nThe producer retains ownership of the instrumental.',
+    premium: 'Non-exclusive commercial use of the beat.\nUp to 500,000 streams and unlimited music videos.\nProducer credit is required on every release.\nResale or redistribution of the original beat file is prohibited.\nThe producer retains ownership of the instrumental.',
+    exclusive: 'Exclusive license for the beat; new licenses will no longer be sold after purchase.\nUnlimited streams and music videos.\nProducer credit and any agreed publishing splits must be honored.\nResale of the original beat file is prohibited.\nOwnership transfers only to the extent expressly stated in this agreement.',
+  });
   const [files, setFiles] = useState<{ artwork?: File; preview?: File; wav?: File; mp3?: File }>({});
 
   // Release fields
@@ -116,6 +122,11 @@ export default function UploadPage() {
     setStep(1); setUploadType('beat'); setError(''); setSuccess(false); setLoading(false); setProgress({});
     setBeatMeta({ title: '', bpm: '', keySignature: '', genre: '', mood: '', tags: '' });
     setBeatPrices({ basicPrice: '99', premiumPrice: '299', exclPrice: '999' });
+    setLicenseTerms({
+      basic: 'Non-exclusive use of the beat.\\nUp to 5,000 streams and 2 music videos.\\nProducer credit is required on every release.\\nResale or redistribution of the original beat file is prohibited.\\nThe producer retains ownership of the instrumental.',
+      premium: 'Non-exclusive commercial use of the beat.\\nUp to 500,000 streams and unlimited music videos.\\nProducer credit is required on every release.\\nResale or redistribution of the original beat file is prohibited.\\nThe producer retains ownership of the instrumental.',
+      exclusive: 'Exclusive license for the beat; new licenses will no longer be sold after purchase.\\nUnlimited streams and music videos.\\nProducer credit and any agreed publishing splits must be honored.\\nResale of the original beat file is prohibited.\\nOwnership transfers only to the extent expressly stated in this agreement.',
+    });
     setFiles({});
     setRelMeta({ title: '', releaseType: 'single', description: '', credits: '', price: '50', payWhatWant: false });
     setTracks([
@@ -131,6 +142,15 @@ export default function UploadPage() {
   async function handleBeatSubmit() {
     if (!beatMeta.title) { setError('Title is required'); return; }
     if (!files.preview) { setError('A preview MP3 is required'); return; }
+    const clausesByTier = [licenseTerms.basic, licenseTerms.premium, licenseTerms.exclusive].map(value => value.split(String.fromCharCode(10)).map(line => line.trim()).filter(Boolean));
+    if (clausesByTier.some(clauses => clauses.length > 6 || clauses.some(clause => clause.length > 78))) {
+      setError('Each license can contain up to 6 clauses. Keep every clause to 78 characters or fewer so the full text fits on the PDF.');
+      return;
+    }
+    if (clausesByTier.some(clauses => clauses.length === 0)) {
+      setError('Add at least one clause to each license before publishing.');
+      return;
+    }
     setLoading(true); setError('');
 
     try {
@@ -141,6 +161,11 @@ export default function UploadPage() {
         body: JSON.stringify({
           ...beatMeta,
           ...beatPrices,
+          licenseTerms: {
+            basic: { template: 'basic', clauses: licenseTerms.basic.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+            premium: { template: 'premium', clauses: licenseTerms.premium.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+            exclusive: { template: 'exclusive', clauses: licenseTerms.exclusive.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 6) },
+          },
           bpm: parseInt(beatMeta.bpm) || 0,
           tags: beatMeta.tags.split(',').map(t => t.trim()).filter(Boolean),
           hasWav: !!files.wav,
@@ -403,11 +428,18 @@ export default function UploadPage() {
           <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Set Your Prices</h2>
           <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>You keep {shareLabel} of every sale. Prices in ZAR (South African Rand).</p>
           <div className="space-y-3 mb-8">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Each license starts with an editable template. Edit the clauses before publishing; buyers receive a PDF containing the terms that applied when they paid.</p>
+            <label className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>Basic license terms (one clause per line, maximum 6)</label>
+            <textarea value={licenseTerms.basic} maxLength={600} onChange={e => setLicenseTerms(p => ({ ...p, basic: e.target.value }))} rows={4} className="w-full rounded-xl p-3 text-sm" style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} />
             <PriceField label="Basic License" sublabel="Non-exclusive · up to 5,000 streams · 2 music videos"
               value={beatPrices.basicPrice} onChange={v => setBeatPrices(p => ({ ...p, basicPrice: v }))} />
+            <label className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>Premium license terms (one clause per line, maximum 6)</label>
+            <textarea value={licenseTerms.premium} maxLength={600} onChange={e => setLicenseTerms(p => ({ ...p, premium: e.target.value }))} rows={4} className="w-full rounded-xl p-3 text-sm" style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} />
             <PriceField label="Premium License" sublabel="Non-exclusive · up to 500K streams · commercial use"
               value={beatPrices.premiumPrice} onChange={v => setBeatPrices(p => ({ ...p, premiumPrice: v }))} />
-            <PriceField label="Exclusive License" sublabel="Full exclusive ownership · unlimited use"
+            <label className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>Exclusive license terms (one clause per line, maximum 6)</label>
+            <textarea value={licenseTerms.exclusive} maxLength={600} onChange={e => setLicenseTerms(p => ({ ...p, exclusive: e.target.value }))} rows={4} className="w-full rounded-xl p-3 text-sm" style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} />
+            <PriceField label="Exclusive License" sublabel="Exclusive rights · no new non-exclusive sales after purchase"
               value={beatPrices.exclPrice} onChange={v => setBeatPrices(p => ({ ...p, exclPrice: v }))} highlight />
           </div>
           <NavButtons onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Preview & Publish" />
@@ -429,6 +461,18 @@ export default function UploadPage() {
               <SummaryRow label="Preview" value={files.preview?.name || '—'} />
               {files.wav && <SummaryRow label="Full WAV" value={files.wav.name} />}
               {files.mp3 && <SummaryRow label="Full MP3" value={files.mp3.name} />}
+            </div>
+            <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border)' }}>
+              <h4 className="font-bold mb-3" style={{ color: 'var(--text)' }}>License agreement preview</h4>
+              {(['basic', 'premium', 'exclusive'] as const).map(tier => (
+                <div key={tier} className="mb-4">
+                  <p className="text-sm font-semibold capitalize mb-1" style={{ color: 'var(--sky)' }}>{tier} license</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {licenseTerms[tier].split(String.fromCharCode(10)).map(term => term.trim()).filter(Boolean).map((term, index) => <li key={`${tier}-${index}`}>{term}</li>)}
+                  </ul>
+                </div>
+              ))}
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>This preview shows the producer-authored clauses. Vuka adds the buyer, beat, transaction, license ID and purchase date to the generated PDF.</p>
             </div>
           </div>
 

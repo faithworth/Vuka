@@ -91,7 +91,15 @@ export async function issueBeatLicense(params: {
     where: { purchaseId: params.purchaseId },
   });
   if (existing) {
-    return { licenseKey: existing.licenseKey, pdfUrl: existing.pdfUrl };
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+    const pdfUrl = `${appUrl}/api/download/${purchase.downloadToken}/license`;
+    if (existing.pdfUrl !== pdfUrl) {
+      await prisma.beatLicense.update({ where: { id: existing.id }, data: { pdfUrl } });
+    }
+    if (purchase.licenseUrl !== pdfUrl) {
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: pdfUrl } });
+    }
+    return { licenseKey: existing.licenseKey, pdfUrl };
   }
 
   const licenseType = purchase.licenseType || 'basic';
@@ -129,16 +137,16 @@ export async function issueBeatLicense(params: {
     });
   }
 
-  // Hook: generate PDF license document
-  // In production: call lib/pdf.ts  generateLicensePDF(license, purchase.beat, terms)
-  // then upload to R2 and update license.pdfUrl
-  const pdfUrl = '';
+  // The purchase flow creates the PDF. This secure route regenerates it if
+  // an earlier upload failed, so issued licenses never point to an empty URL.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+  const pdfUrl = `${appUrl}/api/download/${purchase.downloadToken}/license`;
 
-  if (pdfUrl) {
-    await prisma.beatLicense.update({
-      where: { id: license.id },
-      data: { pdfUrl },
-    });
+  await prisma.beatLicense.update({
+    where: { id: license.id },
+    data: { pdfUrl },
+  });
+  if (purchase.licenseUrl !== pdfUrl) {
     await prisma.purchase.update({
       where: { id: params.purchaseId },
       data: { licenseUrl: pdfUrl },

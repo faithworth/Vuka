@@ -108,23 +108,29 @@ export async function GET(
     };
 
     const hasWav = !!beat.fullWavUrl;
+    const hasMp3 = !!beat.fullMp3Url;
+    const mp3Index = hasWav ? 1 : 0;
+    const licenseIndex = (hasWav ? 1 : 0) + (hasMp3 ? 1 : 0);
 
-    // idx 0 = WAV (if exists), 1 = MP3, 2 = License PDF
-    if (idx === 0 && hasWav) {
+    if (hasWav && idx === 0) {
       const raw = await fetchR2Buffer(r2Keys.beatFullWav(beat.id));
-      if (!raw) return new NextResponse('File not found', { status: 404 });
+      if (!raw) return new NextResponse('WAV file not found', { status: 404 });
       const tagged = tagWav(raw, meta);
       return streamResponse(tagged, `${beat.title}.wav`, 'audio/wav');
-    } else if ((idx === 1 && hasWav) || (idx === 0 && !hasWav)) {
+    }
+    if (hasMp3 && idx === mp3Index) {
       const raw = await fetchR2Buffer(r2Keys.beatFullMp3(beat.id));
-      if (!raw) return new NextResponse('File not found', { status: 404 });
+      if (!raw) return new NextResponse('MP3 file not found', { status: 404 });
       const tagged = tagMp3(raw, meta);
       return streamResponse(tagged, `${beat.title}.mp3`, 'audio/mpeg');
-    } else if (purchase.licenseUrl) {
-      const buf = await fetchBuffer(purchase.licenseUrl);
-      if (!buf) return new NextResponse('File not found', { status: 404 });
-      return streamResponse(buf, `${beat.title} — License.pdf`, 'application/pdf', 'inline');
     }
+    if (purchase.licenseId && idx === licenseIndex) {
+      const buf = await fetchR2Buffer(r2Keys.license(purchase.licenseId))
+        || (purchase.licenseUrl ? await fetchBuffer(purchase.licenseUrl) : null);
+      if (!buf) return new NextResponse('License PDF not found. Refresh the download page to regenerate it.', { status: 404 });
+      return streamResponse(buf, `${beat.title} - License.pdf`, 'application/pdf', 'attachment');
+    }
+    return new NextResponse('File index not found', { status: 404 });
   }
 
   // ── RELEASE ───────────────────────────────────────────────
