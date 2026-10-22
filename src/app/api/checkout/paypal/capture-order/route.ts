@@ -262,7 +262,7 @@ export async function POST(req: NextRequest) {
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-      const url = getPublicUrl(pdfKey);
+      const url = `${appUrl}/api/download/${purchase.downloadToken}/license`;
       await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: url } });
       return url;
     } catch (e) {
