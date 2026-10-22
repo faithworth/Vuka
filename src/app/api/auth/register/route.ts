@@ -121,12 +121,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Ensure IndustryUser record exists for industry role
-    if (validRole === 'industry' && !user.industryUser) {
-      await prisma.industryUser.create({
-        data: {
+    if (validRole === 'industry') {
+      // Idempotent profile setup: the auth callback and registration request can
+      // arrive close together. Upsert avoids a unique-userId race and repairs
+      // accounts where the User row exists but IndustryUser creation failed.
+      await prisma.industryUser.upsert({
+        where: { userId: user.id },
+        create: {
           userId: user.id,
-          companyName: company || '',
-          role: position || '',
+          companyName: company?.trim() || '',
+          role: position?.trim() || '',
+        },
+        update: {
+          ...(company?.trim() ? { companyName: company.trim() } : {}),
+          ...(position?.trim() ? { role: position.trim() } : {}),
         },
       });
     }
