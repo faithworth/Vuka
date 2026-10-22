@@ -439,7 +439,7 @@ export default function UploadPage() {
               value={beatPrices.premiumPrice} onChange={v => setBeatPrices(p => ({ ...p, premiumPrice: v }))} />
             <label className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>Exclusive license terms (one clause per line, maximum 6)</label>
             <textarea value={licenseTerms.exclusive} maxLength={600} onChange={e => setLicenseTerms(p => ({ ...p, exclusive: e.target.value }))} rows={4} className="w-full rounded-xl p-3 text-sm" style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} />
-            <PriceField label="Exclusive License" sublabel="Full exclusive ownership · unlimited use"
+            <PriceField label="Exclusive License" sublabel="Exclusive rights · no new non-exclusive sales after purchase"
               value={beatPrices.exclPrice} onChange={v => setBeatPrices(p => ({ ...p, exclPrice: v }))} highlight />
           </div>
           <NavButtons onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Preview & Publish" />
