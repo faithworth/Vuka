@@ -4,6 +4,7 @@ import { ArrowRight, Globe, Zap, DollarSign, Shield, Music, TrendingUp, Users, S
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VukaShopJourney from '@/components/brand/VukaShopJourney';
+import LandingMusicShowcase from '@/components/LandingMusicShowcase';
 
 export default function LandingPage() {
   return (
@@ -96,6 +97,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ── LIVE CATALOGUE + ARTIST DISCOVERY ── */}
+        <LandingMusicShowcase />
 
         {/* ── FOR ARTISTS ── */}
         <section className="py-24 px-4" style={{ background: 'var(--surface)' }}>
