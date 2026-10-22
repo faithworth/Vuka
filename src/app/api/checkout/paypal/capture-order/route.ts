@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
   let   itemTitle   = purchase.itemType;
   let   artworkUrl  = '';
   let   licenseUrl  = '';
+  let   licenseTermsSnapshot: string[] | undefined;
 
   // Generates + uploads a license PDF for any item type (previously
   // beat-only, mirroring the same fix already applied to the Paystack
@@ -257,6 +258,7 @@ export async function POST(req: NextRequest) {
         currency:    purchase.currency,
         date:        new Date(),
         itemKind,
+        customTerms: licenseTermsSnapshot,
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
@@ -279,6 +281,13 @@ export async function POST(req: NextRequest) {
       if (beat) {
         itemTitle  = `${beat.title} (${purchase.licenseType || 'Basic'} License)`;
         artworkUrl = beat.artworkUrl || '';
+        const tier = purchase.licenseType === 'premium' ? 'premium' : purchase.licenseType === 'exclusive' ? 'exclusive' : 'basic';
+        const savedTerms = beat.licenseTerms as { [key: string]: { template?: unknown; clauses?: unknown } } | null;
+        const tierTerms = savedTerms && typeof savedTerms === 'object' ? savedTerms[tier] : null;
+        if (tierTerms && Array.isArray(tierTerms.clauses)) {
+          licenseTermsSnapshot = tierTerms.clauses.filter((clause): clause is string => typeof clause === 'string' && clause.trim().length > 0).slice(0, 6);
+          await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseTermsSnapshot: { template: typeof tierTerms.template === 'string' ? tierTerms.template : tier, clauses: licenseTermsSnapshot } } });
+        }
         licenseUrl = await issueLicensePdf(beat.title, beat.artist.name, 'beat');
         issueBeatLicense({
           purchaseId: purchase.id,
