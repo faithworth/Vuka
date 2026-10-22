@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateLicensePDF } from '@/lib/pdf';
-import { uploadBuffer, r2Keys, getPublicUrl } from '@/lib/r2';
+import { uploadBuffer, r2Keys } from '@/lib/r2';
 
 export async function GET(
   req: NextRequest,
@@ -68,8 +68,8 @@ export async function GET(
       });
       const pdfKey = r2Keys.license(purchase.licenseId);
       await uploadBuffer(pdfKey, pdfBuffer, 'application/pdf');
-      licenseUrl = getPublicUrl(pdfKey);
-      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl: licenseUrl || null } });
+      licenseUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com'}/api/download/${token}/license`;
+      await prisma.purchase.update({ where: { id: purchase.id }, data: { licenseUrl } });
     } catch (e) {
       console.error('[download] lazy license generation failed', purchase.id, e);
     }
