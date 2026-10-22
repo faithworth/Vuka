@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     publicUrls.artworkUrl = getPublicUrl(artworkKey);
 
     const previewKey = r2Keys.beatPreview(beat.id);
-    uploadUrls.preview = await getPresignedUploadUrl(previewKey, 'audio/mpeg');
+    uploadUrls.preview = await getPresignedUploadUrl(previewKey, 'audio/wav');
     publicUrls.previewUrl = getPublicUrl(previewKey);
 
     if (hasWav) {
@@ -135,8 +135,8 @@ export async function PATCH(req: NextRequest) {
         artworkUrl: artworkUrl || beat.artworkUrl,
         previewUrl: previewUrl || beat.previewUrl,
         fullWavUrl: fullWavUrl || beat.fullWavUrl,
-        fullMp3Url: fullMp3Url || beat.fullMp3Url || previewUrl || beat.previewUrl,
-        isActive: !!(previewUrl || beat.previewUrl),
+        fullMp3Url: fullMp3Url || beat.fullMp3Url,
+        isActive: !!((previewUrl || beat.previewUrl) && (fullWavUrl || fullMp3Url || beat.fullWavUrl || beat.fullMp3Url)),
       },
     });
 

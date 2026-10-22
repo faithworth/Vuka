@@ -14,9 +14,15 @@ export async function GET(req: NextRequest) {
   // Direct slug lookup
   if (slug) {
     try {
-      const beat = await prisma.beat.findUnique({
-        where: { slug },
-        include: { artist: { select: { name: true, slug: true, photoUrl: true } } },
+      const beat = await prisma.beat.findFirst({
+        where: { slug, isActive: true },
+        select: {
+          id: true, title: true, slug: true, bpm: true, keySignature: true,
+          mood: true, genre: true, tags: true, artworkUrl: true, previewUrl: true,
+          waveformData: true, basicPrice: true, premiumPrice: true, exclPrice: true,
+          plays: true, sales: true, isActive: true, isExclusive: true, createdAt: true,
+          artist: { select: { name: true, slug: true, photoUrl: true } },
+        },
       });
       return NextResponse.json({ beats: beat ? [beat] : [] });
     } catch { return NextResponse.json({ beats: [] }); }
@@ -37,7 +43,13 @@ export async function GET(req: NextRequest) {
     const [beats, total] = await Promise.all([
       prisma.beat.findMany({
         where,
-        include: { artist: { select: { name: true, slug: true, photoUrl: true } } },
+        select: {
+          id: true, title: true, slug: true, bpm: true, keySignature: true,
+          mood: true, genre: true, tags: true, artworkUrl: true, previewUrl: true,
+          waveformData: true, basicPrice: true, premiumPrice: true, exclPrice: true,
+          plays: true, sales: true, isActive: true, isExclusive: true, createdAt: true,
+          artist: { select: { name: true, slug: true, photoUrl: true } },
+        },
         orderBy,
         skip: (page - 1) * limit,
         take: limit,

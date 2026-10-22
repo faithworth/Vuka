@@ -39,6 +39,60 @@ function normalizeContentType(file: File): string {
   return file.type || 'application/octet-stream';
 }
 
+async function getAudioDurationSeconds(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = document.createElement('audio');
+    const objectUrl = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration;
+      cleanup();
+      if (!Number.isFinite(duration) || duration <= 0) reject(new Error(`Could not read duration for ${file.name}`));
+      else resolve(duration);
+    };
+    audio.onerror = () => { cleanup(); reject(new Error(`Could not read audio file ${file.name}`)); };
+    audio.src = objectUrl;
+  });
+}
+
+async function createPreviewClip(file: File, label: string): Promise<File> {
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) throw new Error('This browser cannot create previews automatically. Please use a modern browser.');
+  const context: AudioContext = new AudioContextClass();
+  try {
+    const input = await file.arrayBuffer();
+    const decoded = await context.decodeAudioData(input.slice(0));
+    const duration = Math.min(30, decoded.duration);
+    const frameCount = Math.max(1, Math.floor(duration * decoded.sampleRate));
+    const channels = Math.min(2, decoded.numberOfChannels);
+    const bytesPerSample = 2;
+    const dataSize = frameCount * channels * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const writeText = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+    writeText(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); writeText(8, 'WAVE');
+    writeText(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, channels, true); view.setUint32(24, decoded.sampleRate, true);
+    view.setUint32(28, decoded.sampleRate * channels * bytesPerSample, true);
+    view.setUint16(32, channels * bytesPerSample, true); view.setUint16(34, 16, true);
+    writeText(36, 'data'); view.setUint32(40, dataSize, true);
+    let offset = 44;
+    for (let frame = 0; frame < frameCount; frame++) {
+      for (let channel = 0; channel < channels; channel++) {
+        const sample = Math.max(-1, Math.min(1, decoded.getChannelData(channel)[frame]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+        offset += 2;
+      }
+    }
+    return new File([buffer], `${file.name.replace(/\.[^.]+$/, '')}-preview-30s.wav`, { type: 'audio/wav' });
+  } catch {
+    throw new Error(`Could not process ${label}. Please try a standard MP3 or WAV file.`);
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+
 async function uploadToR2(presignedUrl: string, file: File, onProgress?: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -141,7 +195,13 @@ export default function UploadPage() {
   // ── BEAT SUBMIT ──
   async function handleBeatSubmit() {
     if (!beatMeta.title) { setError('Title is required'); return; }
-    if (!files.preview) { setError('A preview MP3 is required'); return; }
+    if (!files.preview && !files.wav && !files.mp3) { setError('Upload a full MP3 or WAV. Vuka will automatically create the 30-second preview.'); return; }
+    const beatFullFile = files.wav || files.mp3 || files.preview;
+    if (!beatFullFile) { setError('Upload a full MP3 or WAV.'); return; }
+    let generatedBeatPreview: File;
+    try { generatedBeatPreview = await createPreviewClip(beatFullFile, beatMeta.title.trim()); }
+    catch (e: any) { setError(e.message || 'Could not create preview'); return; }
+    if (!files.wav && !files.mp3) { setError('The full song must be uploaded as a paid WAV or MP3 file.'); return; }
     const clausesByTier = [licenseTerms.basic, licenseTerms.premium, licenseTerms.exclusive].map(value => value.split(String.fromCharCode(10)).map(line => line.trim()).filter(Boolean));
     if (clausesByTier.some(clauses => clauses.length > 6 || clauses.some(clause => clause.length > 78))) {
       setError('Each license can contain up to 6 clauses. Keep every clause to 78 characters or fewer so the full text fits on the PDF.');
@@ -185,8 +245,8 @@ export default function UploadPage() {
         await uploadToR2(uploadUrls.artwork, files.artwork, p => setFileProgress('artwork', p));
         urlPayload.artworkUrl = publicUrls.artworkUrl;
       }
-      if (files.preview && uploadUrls.preview) {
-        await uploadToR2(uploadUrls.preview, files.preview, p => setFileProgress('preview', p));
+      if (generatedBeatPreview && uploadUrls.preview) {
+        await uploadToR2(uploadUrls.preview, generatedBeatPreview, p => setFileProgress('preview', p));
         urlPayload.previewUrl = publicUrls.previewUrl;
       }
       if (files.wav && uploadUrls.wav) {
@@ -197,11 +257,7 @@ export default function UploadPage() {
         await uploadToR2(uploadUrls.mp3, files.mp3, p => setFileProgress('mp3', p));
         urlPayload.fullMp3Url = publicUrls.fullMp3Url;
       }
-      // If no separate full MP3, use preview as the purchasable file
-      if (!urlPayload.fullMp3Url && urlPayload.previewUrl) {
-        urlPayload.fullMp3Url = urlPayload.previewUrl;
-      }
-
+      // Never fall back to the public preview URL as a paid full-track URL.
       // Step 3: Activate the beat with the public R2 URLs
       const patchRes = await fetch('/api/beats/upload', {
         method: 'PATCH',
@@ -229,6 +285,15 @@ export default function UploadPage() {
     const missingFiles = filled.filter(t => !t.fullFile);
     if (missingFiles.length) {
       setError(`Missing full audio for: ${missingFiles.map(t => t.title).join(', ')}`);
+      return;
+    }
+    const generatedPreviews: File[] = [];
+    try {
+      for (const track of filled) {
+        generatedPreviews.push(await createPreviewClip(track.fullFile!, track.title || 'untitled track'));
+      }
+    } catch (e: any) {
+      setError(e.message || 'Could not create previews');
       return;
     }
 
@@ -268,16 +333,16 @@ export default function UploadPage() {
         let previewUrl = '';
         let fullUrl = '';
 
-        if (entry.previewFile && uploadUrls[`preview_${track.id}`]) {
-          await uploadToR2(uploadUrls[`preview_${track.id}`], entry.previewFile, p => setFileProgress(`preview_${i}`, p));
+        if (generatedPreviews[i] && uploadUrls[`preview_${track.id}`]) {
+          await uploadToR2(uploadUrls[`preview_${track.id}`], generatedPreviews[i], p => setFileProgress(`preview_${i}`, p));
           previewUrl = publicUrls[`previewUrl_${track.id}`];
         }
         if (entry.fullFile && uploadUrls[`full_${track.id}`]) {
           await uploadToR2(uploadUrls[`full_${track.id}`], entry.fullFile, p => setFileProgress(`full_${i}`, p));
           fullUrl = publicUrls[`fullUrl_${track.id}`];
         }
-        // If no separate preview, use the full file as preview too
-        trackUpdates[track.id] = { previewUrl: previewUrl || fullUrl, fullUrl };
+        // Never expose the full sale file as a fallback preview.
+        trackUpdates[track.id] = { previewUrl, fullUrl };
       }
 
       // Step 4: Activate the release
