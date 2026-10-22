@@ -1,8 +1,7 @@
 // ============================================================
 // src/app/api/industry/me/route.ts
-// FIX: inquiry artist select now includes userId so that
-//      the industry dashboard's "Message" button can find
-//      the artist's user account to open a conversation.
+// Loads the industry portal and repairs missing profiles for existing
+// industry-role users before returning dashboard data.
 // ============================================================
 
 export const dynamic = 'force-dynamic';
@@ -16,8 +15,12 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'industry') return NextResponse.json({ error: 'Not an industry account' }, { status: 403 });
 
-    const industryUser = await prisma.industryUser.findUnique({
+    // Repair accounts where the User row exists but profile creation previously failed.
+    // The upsert is safe to retry and avoids a race on the unique userId.
+    const industryUser = await prisma.industryUser.upsert({
       where: { userId: user.id },
+      create: { userId: user.id, companyName: '' },
+      update: {},
       include: {
         referrals: { orderBy: { createdAt: 'desc' }, take: 50 },
         deals: { orderBy: { createdAt: 'desc' } },
@@ -25,13 +28,12 @@ export async function GET() {
           include: {
             inquiries: {
               include: {
-                // FIX: added userId to artist select so messageArtist() works
                 artist: {
                   select: {
                     slug: true,
                     name: true,
                     photoUrl: true,
-                    userId: true,   // <-- was missing; caused "Cannot find artist account" error
+                    userId: true,
                   },
                 },
               },
@@ -43,10 +45,13 @@ export async function GET() {
       },
     });
 
-    if (!industryUser) return NextResponse.json({ error: 'Industry profile not found' }, { status: 404 });
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { currency: true },
+    });
 
     return NextResponse.json({
-      user: { id: user.id, name: user.name, email: user.email, currency: (await prisma.user.findUnique({ where: { id: user.id }, select: { currency: true } }))?.currency || 'ZAR' },
+      user: { id: user.id, name: user.name, email: user.email, currency: userDetails?.currency || 'ZAR' },
       industryUser,
       referrals: industryUser.referrals,
       deals: industryUser.deals,
@@ -57,5 +62,3 @@ export async function GET() {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
-
