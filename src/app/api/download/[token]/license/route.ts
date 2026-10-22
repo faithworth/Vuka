@@ -61,7 +61,7 @@ export async function GET(
     const publicBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
     await prisma.purchase.update({
       where: { id: purchase.id },
-      data: { licenseUrl: publicBase ? `${publicBase.replace(/\\/$/, '')}/${key}` : null },
+      data: { licenseUrl: publicBase ? `${publicBase.endsWith('/') ? publicBase.slice(0, -1) : publicBase}/${key}` : null },
     });
   }
 
