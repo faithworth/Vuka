@@ -134,7 +134,7 @@ export async function POST() {
     await prisma.$transaction([
       prisma.artist.update({
         where: { id: user.artist.id },
-        data:  { planSlug: 'pro', planExpiresAt: newExpiry },
+        data:  { planSlug: 'pro', planExpiresAt: newExpiry, planSource: 'referral_reward' },
       }),
       prisma.referralReward.create({
         data: { id: `rr_${Date.now()}`, userId: user.id, rewardType: 'pro_3months' },
