@@ -73,8 +73,21 @@ export async function POST(req: NextRequest) {
         const statement = await createPartnerMonthlyStatement(partner.id, year, month);
         statements.push(statement);
         if (statement.status === 'issued' && statement.shareAmount > 0) {
-          const existingPayout = await prisma.partnerPayout.findFirst({ where: { statementId: statement.id } });
-          if (!existingPayout) {
+          const existingPayout = await prisma.partnerPayout.findFirst({
+            where: { statementId: statement.id, status: { notIn: ['paid', 'rejected'] } },
+          });
+          if (existingPayout) {
+            await prisma.partnerPayout.update({
+              where: { id: existingPayout.id },
+              data: {
+                amount: statement.shareAmount,
+                destination: partner.paypalEmail || '',
+                adminNotes: partner.paypalEmail
+                  ? 'Pending manual payment to the saved partner PayPal destination.'
+                  : 'Pending: partner must save a PayPal destination before payment.',
+              },
+            });
+          } else {
             await prisma.partnerPayout.create({
               data: {
                 partnerId: partner.id,
