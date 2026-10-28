@@ -824,6 +824,7 @@ model MarketplaceOrder {
   stripePaymentId  String?
   platformFee      Float               @default(0)
   netAmount        Float               @default(0)
+  processorFee     Float?               // null means processor fee is unknown/not supplied
   paystackReference String?
   dispute          MarketplaceDispute?
   review           ServiceReview?
