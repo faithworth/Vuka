@@ -1638,6 +1638,7 @@ model PartnerProfile {
   referralCode String   @unique
   baseRate     Float    @default(0.10)
   currentRate  Float    @default(0.10)
+  paypalEmail  String?
   isActive     Boolean  @default(true)
   notes        String   @default("")
   statements   PartnerMonthlyStatement[]
