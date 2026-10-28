@@ -24,7 +24,7 @@ export async function activatePlanPayment(params: {
   const subscription = await prisma.$transaction(async tx => {
     await tx.artist.update({
       where: { id: params.artistId },
-      data: { planSlug: plan.slug, planExpiresAt: periodEnd },
+      data: { planSlug: plan.slug, planExpiresAt: periodEnd, planSource: 'paid' },
     });
 
     return (tx as any).artistPlanSubscription.create({
