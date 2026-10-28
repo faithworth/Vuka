@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
     verifiedCurrency: verification.currency,
     payoutMethod: 'paystack',
     traceId,
+    processorFeeZAR: verification.processorFeeZAR,
   });
 
   if (!result.ok && (result.reason === 'amount_mismatch' || result.reason === 'currency_mismatch')) {
