@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       cancelUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&cancelled=1`,
       failureUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&failed=1`,
       metadata: {
-        orderId: o.id,
+        orderId: String(o.id),
         type: 'industry_order',
         serviceTitle: `${service.title} — ${service.industryUser.user.name || 'Professional'}`.slice(0, 100),
         checkoutId: '',
