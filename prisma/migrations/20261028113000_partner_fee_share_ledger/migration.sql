@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS "partner_monthly_statements" (
   "knownProcessorFees" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "netPlatformFees" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "unknownProcessorFeeRows" INTEGER NOT NULL DEFAULT 0,
+  "unknownPlatformFeeRows" INTEGER NOT NULL DEFAULT 0,
   "shareRate" DOUBLE PRECISION NOT NULL DEFAULT 0.10,
   "shareAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "qualifyingCreators" INTEGER NOT NULL DEFAULT 0,
