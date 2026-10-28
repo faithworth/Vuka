@@ -1,7 +1,5 @@
 -- Partner fee-share profiles, monthly statements, and payout history.
 -- All monetary history is additive; this migration does not delete or rewrite existing payments.
-ALTER TABLE "MarketplaceOrder" ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
-ALTER TABLE "IndustryServiceOrder" ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
 CREATE TABLE IF NOT EXISTS "partner_profiles" (
   "id" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
@@ -23,32 +21,6 @@ DO $$ BEGIN
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE IF NOT EXISTS "partner_creator_exclusions" (
-  "id" TEXT NOT NULL,
-  "partnerId" TEXT NOT NULL,
-  "referredUserId" TEXT NOT NULL,
-  "createdByUserId" TEXT NOT NULL,
-  "reason" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "partner_creator_exclusions_pkey" PRIMARY KEY ("id")
-);
-CREATE UNIQUE INDEX IF NOT EXISTS "partner_creator_exclusions_partnerId_referredUserId_key"
-  ON "partner_creator_exclusions"("partnerId", "referredUserId");
-CREATE INDEX IF NOT EXISTS "partner_creator_exclusions_referredUserId_idx"
-  ON "partner_creator_exclusions"("referredUserId");
-DO $ BEGIN
-  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_partnerId_fkey"
-    FOREIGN KEY ("partnerId") REFERENCES "partner_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL; END $;
-DO $ BEGIN
-  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_referredUserId_fkey"
-    FOREIGN KEY ("referredUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL; END $;
-DO $ BEGIN
-  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_createdByUserId_fkey"
-    FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL; END $;
-
 CREATE TABLE IF NOT EXISTS "partner_monthly_statements" (
   "id" TEXT NOT NULL,
   "partnerId" TEXT NOT NULL,
@@ -58,7 +30,6 @@ CREATE TABLE IF NOT EXISTS "partner_monthly_statements" (
   "knownProcessorFees" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "netPlatformFees" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "unknownProcessorFeeRows" INTEGER NOT NULL DEFAULT 0,
-  "unknownPlatformFeeRows" INTEGER NOT NULL DEFAULT 0,
   "shareRate" DOUBLE PRECISION NOT NULL DEFAULT 0.10,
   "shareAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "qualifyingCreators" INTEGER NOT NULL DEFAULT 0,
