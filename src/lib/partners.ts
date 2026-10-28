@@ -179,8 +179,10 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
 }
 
 export async function createPartnerMonthlyStatement(partnerId: string, year: number, month1to12: number) {
-  const periodStart = new Date(Date.UTC(year, month1to12 - 1, 1));
-  const periodEnd = new Date(Date.UTC(year, month1to12, 1));
+  // Vuka operates on South African calendar months (UTC+2, no DST).
+  // Store the corresponding UTC instants so 00:00 SAST on day one is included.
+  const periodStart = new Date(Date.UTC(year, month1to12 - 1, 1, -2));
+  const periodEnd = new Date(Date.UTC(year, month1to12, 1, -2));
   const partner = await prisma.partnerProfile.findUnique({
     where: { id: partnerId },
     include: { user: true },
