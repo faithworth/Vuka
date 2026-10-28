@@ -103,9 +103,16 @@ export async function POST(req: NextRequest) {
       const payoutId = String(body.payoutId ?? '');
       const reference = String(body.reference ?? '').trim();
       if (!payoutId || !reference) return NextResponse.json({ error: 'Payout ID and payment reference are required.' }, { status: 400 });
-      const payout = await prisma.partnerPayout.findUnique({ where: { id: payoutId } });
+      const payout = await prisma.partnerPayout.findUnique({
+        where: { id: payoutId },
+        include: { statement: true, partner: { select: { paypalEmail: true } } },
+      });
       if (!payout) return NextResponse.json({ error: 'Payout not found.' }, { status: 404 });
       if (payout.status === 'paid') return NextResponse.json({ error: 'Payout is already marked paid.' }, { status: 409 });
+      if (!payout.destination || !payout.partner.paypalEmail) return NextResponse.json({ error: 'Partner must save a valid PayPal destination before payout.' }, { status: 409 });
+      if (payout.statement && (payout.statement.status !== 'issued' || payout.statement.unknownProcessorFeeRows > 0 || payout.statement.unknownPlatformFeeRows > 0)) {
+        return NextResponse.json({ error: 'This statement is not reconciled and issued yet; do not pay it.' }, { status: 409 });
+      }
       await prisma.$transaction(async tx => {
         await tx.partnerPayout.update({
           where: { id: payoutId },
