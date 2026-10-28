@@ -30,9 +30,11 @@ export function rateFromQualifications(creators: CreatorQualification[]) {
 export async function getPartnerCreatorQualifications(referralCode: string, asOf = new Date()) {
   const end = new Date(asOf);
   const start = new Date(end.getTime() - 90 * DAY_MS);
+  const partner = await prisma.partnerProfile.findUnique({ where: { referralCode }, select: { userId: true } });
   const referred = await prisma.user.findMany({
     where: {
       referredBy: referralCode,
+      ...(partner ? { id: { not: partner.userId } } : {}),
       role: { in: ['artist', 'producer'] },
       artist: { isNot: null },
     },
