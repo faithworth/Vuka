@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import VukaLoader from '@/components/brand/VukaLoader';
+import ReconciliationPanel from './ReconciliationPanel';
 
 type MainTab = 'overview' | 'sales' | 'tips' | 'subscriptions' | 'artists' | 'payouts';
 
@@ -106,15 +107,18 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
             <StatCard label="Known processor fees" value={formatCurrency(data.ledger.knownProcessorFees)} />
             <StatCard label="Net after known fees" value={formatCurrency(data.ledger.netPlatformFees)} color="var(--gold)" />
             <StatCard label="Unknown processor fees" value={String(data.ledger.unknownProcessorFeeRows)} color={data.ledger.unknownProcessorFeeRows ? '#d99b26' : 'var(--green)'} sub="Must be reconciled before final partner payout" />
+            <StatCard label="Missing platform fees" value={String(data.ledger.unknownPlatformFeeRows)} color={data.ledger.unknownPlatformFeeRows ? '#d99b26' : 'var(--green)'} sub="Legacy fee splits need source-backed reconciliation" />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Source','Recorded platform fees','Known processor fees','Unknown fee rows','Rows'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead>
-              <tbody>{Object.entries(data.ledger.bySource || {}).map(([source, row]: [string, any]) => <tr key={source} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3 capitalize" style={{ color: 'var(--text)' }}>{source.replaceAll('_', ' ')}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.platformFees)}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.knownProcessorFees)}</td><td className="p-3 tabular-nums" style={{ color: row.unknownProcessorFeeRows ? '#d99b26' : 'var(--text)' }}>{row.unknownProcessorFeeRows}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text-muted)' }}>{row.rows}</td></tr>)}</tbody>
+              <thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Source','Recorded platform fees','Known processor fees','Unknown processor fees','Missing platform fees','Rows'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead>
+              <tbody>{Object.entries(data.ledger.bySource || {}).map(([source, row]: [string, any]) => <tr key={source} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3 capitalize" style={{ color: 'var(--text)' }}>{source.replaceAll('_', ' ')}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.platformFees)}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.knownProcessorFees)}</td><td className="p-3 tabular-nums" style={{ color: row.unknownProcessorFeeRows ? '#d99b26' : 'var(--text)' }}>{row.unknownProcessorFeeRows}</td><td className="p-3 tabular-nums" style={{ color: row.unknownPlatformFeeRows ? '#d99b26' : 'var(--text)' }}>{row.unknownPlatformFeeRows}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text-muted)' }}>{row.rows}</td></tr>)}</tbody>
             </table>
           </div>
         </div>
       )}
+
+      <ReconciliationPanel />
 
       {/* Sales by type */}
       {salesByType?.length > 0 && (
