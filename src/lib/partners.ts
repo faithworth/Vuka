@@ -14,6 +14,8 @@ export interface CreatorQualification {
   grossSales90d: number;
   category: QualificationCategory;
   points: number;
+  excluded: boolean;
+  exclusionReason: string | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,7 +32,11 @@ export function rateFromQualifications(creators: CreatorQualification[]) {
 export async function getPartnerCreatorQualifications(referralCode: string, asOf = new Date()) {
   const end = new Date(asOf);
   const start = new Date(end.getTime() - 90 * DAY_MS);
-  const partner = await prisma.partnerProfile.findUnique({ where: { referralCode }, select: { userId: true } });
+  const partner = await prisma.partnerProfile.findUnique({
+    where: { referralCode },
+    select: { userId: true, exclusions: { select: { referredUserId: true, reason: true } } },
+  });
+  const exclusions = new Map((partner?.exclusions ?? []).map(item => [item.referredUserId, item.reason]));
   const referred = await prisma.user.findMany({
     where: {
       referredBy: referralCode,
@@ -74,7 +80,9 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
     const uniqueFans = new Set(purchases.map(p => p.buyerEmail.trim().toLowerCase()).filter(Boolean));
     const grossSales90d = round2(purchases.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
     const hasRelease = artist.releases.length > 0;
-    const eligible = Boolean(artist.isVerified && hasRelease);
+    const exclusionReason = exclusions.get(user.id) ?? null;
+    const excluded = Boolean(exclusionReason);
+    const eligible = Boolean(artist.isVerified && hasRelease && !excluded);
     const paidForTwoMonths = artist.planSource === 'paid'
       && artist.planSlug !== 'free'
       && Boolean(artist.planExpiresAt && artist.planExpiresAt > end)
@@ -100,6 +108,8 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
       grossSales90d,
       category,
       points,
+      excluded,
+      exclusionReason,
     });
   }
   return results;
