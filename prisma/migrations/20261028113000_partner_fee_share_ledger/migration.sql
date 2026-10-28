@@ -23,6 +23,32 @@ DO $$ BEGIN
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+CREATE TABLE IF NOT EXISTS "partner_creator_exclusions" (
+  "id" TEXT NOT NULL,
+  "partnerId" TEXT NOT NULL,
+  "referredUserId" TEXT NOT NULL,
+  "createdByUserId" TEXT NOT NULL,
+  "reason" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "partner_creator_exclusions_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "partner_creator_exclusions_partnerId_referredUserId_key"
+  ON "partner_creator_exclusions"("partnerId", "referredUserId");
+CREATE INDEX IF NOT EXISTS "partner_creator_exclusions_referredUserId_idx"
+  ON "partner_creator_exclusions"("referredUserId");
+DO $ BEGIN
+  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_partnerId_fkey"
+    FOREIGN KEY ("partnerId") REFERENCES "partner_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
+DO $ BEGIN
+  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_referredUserId_fkey"
+    FOREIGN KEY ("referredUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
+DO $ BEGIN
+  ALTER TABLE "partner_creator_exclusions" ADD CONSTRAINT "partner_creator_exclusions_createdByUserId_fkey"
+    FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
+
 CREATE TABLE IF NOT EXISTS "partner_monthly_statements" (
   "id" TEXT NOT NULL,
   "partnerId" TEXT NOT NULL,
