@@ -67,7 +67,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
 
     await prisma.artist.update({
       where: { id: artistId },
-      data: { planSlug, planExpiresAt: periodEnd },
+      data: { planSlug, planExpiresAt: periodEnd, planSource: 'paid' },
     });
 
     await prisma.artistPlanSubscription.create({
@@ -78,6 +78,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
         paystackReference:  reference,
         amount:             plan.priceZAR,
         currency:           'ZAR',
+        processorFee:       verification.processorFeeZAR,
         billingInterval:    billingIntervalDbValue(plan.billingPeriod),
         currentPeriodStart: now,
         currentPeriodEnd:   periodEnd,
@@ -120,7 +121,10 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
     const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
     const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
-    await prisma.marketplaceOrder.update({ where: { id: orderId }, data: { status: 'active' } });
+    await prisma.marketplaceOrder.update({
+      where: { id: orderId },
+      data: { status: 'active', processorFee: verification.processorFeeZAR },
+    });
     await prisma.marketplaceService.update({ where: { id: order.serviceId }, data: { totalOrders: { increment: 1 } } }).catch(() => {});
 
     // NOTE: no ArtistPayout is created here on purpose. Marketplace orders
