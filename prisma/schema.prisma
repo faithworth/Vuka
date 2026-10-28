@@ -65,6 +65,8 @@ model User {
   fanReferralsMade     FanReferral[]        @relation("FanReferrer")
   fanReferralsReceived FanReferral[]        @relation("FanReferee")
   awardVotes           AwardVote[]
+
+  @@index([referredBy])
 }
 
 model Artist {
