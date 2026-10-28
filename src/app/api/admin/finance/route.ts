@@ -15,7 +15,8 @@ import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { platformFeeRate } from '@/lib/plans';
 import { approvePayoutRequest, rejectPayoutRequest } from '@/lib/payouts';
-import { getPlatformRevenue } from '@/lib/revenue';
+import { getPlatformRevenue, getUnknownProcessorFeeRows } from '@/lib/revenue';
+import { createPartnerMonthlyStatement } from '@/lib/partners';
 
 // Default rate used ONLY for aggregate tip calculations in the overview,
 // where we don't load per-artist plan data. Per-artist views always use
@@ -111,6 +112,10 @@ export async function GET(req: NextRequest) {
   const view = searchParams.get('view') || 'overview';
 
   try {
+    if (view === 'unreconciled') {
+      return NextResponse.json({ rows: await getUnknownProcessorFeeRows(100) });
+    }
+
     // Shared fee ledger used by partner statements and the admin finance view.
     if (view === 'ledger') {
       const startParam = searchParams.get('start');
@@ -572,6 +577,52 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
+
+    // Record a processor fee only after checking the actual provider settlement
+    // or processor statement. This avoids treating an unknown fee as zero.
+    if (action === 'set_processor_fee') {
+      const recordType = String(body.recordType ?? '');
+      const recordId = String(body.recordId ?? '');
+      const fee = Number(body.processorFee);
+      if (!recordId || !['purchase', 'support', 'subscription', 'industry_service'].includes(recordType)) {
+        return NextResponse.json({ error: 'A valid record type and record ID are required.' }, { status: 400 });
+      }
+      if (!Number.isFinite(fee) || fee < 0) {
+        return NextResponse.json({ error: 'Processor fee must be a non-negative amount in ZAR.' }, { status: 400 });
+      }
+
+      let createdAt: Date | null = null;
+      if (recordType === 'purchase') {
+        const row = await prisma.purchase.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
+        createdAt = row.createdAt;
+      } else if (recordType === 'support') {
+        const row = await prisma.supportTxn.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
+        createdAt = row.createdAt;
+      } else if (recordType === 'subscription') {
+        const row = await prisma.artistPlanSubscription.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
+        createdAt = row.createdAt;
+      } else {
+        const rows = await prisma.$queryRawUnsafe<Array<{ createdAt: Date }>>(
+          'UPDATE "IndustryServiceOrder" SET "processorFee" = $1 WHERE id = $2 RETURNING "createdAt"',
+          Math.round(fee * 100) / 100, recordId,
+        );
+        if (!rows.length) return NextResponse.json({ error: 'Industry service payment not found.' }, { status: 404 });
+        createdAt = rows[0].createdAt;
+      }
+
+      // Recalculate statements for the affected month, but never rewrite a paid statement.
+      if (createdAt) {
+        const periodStart = new Date(Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), 1));
+        const statements = await prisma.partnerMonthlyStatement.findMany({
+          where: { periodStart, status: { not: 'paid' } },
+          select: { partnerId: true },
+        });
+        for (const statement of statements) {
+          await createPartnerMonthlyStatement(statement.partnerId, periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1);
+        }
+      }
+      return NextResponse.json({ ok: true, recordType, recordId, processorFee: Math.round(fee * 100) / 100 });
+    }
 
     // ── Create payout ─────────────────────────────────────────────────────────
     if (action === 'create_payout') {
