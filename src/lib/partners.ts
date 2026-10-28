@@ -38,7 +38,7 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
       id: true,
       userId: true,
       exclusions: { select: { referredUserId: true, reason: true } },
-      milestones: { select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true } },
+      milestones: { select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true, history: true } },
     },
   });
   const exclusions = new Map((partner?.exclusions ?? []).map(item => [item.referredUserId, item.reason]));
@@ -103,39 +103,56 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
       category = 'active_sales'; points = 0.5;
     }
 
-    // Contract rule: an artist who stops selling continues to count. Persist
-    // only upgrades to the highest category; never downgrade a valid milestone.
+    // Contract rule: a creator who stops selling keeps their highest earned
+    // category. Keep dated milestones so a later upgrade cannot change an older
+    // month's statement rate retroactively.
+    const prior = milestones.get(user.id);
+    let history = prior && Array.isArray(prior.history)
+      ? [...prior.history as Array<{ category: QualificationCategory; points: number; qualifiedAt: string }>]
+      : [];
     if (partner && !excluded && points > 0) {
-      const prior = milestones.get(user.id);
-      if (!prior || points > prior.points) {
+      const hasEffectiveCategory = history.some(item =>
+        item.category === category && item.points === points && new Date(item.qualifiedAt) <= end
+      );
+      if (!hasEffectiveCategory) {
+        history.push({ category, points, qualifiedAt: new Date(end.getTime() - 1).toISOString() });
+        const highestEver = history.reduce((best, item) => item.points > best.points ? item : best, { category: 'none' as QualificationCategory, points: 0, qualifiedAt: end.toISOString() });
+        const firstQualified = history.reduce((first, item) => new Date(item.qualifiedAt) < new Date(first) ? item.qualifiedAt : first, history[0].qualifiedAt);
         const saved = await prisma.partnerCreatorMilestone.upsert({
           where: { partnerId_referredUserId: { partnerId: partner.id, referredUserId: user.id } },
           create: {
             partnerId: partner.id,
             referredUserId: user.id,
-            highestCategory: category,
-            points,
-            qualifiedAt: end,
+            highestCategory: highestEver.category,
+            points: highestEver.points,
+            qualifiedAt: new Date(firstQualified),
+            history,
             lastEvaluatedAt: end,
           },
           update: {
-            highestCategory: category,
-            points,
-            qualifiedAt: prior?.qualifiedAt ?? end,
+            highestCategory: highestEver.category,
+            points: highestEver.points,
+            qualifiedAt: prior?.qualifiedAt ?? new Date(firstQualified),
+            history,
             lastEvaluatedAt: end,
           },
-          select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true },
+          select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true, history: true },
         });
         milestones.set(user.id, saved);
       }
     }
     const milestone = milestones.get(user.id);
+    const effectiveHistory = milestone && Array.isArray(milestone.history)
+      ? (milestone.history as Array<{ category: QualificationCategory; points: number; qualifiedAt: string }>)
+          .filter(item => new Date(item.qualifiedAt) <= end)
+      : [];
+    const historicalBest = effectiveHistory.reduce((best, item) => item.points > best.points ? item : best, { category: 'none' as QualificationCategory, points: 0, qualifiedAt: end.toISOString() });
     if (excluded) {
       category = 'none';
       points = 0;
-    } else if (milestone && milestone.points > 0) {
-      category = milestone.highestCategory as QualificationCategory;
-      points = milestone.points;
+    } else if (historicalBest.points > points) {
+      category = historicalBest.category;
+      points = historicalBest.points;
     }
 
     results.push({
