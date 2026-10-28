@@ -38,6 +38,8 @@ model User {
   referredBy      String?                       // the code used when this user signed up
   referralRewards ReferralReward[]
   partnerProfile  PartnerProfile?
+  partnerExclusionsReceived PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionCreator")
+  partnerExclusionsCreated   PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionAdmin")
   // ── Relations ──
   artist          Artist?
   industryUser    IndustryUser?
@@ -1644,11 +1646,28 @@ model PartnerProfile {
   notes        String   @default("")
   statements   PartnerMonthlyStatement[]
   payouts      PartnerPayout[]
+  exclusions   PartnerCreatorExclusion[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([isActive])
   @@map("partner_profiles")
+}
+
+model PartnerCreatorExclusion {
+  id              String        @id @default(cuid())
+  partnerId       String
+  partner         PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User          @relation("PartnerCreatorExclusionCreator", fields: [referredUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User          @relation("PartnerCreatorExclusionAdmin", fields: [createdByUserId], references: [id])
+  reason          String
+  createdAt       DateTime      @default(now())
+
+  @@unique([partnerId, referredUserId])
+  @@index([referredUserId])
+  @@map("partner_creator_exclusions")
 }
 
 model PartnerMonthlyStatement {
