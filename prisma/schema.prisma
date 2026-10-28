@@ -1686,6 +1686,7 @@ model PartnerCreatorExclusion {
   createdByUserId String
   createdBy       User          @relation("PartnerCreatorExclusionAdmin", fields: [createdByUserId], references: [id])
   reason          String
+  effectiveFrom   DateTime
   createdAt       DateTime      @default(now())
 
   @@unique([partnerId, referredUserId])
