@@ -18,6 +18,14 @@ import { sendPurchaseConfirmation } from '@/lib/emails';
 import { rateLimit, RATE_LIMITS, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
+  // Keep this legacy route for a clear response to stale clients. Existing
+  // pending Paystack payments may still complete through the webhook, but
+  // no new Paystack checkout sessions are created.
+  return NextResponse.json(
+    { error: 'Paystack checkout is no longer supported. Use Yoco or PayPal.' },
+    { status: 410 },
+  );
+
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
 
   const ip = getClientIp(req.headers);
