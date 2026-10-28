@@ -59,58 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ authorizationUrl: checkout.redirectUrl, method: 'yoco' });
     }
 
-    try {
-      const result = await initializeTransaction({
-        email:       fanEmail,
-        amountZAR:   amount,
-        reference,
-        callbackUrl: `${appUrl}/support/${artistSlug}?success=1&txnId=${txn.id}`,
-        metadata: {
-          txnId:    txn.id,
-          artistId: artist.id,
-          tier:     tier || 'Listener',
-          type:     'support',
-        },
-      });
-
-      await prisma.supportTxn.update({
-        where: { id: txn.id },
-        data:  { paystackReference: reference },
-      });
-
-      logger.info('[support/create-session] Paystack initialized', { traceId, txnId: txn.id, amount, reference });
-      return NextResponse.json({ authorizationUrl: result.authorizationUrl, method: 'paystack' });
-    } catch (paystackErr) {
-      logger.warn('[support/create-session] Paystack unavailable; falling back to Yoco', {
-        traceId,
-        txnId: txn.id,
-        error: paystackErr instanceof Error ? paystackErr.message : String(paystackErr),
-      });
-
-      const yocoReference = generateYocoReference('SUPY');
-      const checkout = await createYocoCheckout({
-        amountZAR: amount,
-        currency: 'ZAR',
-        reference: yocoReference,
-        successUrl: `${appUrl}/support/${artistSlug}?success=1&txnId=${txn.id}`,
-        cancelUrl: `${appUrl}/support/${artistSlug}?cancelled=1`,
-        failureUrl: `${appUrl}/support/${artistSlug}?failed=1`,
-        metadata: {
-          txnId: txn.id,
-          artistId: artist.id,
-          tier: tier || 'Listener',
-          type: 'support',
-        },
-      });
-
-      await prisma.supportTxn.update({
-        where: { id: txn.id },
-        data: { paystackReference: yocoReference },
-      });
-
-      logger.info('[support/create-session] Yoco fallback initialized', { traceId, txnId: txn.id, amount, reference: yocoReference, checkoutId: checkout.checkoutId });
-      return NextResponse.json({ authorizationUrl: checkout.redirectUrl, method: 'yoco' });
-    }
+    return NextResponse.json({ error: 'Unable to initialize support checkout.' }, { status: 503 });
 
   } catch (err) {
     logger.error('[support/create-session] Error', { traceId, error: err instanceof Error ? err.message : String(err) });
