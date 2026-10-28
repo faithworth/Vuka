@@ -123,8 +123,8 @@ export async function createPartnerMonthlyStatement(partnerId: string, year: num
     strong_seller: qualifications.filter(c => c.category === 'strong_seller').length,
     qualifyingCreators: qualifications.filter(c => c.category !== 'none').length,
   };
-  const reconciliationNote = revenue.unknownProcessorFeeRows > 0
-    ? `Draft only: ${revenue.unknownProcessorFeeRows} processor fee record(s) are unknown; reconcile before payment.`
+  const reconciliationNote = revenue.unknownProcessorFeeRows > 0 || revenue.unknownPlatformFeeRows > 0
+    ? `Draft only: ${revenue.unknownProcessorFeeRows} processor fee record(s) and ${revenue.unknownPlatformFeeRows} platform fee record(s) are unknown; reconcile before payment.`
     : '';
 
   await prisma.partnerProfile.update({
