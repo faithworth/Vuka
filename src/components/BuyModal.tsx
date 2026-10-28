@@ -271,7 +271,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </div>
             )}
             <button
-              onClick={() => handleBuy('yoco')}
+              onClick={() => handleBuy()}
               disabled={loading}
               className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
               style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
@@ -341,7 +341,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
             {activeTab === 'yoco' && (
               <button
-                onClick={() => handleBuy('yoco')}
+                onClick={() => handleBuy()}
                 disabled={loading}
                 className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
                 style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
