@@ -152,10 +152,11 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
   const item = beat || release!;
 
+  // Paystack and OZOW remain available in server-side integration code,
+  // but neither is exposed as a buyer choice during the provider transition.
   const tabs: { key: PaymentTab; label: string; flag?: string }[] = [
     { key: 'yoco',   label: 'Yoco',   flag: '🇿🇦' },
     { key: 'paypal', label: 'PayPal', flag: '🌍' },
-    { key: 'ozow',   label: 'Ozow',   flag: '🏦' },
   ];
 
   return (
