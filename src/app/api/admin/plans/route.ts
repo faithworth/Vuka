@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         }
 
         await prisma.$executeRaw`
-          UPDATE "Artist" SET "planSlug" = ${plan.slug}, "planExpiresAt" = ${expiresAt} WHERE id = ${artistId}
+          UPDATE "Artist" SET "planSlug" = ${plan.slug}, "planExpiresAt" = ${expiresAt}, "planSource" = ${plan.priceZAR > 0 ? 'admin_grant' : 'free'} WHERE id = ${artistId}
         `;
 
         if (plan.priceZAR > 0) {
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
 
       case 'cancel_plan': {
         await prisma.$executeRaw`
-          UPDATE "Artist" SET "planSlug" = 'free', "planExpiresAt" = NULL WHERE id = ${artistId}
+          UPDATE "Artist" SET "planSlug" = 'free', "planExpiresAt" = NULL, "planSource" = 'free' WHERE id = ${artistId}
         `;
         try {
           await prisma.$executeRaw`
