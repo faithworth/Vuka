@@ -75,7 +75,7 @@ export default function PartnerPortal() {
   }
 
   if (loading) return <div className="p-10 flex items-center gap-3" style={{ color: 'var(--text-muted)' }}><VukaLoader size={20} /> Loading partner portal…</div>;
-  if (error || !data) return <div className="max-w-3xl p-8"><h1 className="text-2xl font-black mb-3" style={{ color: 'var(--text)' }}>Partner Portal</h1><p className="mb-4" style={{ color: 'var(--text-muted)' }}>{error || 'Partner data is unavailable.'}</p><button onClick={load} className="px-4 py-2 rounded-lg font-bold" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Try again</button></div>;
+  if (error || !data) return <div className="max-w-3xl p-8"><h1 className="text-2xl font-black mb-3" style={{ color: 'var(--text)' }}>Partner Portal</h1><p className="mb-4" style={{ color: 'var(--text-muted)' }}>{error || 'Partner data is unavailable.'}</p><div className="flex gap-3"><button onClick={load} className="px-4 py-2 rounded-lg font-bold" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Try again</button><a href="/auth/login?next=%2Fpartner" className="px-4 py-2 rounded-lg font-bold" style={{ background: 'var(--sky)', color: '#06111b' }}>Sign in</a></div></div>;
 
   const { partner, summary, creators, statements, payouts } = data;
   const statCards = [
