@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.artist.update({
       where: { id: artistId },
-      data:  { planSlug, planExpiresAt: periodEnd },
+      data:  { planSlug, planExpiresAt: periodEnd, planSource: 'paid' },
     });
 
     await prisma.artistPlanSubscription.create({
