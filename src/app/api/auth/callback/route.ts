@@ -69,8 +69,16 @@ export async function GET(req: NextRequest) {
       // same pattern as the email/password registration path.
       let validatedRef: string | undefined;
       if (refParam) {
-        const referrer = await prisma.user.findUnique({ where: { referralCode: refParam } });
-        if (referrer) validatedRef = refParam;
+        const referrer = await prisma.user.findUnique({ where: { referralCode: refParam }, select: { id: true } });
+        if (referrer) {
+          validatedRef = refParam;
+        } else {
+          const partnerReferrer = await prisma.partnerProfile.findFirst({
+            where: { referralCode: refParam, isActive: true },
+            select: { referralCode: true },
+          });
+          if (partnerReferrer) validatedRef = partnerReferrer.referralCode;
+        }
       }
 
       dbUser = await prisma.user.create({
