@@ -52,6 +52,53 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
+export interface UnknownProcessorFeeRow {
+  id: string;
+  recordType: 'purchase' | 'support' | 'subscription' | 'industry_service';
+  source: string;
+  amount: number;
+  platformFee: number;
+  createdAt: Date;
+  reference: string;
+}
+
+export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownProcessorFeeRow[]> {
+  const rows: UnknownProcessorFeeRow[] = [];
+  const purchases = await prisma.purchase.findMany({
+    where: { status: 'confirmed', processorFee: null },
+    select: { id: true, itemType: true, amount: true, platformFee: true, createdAt: true, paystackReference: true },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  rows.push(...purchases.map(p => ({ id: p.id, recordType: 'purchase' as const, source: p.itemType, amount: p.amount, platformFee: p.platformFee, createdAt: p.createdAt, reference: p.paystackReference || '' })));
+
+  const tips = await prisma.supportTxn.findMany({
+    where: { status: 'confirmed', processorFee: null },
+    select: { id: true, amount: true, platformFee: true, createdAt: true, paystackReference: true },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  rows.push(...tips.map(t => ({ id: t.id, recordType: 'support' as const, source: 'artist_support', amount: t.amount, platformFee: t.platformFee, createdAt: t.createdAt, reference: t.paystackReference || '' })));
+
+  const subscriptions = await prisma.artistPlanSubscription.findMany({
+    where: { status: { in: ['active', 'cancelled', 'expired'] }, processorFee: null },
+    select: { id: true, planSlug: true, amount: true, createdAt: true, paystackReference: true },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  rows.push(...subscriptions.map(s => ({ id: s.id, recordType: 'subscription' as const, source: `plan_${s.planSlug}`, amount: s.amount, platformFee: s.amount, createdAt: s.createdAt, reference: s.paystackReference || '' })));
+
+  const industry = await prisma.$queryRawUnsafe<Array<{ id: string; amount: number; platformFee: number; createdAt: Date; reference: string }>>(
+    `SELECT id, amount, "platformFee", "createdAt", COALESCE("payfastPaymentId", '') AS reference
+       FROM "IndustryServiceOrder" WHERE status = 'paid' AND "processorFee" IS NULL
+       ORDER BY "createdAt" DESC LIMIT $1`,
+    limit,
+  );
+  rows.push(...industry.map(o => ({ id: o.id, recordType: 'industry_service' as const, source: 'industry_service', amount: Number(o.amount) || 0, platformFee: Number(o.platformFee) || 0, createdAt: o.createdAt, reference: o.reference })));
+
+  return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+}
+
 export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): Promise<RevenueSummary> {
   const createdAt = periodStart || periodEnd
     ? { ...(periodStart ? { gte: periodStart } : {}), ...(periodEnd ? { lt: periodEnd } : {}) }
