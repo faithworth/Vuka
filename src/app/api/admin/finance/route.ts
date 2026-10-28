@@ -578,50 +578,105 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action } = body;
 
-    // Record a processor fee only after checking the actual provider settlement
-    // or processor statement. This avoids treating an unknown fee as zero.
-    if (action === 'set_processor_fee') {
+    // Reconcile values only from a processor settlement statement or other
+    // verified financial record. Empty inputs leave existing values untouched.
+    if (action === 'set_fee_split' || action === 'set_processor_fee') {
       const recordType = String(body.recordType ?? '');
       const recordId = String(body.recordId ?? '');
-      const fee = Number(body.processorFee);
+      const hasProcessorFee = body.processorFee !== undefined && body.processorFee !== null && String(body.processorFee).trim() !== '';
+      const hasPlatformFee = body.platformFee !== undefined && body.platformFee !== null && String(body.platformFee).trim() !== '';
+      const processorFee = hasProcessorFee ? Number(body.processorFee) : undefined;
+      const platformFee = hasPlatformFee ? Number(body.platformFee) : undefined;
       if (!recordId || !['purchase', 'support', 'subscription', 'industry_service'].includes(recordType)) {
         return NextResponse.json({ error: 'A valid record type and record ID are required.' }, { status: 400 });
       }
-      if (!Number.isFinite(fee) || fee < 0) {
-        return NextResponse.json({ error: 'Processor fee must be a non-negative amount in ZAR.' }, { status: 400 });
+      if (!hasProcessorFee && !hasPlatformFee) {
+        return NextResponse.json({ error: 'Enter a processor fee and/or platform fee from a verified financial record.' }, { status: 400 });
+      }
+      if (processorFee !== undefined && (!Number.isFinite(processorFee) || processorFee < 0)) {
+        return NextResponse.json({ error: 'Processor fee must be a non-negative ZAR amount.' }, { status: 400 });
+      }
+      if (platformFee !== undefined && (!Number.isFinite(platformFee) || platformFee < 0)) {
+        return NextResponse.json({ error: 'Platform fee must be a non-negative ZAR amount.' }, { status: 400 });
+      }
+      if (recordType === 'subscription' && platformFee !== undefined) {
+        return NextResponse.json({ error: 'Plan subscription payments are recorded as platform revenue; only reconcile their processor fee.' }, { status: 400 });
       }
 
       let createdAt: Date | null = null;
       if (recordType === 'purchase') {
-        const row = await prisma.purchase.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
-        createdAt = row.createdAt;
+        const existing = await prisma.purchase.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true } });
+        if (!existing) return NextResponse.json({ error: 'Purchase not found.' }, { status: 404 });
+        const data: any = {};
+        if (processorFee !== undefined) data.processorFee = Math.round(processorFee * 100) / 100;
+        if (platformFee !== undefined) {
+          if (platformFee > existing.amount) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+          data.platformFee = Math.round(platformFee * 100) / 100;
+          data.netAmount = Math.round((existing.amount - platformFee) * 100) / 100;
+        }
+        await prisma.purchase.update({ where: { id: recordId }, data });
+        if (platformFee !== undefined) {
+          await prisma.artistPayout.updateMany({ where: { reference: { not: '' }, status: 'pending', reference: { equals: (await prisma.purchase.findUnique({ where: { id: recordId }, select: { paystackReference: true } }))?.paystackReference || '__no_match__' } }, data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 } });
+        }
+        createdAt = existing.createdAt;
       } else if (recordType === 'support') {
-        const row = await prisma.supportTxn.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
-        createdAt = row.createdAt;
+        const existing = await prisma.supportTxn.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true, paystackReference: true } });
+        if (!existing) return NextResponse.json({ error: 'Support payment not found.' }, { status: 404 });
+        const data: any = {};
+        if (processorFee !== undefined) data.processorFee = Math.round(processorFee * 100) / 100;
+        if (platformFee !== undefined) {
+          if (platformFee > existing.amount) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+          data.platformFee = Math.round(platformFee * 100) / 100;
+          data.netAmount = Math.round((existing.amount - platformFee) * 100) / 100;
+        }
+        await prisma.supportTxn.update({ where: { id: recordId }, data });
+        if (platformFee !== undefined && existing.paystackReference) {
+          await prisma.artistPayout.updateMany({ where: { reference: existing.paystackReference, status: 'pending' }, data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 } });
+        }
+        createdAt = existing.createdAt;
       } else if (recordType === 'subscription') {
-        const row = await prisma.artistPlanSubscription.update({ where: { id: recordId }, data: { processorFee: Math.round(fee * 100) / 100 }, select: { createdAt: true } });
-        createdAt = row.createdAt;
+        const existing = await prisma.artistPlanSubscription.findUnique({ where: { id: recordId }, select: { createdAt: true } });
+        if (!existing) return NextResponse.json({ error: 'Plan subscription not found.' }, { status: 404 });
+        await prisma.artistPlanSubscription.update({ where: { id: recordId }, data: { processorFee: Math.round((processorFee ?? 0) * 100) / 100 } });
+        createdAt = existing.createdAt;
       } else {
-        const rows = await prisma.$queryRawUnsafe<Array<{ createdAt: Date }>>(
-          'UPDATE "IndustryServiceOrder" SET "processorFee" = $1 WHERE id = $2 RETURNING "createdAt"',
-          Math.round(fee * 100) / 100, recordId,
+        const existingRows = await prisma.$queryRawUnsafe<Array<{ id: string; amount: number; platformFee: number; netAmount: number; createdAt: Date; industryUserId: string }>>(
+          'SELECT id, amount, "platformFee", "netAmount", "createdAt", "industryUserId" FROM "IndustryServiceOrder" WHERE id = $1',
+          recordId,
         );
-        if (!rows.length) return NextResponse.json({ error: 'Industry service payment not found.' }, { status: 404 });
-        createdAt = rows[0].createdAt;
+        const existing = existingRows[0];
+        if (!existing) return NextResponse.json({ error: 'Industry service payment not found.' }, { status: 404 });
+        const nextPlatformFee = platformFee === undefined ? Number(existing.platformFee) : platformFee;
+        if (nextPlatformFee > Number(existing.amount)) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+        const nextNet = Math.round((Number(existing.amount) - nextPlatformFee) * 100) / 100;
+        await prisma.$executeRawUnsafe(
+          'UPDATE "IndustryServiceOrder" SET "processorFee" = COALESCE($1, "processorFee"), "platformFee" = $2, "netAmount" = $3 WHERE id = $4',
+          processorFee === undefined ? null : Math.round(processorFee * 100) / 100,
+          nextPlatformFee, nextNet, recordId,
+        );
+        if (platformFee !== undefined) {
+          const delta = nextNet - Number(existing.netAmount);
+          await prisma.$executeRawUnsafe('UPDATE "IndustryUser" SET "totalEarnings" = "totalEarnings" + $1 WHERE id = $2', delta, existing.industryUserId);
+        }
+        createdAt = existing.createdAt;
       }
 
-      // Recalculate statements for the affected month, but never rewrite a paid statement.
+      // Recalculate non-paid statements for the month of the corrected transaction.
       if (createdAt) {
         const periodStart = new Date(Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), 1));
         const statements = await prisma.partnerMonthlyStatement.findMany({
           where: { periodStart, status: { not: 'paid' } },
-          select: { partnerId: true },
+          select: { partnerId: true, id: true },
         });
         for (const statement of statements) {
-          await createPartnerMonthlyStatement(statement.partnerId, periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1);
+          const updated = await createPartnerMonthlyStatement(statement.partnerId, periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1);
+          await prisma.partnerPayout.updateMany({
+            where: { statementId: statement.id, status: { notIn: ['paid', 'rejected'] } },
+            data: { amount: updated.shareAmount },
+          });
         }
       }
-      return NextResponse.json({ ok: true, recordType, recordId, processorFee: Math.round(fee * 100) / 100 });
+      return NextResponse.json({ ok: true, recordType, recordId, processorFee: processorFee ?? null, platformFee: platformFee ?? null });
     }
 
     // ── Create payout ─────────────────────────────────────────────────────────
