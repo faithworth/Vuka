@@ -1419,6 +1419,7 @@ model ArtistPlanSubscription {
   paystackToken       String?   // reserved for future recurring billing
   amount              Float
   currency            String    @default("ZAR")
+  processorFee        Float?    // null means processor fee is unknown/not supplied
   billingInterval     String    @default("monthly")
   currentPeriodStart  DateTime  @default(now())
   currentPeriodEnd    DateTime
