@@ -127,6 +127,11 @@ export async function createPartnerMonthlyStatement(partnerId: string, year: num
     ? `Draft only: ${revenue.unknownProcessorFeeRows} processor fee record(s) are unknown; reconcile before payment.`
     : '';
 
+  await prisma.partnerProfile.update({
+    where: { id: partnerId },
+    data: { currentRate: rate },
+  });
+
   return prisma.partnerMonthlyStatement.upsert({
     where: { partnerId_periodStart: { partnerId, periodStart } },
     create: {
