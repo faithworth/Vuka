@@ -1,5 +1,7 @@
 -- Partner fee-share profiles, monthly statements, and payout history.
 -- All monetary history is additive; this migration does not delete or rewrite existing payments.
+ALTER TABLE "MarketplaceOrder" ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
+ALTER TABLE "IndustryServiceOrder" ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
 CREATE TABLE IF NOT EXISTS "partner_profiles" (
   "id" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
