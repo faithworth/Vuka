@@ -1,13 +1,13 @@
 // src/app/api/industry/order/route.ts
 // Artist pays for an industry service through Vuka Music.
-// POST  — create order + Paystack payment URL
+// POST  — create order + Yoco payment URL (legacy Paystack references remain reconcilable)
 // GET   — artist views their own industry orders
 
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
 import prisma, { queryRaw, executeRaw } from '@/lib/prisma';
-import { initializeTransaction, generateReference } from '@/lib/paystack';
+import { createYocoCheckout, generateReference } from '@/lib/yoco';
 
 // 10% platform fee charged to industry (deducted from what industry receives)
 const INDUSTRY_PLATFORM_FEE_PCT = 0.10;
@@ -66,30 +66,32 @@ export async function POST(req: NextRequest) {
     );
     const o = order[0];
 
-    // Initialize Paystack transaction (artist pays the full amount; platform takes 10% from industry's net)
-    const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
+    // New Industry service orders use Yoco. Keep the existing reference column
+    // and legacy Paystack webhook handler so payments already in flight can finish.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vukamusic.com';
     const reference = generateReference('ISO');
-
-    const result = await initializeTransaction({
-      email:       user.email,
-      amountZAR:   amount,
+    const result = await createYocoCheckout({
+      amountZAR: amount,
+      currency: 'ZAR',
       reference,
-      callbackUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&success=1`,
+      successUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&success=1`,
+      cancelUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&cancelled=1`,
+      failureUrl: `${appUrl}/dashboard/purchases?iso=${o.id}&failed=1`,
       metadata: {
-        orderId:   o.id,
-        type:      'industry_order',
+        orderId: o.id,
+        type: 'industry_order',
         serviceTitle: `${service.title} — ${service.industryUser.user.name || 'Professional'}`.slice(0, 100),
+        checkoutId: '',
       },
     });
 
-    // Store reference so the order can be reconciled later
     await executeRaw(
       `UPDATE "IndustryServiceOrder" SET "payfastPaymentId" = $1, "updatedAt" = now() WHERE id = $2`,
       reference,
       o.id,
     );
 
-    return NextResponse.json({ ok: true, orderId: o.id, payUrl: result.authorizationUrl, reference, amount, platformFee, netAmount });
+    return NextResponse.json({ ok: true, orderId: o.id, payUrl: result.redirectUrl, reference, amount, platformFee, netAmount });
   } catch (err) {
     console.error('[industry/order POST]', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
