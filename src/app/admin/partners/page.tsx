@@ -26,6 +26,9 @@ export default function AdminPartnersPage() {
   });
   const [reference, setReference] = useState('');
   const [payoutId, setPayoutId] = useState('');
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  const [selectedPartnerDetails, setSelectedPartnerDetails] = useState<any>(null);
+  const [loadingPartnerDetails, setLoadingPartnerDetails] = useState(false);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -62,7 +65,25 @@ export default function AdminPartnersPage() {
   }
 
   async function issueStatements() {
-    await action({ action: 'issue_statements', period }, 'Monthly statement run completed. Drafts with unknown processor fees remain blocked from payout.');
+    await action({ action: 'issue_statements', period }, 'Monthly statement run completed. Drafts with unknown fee values remain blocked from payout.');
+  }
+
+  async function enableMyPartnerPortal() {
+    await action({ action: 'create_self' }, 'Your partner profile is ready. Open /partner/ using this same login.');
+  }
+
+  async function openPartnerProgress(partnerId: string) {
+    setSelectedPartnerId(partnerId);
+    setLoadingPartnerDetails(true);
+    setSelectedPartnerDetails(null);
+    try {
+      const response = await fetch(`/api/admin/partners?partnerId=${encodeURIComponent(partnerId)}`, { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load partner details.');
+      setSelectedPartnerDetails(payload);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load partner details.');
+    } finally { setLoadingPartnerDetails(false); }
   }
 
   async function markPaid(e: React.FormEvent) {
@@ -81,7 +102,11 @@ export default function AdminPartnersPage() {
     <main className="max-w-7xl p-5 md:p-9 space-y-7">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div><p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--sky)' }}>Vuka Music · Admin</p><h1 className="text-3xl font-black" style={{ color: 'var(--text)' }}>Partner Program</h1><p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>Manage partner access, qualifying creators, monthly fee-share statements, and manual payout reconciliation.</p></div>
-        <button onClick={load} className="p-3 rounded-xl" aria-label="Refresh partners" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}><RefreshCw size={17} /></button>
+        <div className="flex flex-wrap gap-2">
+          <a href="/partner/" className="px-4 py-3 rounded-xl text-sm font-bold" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>Open my partner portal</a>
+          <button onClick={enableMyPartnerPortal} disabled={working} className="px-4 py-3 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: 'var(--sky)', color: '#06111b' }}>Enable my partner portal</button>
+          <button onClick={load} className="p-3 rounded-xl" aria-label="Refresh partners" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}><RefreshCw size={17} /></button>
+        </div>
       </header>
 
       {error && <p className="rounded-xl p-3 text-sm" style={{ background: 'rgba(220,70,70,.1)', color: '#e66' }}>{error}</p>}
@@ -105,8 +130,18 @@ export default function AdminPartnersPage() {
 
       <section className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="p-5 border-b" style={{ borderColor: 'var(--border)' }}><h2 className="font-bold" style={{ color: 'var(--text)' }}>Partners and their progress</h2></div>
-        {partners.length === 0 ? <p className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>No partner profiles created yet.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Partner','Referral link','Creators','Base share','Status','Open portal'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead><tbody>{partners.map(p => <tr key={p.id} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3"><p className="font-bold" style={{ color: 'var(--text)' }}>{p.user.name}</p><p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.user.email}</p>{p.paypalEmail && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>PayPal: {p.paypalEmail}</p>}</td><td className="p-3"><code className="text-xs" style={{ color: 'var(--sky)' }}>{p.referralCode}</code></td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{p.referredCreators}</td><td className="p-3" style={{ color: 'var(--text)' }}>{(p.currentRate * 100).toFixed(1)}% current estimate / {(p.baseRate * 100).toFixed(1)}% base</td><td className="p-3"><button onClick={() => action({ action: 'set_status', partnerId: p.id, isActive: !p.isActive }, p.isActive ? 'Partner paused.' : 'Partner reactivated.')} className="px-2 py-1 rounded-full text-xs font-bold" style={{ background: p.isActive ? 'rgba(70,180,110,.12)' : 'rgba(220,170,50,.12)', color: p.isActive ? 'var(--green)' : '#d99b26' }}>{p.isActive ? 'Active' : 'Paused'}</button></td><td className="p-3"><a href="/partner/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--sky)' }}>Portal <ExternalLink size={12} /></a></td></tr>)}</tbody></table></div>}
+        {partners.length === 0 ? <p className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>No partner profiles created yet.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Partner','Referral link','Creators','Base share','Status','Open portal'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead><tbody>{partners.map(p => <tr key={p.id} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3"><p className="font-bold" style={{ color: 'var(--text)' }}>{p.user.name}</p><p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.user.email}</p>{p.paypalEmail && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>PayPal: {p.paypalEmail}</p>}</td><td className="p-3"><code className="text-xs" style={{ color: 'var(--sky)' }}>{p.referralCode}</code></td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{p.referredCreators}</td><td className="p-3" style={{ color: 'var(--text)' }}>{(p.currentRate * 100).toFixed(1)}% current estimate / {(p.baseRate * 100).toFixed(1)}% base</td><td className="p-3"><button onClick={() => action({ action: 'set_status', partnerId: p.id, isActive: !p.isActive }, p.isActive ? 'Partner paused.' : 'Partner reactivated.')} className="px-2 py-1 rounded-full text-xs font-bold" style={{ background: p.isActive ? 'rgba(70,180,110,.12)' : 'rgba(220,170,50,.12)', color: p.isActive ? 'var(--green)' : '#d99b26' }}>{p.isActive ? 'Active' : 'Paused'}</button></td><td className="p-3"><button onClick={() => openPartnerProgress(p.id)} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--sky)' }}>View progress <ExternalLink size={12} /></button></td></tr>)}</tbody></table></div>}
       </section>
+
+      {selectedPartnerId && (
+        <section className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="p-5 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--border)' }}>
+            <div><h2 className="font-bold" style={{ color: 'var(--text)' }}>Partner qualification detail</h2><p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{selectedPartnerDetails?.partner?.user?.name || 'Loading partner'} · Rate estimate {selectedPartnerDetails ? (selectedPartnerDetails.rate * 100).toFixed(1) + '%' : '—'}</p></div>
+            <button onClick={() => { setSelectedPartnerId(''); setSelectedPartnerDetails(null); }} className="text-xs font-bold" style={{ color: 'var(--sky)' }}>Close</button>
+          </div>
+          {loadingPartnerDetails ? <p className="p-5 text-sm" style={{ color: 'var(--text-muted)' }}>Loading creator qualification data…</p> : selectedPartnerDetails?.creators?.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Creator','Role','Verification','Release','Sales / 90d','Unique fans','Gross / 90d','Category','Points'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead><tbody>{selectedPartnerDetails.creators.map((c: any) => <tr key={c.userId} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3" style={{ color: 'var(--text)' }}>{c.name}</td><td className="p-3 capitalize" style={{ color: 'var(--text)' }}>{c.role}</td><td className="p-3" style={{ color: c.verified ? 'var(--green)' : '#d99b26' }}>{c.verified ? 'Verified' : 'Pending'}</td><td className="p-3" style={{ color: c.hasRelease ? 'var(--green)' : '#d99b26' }}>{c.hasRelease ? 'Yes' : 'No'}</td><td className="p-3" style={{ color: 'var(--text)' }}>{c.sales90d}</td><td className="p-3" style={{ color: 'var(--text)' }}>{c.uniqueFans90d}</td><td className="p-3" style={{ color: 'var(--text)' }}>{money(c.grossSales90d)}</td><td className="p-3 capitalize" style={{ color: 'var(--text)' }}>{c.category.replaceAll('_', ' ')}</td><td className="p-3" style={{ color: 'var(--text)' }}>{c.points.toFixed(1)}</td></tr>)}</tbody></table></div> : <p className="p-5 text-sm" style={{ color: 'var(--text-muted)' }}>No referred creator accounts to display.</p>}
+        </section>
+      )}
 
       <section className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="p-5 border-b" style={{ borderColor: 'var(--border)' }}><h2 className="font-bold" style={{ color: 'var(--text)' }}>Recent statements</h2></div>
