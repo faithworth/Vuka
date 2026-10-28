@@ -30,6 +30,7 @@ import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { activatePlanPayment } from '@/lib/plan-payments';
 import { handleSupportPayment } from '@/lib/webhooks/paystack-handlers';
+import { auditLog } from '@/lib/audit';
 
 export async function POST(req: NextRequest) {
   const traceId = req.headers.get('x-trace-id') ?? 'no-trace';
@@ -119,6 +120,56 @@ export async function POST(req: NextRequest) {
 
   if (!reference || verifiedAmountZAR === undefined) {
     return NextResponse.json({ ok: true });
+  }
+
+  // Industry services use ISO_ references. New orders are paid through Yoco;
+  // old Paystack orders continue through the legacy Paystack webhook.
+  if (reference.startsWith('ISO_')) {
+    if (verifiedCurrency && verifiedCurrency !== 'ZAR') return new NextResponse('Currency mismatch', { status: 400 });
+    const orders = await prisma.$queryRawUnsafe<Array<{
+      id: string; amount: number; artistId: string; industryUserId: string; serviceTitle: string;
+    }>>(
+      `SELECT iso.id, iso.amount, iso."artistId", iso."industryUserId", s.title AS "serviceTitle"
+         FROM "IndustryServiceOrder" iso
+         JOIN "IndustryService" s ON s.id = iso."serviceId"
+        WHERE iso."payfastPaymentId" = $1 AND iso.status = 'pending'`,
+      reference,
+    );
+    const order = orders[0];
+    if (!order) {
+      // Duplicate webhook delivery or an already-finalized order is harmless.
+      return NextResponse.json({ ok: true, type: 'industry_order', duplicate: true });
+    }
+    const amount = Number(order.amount);
+    if (!Number.isFinite(amount) || Math.abs(amount - verifiedAmountZAR) > 0.01) {
+      logger.warn('[yoco/webhook] Industry order amount mismatch', { traceId, reference, expected: amount, received: verifiedAmountZAR });
+      return new NextResponse('Amount mismatch', { status: 400 });
+    }
+
+    const platformFee = Math.round(verifiedAmountZAR * 0.10 * 100) / 100;
+    const netAmount = Math.round((verifiedAmountZAR - platformFee) * 100) / 100;
+    const processed = await prisma.$transaction(async tx => {
+      const updated = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        `UPDATE "IndustryServiceOrder"
+            SET status = 'paid', "platformFee" = $1, "netAmount" = $2, "processorFee" = NULL, "updatedAt" = now()
+          WHERE id = $3 AND status = 'pending'
+          RETURNING id`,
+        platformFee, netAmount, order.id,
+      );
+      if (!updated.length) return false;
+      await tx.$executeRawUnsafe(
+        `UPDATE "IndustryUser" SET "totalEarnings" = "totalEarnings" + $1 WHERE id = $2`,
+        netAmount, order.industryUserId,
+      );
+      return true;
+    });
+    if (!processed) return NextResponse.json({ ok: true, type: 'industry_order', duplicate: true });
+
+    await auditLog.adminAction(
+      'industry_order.paid', 'IndustryServiceOrder', order.id, 'system',
+      `Industry service "${order.serviceTitle}" paid through Yoco by artist ${order.artistId}; R${netAmount.toFixed(2)} credited to industry_user:${order.industryUserId}. Processor fee remains unknown until Yoco supplies a confirmed fee value.`,
+    );
+    return NextResponse.json({ ok: true, type: 'industry_order' });
   }
 
   if (reference.startsWith('SUPY_')) {
