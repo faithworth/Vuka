@@ -71,10 +71,12 @@ export async function POST(req: NextRequest) {
       }
       if (action === 'exclude_creator') {
         if (reason.length < 5) return NextResponse.json({ error: 'Provide a clear exclusion reason (at least 5 characters).' }, { status: 400 });
+        const now = new Date();
+        const effectiveFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
         await prisma.partnerCreatorExclusion.upsert({
           where: { partnerId_referredUserId: { partnerId, referredUserId } },
-          create: { partnerId, referredUserId, createdByUserId: admin.id, reason },
-          update: { createdByUserId: admin.id, reason },
+          create: { partnerId, referredUserId, createdByUserId: admin.id, reason, effectiveFrom },
+          update: { createdByUserId: admin.id, reason, effectiveFrom },
         });
       } else {
         await prisma.partnerCreatorExclusion.deleteMany({ where: { partnerId, referredUserId } });
