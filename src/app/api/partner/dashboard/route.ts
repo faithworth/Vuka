@@ -77,6 +77,10 @@ export async function PATCH(req: NextRequest) {
       data: { paypalEmail: paypalEmail || null },
       select: { paypalEmail: true },
     });
+    await prisma.partnerPayout.updateMany({
+      where: { partnerId: partner.id, status: { in: ['pending', 'approved'] } },
+      data: { destination: updated.paypalEmail || '' },
+    });
     return NextResponse.json({ ok: true, paypalEmail: updated.paypalEmail ?? '' });
   } catch (error) {
     console.error('[partner/dashboard PATCH]', error);
