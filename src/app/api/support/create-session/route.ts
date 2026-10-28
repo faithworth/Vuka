@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { initializeTransaction, generateReference } from '@/lib/paystack';
 import { createYocoCheckout, generateReference as generateYocoReference } from '@/lib/yoco';
 import { logger } from '@/lib/logger';
 import { schemas, validationError } from '@/lib/validation';
@@ -21,7 +20,10 @@ export async function POST(req: NextRequest) {
     const parsed = schemas.support.create.safeParse(raw);
     if (!parsed.success) return validationError(parsed.error);
     const { artistSlug, amount, message, fanName, fanEmail, isPublic, tier } = parsed.data;
-    const requestedMethod = raw.paymentMethod === 'yoco' ? 'yoco' : 'paystack';
+    if (raw.paymentMethod === 'paystack') {
+      return NextResponse.json({ error: 'Paystack is no longer supported. Choose Yoco.' }, { status: 410 });
+    }
+    const requestedMethod = 'yoco';
 
     const artist = await prisma.artist.findUnique({ where: { slug: artistSlug }, include: { user: true } });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
@@ -40,10 +42,10 @@ export async function POST(req: NextRequest) {
     });
 
     const appUrl    = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const reference = generateReference('SUP');
+    const reference = generateYocoReference('SUPY');
 
     if (requestedMethod === 'yoco') {
-      const yocoReference = generateYocoReference('SUPY');
+      const yocoReference = reference;
       const checkout = await createYocoCheckout({
         amountZAR: amount,
         currency: 'ZAR',
