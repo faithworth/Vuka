@@ -94,6 +94,28 @@ function OverviewTab({ onArtistClick }: { onArtistClick: (id: string) => void })
         </div>
       </div>
 
+      {/* Shared fee ledger — the same source used by partner statements */}
+      {data.ledger && (
+        <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Reconciled Platform-Fee Ledger</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Shared calculation used by partner fee-share statements. Confirmed sales only; refunded purchases and support transactions are excluded. VAT is held at R0 until Vuka confirms VAT registration.</p>
+          </div>
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            <StatCard label="Recorded platform fees" value={formatCurrency(data.ledger.grossPlatformFees)} />
+            <StatCard label="Known processor fees" value={formatCurrency(data.ledger.knownProcessorFees)} />
+            <StatCard label="Net after known fees" value={formatCurrency(data.ledger.netPlatformFees)} color="var(--gold)" />
+            <StatCard label="Unknown processor fees" value={String(data.ledger.unknownProcessorFeeRows)} color={data.ledger.unknownProcessorFeeRows ? '#d99b26' : 'var(--green)'} sub="Must be reconciled before final partner payout" />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>{['Source','Recorded platform fees','Known processor fees','Unknown fee rows','Rows'].map(h => <th key={h} className="text-left p-3 whitespace-nowrap">{h}</th>)}</tr></thead>
+              <tbody>{Object.entries(data.ledger.bySource || {}).map(([source, row]: [string, any]) => <tr key={source} className="border-t" style={{ borderColor: 'var(--border)' }}><td className="p-3 capitalize" style={{ color: 'var(--text)' }}>{source.replaceAll('_', ' ')}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.platformFees)}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text)' }}>{formatCurrency(row.knownProcessorFees)}</td><td className="p-3 tabular-nums" style={{ color: row.unknownProcessorFeeRows ? '#d99b26' : 'var(--text)' }}>{row.unknownProcessorFeeRows}</td><td className="p-3 tabular-nums" style={{ color: 'var(--text-muted)' }}>{row.rows}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Sales by type */}
       {salesByType?.length > 0 && (
         <div>
