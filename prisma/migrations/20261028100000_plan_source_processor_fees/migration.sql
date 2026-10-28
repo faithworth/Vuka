@@ -14,11 +14,9 @@ ALTER TABLE "SupportTxn"
 ALTER TABLE "artist_plan_subscriptions"
   ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
 
--- Backfill fee split for old tips using the current recorded amount only.
+-- Do not fabricate historical tip fee splits: legacy rows retain zero defaults
+-- and the shared revenue calculation will derive platform fees where possible.
 -- Processor fee remains NULL because historical processor fees are not reliably stored.
-UPDATE "SupportTxn"
-SET "netAmount" = "amount"
-WHERE "netAmount" = 0 AND "amount" > 0;
 
 -- Reclassify existing plans conservatively: known subscription records count as paid;
 -- existing referral rewards count as referral-granted; other non-free plans stay unknown.
