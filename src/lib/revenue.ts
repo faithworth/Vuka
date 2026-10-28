@@ -15,11 +15,12 @@ export interface RevenueSummary {
   knownProcessorFees: number;
   netPlatformFees: number;
   unknownProcessorFeeRows: number;
+  unknownPlatformFeeRows: number;
   vatAmount: 0;
-  bySource: Record<string, { platformFees: number; knownProcessorFees: number; unknownProcessorFeeRows: number; rows: number }>;
+  bySource: Record<string, { platformFees: number; knownProcessorFees: number; unknownProcessorFeeRows: number; unknownPlatformFeeRows: number; rows: number }>;
 }
 
-type RevenueRow = { platformFee: number; processorFee: number | null };
+type RevenueRow = { amount?: number; platformFee: number; processorFee: number | null };
 
 function addSource(
   summary: RevenueSummary,
@@ -29,8 +30,12 @@ function addSource(
   let platformFees = 0;
   let knownProcessorFees = 0;
   let unknownProcessorFeeRows = 0;
+  let unknownPlatformFeeRows = 0;
   for (const row of rows) {
-    platformFees += Math.max(0, Number(row.platformFee) || 0);
+    const fee = Math.max(0, Number(row.platformFee) || 0);
+    const amount = Math.max(0, Number(row.amount) || 0);
+    platformFees += fee;
+    if (amount > 0 && fee <= 0) unknownPlatformFeeRows += 1;
     if (row.processorFee == null || !Number.isFinite(Number(row.processorFee))) {
       unknownProcessorFeeRows += 1;
     } else {
@@ -41,11 +46,13 @@ function addSource(
     platformFees: round2(platformFees),
     knownProcessorFees: round2(knownProcessorFees),
     unknownProcessorFeeRows,
+    unknownPlatformFeeRows,
     rows: rows.length,
   };
   summary.grossPlatformFees += platformFees;
   summary.knownProcessorFees += knownProcessorFees;
   summary.unknownProcessorFeeRows += unknownProcessorFeeRows;
+  summary.unknownPlatformFeeRows += unknownPlatformFeeRows;
 }
 
 function round2(n: number) {
@@ -110,6 +117,7 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
     knownProcessorFees: 0,
     netPlatformFees: 0,
     unknownProcessorFeeRows: 0,
+    unknownPlatformFeeRows: 0,
     vatAmount: 0,
     bySource: {},
   };
@@ -117,7 +125,7 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
   // Sequential reads intentionally avoid exhausting the serverless DB pool.
   const purchases = await prisma.purchase.findMany({
     where: { status: 'confirmed', ...(createdAt ? { createdAt } : {}) },
-    select: { platformFee: true, processorFee: true },
+    select: { amount: true, platformFee: true, processorFee: true },
   });
   addSource(summary, 'marketplace_and_direct_sales', purchases);
 
@@ -136,6 +144,7 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
   });
   addSource(summary, 'artist_plan_subscriptions', subscriptions.map((s) => ({
     // Subscription payments are paid to Vuka; only known processor fees are deducted.
+    amount: Number(s.amount) || 0,
     platformFee: Number(s.amount) || 0,
     processorFee: s.processorFee,
   })));
@@ -143,8 +152,8 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
   // Marketplace service checkout also writes a Purchase row, so it is already
   // included above. Counting MarketplaceOrder here would double-count that fee.
   // IndustryServiceOrder is a legacy SQL-backed table; include its paid ledger rows.
-  const industryOrders = await prisma.$queryRawUnsafe<Array<{ platformFee: number; processorFee: number | null }>>(
-    `SELECT "platformFee", "processorFee"
+  const industryOrders = await prisma.$queryRawUnsafe<Array<{ amount: number; platformFee: number; processorFee: number | null }>>(
+    `SELECT amount, "platformFee", "processorFee"
        FROM "IndustryServiceOrder"
       WHERE status = 'paid'
         AND ($1::timestamptz IS NULL OR "createdAt" >= $1)
@@ -153,6 +162,7 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
     periodEnd ?? null,
   );
   addSource(summary, 'industry_services', industryOrders.map((o) => ({
+    amount: Number(o.amount) || 0,
     platformFee: Number(o.platformFee) || 0,
     processorFee: o.processorFee == null ? null : Number(o.processorFee),
   })));
