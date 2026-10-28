@@ -19,14 +19,19 @@ export async function POST(req: NextRequest) {
     const result = await paypal.orders.capture(orderId, `vuka-support-capture-${txn.id}`);
     if (result.status !== 'COMPLETED') return NextResponse.json({ error: `Payment not completed (status: ${result.status})` }, { status: 402 });
 
-    const capturedUSD = Number(result.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value || 0);
+    const capture = result.purchase_units?.[0]?.payments?.captures?.[0];
+    const capturedUSD = Number(capture?.amount?.value || 0);
+    const paypalFeeValue = capture?.seller_receivable_breakdown?.paypal_fee?.value;
     const fx = await getZarToUsdRate();
+    const processorFeeZAR = paypalFeeValue != null && fx.zarToUsdRate > 0
+      ? Math.round((Number(paypalFeeValue) / fx.zarToUsdRate) * 100) / 100
+      : null;
     const expectedUSD = Number(fx.zarToUsdRate > 0 ? (txn.amount * fx.zarToUsdRate).toFixed(2) : '0');
     if (Math.abs(capturedUSD - expectedUSD) > 0.02) {
       return NextResponse.json({ error: 'Captured amount does not match the support amount.' }, { status: 409 });
     }
 
-    const ok = await handleSupportPayment(`paypal:${orderId}`, txn.amount, txn.currency, 'paypal', 'paypal-support');
+    const ok = await handleSupportPayment(`paypal:${orderId}`, txn.amount, txn.currency, 'paypal', 'paypal-support', processorFeeZAR);
     if (!ok) return NextResponse.json({ error: 'Support payment could not be confirmed.' }, { status: 500 });
 
     return NextResponse.json({ ok: true, txnId });
