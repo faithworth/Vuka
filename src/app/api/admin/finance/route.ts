@@ -15,6 +15,7 @@ import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { platformFeeRate } from '@/lib/plans';
 import { approvePayoutRequest, rejectPayoutRequest } from '@/lib/payouts';
+import { getPlatformRevenue } from '@/lib/revenue';
 
 // Default rate used ONLY for aggregate tip calculations in the overview,
 // where we don't load per-artist plan data. Per-artist views always use
@@ -110,10 +111,23 @@ export async function GET(req: NextRequest) {
   const view = searchParams.get('view') || 'overview';
 
   try {
+    // Shared fee ledger used by partner statements and the admin finance view.
+    if (view === 'ledger') {
+      const startParam = searchParams.get('start');
+      const endParam = searchParams.get('end');
+      const start = startParam ? new Date(startParam) : undefined;
+      const end = endParam ? new Date(endParam) : undefined;
+      if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) {
+        return NextResponse.json({ error: 'Invalid ledger date range.' }, { status: 400 });
+      }
+      return NextResponse.json({ ledger: await getPlatformRevenue(start, end) });
+    }
+
     // ─── OVERVIEW ────────────────────────────────────────────────────────────
     if (view === 'overview') {
       const now = new Date();
       const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sharedLedger = await getPlatformRevenue();
 
       // Sequential queries — avoids connection pool exhaustion (limit: 1)
       const allPurchases = await prisma.purchase.findMany({
@@ -311,6 +325,7 @@ export async function GET(req: NextRequest) {
         },
         topArtists,
         salesByType: salesByTypeRows,
+        ledger: sharedLedger,
       });
     }
 
