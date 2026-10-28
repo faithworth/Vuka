@@ -36,9 +36,9 @@ function addSource(
     const amount = Math.max(0, Number(row.amount) || 0);
     platformFees += fee;
     if (amount > 0 && fee <= 0) unknownPlatformFeeRows += 1;
-    if (row.processorFee == null || !Number.isFinite(Number(row.processorFee))) {
+    if (amount > 0 && (row.processorFee == null || !Number.isFinite(Number(row.processorFee)))) {
       unknownProcessorFeeRows += 1;
-    } else {
+    } else if (row.processorFee != null && Number.isFinite(Number(row.processorFee))) {
       knownProcessorFees += Math.max(0, Number(row.processorFee) || 0);
     }
   }
@@ -74,7 +74,7 @@ export interface UnknownProcessorFeeRow {
 export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownProcessorFeeRow[]> {
   const rows: UnknownProcessorFeeRow[] = [];
   const purchases = await prisma.purchase.findMany({
-    where: { status: 'confirmed', OR: [{ processorFee: null }, { platformFee: 0 }] },
+    where: { status: 'confirmed', amount: { gt: 0 }, OR: [{ processorFee: null }, { platformFee: 0 }] },
     select: { id: true, itemType: true, amount: true, platformFee: true, processorFee: true, createdAt: true, paystackReference: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -82,7 +82,7 @@ export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownPr
   rows.push(...purchases.map(p => ({ id: p.id, recordType: 'purchase' as const, source: p.itemType, amount: p.amount, platformFee: p.platformFee, processorFee: p.processorFee, platformFeeMissing: p.amount > 0 && p.platformFee <= 0, createdAt: p.createdAt, reference: p.paystackReference || '' })));
 
   const tips = await prisma.supportTxn.findMany({
-    where: { status: 'confirmed', OR: [{ processorFee: null }, { platformFee: 0 }] },
+    where: { status: 'confirmed', amount: { gt: 0 }, OR: [{ processorFee: null }, { platformFee: 0 }] },
     select: { id: true, amount: true, platformFee: true, processorFee: true, createdAt: true, paystackReference: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -90,7 +90,7 @@ export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownPr
   rows.push(...tips.map(t => ({ id: t.id, recordType: 'support' as const, source: 'artist_support', amount: t.amount, platformFee: t.platformFee, processorFee: t.processorFee, platformFeeMissing: t.amount > 0 && t.platformFee <= 0, createdAt: t.createdAt, reference: t.paystackReference || '' })));
 
   const subscriptions = await prisma.artistPlanSubscription.findMany({
-    where: { status: { in: ['active', 'cancelled', 'expired'] }, processorFee: null },
+    where: { status: { in: ['active', 'cancelled', 'expired'] }, processorFee: null, amount: { gt: 0 } },
     select: { id: true, planSlug: true, amount: true, processorFee: true, createdAt: true, paystackReference: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -99,7 +99,7 @@ export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownPr
 
   const industry = await prisma.$queryRawUnsafe<Array<{ id: string; amount: number; platformFee: number; processorFee: number | null; createdAt: Date; reference: string }>>(
     `SELECT id, amount, "platformFee", "processorFee", "createdAt", COALESCE("payfastPaymentId", '') AS reference
-       FROM "IndustryServiceOrder" WHERE status = 'paid' AND ("processorFee" IS NULL OR ("platformFee" <= 0 AND amount > 0))
+       FROM "IndustryServiceOrder" WHERE status = 'paid' AND amount > 0 AND ("processorFee" IS NULL OR "platformFee" <= 0)
        ORDER BY "createdAt" DESC LIMIT $1`,
     limit,
   );
