@@ -28,7 +28,7 @@ model User {
   name            String
   legalName       String?              // full legal name for payout/KYC identity — distinct from public display name
   currency        String               @default("ZAR") // preferred display/default currency
-  role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
+  role            String               @default("fan") // fan, artist, producer, industry, partner, admin, moderator, owner, super_admin
   isSuspended     Boolean              @default(false)
   suspendedAt     DateTime?
   suspendedReason String               @default("")
@@ -37,6 +37,7 @@ model User {
   referralCode    String?              @unique  // this user's shareable code (auto-generated on first access)
   referredBy      String?                       // the code used when this user signed up
   referralRewards ReferralReward[]
+  partnerProfile  PartnerProfile?
   // ── Relations ──
   artist          Artist?
   industryUser    IndustryUser?
@@ -1625,6 +1626,75 @@ model ReferralReward {
 
   @@index([userId])
   @@map("referral_rewards")
+}
+
+// ── PARTNER FEE-SHARE PROGRAM ────────────────────────────────────────────────
+// Partners are existing authenticated User accounts with role=partner.
+// Attribution is stored in User.referredBy using the unique PartnerProfile code.
+model PartnerProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referralCode String   @unique
+  baseRate     Float    @default(0.10)
+  currentRate  Float    @default(0.10)
+  isActive     Boolean  @default(true)
+  notes        String   @default("")
+  statements   PartnerMonthlyStatement[]
+  payouts      PartnerPayout[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("partner_profiles")
+}
+
+model PartnerMonthlyStatement {
+  id                    String        @id @default(cuid())
+  partnerId             String
+  partner               PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  periodStart            DateTime
+  periodEnd              DateTime
+  grossPlatformFees      Float         @default(0)
+  knownProcessorFees     Float         @default(0)
+  netPlatformFees        Float         @default(0)
+  unknownProcessorFeeRows Int          @default(0)
+  shareRate              Float         @default(0.10)
+  shareAmount            Float         @default(0)
+  qualifyingCreators     Int           @default(0)
+  categoryBreakdown      Json          @default("{}")
+  status                 String        @default("draft") // draft, issued, paid, adjusted
+  notes                  String        @default("")
+  issuedAt               DateTime?
+  paidAt                 DateTime?
+  payouts                PartnerPayout[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@unique([partnerId, periodStart])
+  @@index([periodStart, status])
+  @@map("partner_monthly_statements")
+}
+
+model PartnerPayout {
+  id          String                 @id @default(cuid())
+  partnerId   String
+  partner     PartnerProfile         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  statementId String?
+  statement   PartnerMonthlyStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  amount      Float
+  currency    String                 @default("ZAR")
+  method      String                 @default("paypal") // paypal interim; bank only after OZOW is approved
+  destination String                 @default("")
+  status      String                 @default("pending") // pending, approved, paid, rejected
+  reference   String                 @default("")
+  adminNotes  String                 @default("")
+  paidAt      DateTime?
+  createdAt   DateTime               @default(now())
+
+  @@index([partnerId, status])
+  @@index([statementId])
+  @@map("partner_payouts")
 }
 
 // ── PLAQUES / ACHIEVEMENTS ────────────────────────────────────────────────────
