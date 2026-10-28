@@ -4,17 +4,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { createPartnerMonthlyStatement } from '@/lib/partners';
+import { createPartnerMonthlyStatement, getPartnerCreatorQualifications, rateFromQualifications } from '@/lib/partners';
 
 function makePartnerCode(name: string) {
   const stem = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'partner';
   return `partner-${stem}-${randomBytes(3).toString('hex')}`;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
+    const partnerId = new URL(req.url).searchParams.get('partnerId');
+    if (partnerId) {
+      const partner = await prisma.partnerProfile.findUnique({
+        where: { id: partnerId },
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+          statements: { orderBy: { periodStart: 'desc' }, take: 24 },
+          payouts: { orderBy: { createdAt: 'desc' }, take: 50 },
+        },
+      });
+      if (!partner) return NextResponse.json({ error: 'Partner not found.' }, { status: 404 });
+      const creators = await getPartnerCreatorQualifications(partner.referralCode);
+      return NextResponse.json({ partner, creators, rate: rateFromQualifications(creators).rate });
+    }
     const partners = await prisma.partnerProfile.findMany({
       include: {
         user: { select: { id: true, name: true, email: true, role: true, createdAt: true } },
@@ -43,6 +57,17 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const action = String(body.action ?? '');
+
+    if (action === 'create_self') {
+      const existing = await prisma.partnerProfile.findUnique({ where: { userId: admin.id } });
+      if (existing) return NextResponse.json({ error: 'Your account already has a partner profile.' }, { status: 409 });
+      const referralCode = makePartnerCode(admin.name);
+      const partner = await prisma.partnerProfile.create({
+        data: { userId: admin.id, referralCode },
+        include: { user: { select: { id: true, name: true, email: true, role: true } } },
+      });
+      return NextResponse.json({ ok: true, partner });
+    }
 
     if (action === 'create') {
       const email = String(body.email ?? '').trim().toLowerCase();
