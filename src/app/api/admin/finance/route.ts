@@ -605,7 +605,7 @@ export async function POST(req: NextRequest) {
 
       let createdAt: Date | null = null;
       if (recordType === 'purchase') {
-        const existing = await prisma.purchase.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true } });
+        const existing = await prisma.purchase.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true, paystackReference: true } });
         if (!existing) return NextResponse.json({ error: 'Purchase not found.' }, { status: 404 });
         const data: any = {};
         if (processorFee !== undefined) data.processorFee = Math.round(processorFee * 100) / 100;
@@ -616,7 +616,12 @@ export async function POST(req: NextRequest) {
         }
         await prisma.purchase.update({ where: { id: recordId }, data });
         if (platformFee !== undefined) {
-          await prisma.artistPayout.updateMany({ where: { reference: { not: '' }, status: 'pending', reference: { equals: (await prisma.purchase.findUnique({ where: { id: recordId }, select: { paystackReference: true } }))?.paystackReference || '__no_match__' } }, data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 } });
+          if (existing.paystackReference) {
+            await prisma.artistPayout.updateMany({
+              where: { reference: existing.paystackReference, status: 'pending' },
+              data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 },
+            });
+          }
         }
         createdAt = existing.createdAt;
       } else if (recordType === 'support') {
