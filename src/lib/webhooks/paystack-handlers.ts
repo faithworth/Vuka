@@ -591,6 +591,7 @@ export async function handleSupportPayment(
   verifiedCurrency = 'ZAR',
   payoutMethod: 'paystack' | 'yoco' | 'paypal' = 'yoco',
   traceId = 'no-trace',
+  processorFeeZAR: number | null = null,
 ) {
   const txn = await prisma.supportTxn.findFirst({
     where: { paystackReference: reference },
@@ -616,7 +617,15 @@ export async function handleSupportPayment(
   const tipNet = calcNet(verifiedAmountZAR, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
 
   await prisma.$transaction(async (tx) => {
-    await tx.supportTxn.update({ where: { id: txn.id }, data: { status: 'confirmed' } });
+    await tx.supportTxn.update({
+      where: { id: txn.id },
+      data: {
+        status: 'confirmed',
+        platformFee: tipFee,
+        netAmount: tipNet,
+        processorFee: processorFeeZAR,
+      },
+    });
     await tx.artistPayout.create({
       data: {
         artistId: txn.artistId,
