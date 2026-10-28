@@ -82,7 +82,7 @@ export default function ReconciliationPanel() {
       </div>
       {error && <p className="m-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(220,70,70,.1)', color: '#e66' }}>{error}</p>}
       {message && <p className="m-4 p-3 rounded-lg text-sm flex items-center gap-2" style={{ background: 'rgba(70,180,110,.1)', color: 'var(--green)' }}><CheckCircle size={14} />{message}</p>}
-      {loading ? <p className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>Loading reconciliation queue…</p> : rows.length === 0 ? <p className="p-6 text-sm" style={{ color: 'var(--green)' }}>No unknown fee rows in the latest 100 settled records.</p> : (
+      {loading ? <p className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>Loading reconciliation queue…</p> : rows.length === 0 ? <p className="p-6 text-sm" style={{ color: 'var(--green)' }}>No unreconciled fee rows found.</p> : (
         <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
           {rows.map(row => {
             const value = inputs[row.id] || { processorFee: '', platformFee: '' };
