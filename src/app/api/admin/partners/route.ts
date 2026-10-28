@@ -42,7 +42,9 @@ export async function GET(req: NextRequest) {
       const referredCreators = await prisma.user.count({
         where: { referredBy: partner.referralCode, role: { in: ['artist', 'producer'] }, artist: { isNot: null } },
       });
-      result.push({ ...partner, referredCreators });
+      const qualifications = await getPartnerCreatorQualifications(partner.referralCode);
+      const currentRate = rateFromQualifications(qualifications).rate;
+      result.push({ ...partner, currentRate, referredCreators, qualifyingCreators: qualifications.filter(c => c.category !== 'none').length });
     }
     return NextResponse.json({ partners: result });
   } catch (error) {
