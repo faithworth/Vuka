@@ -42,11 +42,21 @@ export async function POST(req: NextRequest) {
     const { name, legalName, email, role: rawRole, slug: rawSlug, company, position, ref } = parsed.data;
     const validRole = rawRole;
 
-    // Validate referral code if provided (don't hard-fail — just ignore if invalid)
+    // Accept either an existing creator referral code or an active partner code.
+    // The same referredBy field is retained for backward compatibility; partner
+    // dashboards only count artist/producer accounts, never fans or Industry users.
     let validatedRef: string | undefined;
     if (ref) {
-      const referrer = await prisma.user.findUnique({ where: { referralCode: ref } });
-      if (referrer) validatedRef = ref;
+      const referrer = await prisma.user.findUnique({ where: { referralCode: ref }, select: { id: true } });
+      if (referrer) {
+        validatedRef = ref;
+      } else {
+        const partnerReferrer = await prisma.partnerProfile.findFirst({
+          where: { referralCode: ref, isActive: true },
+          select: { referralCode: true },
+        });
+        if (partnerReferrer) validatedRef = partnerReferrer.referralCode;
+      }
     }
 
     let user = await prisma.user.findUnique({
