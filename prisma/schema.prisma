@@ -81,6 +81,7 @@ model Artist {
   paypalEmail      String?   // preferred PayPal email for international payouts
   planSlug         String               @default("free")
   planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
+  planSource       String               @default("free") // free, paid, referral_reward, admin_grant, unknown
   currency         String               @default("ZAR")
   isPublic         Boolean              @default(true)
   isVerified       Boolean              @default(false)
@@ -333,6 +334,7 @@ model Purchase {
   downloadCount      Int          @default(0)
   platformFee        Float        @default(0)
   netAmount          Float        @default(0)
+  processorFee       Float?       // null means processor fee is unknown/not supplied
   // ── Merch shipping / fulfilment (artist-fulfilled, tracked) ──
   shippingFee        Float        @default(0) // pass-through to artist, excluded from platformFee base
   shippingAddress    Json?        // {name, line1, line2, city, postalCode, province, phone} — merch orders only
@@ -385,6 +387,9 @@ model SupportTxn {
   artist          Artist   @relation(fields: [artistId], references: [id])
   amount          Float
   currency        String   @default("ZAR")
+  platformFee     Float    @default(0)
+  netAmount       Float    @default(0)
+  processorFee    Float?   // null means processor fee is unknown/not supplied
   message         String   @default("")
   tier            String   @default("Listener")
   isPublic        Boolean  @default(true)
