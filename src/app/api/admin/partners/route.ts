@@ -58,6 +58,30 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const action = String(body.action ?? '');
 
+    if (action === 'exclude_creator' || action === 'restore_creator') {
+      const partnerId = String(body.partnerId ?? '');
+      const referredUserId = String(body.referredUserId ?? '');
+      const reason = String(body.reason ?? '').trim();
+      if (!partnerId || !referredUserId) return NextResponse.json({ error: 'Partner and creator IDs are required.' }, { status: 400 });
+      const partner = await prisma.partnerProfile.findUnique({ where: { id: partnerId } });
+      if (!partner) return NextResponse.json({ error: 'Partner not found.' }, { status: 404 });
+      const referredUser = await prisma.user.findUnique({ where: { id: referredUserId }, select: { id: true, referredBy: true, role: true, artist: { select: { id: true } } } });
+      if (!referredUser || referredUser.referredBy !== partner.referralCode || !['artist', 'producer'].includes(referredUser.role) || !referredUser.artist) {
+        return NextResponse.json({ error: 'Creator is not an eligible artist/producer referral for this partner.' }, { status: 400 });
+      }
+      if (action === 'exclude_creator') {
+        if (reason.length < 5) return NextResponse.json({ error: 'Provide a clear exclusion reason (at least 5 characters).' }, { status: 400 });
+        await prisma.partnerCreatorExclusion.upsert({
+          where: { partnerId_referredUserId: { partnerId, referredUserId } },
+          create: { partnerId, referredUserId, createdByUserId: admin.id, reason },
+          update: { createdByUserId: admin.id, reason },
+        });
+      } else {
+        await prisma.partnerCreatorExclusion.deleteMany({ where: { partnerId, referredUserId } });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     if (action === 'create_self') {
       const existing = await prisma.partnerProfile.findUnique({ where: { userId: admin.id } });
       if (existing) return NextResponse.json({ error: 'Your account already has a partner profile.' }, { status: 409 });
