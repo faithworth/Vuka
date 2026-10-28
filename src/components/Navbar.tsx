@@ -17,6 +17,7 @@ export function Navbar() {
   const router    = useRouter();
   const [user,          setUser]          = useState<{ email?: string } | null>(null);
   const [role,          setRole]          = useState<Role>(null);
+  const [isPartner,     setIsPartner]     = useState(false);
   const [unreadNotifs,  setUnreadNotifs]  = useState(0);
   const [unreadMsgs,    setUnreadMsgs]    = useState(0);
   const [mobileOpen,    setMobileOpen]    = useState(false);
@@ -28,13 +29,14 @@ export function Navbar() {
   useEffect(() => {
     const supabase = createClient();
     const loadUser = async (u: any) => {
-      if (!u) { setUser(null); setRole(null); return; }
+      if (!u) { setUser(null); setRole(null); setIsPartner(false); return; }
       setUser(u);
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           const r = data.role;
+          setIsPartner(Boolean(data.isPartner));
           if (['admin', 'owner', 'super_admin'].includes(r)) setRole('admin');
           else if (r === 'industry') setRole('industry');
           else if (data.isArtist || r === 'artist' || r === 'producer') setRole('artist');
@@ -110,7 +112,7 @@ export function Navbar() {
     BookOpen;
 
   // Quick links per role — shown in mobile account section
-  const quickLinks =
+  const roleQuickLinks =
     role === 'artist' ? [
       { href: '/dashboard/uploads',  label: 'Uploads',   icon: Upload },
       { href: '/dashboard/earnings', label: 'Earnings',  icon: DollarSign },
@@ -131,6 +133,9 @@ export function Navbar() {
       { href: '/fan',                 label: 'My Library',  icon: BookOpen },
       { href: '/dashboard/purchases', label: 'Purchases',   icon: ShoppingBag },
     ];
+  const quickLinks = isPartner
+    ? [...roleQuickLinks, { href: '/partner/', label: 'Partner Portal', icon: Users }]
+    : roleQuickLinks;
 
   // Public links — kept intact, all shown in mobile drawer
   const publicLinks = [
