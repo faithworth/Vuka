@@ -16,6 +16,7 @@ export interface CreatorQualification {
   points: number;
   excluded: boolean;
   exclusionReason: string | null;
+  exclusionEffectiveFrom: Date | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -37,11 +38,11 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
     select: {
       id: true,
       userId: true,
-      exclusions: { select: { referredUserId: true, reason: true } },
+      exclusions: { select: { referredUserId: true, reason: true, effectiveFrom: true } },
       milestones: { select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true, history: true } },
     },
   });
-  const exclusions = new Map((partner?.exclusions ?? []).map(item => [item.referredUserId, item.reason]));
+  const exclusions = new Map((partner?.exclusions ?? []).map(item => [item.referredUserId, item]));
   const milestones = new Map((partner?.milestones ?? []).map(item => [item.referredUserId, item]));
   const referred = await prisma.user.findMany({
     where: {
@@ -86,8 +87,10 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
     const uniqueFans = new Set(purchases.map(p => p.buyerEmail.trim().toLowerCase()).filter(Boolean));
     const grossSales90d = round2(purchases.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
     const hasRelease = artist.releases.length > 0;
-    const exclusionReason = exclusions.get(user.id) ?? null;
-    const excluded = Boolean(exclusionReason);
+    const exclusion = exclusions.get(user.id);
+    const exclusionReason = exclusion?.reason ?? null;
+    const exclusionEffectiveFrom = exclusion?.effectiveFrom ?? null;
+    const excluded = Boolean(exclusionEffectiveFrom && exclusionEffectiveFrom <= end);
     const eligible = Boolean(artist.isVerified && hasRelease && !excluded);
     const paidForTwoMonths = artist.planSource === 'paid'
       && artist.planSlug !== 'free'
@@ -169,6 +172,7 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
       points,
       excluded,
       exclusionReason,
+      exclusionEffectiveFrom,
     });
   }
   return results;
