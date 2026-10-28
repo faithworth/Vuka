@@ -93,13 +93,21 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
     processorFee: s.processorFee,
   })));
 
-  const marketplaceOrders = await prisma.marketplaceOrder.findMany({
-    where: { status: 'complete', ...(createdAt ? { completedAt: createdAt } : {}) },
-    select: { platformFee: true },
-  });
-  addSource(summary, 'marketplace_services', marketplaceOrders.map((o) => ({
+  // Marketplace service checkout also writes a Purchase row, so it is already
+  // included above. Counting MarketplaceOrder here would double-count that fee.
+  // IndustryServiceOrder is a legacy SQL-backed table; include its paid ledger rows.
+  const industryOrders = await prisma.$queryRawUnsafe<Array<{ platformFee: number; processorFee: number | null }>>(
+    `SELECT "platformFee", "processorFee"
+       FROM "IndustryServiceOrder"
+      WHERE status = 'paid'
+        AND ($1::timestamptz IS NULL OR "createdAt" >= $1)
+        AND ($2::timestamptz IS NULL OR "createdAt" < $2)`,
+    periodStart ?? null,
+    periodEnd ?? null,
+  );
+  addSource(summary, 'industry_services', industryOrders.map((o) => ({
     platformFee: Number(o.platformFee) || 0,
-    processorFee: null,
+    processorFee: o.processorFee == null ? null : Number(o.processorFee),
   })));
 
   summary.grossPlatformFees = round2(summary.grossPlatformFees);
