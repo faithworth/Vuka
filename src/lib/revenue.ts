@@ -67,25 +67,26 @@ export interface UnknownProcessorFeeRow {
   platformFee: number;
   createdAt: Date;
   reference: string;
+  platformFeeMissing: boolean;
 }
 
 export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownProcessorFeeRow[]> {
   const rows: UnknownProcessorFeeRow[] = [];
   const purchases = await prisma.purchase.findMany({
-    where: { status: 'confirmed', processorFee: null },
+    where: { status: 'confirmed', OR: [{ processorFee: null }, { platformFee: 0 }] },
     select: { id: true, itemType: true, amount: true, platformFee: true, createdAt: true, paystackReference: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
-  rows.push(...purchases.map(p => ({ id: p.id, recordType: 'purchase' as const, source: p.itemType, amount: p.amount, platformFee: p.platformFee, createdAt: p.createdAt, reference: p.paystackReference || '' })));
+  rows.push(...purchases.map(p => ({ id: p.id, recordType: 'purchase' as const, source: p.itemType, amount: p.amount, platformFee: p.platformFee, platformFeeMissing: p.amount > 0 && p.platformFee <= 0, createdAt: p.createdAt, reference: p.paystackReference || '' })));
 
   const tips = await prisma.supportTxn.findMany({
-    where: { status: 'confirmed', processorFee: null },
+    where: { status: 'confirmed', OR: [{ processorFee: null }, { platformFee: 0 }] },
     select: { id: true, amount: true, platformFee: true, createdAt: true, paystackReference: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
-  rows.push(...tips.map(t => ({ id: t.id, recordType: 'support' as const, source: 'artist_support', amount: t.amount, platformFee: t.platformFee, createdAt: t.createdAt, reference: t.paystackReference || '' })));
+  rows.push(...tips.map(t => ({ id: t.id, recordType: 'support' as const, source: 'artist_support', amount: t.amount, platformFee: t.platformFee, platformFeeMissing: t.amount > 0 && t.platformFee <= 0, createdAt: t.createdAt, reference: t.paystackReference || '' })));
 
   const subscriptions = await prisma.artistPlanSubscription.findMany({
     where: { status: { in: ['active', 'cancelled', 'expired'] }, processorFee: null },
@@ -93,15 +94,15 @@ export async function getUnknownProcessorFeeRows(limit = 100): Promise<UnknownPr
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
-  rows.push(...subscriptions.map(s => ({ id: s.id, recordType: 'subscription' as const, source: `plan_${s.planSlug}`, amount: s.amount, platformFee: s.amount, createdAt: s.createdAt, reference: s.paystackReference || '' })));
+  rows.push(...subscriptions.map(s => ({ id: s.id, recordType: 'subscription' as const, source: `plan_${s.planSlug}`, amount: s.amount, platformFee: s.amount, platformFeeMissing: false, createdAt: s.createdAt, reference: s.paystackReference || '' })));
 
   const industry = await prisma.$queryRawUnsafe<Array<{ id: string; amount: number; platformFee: number; createdAt: Date; reference: string }>>(
     `SELECT id, amount, "platformFee", "createdAt", COALESCE("payfastPaymentId", '') AS reference
-       FROM "IndustryServiceOrder" WHERE status = 'paid' AND "processorFee" IS NULL
+       FROM "IndustryServiceOrder" WHERE status = 'paid' AND ("processorFee" IS NULL OR ("platformFee" <= 0 AND amount > 0))
        ORDER BY "createdAt" DESC LIMIT $1`,
     limit,
   );
-  rows.push(...industry.map(o => ({ id: o.id, recordType: 'industry_service' as const, source: 'industry_service', amount: Number(o.amount) || 0, platformFee: Number(o.platformFee) || 0, createdAt: o.createdAt, reference: o.reference })));
+  rows.push(...industry.map(o => ({ id: o.id, recordType: 'industry_service' as const, source: 'industry_service', amount: Number(o.amount) || 0, platformFee: Number(o.platformFee) || 0, platformFeeMissing: Number(o.amount) > 0 && Number(o.platformFee) <= 0, createdAt: o.createdAt, reference: o.reference })));
 
   return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
 }
@@ -131,7 +132,7 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
 
   const tips = await prisma.supportTxn.findMany({
     where: { status: 'confirmed', ...(createdAt ? { createdAt } : {}) },
-    select: { platformFee: true, processorFee: true },
+    select: { amount: true, platformFee: true, processorFee: true },
   });
   addSource(summary, 'artist_support', tips);
 
