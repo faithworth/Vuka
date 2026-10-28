@@ -1661,6 +1661,7 @@ model PartnerMonthlyStatement {
   knownProcessorFees     Float         @default(0)
   netPlatformFees        Float         @default(0)
   unknownProcessorFeeRows Int          @default(0)
+  unknownPlatformFeeRows  Int          @default(0)
   shareRate              Float         @default(0.10)
   shareAmount            Float         @default(0)
   qualifyingCreators     Int           @default(0)
