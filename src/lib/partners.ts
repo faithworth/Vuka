@@ -34,9 +34,15 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
   const start = new Date(end.getTime() - 90 * DAY_MS);
   const partner = await prisma.partnerProfile.findUnique({
     where: { referralCode },
-    select: { userId: true, exclusions: { select: { referredUserId: true, reason: true } } },
+    select: {
+      id: true,
+      userId: true,
+      exclusions: { select: { referredUserId: true, reason: true } },
+      milestones: { select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true } },
+    },
   });
   const exclusions = new Map((partner?.exclusions ?? []).map(item => [item.referredUserId, item.reason]));
+  const milestones = new Map((partner?.milestones ?? []).map(item => [item.referredUserId, item]));
   const referred = await prisma.user.findMany({
     where: {
       referredBy: referralCode,
@@ -96,6 +102,42 @@ export async function getPartnerCreatorQualifications(referralCode: string, asOf
     } else if (eligible && purchases.length >= 5 && uniqueFans.size >= 3) {
       category = 'active_sales'; points = 0.5;
     }
+
+    // Contract rule: an artist who stops selling continues to count. Persist
+    // only upgrades to the highest category; never downgrade a valid milestone.
+    if (partner && !excluded && points > 0) {
+      const prior = milestones.get(user.id);
+      if (!prior || points > prior.points) {
+        const saved = await prisma.partnerCreatorMilestone.upsert({
+          where: { partnerId_referredUserId: { partnerId: partner.id, referredUserId: user.id } },
+          create: {
+            partnerId: partner.id,
+            referredUserId: user.id,
+            highestCategory: category,
+            points,
+            qualifiedAt: end,
+            lastEvaluatedAt: end,
+          },
+          update: {
+            highestCategory: category,
+            points,
+            qualifiedAt: prior?.qualifiedAt ?? end,
+            lastEvaluatedAt: end,
+          },
+          select: { referredUserId: true, highestCategory: true, points: true, qualifiedAt: true },
+        });
+        milestones.set(user.id, saved);
+      }
+    }
+    const milestone = milestones.get(user.id);
+    if (excluded) {
+      category = 'none';
+      points = 0;
+    } else if (milestone && milestone.points > 0) {
+      category = milestone.highestCategory as QualificationCategory;
+      points = milestone.points;
+    }
+
     results.push({
       userId: user.id,
       name: artist.name || user.name,
