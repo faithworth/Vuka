@@ -36,8 +36,9 @@ export async function confirmDirectPurchase(params: {
   verifiedCurrency?: string;
   payoutMethod: PayoutMethod;
   traceId: string;
+  processorFeeZAR?: number | null;
 }): Promise<{ ok: boolean; reason?: string }> {
-  const { reference, verifiedAmountZAR, verifiedCurrency, payoutMethod, traceId } = params;
+  const { reference, verifiedAmountZAR, verifiedCurrency, payoutMethod, traceId, processorFeeZAR = null } = params;
 
   const purchaseOrNull = await prisma.purchase.findFirst({
     where: { paystackReference: reference }, // column reused as a generic gateway-reference lookup across processors
@@ -108,6 +109,7 @@ export async function confirmDirectPurchase(params: {
       status: 'confirmed',
       platformFee: platformFeeAmt,
       netAmount,
+      processorFee: processorFeeZAR,
       ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),
       ...(purchase.itemType === 'merch' ? { fulfillmentStatus: 'awaiting_shipment' } : {}),
     },
