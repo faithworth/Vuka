@@ -41,9 +41,15 @@ export async function GET() {
       });
     }
 
-    // Count signups through this code
+    // Only eligible creator accounts count toward the Pro reward.
+    // Industry users, fans, and other account types are excluded even if
+    // they registered through this link.
     const referralCount = await prisma.user.count({
-      where: { referredBy: referralCode },
+      where: {
+        referredBy: referralCode,
+        role: { in: ['artist', 'producer'] },
+        artist: { isNot: null },
+      },
     });
 
     // Check if reward already claimed
@@ -54,16 +60,8 @@ export async function GET() {
     // Founding artist status
     const isFoundingArtist = user.artist.isFoundingArtist ?? false;
 
-    // FIX: was `?ref=${referralCode}` with no role param. The register page
-    // (src/app/auth/register/page.tsx) currently falls back to 'artist'
-    // when no ?role= is present, so this worked by coincidence — but it's
-    // a silent dependency on an implicit default in a different file, and
-    // if that default ever changes (e.g. to 'fan' for general safety),
-    // every referral link ever shared would start signing people up as
-    // fans with zero warning. Setting role explicitly here removes that
-    // fragile coupling. This is the referral programme for bringing in
-    // other ARTISTS specifically (see REWARD_THRESHOLD copy below), so
-    // 'artist' is the correct explicit value — not a guess.
+    // Default the form to Artist, but leave its role selector available so
+    // referred producers can choose Producer and still be attributed.
     const referralLink = `${APP_URL}/auth/register?ref=${referralCode}&role=artist`;
 
     return NextResponse.json({
@@ -100,7 +98,11 @@ export async function POST() {
     }
 
     const referralCount = await prisma.user.count({
-      where: { referredBy: referralCode },
+      where: {
+        referredBy: referralCode,
+        role: { in: ['artist', 'producer'] },
+        artist: { isNot: null },
+      },
     });
 
     if (referralCount < REWARD_THRESHOLD) {
