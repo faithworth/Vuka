@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS "partner_creator_exclusions" (
   "referredUserId" TEXT NOT NULL,
   "createdByUserId" TEXT NOT NULL,
   "reason" TEXT NOT NULL,
+  "effectiveFrom" TIMESTAMP(3) NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "partner_creator_exclusions_pkey" PRIMARY KEY ("id")
 );
