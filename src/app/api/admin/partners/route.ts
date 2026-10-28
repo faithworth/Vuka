@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       if (!match) return NextResponse.json({ error: 'Choose a month in YYYY-MM format.' }, { status: 400 });
       const year = Number(match[1]);
       const month = Number(match[2]);
-      const partners = await prisma.partnerProfile.findMany({ where: { isActive: true }, select: { id: true } });
+      const partners = await prisma.partnerProfile.findMany({ where: { isActive: true }, select: { id: true, paypalEmail: true } });
       const statements = [];
       for (const partner of partners) {
         const statement = await createPartnerMonthlyStatement(partner.id, year, month);
@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
                 amount: statement.shareAmount,
                 method: 'paypal',
                 status: 'pending',
-                destination: '',
-                adminNotes: 'Pending manual payment to the partner PayPal destination.',
+                destination: partner.paypalEmail || '',
+                adminNotes: partner.paypalEmail
+                  ? 'Pending manual payment to the saved partner PayPal destination.'
+                  : 'Pending: partner must save a PayPal destination before payment.',
               },
             });
           }
