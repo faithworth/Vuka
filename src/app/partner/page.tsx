@@ -9,6 +9,7 @@ type Creator = {
   userId: string; name: string; role: string; verified: boolean; hasRelease: boolean;
   sales90d: number; uniqueFans90d: number; grossSales90d: number;
   category: 'none' | 'active_sales' | 'paid_or_steady' | 'strong_seller'; points: number;
+  excluded: boolean; exclusionReason: string | null; exclusionEffectiveFrom: string | null;
 };
 type Statement = {
   id: string; periodStart: string; periodEnd: string; grossPlatformFees: number;
