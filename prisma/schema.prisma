@@ -1667,6 +1667,7 @@ model PartnerCreatorMilestone {
   highestCategory String        @default("none") // none, active_sales, paid_or_steady, strong_seller
   points          Float         @default(0)
   qualifiedAt     DateTime?
+  history         Json          @default("[]")
   lastEvaluatedAt DateTime      @default(now())
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
