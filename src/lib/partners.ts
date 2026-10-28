@@ -111,6 +111,10 @@ export async function createPartnerMonthlyStatement(partnerId: string, year: num
     include: { user: true },
   });
   if (!partner) throw new Error('Partner not found');
+  const existingStatement = await prisma.partnerMonthlyStatement.findUnique({
+    where: { partnerId_periodStart: { partnerId, periodStart } },
+  });
+  if (existingStatement?.status === 'paid') return existingStatement;
 
   // Contract rate for the month uses qualifying creators at the end of the previous month.
   const qualifications = await getPartnerCreatorQualifications(partner.referralCode, periodStart);
