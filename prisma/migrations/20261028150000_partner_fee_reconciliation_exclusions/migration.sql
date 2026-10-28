@@ -6,6 +6,8 @@ ALTER TABLE "IndustryServiceOrder"
   ADD COLUMN IF NOT EXISTS "processorFee" DOUBLE PRECISION;
 ALTER TABLE "partner_monthly_statements"
   ADD COLUMN IF NOT EXISTS "unknownPlatformFeeRows" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "partner_creator_milestones"
+  ADD COLUMN IF NOT EXISTS "history" JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS "User_referredBy_idx" ON "User"("referredBy");
 
