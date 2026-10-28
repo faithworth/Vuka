@@ -127,9 +127,17 @@ export async function getPlatformRevenue(periodStart?: Date, periodEnd?: Date): 
   // Sequential reads intentionally avoid exhausting the serverless DB pool.
   const purchases = await prisma.purchase.findMany({
     where: { status: 'confirmed', ...(createdAt ? { createdAt } : {}) },
-    select: { amount: true, platformFee: true, processorFee: true },
+    select: { itemType: true, amount: true, platformFee: true, processorFee: true },
   });
-  addSource(summary, 'marketplace_and_direct_sales', purchases);
+  const purchasesByType = new Map<string, typeof purchases>();
+  for (const purchase of purchases) {
+    const group = purchasesByType.get(purchase.itemType) ?? [];
+    group.push(purchase);
+    purchasesByType.set(purchase.itemType, group);
+  }
+  for (const [itemType, rows] of purchasesByType) {
+    addSource(summary, `sales_${itemType || 'other'}`, rows);
+  }
 
   const tips = await prisma.supportTxn.findMany({
     where: { status: 'confirmed', ...(createdAt ? { createdAt } : {}) },
