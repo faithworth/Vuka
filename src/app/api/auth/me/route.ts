@@ -48,6 +48,7 @@ export async function GET() {
           // 'isVerified' does not exist — the field is 'verified'
           select: { id: true, role: true, verified: true },
         },
+        partnerProfile: { select: { id: true, isActive: true } },
       },
     });
 
@@ -81,6 +82,7 @@ export async function GET() {
           industryUser: {
             select: { id: true, role: true, verified: true },
           },
+          partnerProfile: { select: { id: true, isActive: true } },
         },
       });
       console.log(`[auth/me] ADMIN_EMAIL elevation: ${dbUser.email} → owner`);
@@ -98,7 +100,8 @@ export async function GET() {
       isAdmin,
       isArtist: !!dbUser.artist,
       isIndustry: !!dbUser.industryUser,
-      isFan: !dbUser.artist && !dbUser.industryUser && !isAdmin,
+      isPartner: !!dbUser.partnerProfile?.isActive,
+      isFan: !dbUser.artist && !dbUser.industryUser && !dbUser.partnerProfile?.isActive && !isAdmin,
       artist: dbUser.artist ?? null,
       industryUser: dbUser.industryUser ?? null,
       isSuspended: dbUser.isSuspended ?? false,
