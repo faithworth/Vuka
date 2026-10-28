@@ -40,6 +40,7 @@ model User {
   partnerProfile  PartnerProfile?
   partnerExclusionsReceived PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionCreator")
   partnerExclusionsCreated   PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionAdmin")
+  partnerQualificationMilestones PartnerCreatorMilestone[]
   // ── Relations ──
   artist          Artist?
   industryUser    IndustryUser?
@@ -1649,11 +1650,30 @@ model PartnerProfile {
   statements   PartnerMonthlyStatement[]
   payouts      PartnerPayout[]
   exclusions   PartnerCreatorExclusion[]
+  milestones   PartnerCreatorMilestone[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([isActive])
   @@map("partner_profiles")
+}
+
+model PartnerCreatorMilestone {
+  id              String        @id @default(cuid())
+  partnerId       String
+  partner         PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User          @relation(fields: [referredUserId], references: [id], onDelete: Cascade)
+  highestCategory String        @default("none") // none, active_sales, paid_or_steady, strong_seller
+  points          Float         @default(0)
+  qualifiedAt     DateTime?
+  lastEvaluatedAt DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([partnerId, referredUserId])
+  @@index([referredUserId])
+  @@map("partner_creator_milestones")
 }
 
 model PartnerCreatorExclusion {
