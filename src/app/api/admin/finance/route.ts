@@ -675,10 +675,37 @@ export async function POST(req: NextRequest) {
         });
         for (const statement of statements) {
           const updated = await createPartnerMonthlyStatement(statement.partnerId, periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1);
-          await prisma.partnerPayout.updateMany({
-            where: { statementId: statement.id, status: { notIn: ['paid', 'rejected'] } },
-            data: { amount: updated.shareAmount },
+          const existingPayout = await prisma.partnerPayout.findFirst({
+            where: { statementId: updated.id, status: { notIn: ['paid', 'rejected'] } },
           });
+          if (updated.status === 'issued' && updated.shareAmount > 0) {
+            const profile = await prisma.partnerProfile.findUnique({ where: { id: statement.partnerId }, select: { paypalEmail: true } });
+            if (existingPayout) {
+              await prisma.partnerPayout.update({
+                where: { id: existingPayout.id },
+                data: { amount: updated.shareAmount, destination: profile?.paypalEmail || '' },
+              });
+            } else {
+              await prisma.partnerPayout.create({
+                data: {
+                  partnerId: statement.partnerId,
+                  statementId: updated.id,
+                  amount: updated.shareAmount,
+                  method: 'paypal',
+                  destination: profile?.paypalEmail || '',
+                  status: 'pending',
+                  adminNotes: profile?.paypalEmail
+                    ? 'Pending manual payment to the saved partner PayPal destination.'
+                    : 'Pending: partner must save a PayPal destination before payment.',
+                },
+              });
+            }
+          } else if (existingPayout) {
+            await prisma.partnerPayout.update({
+              where: { id: existingPayout.id },
+              data: { amount: updated.shareAmount, adminNotes: 'Blocked pending fee reconciliation; do not pay while statement is draft.' },
+            });
+          }
         }
       }
       return NextResponse.json({ ok: true, recordType, recordId, processorFee: processorFee ?? null, platformFee: platformFee ?? null });
