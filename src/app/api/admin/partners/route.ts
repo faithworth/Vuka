@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { createdAt: 'desc' },
     });
-    const result = [];
+    const result: Array<(typeof partners)[number] & { currentRate: number; referredCreators: number; qualifyingCreators: number }> = [];
     for (const partner of partners) {
       const referredCreators = await prisma.user.count({
         where: { referredBy: partner.referralCode, role: { in: ['artist', 'producer'] }, artist: { isNot: null } },
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       const year = Number(match[1]);
       const month = Number(match[2]);
       const partners = await prisma.partnerProfile.findMany({ where: { isActive: true }, select: { id: true, paypalEmail: true } });
-      const statements = [];
+      const statements: Array<Awaited<ReturnType<typeof createPartnerMonthlyStatement>>> = [];
       for (const partner of partners) {
         const statement = await createPartnerMonthlyStatement(partner.id, year, month);
         statements.push(statement);
