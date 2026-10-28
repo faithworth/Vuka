@@ -21,7 +21,7 @@ export default function PayoutsPage() {
   const [payoutError, setPayoutError]           = useState('');
   const [payoutSuccess, setPayoutSuccess]       = useState('');
   const [retryingId, setRetryingId]             = useState<string | null>(null);
-  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [payoutMethod, setPayoutMethod] = useState<'bank_transfer' | 'paypal'>('paypal');
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutPaypalEmail, setPayoutPaypalEmail] = useState('');
   const [payoutBankId, setPayoutBankId] = useState('');
@@ -179,7 +179,7 @@ export default function PayoutsPage() {
         </button>
       </div>
       <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-        Choose your payout destination. Customer payments use the enabled checkout providers; eligible earnings are paid to your selected destination.
+        PayPal is the interim payout destination while OZOW approval is pending. Bank details can be saved now for the later direct-to-bank rollout.
       </p>
 
       {/* Summary cards */}
@@ -219,59 +219,29 @@ export default function PayoutsPage() {
       {tab === 'overview' && (
         <div className="space-y-4">
 
-          {/* ── Paystack ── */}
+          {/* ── PayPal interim payout destination ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--surface)' }}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,160,90,0.15)' }}>
-                  <Wallet size={18} style={{ color: '#00a05a' }} />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,112,186,0.12)' }}>
+                  <Wallet size={18} style={{ color: '#0070ba' }} />
                 </div>
                 <div>
-                  <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>Paystack</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>South African payments · ZAR · card, EFT, bank transfer</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--text)' }}>PayPal — Interim Payouts</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Use your PayPal email while OZOW bank payouts are pending approval</p>
                 </div>
               </div>
-              {connected.paystack
-                ? <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--green)', background: 'rgba(16,185,129,0.1)' }}>✓ Connected</span>
-                : <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--text-muted)', background: 'var(--surface2)' }}>Not connected</span>}
+              <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--sky)', background: 'rgba(56,182,232,0.1)' }}>
+                Available
+              </span>
             </div>
             <div className="px-6 py-5" style={{ background: 'var(--surface2)', borderTop: '1px solid var(--border)' }}>
-              {connected.paystack ? (
-                <>
-                  <div className="flex items-center gap-2 mb-3 p-3 rounded-xl"
-                    style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                    <CheckCircle size={14} style={{ color: 'var(--green)' }} />
-                    <p className="text-sm font-semibold" style={{ color: 'var(--green)' }}>
-                      Bank account on file: {artist?.paystackRecipient}
-                    </p>
-                  </div>
-                  <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Paystack is available as a customer payment option when enabled. Your verified bank details can also be used as a payout destination.
-                  </p>
-                  <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs font-semibold"
-                    style={{ color: '#00a05a' }}>
-                    View Paystack Dashboard <ExternalLink size={11} />
-                  </a>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Add and verify your bank account to make it available as a payout destination. Customer checkout is separate and can use any enabled payment provider.
-                  </p>
-                  <a href="/dashboard/settings" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white w-fit"
-                    style={{ background: 'linear-gradient(135deg,#00a05a,#007a44)' }}>
-                    <ArrowUpRight size={14} /> Add Bank Account in Settings
-                  </a>
-                  <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-                    Get your account details from your{' '}
-                    <a href="https://dashboard.paystack.com/#/settings/business" target="_blank" rel="noopener noreferrer"
-                      className="underline" style={{ color: 'var(--sky)' }}>
-                      Paystack account settings
-                    </a>.
-                  </p>
-                </>
-              )}
+              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                Add your PayPal email in Settings and select PayPal when requesting a payout. Direct bank payouts will be enabled after OZOW approval and integration.
+              </p>
+              <a href="/dashboard/settings" className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#0070ba' }}>
+                Manage PayPal destination <ExternalLink size={11} />
+              </a>
             </div>
           </div>
 
@@ -367,7 +337,7 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                   <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Your verified bank account is available as a payout destination. Eligible earnings are processed through the configured payout workflow.
+                    Your bank details are saved for the future OZOW direct-to-bank payout flow. Until OZOW is approved, request payouts through PayPal.
                   </p>
                   <button onClick={() => setShowBankForm(v => !v)}
                     className="flex items-center gap-1.5 text-xs font-semibold"
@@ -467,9 +437,9 @@ export default function PayoutsPage() {
             <p className="text-sm font-bold mb-3" style={{ color: 'var(--green)' }}>💚 How payouts work</p>
             <div className="space-y-2">
               {[
-                'Customers choose from the enabled checkout providers: Yoco, Paystack, PayPal, and Ozow when available.',
-                'Payout destinations include a verified bank account or PayPal when enabled for the recipient.',
-                'Bank accounts have a security verification/cooldown before they can receive payouts.',
+                'Customers currently choose Yoco or PayPal. OZOW will be added after merchant approval and integration.',
+                'PayPal is the interim payout destination. Direct bank payouts will follow OZOW approval.',
+                'Saved bank details are retained for the future OZOW payout workflow; they are not currently used for automatic payouts.',
                 'Earnings are accounted for in the platform settlement currency; your display currency changes how amounts are shown.',
               ].map((item, i) => (
                 <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-muted)' }}>
@@ -486,10 +456,9 @@ export default function PayoutsPage() {
         <div className="space-y-4">
           <div className="p-5 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <p className="text-sm font-bold mb-1" style={{ color: 'var(--text)' }}>Payout destination</p>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Choose where eligible earnings should be sent: verified Bank Account or PayPal. Vuka processes eligible payouts through the configured payout provider.</p>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <button onClick={() => setPayoutMethod('bank_transfer')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'bank_transfer' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'bank_transfer' ? 'white' : 'var(--text-muted)' }}>Bank Account</button>
-              <button onClick={() => setPayoutMethod('paypal')} className="py-2 rounded-lg text-xs font-bold" style={{ background: payoutMethod === 'paypal' ? 'var(--sky)' : 'var(--surface2)', color: payoutMethod === 'paypal' ? 'white' : 'var(--text-muted)' }}>PayPal</button>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>PayPal is the interim payout method while OZOW approval is pending.</p>
+            <div className="mb-3 p-3 rounded-lg text-sm font-semibold" style={{ background: 'rgba(0,112,186,0.08)', border: '1px solid rgba(0,112,186,0.2)', color: 'var(--text)' }}>
+              PayPal is currently available. Direct bank payouts will be enabled after OZOW approval.
             </div>
             <input type="number" min="1" step="0.01" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} placeholder="Amount in ZAR" className="w-full px-3 py-2.5 rounded-lg text-sm mb-3" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             {payoutMethod === 'bank_transfer' ? (

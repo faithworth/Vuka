@@ -75,6 +75,7 @@ export interface VerifyTransactionResult {
   reference:     string;
   amountZAR:     number;
   amountKobo:    number;
+  processorFeeZAR: number | null;
   currency:      string;
   paidAt:        string;
   channel:       string;
@@ -105,6 +106,9 @@ export async function verifyTransaction(reference: string): Promise<VerifyTransa
     reference:     d.reference,
     amountKobo:    d.amount,
     amountZAR:     d.amount / 100,
+    processorFeeZAR: d.fees != null && d.currency === 'ZAR' && Number.isFinite(Number(d.fees))
+      ? Math.round((Number(d.fees) / 100) * 100) / 100
+      : null,
     currency:      d.currency,
     paidAt:        d.paid_at,
     channel:       d.channel,

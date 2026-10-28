@@ -28,7 +28,7 @@ model User {
   name            String
   legalName       String?              // full legal name for payout/KYC identity — distinct from public display name
   currency        String               @default("ZAR") // preferred display/default currency
-  role            String               @default("fan") // fan, artist, industry, admin, moderator, owner, super_admin
+  role            String               @default("fan") // fan, artist, producer, industry, partner, admin, moderator, owner, super_admin
   isSuspended     Boolean              @default(false)
   suspendedAt     DateTime?
   suspendedReason String               @default("")
@@ -37,6 +37,10 @@ model User {
   referralCode    String?              @unique  // this user's shareable code (auto-generated on first access)
   referredBy      String?                       // the code used when this user signed up
   referralRewards ReferralReward[]
+  partnerProfile  PartnerProfile?
+  partnerExclusionsReceived PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionCreator")
+  partnerExclusionsCreated   PartnerCreatorExclusion[] @relation("PartnerCreatorExclusionAdmin")
+  partnerQualificationMilestones PartnerCreatorMilestone[]
   // ── Relations ──
   artist          Artist?
   industryUser    IndustryUser?
@@ -62,6 +66,8 @@ model User {
   fanReferralsMade     FanReferral[]        @relation("FanReferrer")
   fanReferralsReceived FanReferral[]        @relation("FanReferee")
   awardVotes           AwardVote[]
+
+  @@index([referredBy])
 }
 
 model Artist {
@@ -81,6 +87,7 @@ model Artist {
   paypalEmail      String?   // preferred PayPal email for international payouts
   planSlug         String               @default("free")
   planExpiresAt    DateTime?            // null = never expires (paid ongoing). Set for trial/promo plans.
+  planSource       String               @default("free") // free, paid, referral_reward, admin_grant, unknown
   currency         String               @default("ZAR")
   isPublic         Boolean              @default(true)
   isVerified       Boolean              @default(false)
@@ -333,6 +340,7 @@ model Purchase {
   downloadCount      Int          @default(0)
   platformFee        Float        @default(0)
   netAmount          Float        @default(0)
+  processorFee       Float?       // null means processor fee is unknown/not supplied
   // ── Merch shipping / fulfilment (artist-fulfilled, tracked) ──
   shippingFee        Float        @default(0) // pass-through to artist, excluded from platformFee base
   shippingAddress    Json?        // {name, line1, line2, city, postalCode, province, phone} — merch orders only
@@ -385,6 +393,9 @@ model SupportTxn {
   artist          Artist   @relation(fields: [artistId], references: [id])
   amount          Float
   currency        String   @default("ZAR")
+  platformFee     Float    @default(0)
+  netAmount       Float    @default(0)
+  processorFee    Float?   // null means processor fee is unknown/not supplied
   message         String   @default("")
   tier            String   @default("Listener")
   isPublic        Boolean  @default(true)
@@ -818,6 +829,7 @@ model MarketplaceOrder {
   stripePaymentId  String?
   platformFee      Float               @default(0)
   netAmount        Float               @default(0)
+  processorFee     Float?               // null means processor fee is unknown/not supplied
   paystackReference String?
   dispute          MarketplaceDispute?
   review           ServiceReview?
@@ -1414,6 +1426,7 @@ model ArtistPlanSubscription {
   paystackToken       String?   // reserved for future recurring billing
   amount              Float
   currency            String    @default("ZAR")
+  processorFee        Float?    // null means processor fee is unknown/not supplied
   billingInterval     String    @default("monthly")
   currentPeriodStart  DateTime  @default(now())
   currentPeriodEnd    DateTime
@@ -1619,6 +1632,115 @@ model ReferralReward {
 
   @@index([userId])
   @@map("referral_rewards")
+}
+
+// ── PARTNER FEE-SHARE PROGRAM ────────────────────────────────────────────────
+// Partners are existing authenticated User accounts with role=partner.
+// Attribution is stored in User.referredBy using the unique PartnerProfile code.
+model PartnerProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referralCode String   @unique
+  baseRate     Float    @default(0.10)
+  currentRate  Float    @default(0.10)
+  paypalEmail  String?
+  isActive     Boolean  @default(true)
+  notes        String   @default("")
+  statements   PartnerMonthlyStatement[]
+  payouts      PartnerPayout[]
+  exclusions   PartnerCreatorExclusion[]
+  milestones   PartnerCreatorMilestone[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("partner_profiles")
+}
+
+model PartnerCreatorMilestone {
+  id              String        @id @default(cuid())
+  partnerId       String
+  partner         PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User          @relation(fields: [referredUserId], references: [id], onDelete: Cascade)
+  highestCategory String        @default("none") // none, active_sales, paid_or_steady, strong_seller
+  points          Float         @default(0)
+  qualifiedAt     DateTime?
+  history         Json          @default("[]")
+  lastEvaluatedAt DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([partnerId, referredUserId])
+  @@index([referredUserId])
+  @@map("partner_creator_milestones")
+}
+
+model PartnerCreatorExclusion {
+  id              String        @id @default(cuid())
+  partnerId       String
+  partner         PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User          @relation("PartnerCreatorExclusionCreator", fields: [referredUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User          @relation("PartnerCreatorExclusionAdmin", fields: [createdByUserId], references: [id])
+  reason          String
+  effectiveFrom   DateTime
+  createdAt       DateTime      @default(now())
+
+  @@unique([partnerId, referredUserId])
+  @@index([referredUserId])
+  @@map("partner_creator_exclusions")
+}
+
+model PartnerMonthlyStatement {
+  id                    String        @id @default(cuid())
+  partnerId             String
+  partner               PartnerProfile @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  periodStart            DateTime
+  periodEnd              DateTime
+  grossPlatformFees      Float         @default(0)
+  knownProcessorFees     Float         @default(0)
+  netPlatformFees        Float         @default(0)
+  unknownProcessorFeeRows Int          @default(0)
+  unknownPlatformFeeRows  Int          @default(0)
+  shareRate              Float         @default(0.10)
+  shareAmount            Float         @default(0)
+  qualifyingCreators     Int           @default(0)
+  categoryBreakdown      Json          @default("{}")
+  status                 String        @default("draft") // draft, issued, paid, adjusted
+  notes                  String        @default("")
+  issuedAt               DateTime?
+  paidAt                 DateTime?
+  payouts                PartnerPayout[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@unique([partnerId, periodStart])
+  @@index([periodStart, status])
+  @@map("partner_monthly_statements")
+}
+
+model PartnerPayout {
+  id          String                 @id @default(cuid())
+  partnerId   String
+  partner     PartnerProfile         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  statementId String?
+  statement   PartnerMonthlyStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  amount      Float
+  currency    String                 @default("ZAR")
+  method      String                 @default("paypal") // paypal interim; bank only after OZOW is approved
+  destination String                 @default("")
+  status      String                 @default("pending") // pending, approved, paid, rejected
+  reference   String                 @default("")
+  adminNotes  String                 @default("")
+  paidAt      DateTime?
+  createdAt   DateTime               @default(now())
+
+  @@index([partnerId, status])
+  @@index([statementId])
+  @@map("partner_payouts")
 }
 
 // ── PLAQUES / ACHIEVEMENTS ────────────────────────────────────────────────────

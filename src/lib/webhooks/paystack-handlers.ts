@@ -67,7 +67,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
 
     await prisma.artist.update({
       where: { id: artistId },
-      data: { planSlug, planExpiresAt: periodEnd },
+      data: { planSlug, planExpiresAt: periodEnd, planSource: 'paid' },
     });
 
     await prisma.artistPlanSubscription.create({
@@ -78,6 +78,7 @@ export async function handlePlanEvent(event: PaystackChargeEvent, traceId = 'no-
         paystackReference:  reference,
         amount:             plan.priceZAR,
         currency:           'ZAR',
+        processorFee:       verification.processorFeeZAR,
         billingInterval:    billingIntervalDbValue(plan.billingPeriod),
         currentPeriodStart: now,
         currentPeriodEnd:   periodEnd,
@@ -120,7 +121,10 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
     const fee = calcFee(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
     const net = calcNet(amountGross, artist?.planSlug, artist?.planExpiresAt, artist?.lifetimeGrossSales ?? 0);
 
-    await prisma.marketplaceOrder.update({ where: { id: orderId }, data: { status: 'active' } });
+    await prisma.marketplaceOrder.update({
+      where: { id: orderId },
+      data: { status: 'active', processorFee: verification.processorFeeZAR },
+    });
     await prisma.marketplaceService.update({ where: { id: order.serviceId }, data: { totalOrders: { increment: 1 } } }).catch(() => {});
 
     // NOTE: no ArtistPayout is created here on purpose. Marketplace orders
@@ -141,6 +145,7 @@ export async function handleMarketplaceEvent(event: PaystackChargeEvent, traceId
         currency:          'ZAR',
         platformFee:       fee,
         netAmount:         net,
+        processorFee:      verification.processorFeeZAR,
         status:            'confirmed',
         paystackReference: reference,
         downloadToken:     `marketplace-${reference}`,
@@ -236,6 +241,7 @@ export async function handleMembershipEvent(event: PaystackChargeEvent, traceId 
         currency:          'ZAR',
         platformFee:       fee,
         netAmount:         net,
+        processorFee:      verification.processorFeeZAR,
         status:            'confirmed',
         paystackReference: reference,
         downloadToken:     `membership-${reference}`,
@@ -289,13 +295,13 @@ export async function handleSupportEvent(event: PaystackChargeEvent, traceId = '
   if (verification.status !== 'success') return;
 
   try {
-    await prisma.supportTxn.update({
-      where: { id: txn.id },
-      data:  { status: 'confirmed' },
-    });
-
     const tipFee = calcFee(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
     const tipNet = calcNet(txn.amount, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
+
+    await prisma.supportTxn.update({
+      where: { id: txn.id },
+      data: { status: 'confirmed', platformFee: tipFee, netAmount: tipNet, processorFee: verification.processorFeeZAR },
+    });
 
     await prisma.artistPayout.create({
       data: {
@@ -385,9 +391,9 @@ export async function handleIndustryOrderEvent(event: PaystackChargeEvent, trace
     await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(
         `UPDATE "IndustryServiceOrder"
-            SET status = 'paid', "platformFee" = $1, "netAmount" = $2, "updatedAt" = now()
-          WHERE id = $3`,
-        platformFeeAmt, netAmount, o.id,
+            SET status = 'paid', "platformFee" = $1, "netAmount" = $2, "processorFee" = $3, "updatedAt" = now()
+          WHERE id = $4`,
+        platformFeeAmt, netAmount, verification.processorFeeZAR, o.id,
       );
 
       // Credit the INDUSTRY account that delivered the service, not the
@@ -591,6 +597,7 @@ export async function handleSupportPayment(
   verifiedCurrency = 'ZAR',
   payoutMethod: 'paystack' | 'yoco' | 'paypal' = 'yoco',
   traceId = 'no-trace',
+  processorFeeZAR: number | null = null,
 ) {
   const txn = await prisma.supportTxn.findFirst({
     where: { paystackReference: reference },
@@ -616,7 +623,15 @@ export async function handleSupportPayment(
   const tipNet = calcNet(verifiedAmountZAR, txn.artist.planSlug, txn.artist.planExpiresAt, txn.artist.lifetimeGrossSales ?? 0);
 
   await prisma.$transaction(async (tx) => {
-    await tx.supportTxn.update({ where: { id: txn.id }, data: { status: 'confirmed' } });
+    await tx.supportTxn.update({
+      where: { id: txn.id },
+      data: {
+        status: 'confirmed',
+        platformFee: tipFee,
+        netAmount: tipNet,
+        processorFee: processorFeeZAR,
+      },
+    });
     await tx.artistPayout.create({
       data: {
         artistId: txn.artistId,

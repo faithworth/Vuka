@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const method = body.method === 'paypal' ? 'paypal' : 'bank_transfer';
+    if (method !== 'paypal') {
+      return NextResponse.json(
+        { error: 'Direct bank payouts are temporarily unavailable while OZOW approval is pending. Select PayPal.' },
+        { status: 410 },
+      );
+    }
     const amount = Number(body.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: 'A valid payout amount is required' }, { status: 400 });

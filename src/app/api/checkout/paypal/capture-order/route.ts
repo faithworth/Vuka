@@ -140,9 +140,8 @@ export async function POST(req: NextRequest) {
 
   const capture   = captureResult.purchase_units?.[0]?.payments?.captures?.[0];
   const amountUSD = parseFloat(capture?.amount?.value ?? '0');
-  const paypalFeeUSD = parseFloat(
-    capture?.seller_receivable_breakdown?.paypal_fee?.value ?? '0'
-  );
+  const paypalFeeValue = capture?.seller_receivable_breakdown?.paypal_fee?.value;
+  const paypalFeeUSD = paypalFeeValue != null ? parseFloat(paypalFeeValue) : null;
 
   // ── Resolve artist plan for correct fee tier ────────────────────────────
   let artistPlanSlug:    string | null = null;
@@ -227,6 +226,11 @@ export async function POST(req: NextRequest) {
       buyerEmail,
       platformFee: platformFeeAmt,
       netAmount,
+      // Store only a fee returned by PayPal. Convert USD fee to the purchase's
+      // ZAR ledger currency using the FX rate already fetched above.
+      processorFee: paypalFeeUSD != null && Number.isFinite(paypalFeeUSD) && fxRate > 0
+        ? Math.round((paypalFeeUSD / fxRate) * 100) / 100
+        : null,
       paystackReference: `paypal:${orderId}`,
       paypalCaptureId: capture?.id ?? null,
       ...(resolvedUserId && !purchase.userId ? { userId: resolvedUserId } : {}),

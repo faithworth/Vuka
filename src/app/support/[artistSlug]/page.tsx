@@ -145,12 +145,10 @@ export default function SupportPage() {
 
           <div className="mb-4">
             <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Choose how you want to support</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
               {[
                 { key: 'yoco', label: 'Yoco', note: 'Card / wallet' },
-                { key: 'paystack', label: 'Paystack', note: 'Card / EFT' },
                 { key: 'paypal', label: 'PayPal', note: 'International' },
-                { key: 'ozow', label: 'Ozow', note: 'Coming soon' },
               ].map((m) => (
                 <button key={m.key} type="button" onClick={() => setPaymentMethod(m.key as any)} disabled={m.key === 'ozow'}
                   className="p-2 rounded-lg text-xs font-bold"

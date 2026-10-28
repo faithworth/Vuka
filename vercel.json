@@ -44,6 +44,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/partner-statements",
+      "schedule": "0 8 10 * *"
+    },
+    {
       "path": "/api/cron/campaign-deadlines",
       "schedule": "0 3 * * *"
     }

@@ -15,6 +15,8 @@ import { requireAdmin } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { platformFeeRate } from '@/lib/plans';
 import { approvePayoutRequest, rejectPayoutRequest } from '@/lib/payouts';
+import { getPlatformRevenue, getUnknownProcessorFeeRows } from '@/lib/revenue';
+import { createPartnerMonthlyStatement } from '@/lib/partners';
 
 // Default rate used ONLY for aggregate tip calculations in the overview,
 // where we don't load per-artist plan data. Per-artist views always use
@@ -110,10 +112,27 @@ export async function GET(req: NextRequest) {
   const view = searchParams.get('view') || 'overview';
 
   try {
+    if (view === 'unreconciled') {
+      return NextResponse.json({ rows: await getUnknownProcessorFeeRows(100) });
+    }
+
+    // Shared fee ledger used by partner statements and the admin finance view.
+    if (view === 'ledger') {
+      const startParam = searchParams.get('start');
+      const endParam = searchParams.get('end');
+      const start = startParam ? new Date(startParam) : undefined;
+      const end = endParam ? new Date(endParam) : undefined;
+      if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) {
+        return NextResponse.json({ error: 'Invalid ledger date range.' }, { status: 400 });
+      }
+      return NextResponse.json({ ledger: await getPlatformRevenue(start, end) });
+    }
+
     // ─── OVERVIEW ────────────────────────────────────────────────────────────
     if (view === 'overview') {
       const now = new Date();
       const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sharedLedger = await getPlatformRevenue();
 
       // Sequential queries — avoids connection pool exhaustion (limit: 1)
       const allPurchases = await prisma.purchase.findMany({
@@ -311,6 +330,7 @@ export async function GET(req: NextRequest) {
         },
         topArtists,
         salesByType: salesByTypeRows,
+        ledger: sharedLedger,
       });
     }
 
@@ -557,6 +577,140 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
+
+    // Reconcile values only from a processor settlement statement or other
+    // verified financial record. Empty inputs leave existing values untouched.
+    if (action === 'set_fee_split' || action === 'set_processor_fee') {
+      const recordType = String(body.recordType ?? '');
+      const recordId = String(body.recordId ?? '');
+      const hasProcessorFee = body.processorFee !== undefined && body.processorFee !== null && String(body.processorFee).trim() !== '';
+      const hasPlatformFee = body.platformFee !== undefined && body.platformFee !== null && String(body.platformFee).trim() !== '';
+      const processorFee = hasProcessorFee ? Number(body.processorFee) : undefined;
+      const platformFee = hasPlatformFee ? Number(body.platformFee) : undefined;
+      if (!recordId || !['purchase', 'support', 'subscription', 'industry_service'].includes(recordType)) {
+        return NextResponse.json({ error: 'A valid record type and record ID are required.' }, { status: 400 });
+      }
+      if (!hasProcessorFee && !hasPlatformFee) {
+        return NextResponse.json({ error: 'Enter a processor fee and/or platform fee from a verified financial record.' }, { status: 400 });
+      }
+      if (processorFee !== undefined && (!Number.isFinite(processorFee) || processorFee < 0)) {
+        return NextResponse.json({ error: 'Processor fee must be a non-negative ZAR amount.' }, { status: 400 });
+      }
+      if (platformFee !== undefined && (!Number.isFinite(platformFee) || platformFee < 0)) {
+        return NextResponse.json({ error: 'Platform fee must be a non-negative ZAR amount.' }, { status: 400 });
+      }
+      if (recordType === 'subscription' && platformFee !== undefined) {
+        return NextResponse.json({ error: 'Plan subscription payments are recorded as platform revenue; only reconcile their processor fee.' }, { status: 400 });
+      }
+
+      let createdAt: Date | null = null;
+      if (recordType === 'purchase') {
+        const existing = await prisma.purchase.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true, paystackReference: true } });
+        if (!existing) return NextResponse.json({ error: 'Purchase not found.' }, { status: 404 });
+        const data: any = {};
+        if (processorFee !== undefined) data.processorFee = Math.round(processorFee * 100) / 100;
+        if (platformFee !== undefined) {
+          if (platformFee > existing.amount) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+          data.platformFee = Math.round(platformFee * 100) / 100;
+          data.netAmount = Math.round((existing.amount - platformFee) * 100) / 100;
+        }
+        await prisma.purchase.update({ where: { id: recordId }, data });
+        if (platformFee !== undefined) {
+          if (existing.paystackReference) {
+            await prisma.artistPayout.updateMany({
+              where: { reference: existing.paystackReference, status: 'pending' },
+              data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 },
+            });
+          }
+        }
+        createdAt = existing.createdAt;
+      } else if (recordType === 'support') {
+        const existing = await prisma.supportTxn.findUnique({ where: { id: recordId }, select: { amount: true, createdAt: true, paystackReference: true } });
+        if (!existing) return NextResponse.json({ error: 'Support payment not found.' }, { status: 404 });
+        const data: any = {};
+        if (processorFee !== undefined) data.processorFee = Math.round(processorFee * 100) / 100;
+        if (platformFee !== undefined) {
+          if (platformFee > existing.amount) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+          data.platformFee = Math.round(platformFee * 100) / 100;
+          data.netAmount = Math.round((existing.amount - platformFee) * 100) / 100;
+        }
+        await prisma.supportTxn.update({ where: { id: recordId }, data });
+        if (platformFee !== undefined && existing.paystackReference) {
+          await prisma.artistPayout.updateMany({ where: { reference: existing.paystackReference, status: 'pending' }, data: { amount: Math.round((existing.amount - platformFee) * 100) / 100 } });
+        }
+        createdAt = existing.createdAt;
+      } else if (recordType === 'subscription') {
+        const existing = await prisma.artistPlanSubscription.findUnique({ where: { id: recordId }, select: { createdAt: true } });
+        if (!existing) return NextResponse.json({ error: 'Plan subscription not found.' }, { status: 404 });
+        await prisma.artistPlanSubscription.update({ where: { id: recordId }, data: { processorFee: Math.round((processorFee ?? 0) * 100) / 100 } });
+        createdAt = existing.createdAt;
+      } else {
+        const existingRows = await prisma.$queryRawUnsafe<Array<{ id: string; amount: number; platformFee: number; netAmount: number; createdAt: Date; industryUserId: string }>>(
+          'SELECT id, amount, "platformFee", "netAmount", "createdAt", "industryUserId" FROM "IndustryServiceOrder" WHERE id = $1',
+          recordId,
+        );
+        const existing = existingRows[0];
+        if (!existing) return NextResponse.json({ error: 'Industry service payment not found.' }, { status: 404 });
+        const nextPlatformFee = platformFee === undefined ? Number(existing.platformFee) : platformFee;
+        if (nextPlatformFee > Number(existing.amount)) return NextResponse.json({ error: 'Platform fee cannot exceed the transaction amount.' }, { status: 400 });
+        const nextNet = Math.round((Number(existing.amount) - nextPlatformFee) * 100) / 100;
+        await prisma.$executeRawUnsafe(
+          'UPDATE "IndustryServiceOrder" SET "processorFee" = COALESCE($1, "processorFee"), "platformFee" = $2, "netAmount" = $3 WHERE id = $4',
+          processorFee === undefined ? null : Math.round(processorFee * 100) / 100,
+          nextPlatformFee, nextNet, recordId,
+        );
+        if (platformFee !== undefined) {
+          const delta = nextNet - Number(existing.netAmount);
+          await prisma.$executeRawUnsafe('UPDATE "IndustryUser" SET "totalEarnings" = "totalEarnings" + $1 WHERE id = $2', delta, existing.industryUserId);
+        }
+        createdAt = existing.createdAt;
+      }
+
+      // Recalculate non-paid statements for the month of the corrected transaction.
+      if (createdAt) {
+        const southAfricaDate = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+        const periodStart = new Date(Date.UTC(southAfricaDate.getUTCFullYear(), southAfricaDate.getUTCMonth(), 1, -2));
+        const statements = await prisma.partnerMonthlyStatement.findMany({
+          where: { periodStart, status: { not: 'paid' } },
+          select: { partnerId: true, id: true },
+        });
+        for (const statement of statements) {
+          const updated = await createPartnerMonthlyStatement(statement.partnerId, periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1);
+          const existingPayout = await prisma.partnerPayout.findFirst({
+            where: { statementId: updated.id, status: { notIn: ['paid', 'rejected'] } },
+          });
+          if (updated.status === 'issued' && updated.shareAmount > 0) {
+            const profile = await prisma.partnerProfile.findUnique({ where: { id: statement.partnerId }, select: { paypalEmail: true } });
+            if (existingPayout) {
+              await prisma.partnerPayout.update({
+                where: { id: existingPayout.id },
+                data: { amount: updated.shareAmount, destination: profile?.paypalEmail || '' },
+              });
+            } else {
+              await prisma.partnerPayout.create({
+                data: {
+                  partnerId: statement.partnerId,
+                  statementId: updated.id,
+                  amount: updated.shareAmount,
+                  method: 'paypal',
+                  destination: profile?.paypalEmail || '',
+                  status: 'pending',
+                  adminNotes: profile?.paypalEmail
+                    ? 'Pending manual payment to the saved partner PayPal destination.'
+                    : 'Pending: partner must save a PayPal destination before payment.',
+                },
+              });
+            }
+          } else if (existingPayout) {
+            await prisma.partnerPayout.update({
+              where: { id: existingPayout.id },
+              data: { amount: updated.shareAmount, adminNotes: 'Blocked pending fee reconciliation; do not pay while statement is draft.' },
+            });
+          }
+        }
+      }
+      return NextResponse.json({ ok: true, recordType, recordId, processorFee: processorFee ?? null, platformFee: platformFee ?? null });
+    }
 
     // ── Create payout ─────────────────────────────────────────────────────────
     if (action === 'create_payout') {

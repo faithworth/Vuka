@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const parsed = schemas.support.create.safeParse(raw);
     if (!parsed.success) return validationError(parsed.error);
     const { artistSlug, amount, message, fanName, fanEmail, isPublic, tier } = parsed.data;
-    const requestedMethod = raw.paymentMethod === 'yoco' ? 'yoco' : 'paystack';
+    const requestedMethod = raw.paymentMethod === 'paystack' ? 'paystack' : 'yoco';
 
     const artist = await prisma.artist.findUnique({ where: { slug: artistSlug }, include: { user: true } });
     if (!artist) return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
@@ -115,4 +115,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-

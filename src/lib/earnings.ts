@@ -344,9 +344,12 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
   const reference = `VUKA-${payoutRequestId.slice(-8).toUpperCase()}`;
   let result: { success: boolean; referenceId?: string; error?: string };
 
-  // The payout method belongs to the request, not the bank account's
-  // accountType (current/savings/etc.).
-  const method = (request.method || 'bank_transfer') as PayoutMethod;
+  // Until OZOW is approved for payouts, legacy/default bank-transfer and
+  // Paystack requests are routed through PayPal. A valid PayPal recipient email
+  // is required; never silently send money through the retired Paystack API.
+  const method = (!request.method || request.method === 'bank_transfer' || request.method === 'paystack'
+    ? 'paypal'
+    : request.method) as PayoutMethod;
 
   if (method === 'paypal') {
     const paypalEmail = request.paypalEmail || request.artist.paypalEmail || '';
@@ -388,17 +391,7 @@ export async function dispatchPayout(payoutRequestId: string): Promise<{
       reference,
     });
   } else {
-    // paystack or bank_transfer — default to Paystack Transfers API
-    const ba = request.bankAccount;
-    result = await processPaystackPayout({
-      payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
-      accountNumber: ba?.accountNumber || '',
-      bankCode: ba?.branchCode || '',
-      accountHolder: ba?.accountHolder || '',
-      reference,
-    });
+    result = { success: false, error: 'Unsupported payout method. PayPal is the interim payout route until OZOW is approved.' };
   }
 
   if (result.success) {
@@ -452,12 +445,16 @@ export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
     data: { status: 'processing' },
   });
 
-  // Distinct prefix from artist payouts (VUKA-) so the transfer webhook
+  // Distinct prefix from artist payouts (VUKA-) so the payout webhook
   // can tell which table to settle against without an extra lookup.
   const reference = `VUKA-IND-${payoutRequestId.slice(-8).toUpperCase()}`;
   let result: { success: boolean; referenceId?: string; error?: string };
 
-  const method = (request.method || 'bank_transfer') as PayoutMethod;
+  // Until OZOW is approved for payouts, legacy/default bank-transfer and
+  // Paystack requests use PayPal, which requires a configured recipient email.
+  const method = (!request.method || request.method === 'bank_transfer' || request.method === 'paystack'
+    ? 'paypal'
+    : request.method) as PayoutMethod;
 
   if (method === 'paypal') {
     const paypalEmail = request.paypalEmail || request.industryUser.user?.email || '';
@@ -494,16 +491,7 @@ export async function dispatchIndustryPayout(payoutRequestId: string): Promise<{
       reference,
     });
   } else {
-    const ba = request.bankAccount;
-    result = await processPaystackPayout({
-      payoutRequestId,
-      amount: request.amount,
-      currency: request.currency,
-      accountNumber: ba?.accountNumber || '',
-      bankCode: ba?.branchCode || '',
-      accountHolder: ba?.accountHolder || '',
-      reference,
-    });
+    result = { success: false, error: 'Unsupported payout method. PayPal is the interim payout route until OZOW is approved.' };
   }
 
   if (result.success) {

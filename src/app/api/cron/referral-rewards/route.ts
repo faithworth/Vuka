@@ -42,8 +42,15 @@ export async function GET(req: NextRequest) {
     for (const user of unrewardedUsers) {
       if (!user.referralCode || !user.artist) continue;
 
+      // Only eligible creator accounts count: artist/producer roles that
+      // have the artist-side profile. Fans, Industry accounts, and other
+      // signups using a shared link must never unlock the Pro reward.
       const count = await prisma.user.count({
-        where: { referredBy: user.referralCode },
+        where: {
+          referredBy: user.referralCode,
+          role: { in: ['artist', 'producer'] },
+          artist: { isNot: null },
+        },
       });
 
       if (count < REWARD_THRESHOLD) continue;
@@ -59,7 +66,7 @@ export async function GET(req: NextRequest) {
         await prisma.$transaction([
           prisma.artist.update({
             where: { id: user.artist.id },
-            data:  { planSlug: 'pro', planExpiresAt: newExpiry },
+            data:  { planSlug: 'pro', planExpiresAt: newExpiry, planSource: 'referral_reward' },
           }),
           prisma.referralReward.create({
             data: { id: `rr_${user.id}_${Date.now()}`, userId: user.id, rewardType: 'pro_3months' },

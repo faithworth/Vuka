@@ -34,6 +34,10 @@ export async function GET(req: NextRequest) {
     if (!plan) throw new Error('Invalid stored plan');
 
     const fx = await getZarToUsdRate();
+    const paypalFeeValue = capture.seller_receivable_breakdown?.paypal_fee?.value;
+    const processorFeeZAR = paypalFeeValue != null && fx.zarToUsdRate > 0
+      ? Math.round((Number(paypalFeeValue) / fx.zarToUsdRate) * 100) / 100
+      : null;
     const expectedUSD = zarToUsd(plan.priceZAR, fx.zarToUsdRate);
     const paidUSD = Number(capture.amount.value);
     // Allow a small FX movement between order creation and capture, but never a material underpayment.
@@ -46,6 +50,7 @@ export async function GET(req: NextRequest) {
       amountZAR: plan.priceZAR,
       currency: 'ZAR',
       provider: 'paypal',
+      processorFee: processorFeeZAR,
     });
 
     await prisma.purchase.update({ where: { id: purchase.id }, data: { status: 'confirmed', paypalCaptureId: capture.id } });

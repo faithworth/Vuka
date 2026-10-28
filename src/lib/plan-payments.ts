@@ -8,6 +8,7 @@ export async function activatePlanPayment(params: {
   amountZAR: number;
   currency: string;
   provider: 'paystack' | 'paypal' | 'yoco';
+  processorFee?: number | null;
 }) {
   const plan = PLANS.find(p => p.slug === params.planSlug);
   if (!plan || plan.priceZAR <= 0) throw new Error('Invalid paid plan');
@@ -24,7 +25,7 @@ export async function activatePlanPayment(params: {
   const subscription = await prisma.$transaction(async tx => {
     await tx.artist.update({
       where: { id: params.artistId },
-      data: { planSlug: plan.slug, planExpiresAt: periodEnd },
+      data: { planSlug: plan.slug, planExpiresAt: periodEnd, planSource: 'paid' },
     });
 
     return (tx as any).artistPlanSubscription.create({
@@ -35,6 +36,7 @@ export async function activatePlanPayment(params: {
         paystackReference: params.reference,
         amount: plan.priceZAR,
         currency: params.currency,
+        processorFee: params.processorFee ?? null,
         billingInterval: billingIntervalDbValue(plan.billingPeriod),
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,

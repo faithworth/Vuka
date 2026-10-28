@@ -40,7 +40,7 @@ const HOW_IT_WORKS = [
 
 const WHY = [
   { icon: DollarSign, t: 'You keep 90% of every order',      d: 'Vuka Music charges a flat 10% platform fee on industry service orders. You set your own price — Vuka Music never dictates rates.' },
-  { icon: Zap,        t: 'Instant payment confirmation',      d: 'Artists pay via Paystack at checkout. Payment is confirmed immediately — no waiting, no invoicing back and forth.' },
+  { icon: Zap,        t: 'Instant payment confirmation',      d: 'Artists pay securely through Vuka Music. Payment is confirmed immediately — no waiting, no invoicing back and forth.' },
   { icon: Users,      t: 'Direct access to active artists',  d: 'All artists on Vuka Music are already selling music. They have revenue and they invest in their careers.' },
   { icon: Shield,     t: 'Vuka Music holds payment safely',        d: 'Payments go through Vuka Music\'s escrow — artists can\'t cancel a confirmed payment, and you always get paid.' },
   { icon: Music,      t: 'Africa-first community',           d: 'Built for Amapiano, Afrobeats, Gqom, Hip Hop, Kwaito and more. Work with artists who need you.' },

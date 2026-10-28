@@ -116,7 +116,7 @@ export default function ReferralsPage() {
             )}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Share your link. Earn 3 months Pro free when {threshold} artists sign up through it.
+            Share your link. Earn 3 months Pro free when {threshold} artists or producers sign up through it.
           </p>
         </div>
         <button onClick={load} className="p-2 rounded-lg flex-shrink-0"
@@ -211,7 +211,7 @@ export default function ReferralsPage() {
           />
         </div>
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Earn 3 months Pro free (worth R747) when {threshold} artists sign up using your link.
+          Earn 3 months Pro free when {threshold} artists or producers sign up using your link.
         </p>
       </div>
 
@@ -243,9 +243,9 @@ export default function ReferralsPage() {
         <p className="text-sm font-bold mb-3" style={{ color: 'var(--sky)' }}>How it works</p>
         <div className="space-y-2.5">
           {[
-            { n: '1', text: 'Share your unique link with other artists — SA WhatsApp groups, Instagram stories, anywhere.' },
+            { n: '1', text: 'Share your unique link with artists and producers — SA WhatsApp groups, Instagram stories, anywhere.' },
             { n: '2', text: 'When they sign up through your link, they count toward your goal.' },
-            { n: '3', text: `Hit ${threshold} signups and claim 3 months Pro free (R747 value) — automatically, no waiting.` },
+            { n: '3', text: `Hit ${threshold} eligible artist or producer signups and claim 3 months Pro free.` },
             { n: '4', text: 'The first 5 artists to complete the programme earn a permanent Founding Artist badge on their profile.' },
           ].map(step => (
             <div key={step.n} className="flex items-start gap-3">

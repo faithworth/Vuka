@@ -1,9 +1,9 @@
 'use client';
 // src/components/BuyModal.tsx
-// Three payment options on every direct purchase:
-//   Tab 1 — Yoco      (default, SA card/Apple Pay/Google Pay)
-//   Tab 2 — Paystack  (SA card, instant EFT, bank transfer — once activated live)
-//   Tab 3 — PayPal    (international, USD)
+// Direct purchase methods currently available:
+//   Yoco — South African card/Apple Pay/Google Pay
+//   PayPal — international payments in USD
+//   Ozow remains unavailable until merchant approval and integration are complete.
 // Merch, beats, releases, videos, samples all go through here.
 
 import { useState, useEffect } from 'react';
@@ -31,7 +31,7 @@ const LICENSES = [
   },
 ];
 
-type PaymentTab = 'yoco' | 'paystack' | 'paypal' | 'ozow';
+type PaymentTab = 'yoco' | 'paypal' | 'ozow';
 
 interface Beat {
   id: string; title: string; artworkUrl: string;
@@ -98,7 +98,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
   const itemType = itemTypeProp ?? (beat ? 'beat' : 'release');
   const itemId   = beat ? beat.id : release!.id;
 
-  async function handleBuy(processor: 'yoco' | 'paystack') {
+  async function handleBuy() {
     if (!email || !name) { setError('Please enter your name and email'); return; }
     if (price > 0 && price < CARD_MIN_ZAR) {
       setError(`Paid purchases start at R${CARD_MIN_ZAR}. Enter R${CARD_MIN_ZAR} or more${release?.payWhatWant && release.minPrice === 0 ? ', or 0 to download free' : ''}.`);
@@ -111,9 +111,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
     setLoading(true);
     setError('');
 
-    const endpoint = processor === 'yoco'
-      ? '/api/checkout/yoco/initialize'
-      : '/api/checkout/paystack/initialize';
+    const endpoint = '/api/checkout/yoco/initialize';
 
     try {
       const res = await fetch(endpoint, {
@@ -154,11 +152,11 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
   const item = beat || release!;
 
+  // Paystack and OZOW remain available in server-side integration code,
+  // but neither is exposed as a buyer choice during the provider transition.
   const tabs: { key: PaymentTab; label: string; flag?: string }[] = [
-    { key: 'yoco',     label: 'Yoco',     flag: '🇿🇦' },
-    { key: 'paystack', label: 'Paystack', flag: '🇿🇦' },
-    { key: 'paypal',   label: 'PayPal',   flag: '🌍' },
-    { key: 'ozow',     label: 'Ozow',     flag: '🏦' },
+    { key: 'yoco',   label: 'Yoco',   flag: '🇿🇦' },
+    { key: 'paypal', label: 'PayPal', flag: '🌍' },
   ];
 
   return (
@@ -274,7 +272,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </div>
             )}
             <button
-              onClick={() => handleBuy('yoco')}
+              onClick={() => handleBuy()}
               disabled={loading}
               className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
               style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
@@ -344,7 +342,7 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
             {activeTab === 'yoco' && (
               <button
-                onClick={() => handleBuy('yoco')}
+                onClick={() => handleBuy()}
                 disabled={loading}
                 className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
                 style={{ background: 'var(--color-accent-green)', color: '#000', fontFamily: 'var(--font-display)' }}
@@ -353,20 +351,9 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
               </button>
             )}
 
-            {activeTab === 'paystack' && (
-              <button
-                onClick={() => handleBuy('paystack')}
-                disabled={loading}
-                className="w-full py-4 rounded-lg font-bold text-base transition-all disabled:opacity-60"
-                style={{ background: '#011B33', color: '#fff', fontFamily: 'var(--font-display)', border: '2px solid #00C3F7' }}
-              >
-                {loading ? 'Processing…' : `Pay with Paystack — ${formatCurrency(price)} →`}
-              </button>
-            )}
-
             {activeTab === 'paypal' && price < PAYPAL_MIN_ZAR && (
               <div className="w-full p-4 rounded-lg text-center text-sm font-semibold" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                PayPal fees are too high for small amounts — the minimum is R{PAYPAL_MIN_ZAR}. Please pay with Yoco or Paystack, or choose R{PAYPAL_MIN_ZAR} or more.
+                PayPal fees are too high for small amounts — the minimum is R{PAYPAL_MIN_ZAR}. Please pay with Yoco or choose R{PAYPAL_MIN_ZAR} or more.
               </div>
             )}
 
@@ -389,7 +376,6 @@ export function BuyModal({ beat, release, itemType: itemTypeProp, shippingFeeAmo
 
             <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
               {activeTab === 'yoco' && '🔒 Card, Apple Pay & more · Powered by Yoco'}
-              {activeTab === 'paystack' && '🔒 Card, EFT & bank transfer · Powered by Paystack'}
               {activeTab === 'paypal' && '🌍 International payments in USD · Powered by PayPal'}
               {activeTab === 'ozow' && '🏦 Bank-to-bank Instant EFT · Coming soon'}
             </p>

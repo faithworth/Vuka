@@ -3,7 +3,7 @@
 // FIXED: Removed Stripe Connect (not available in SA without a US entity).
 // FIXED: Added SA Bank Account section using the existing /api/payouts/bank-accounts endpoint.
 // FIXED: Paystack section retains connected status badge.
-// FIXED: Added Plan Management section with Paystack upgrade flow.
+// Plan management offers Yoco and PayPal while OZOW approval is pending.
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -84,7 +84,7 @@ function SettingsContent() {
     ]).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  // Auto-verify plan payment when Paystack redirects back with ?plan_activated=1&ref=PLAN_xxx
+  // Legacy fallback for a Paystack payment that was already in flight before the provider cutover.
   useEffect(() => {
     const planActivated = searchParams.get('plan_activated');
     const ref = searchParams.get('ref');
@@ -117,10 +117,10 @@ function SettingsContent() {
       .finally(() => setPlanActivating(false));
   }, [searchParams]);
 
-  async function upgradePlan(planSlug: string, provider: 'paystack' | 'yoco' | 'paypal') {
+  async function upgradePlan(planSlug: string, provider: 'yoco' | 'paypal') {
     setPlanLoading(true);
     try {
-      const endpoint = provider === 'paystack' ? '/api/plans/subscribe' : provider === 'yoco' ? '/api/plans/subscribe-yoco' : '/api/plans/subscribe-paypal';
+      const endpoint = provider === 'yoco' ? '/api/plans/subscribe-yoco' : '/api/plans/subscribe-paypal';
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -765,7 +765,6 @@ function SettingsContent() {
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'yoco')} className="py-3 rounded-xl font-bold text-white" style={{ background: 'var(--sky)' }}>Pay with Yoco</button>
-              <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paystack')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#011B33', border: '2px solid #00C3F7' }}>Pay with Paystack</button>
               <button type="button" onClick={() => upgradePlan(upgradeChoice.slug, 'paypal')} className="py-3 rounded-xl font-bold text-white" style={{ background: '#0070ba' }}>Pay with PayPal</button>
               <button type="button" disabled className="py-3 rounded-xl font-bold opacity-60" style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Ozow — Coming soon</button>
             </div>

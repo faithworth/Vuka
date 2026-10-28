@@ -39,6 +39,10 @@ if (isCI) {
     '20260604_role_repair',
     '20260612_paystack_migration',
     'phase10b_paystack_recipient',
+    // The initial partner reconciliation migration failed before applying any
+    // DDL (PostgreSQL syntax error). Its SQL is corrected in the branch; mark
+    // that failed attempt rolled back so migrate deploy can retry it cleanly.
+    '20261028150000_partner_fee_reconciliation_exclusions',
   ];
   for (const name of migrationsToResolve) {
     try {
