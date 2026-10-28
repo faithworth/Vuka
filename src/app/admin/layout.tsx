@@ -21,6 +21,7 @@ const ADMIN_NAV = [
   { href: '/admin/plans',        label: 'Plans',        icon: Crown },
   { href: '/admin/releases',     label: 'Releases',     icon: Music },
   { href: '/admin/finance',      label: 'Finance',      icon: DollarSign },
+  { href: '/admin/partners',     label: 'Partner Program', icon: Users },
   { href: '/admin/cms',          label: 'CMS',          icon: FileEdit },
   { href: '/admin/settings',     label: 'Settings',     icon: Settings },
   { href: '/admin/security',     label: 'Security',     icon: Shield },
