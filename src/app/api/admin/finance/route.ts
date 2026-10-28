@@ -668,7 +668,8 @@ export async function POST(req: NextRequest) {
 
       // Recalculate non-paid statements for the month of the corrected transaction.
       if (createdAt) {
-        const periodStart = new Date(Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), 1));
+        const southAfricaDate = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+        const periodStart = new Date(Date.UTC(southAfricaDate.getUTCFullYear(), southAfricaDate.getUTCMonth(), 1, -2));
         const statements = await prisma.partnerMonthlyStatement.findMany({
           where: { periodStart, status: { not: 'paid' } },
           select: { partnerId: true, id: true },
