@@ -4,7 +4,7 @@
 
 Initial source-code audit of `faithworth/Vuka` (default branch `main`) with first remediation pass isolated on `security/vuka-security-audit-2026-10` and draft PR #59.
 
-This is a source review, not a penetration test. No production data, Supabase project settings, Cloudflare R2 bucket policy, Vercel environment values, or live payment-provider dashboard settings were accessed. Findings below are limited to what can be established from repository code and configuration.
+This is a source review plus read-only Supabase metadata/advisor inspection, not a penetration test. No customer record contents, Cloudflare R2 bucket policy, Vercel environment values, or live payment-provider dashboard settings were accessed. The Supabase checks read project/table metadata, advisor findings, function definitions, policy definitions, grants, and a role-scoped row-count test.
 
 ## Confirmed findings
 
@@ -80,6 +80,22 @@ The workflow runs `npm audit --audit-level=critical || true`, so detected critic
 - PayPal webhook signature verification is required in production when the webhook ID is absent (the handler returns 503).
 - Security response headers include HSTS, frame denial, MIME sniffing protection, and a restrictive default CSP.
 - The PayPal capture and 2FA one-time credential race fixes described above are committed only to the audit branch.
+
+## Live Supabase findings
+
+Project: `VUKA` (`zbudtlkgdjaztsjdrbmk`), active, PostgreSQL 17.6.
+
+The live Supabase security advisor returned:
+
+- 99 tables with RLS enabled but no policies (INFO). With RLS enabled and no matching policy, direct API roles are denied rows by default; this is not by itself proof of data exposure.
+- 112 tables visible in the GraphQL schema to `anon` and 112 visible to `authenticated` because those roles have SELECT grants. The advisor warns about schema discoverability. This does not establish row access where RLS denies rows.
+- One public SECURITY DEFINER function, `public.rls_auto_enable()`, executable by `anon` and `authenticated`. It is an event-trigger function with `search_path=pg_catalog`; event-trigger functions are not ordinary RPC functions, but unnecessary EXECUTE grants should still be removed.
+- One trigger function, `public.protect_approved_verification_request()`, with mutable search_path. It is not SECURITY DEFINER and its current body uses built-ins/trigger records only; setting search_path to `pg_catalog` is appropriate.
+- Leaked-password protection is disabled in Supabase Auth.
+
+A role-scoped read-only check as `anon` returned zero rows from `public.user_two_factor`. The inspected `User`, `Artist`, `Purchase` and `AdminLog` tables each have a service-role-only policy; internal security tables such as `password_reset_tokens` and `two_factor_challenges` had RLS enabled with no policies. This is evidence of fail-closed RLS for those tested paths, not a full proof for every table or every API role.
+
+**Remediation prepared in PR #59:** migration `prisma/migrations/20261030140000_security_function_privileges/migration.sql` revokes public/anon/authenticated EXECUTE on `rls_auto_enable()` (when present) and pins the verification trigger function's search_path to `pg_catalog`. It has not been applied to production. The migration must pass the preview build and be reviewed before merge.
 
 ## Not yet verified — requires provider/dashboard access or execution
 
