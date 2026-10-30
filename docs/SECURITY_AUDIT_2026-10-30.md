@@ -139,6 +139,10 @@ A role-scoped read-only check as `anon` returned zero rows from `public.user_two
 8. Full route-by-route authorization/IDOR review across all API modules.
 9. Dependency vulnerability scan, type-check, lint, unit tests, and production build on the PR branch.
 
+### Vercel firewall / WAF status
+
+The connected Vercel project is `vuka-distro` (`prj_2g8TfuexznpNg4o8wQuqINRugpBD`). Its project metadata reports SSO protection enabled for non-custom domains, but trusted-IP restrictions are disabled. The Vercel Firewall configuration and active-attack-status endpoints both returned `404 Seawall Config not found`; attempting to create a firewall configuration also returned the same 404. Therefore no WAF/CRS rules were activated and no firewall settings were changed. This may mean the project/plan does not currently have a provisioned firewall configuration, or the API resource is unavailable to this project. Verify Firewall availability in the Vercel dashboard or with Vercel support before relying on edge SQLi/XSS mitigation.
+
 ### Security automation added in audit branch
 
 `.github/workflows/security.yml` now runs:
