@@ -32,7 +32,7 @@ jobs:
       - name: Reconcile manifest and lockfile without lifecycle scripts
         run: npm install --ignore-scripts
       - name: Override vulnerable nested PostCSS
-        run: npm pkg set overrides.postcss=8.5.23 && npm install --ignore-scripts
+        run: npm pkg set devDependencies.postcss=8.5.23 overrides.postcss=8.5.23 && npm install --ignore-scripts
       - name: Apply only semver-compatible security fixes
         run: npm audit fix --ignore-scripts || echo 'Remaining advisories require separately reviewed major-version upgrades.'
       - name: Commit reviewed-scope lockfile changes to security branch
