@@ -47,7 +47,6 @@ jobs:
           --config p/owasp-top-ten
           --config p/javascript
           --error
-          --exclude .github
           --exclude node_modules
           --exclude .next
           --exclude coverage
@@ -57,10 +56,10 @@ jobs:
     name: Secret pattern scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
       - name: Scan repository history for leaked secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
