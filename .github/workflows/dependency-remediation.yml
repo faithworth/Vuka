@@ -5,6 +5,7 @@ on:
     branches: ["security/vuka-security-audit-2026-10"]
     paths:
       - ".github/workflows/dependency-remediation.yml"
+      - "package.json"
 
 permissions:
   contents: write
