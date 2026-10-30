@@ -42,13 +42,14 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
       target: 'https://www.vukamusic.com/store?q={search_term_string}',
       'query-input': 'required name=search_term_string',
     },
-  }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026').replace(/\\u2028/g, '\\u2028').replace(/\\u2029/g, '\\u2029');
+  }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 
   return (
     <>
       {/* JSON-LD structured data — preserved from original */}
       <script
         type="application/ld+json"
+        // nosemgrep: JSON-LD is JSON.stringify output with HTML/script delimiters escaped above.
         dangerouslySetInnerHTML={{ __html: jsonLd }}
       />
       <BlockRenderer blocks={page.blocks} featuredArtists={featuredArtists} />
