@@ -30,7 +30,7 @@ jobs:
       - name: Reconcile manifest and lockfile without lifecycle scripts
         run: npm install --ignore-scripts
       - name: Apply only semver-compatible security fixes
-        run: npm audit fix --ignore-scripts
+        run: npm audit fix --ignore-scripts || echo 'Remaining advisories require separately reviewed major-version upgrades.'
       - name: Commit reviewed-scope lockfile changes to security branch
         shell: bash
         run: |
