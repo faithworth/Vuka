@@ -72,7 +72,8 @@ export function validateReadOnlyQuery(query: string): string | null {
 export async function runReadOnlyQuery(query: string, rowLimit: number) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    // Keep certificate verification enabled to prevent database MITM attacks.
+    ssl: { rejectUnauthorized: true },
   });
   await client.connect();
   try {
