@@ -57,7 +57,9 @@ function classify(file) {
 }
 
 function main() {
-  const files = process.argv.slice(2);
+  const files = process.env.CHANGED_FILES_B64
+    ? Buffer.from(process.env.CHANGED_FILES_B64, 'base64').toString('utf8').split(/\r?\n/).filter(Boolean)
+    : process.argv.slice(2);
   if (files.length === 0) {
     console.log('No files passed. Usage: node scripts/classify-pr-risk.js <file1> <file2> ...');
     process.exit(0);
