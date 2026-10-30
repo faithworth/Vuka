@@ -3,7 +3,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
-import { authorizeMcpRequest } from "@/lib/mcp-shared";
+import { authorizeMcpRequest } from "@/lib/security/mcpAuth";
 import { z } from "zod";
 
 // ── TEMPORARY ChatGPT-connector compatibility patch (bootstrap) ──────────
