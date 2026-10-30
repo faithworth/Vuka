@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
          JOIN "Artist" a ON a.id = s."artistId"
         WHERE ${conditions.join(" AND ")}
         ORDER BY s."createdAt" DESC
-        LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+        LIMIT $${limitPlaceholder} OFFSET $${offsetPlaceholder}`,
       ...values,
     );
 
