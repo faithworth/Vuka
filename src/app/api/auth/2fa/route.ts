@@ -33,11 +33,13 @@ import {
 import prisma from '@/lib/prisma';
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'https://vukamusic.com';
+const MFA_COOKIE = 'vuka_mfa';
+const MFA_COOKIE_OPTIONS = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/', maxAge: 12 * 60 * 60 };
 
 // ── GET — status ──────────────────────────────────────────────
 
 export async function GET() {
-  const user = await getServerUser();
+  const user = await getServerUser({ skipMfa: true });
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const status = await get2FAStatus(user.id);
@@ -48,7 +50,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
-  const user = await getServerUser();
+  const user = await getServerUser({ skipMfa: true });
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const action = req.nextUrl.searchParams.get('action');
@@ -112,7 +114,10 @@ async function handleEnable(
     securityUrl: `${APP_URL()}/settings/security`,
   }).catch(() => { /* non-blocking */ });
 
-  return NextResponse.json({ ok: true });
+  const challengeToken = await create2FAChallenge(user.id);
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(MFA_COOKIE, challengeToken, MFA_COOKIE_OPTIONS);
+  return response;
 }
 
 // ── Disable ───────────────────────────────────────────────────
@@ -142,7 +147,9 @@ async function handleDisable(
     securityUrl: `${APP_URL()}/settings/security`,
   }).catch(() => { /* non-blocking */ });
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(MFA_COOKIE, '', { ...MFA_COOKIE_OPTIONS, maxAge: 0 });
+  return response;
 }
 
 // ── Verify (login challenge) ──────────────────────────────────
@@ -166,11 +173,9 @@ async function handleVerify(
   if (!result.ok) return NextResponse.json({ error: result.error ?? 'Invalid code.' }, { status: 400 });
 
   const challengeToken = await create2FAChallenge(user.id);
-  return NextResponse.json({
-    ok: true,
-    usedBackupCode: result.usedBackupCode ?? false,
-    challengeToken,
-  });
+  const response = NextResponse.json({ ok: true, usedBackupCode: result.usedBackupCode ?? false });
+  response.cookies.set(MFA_COOKIE, challengeToken, MFA_COOKIE_OPTIONS);
+  return response;
 }
 
 // ── Regenerate backup codes ───────────────────────────────────
