@@ -109,6 +109,14 @@ async function rateLimitRedis(
   }
 }
 
+// Sensitive actions fail closed if both rate-limit backends are unavailable.
+// This prevents outages from silently disabling brute-force and payment guards.
+const FAIL_CLOSED_RATE_LIMIT_KEYS = new Set([
+  'login_attempt', 'register', 'magic_link_request', 'password_reset', 'email_verify',
+  'checkout_init', 'payout_request', 'bank_account_add',
+  'beat_upload', 'release_upload', 'avatar_upload', 'social_upload',
+]);
+
 // ── DB path (always available) ────────────────────────────────
 
 async function rateLimitDb(
@@ -159,13 +167,17 @@ async function rateLimitDb(
 
     return false;
   } catch (err) {
-    // Rate limiter failures must never block legitimate traffic
-    logger.error('[rateLimit] DB error — failing open', {
+    const failClosed = FAIL_CLOSED_RATE_LIMIT_KEYS.has(config.key);
+    logger.error('[rateLimit] DB error', {
       subject,
       action: config.key,
       error: err instanceof Error ? err.message : String(err),
+      failClosed,
     });
-    return false;
+    // Authentication, payment, payout, and upload controls must not silently
+    // disappear during a database/Redis outage. Less sensitive traffic remains
+    // fail-open to avoid turning a rate-limit outage into a platform outage.
+    return failClosed;
   }
 }
 
