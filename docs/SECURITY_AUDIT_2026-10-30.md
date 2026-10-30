@@ -24,7 +24,7 @@ The primary MCP SQL tool intentionally accepts a read-only SELECT/CTE string and
 |---|---|
 | SQL injection | Parameterized patterns observed; complete call-site review pending |
 | Broken access control / IDOR | Route-by-route ownership review pending |
-| Authentication / account takeover | Server-side 2FA enforcement and registration trust boundary remain open |
+| Authentication / account takeover | Central auth and edge middleware now enforce hashed HttpOnly MFA proof; registration trust boundary remains open |
 | Password reset abuse | Hashing and atomic one-time claim implemented on audit branch |
 | XSS / HTML injection | CSP weakened by unsafe-inline/eval; content rendering review pending |
 | CSRF | SameSite/cookie and origin checks require route-by-route review |
@@ -65,7 +65,9 @@ The handler selected a purchase using `purchaseId OR paypal:<orderId>`. It did n
 
 The password login establishes the Supabase session before redirecting to the 2FA page. The challenge token is stored only in browser `sessionStorage`; repository search found no call site for `consume2FAChallenge`. The central `getServerUser()` helper checks the Supabase session and database user but does not require a completed MFA challenge. Consequently, the 2FA screen is a client-side flow, not a server-side authorization boundary: a caller with valid primary credentials can attempt authenticated API requests without completing the challenge.
 
-**Status:** NOT FIXED. Requires a coordinated server-side MFA gate across protected API routes and pages, plus a secure HttpOnly verification marker. Do not claim 2FA is protective until this is implemented and tested.
+**Remediation in audit branch:** successful TOTP/backup-code verification issues a 12-hour HttpOnly, Secure-in-production, SameSite=Lax `vuka_mfa` cookie. The random cookie value is stored only as a SHA-256 hash in `two_factor_challenges`. Central `getServerUser()` checks the cookie against the user's unexpired, unused challenge. Edge middleware also checks MFA state and the same challenge for authenticated routes that use Supabase auth directly, returning 401 for API requests or redirecting pages to `/auth/2fa`. `/api/auth/2fa` and `/api/auth/me` are exempt for login/bootstrap; setup cannot overwrite an already-enabled authenticator, and disabling MFA revokes active challenges. The client no longer stores MFA proof in sessionStorage.
+
+**Status: IMPLEMENTED ON AUDIT BRANCH; full route-by-route regression and bypass testing still required.** Existing challenge tokens from the previous plaintext/10-minute format will no longer validate, so users must complete a fresh 2FA challenge after deployment.
 
 ### MEDIUM — Public registration endpoint trusts caller-supplied email and role
 **Affected:** `src/app/api/auth/register/route.ts`, `src/app/auth/register/page.tsx`, `src/app/api/auth/callback/route.ts`
@@ -195,7 +197,7 @@ These checks are committed to the audit branch only. Initial GitHub Actions resu
 
 ## Immediate priorities
 
-1. Complete server-side MFA enforcement.
+1. Complete route-by-route MFA bypass testing for the new server-side gate.
 2. Bind registration/profile creation to verified Supabase identity.
 3. Fix password-reset token storage and atomic consumption.
 4. Finish upload validation/size enforcement and audit private-file download paths.
