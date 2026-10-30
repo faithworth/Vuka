@@ -22,6 +22,7 @@ import {
   generateBackupCodes,
   regenerateBackupCodes,
   verifyTotpToken,
+  user2FAEnabled,
 } from '@/lib/security/twoFactor';
 import { decrypt } from '@/lib/encryption';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
