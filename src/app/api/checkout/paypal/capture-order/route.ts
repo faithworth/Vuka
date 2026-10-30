@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { orderId, purchaseId, buyerName, buyerEmail } = parsed.data;
+  const { orderId, purchaseId, itemType, itemId, buyerName, buyerEmail } = parsed.data;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vukamusic.com';
 
   // ── Load the pending Purchase created by create-order ──────────────────
@@ -94,6 +94,40 @@ export async function POST(req: NextRequest) {
   if (!purchaseOrNull) {
     logger.error('[PayPal capture] Purchase not found', { traceId, orderId, purchaseId });
     return NextResponse.json({ error: 'Purchase record not found. Contact support.' }, { status: 404 });
+  }
+
+  // The purchase ID is present in the return URL and is not proof that the
+  // caller owns the matching PayPal order. Bind the supplied order to the
+  // exact persisted reference before returning a download or capturing funds.
+  if (purchaseOrNull.paystackReference !== `paypal:${orderId}`) {
+    logger.warn('[PayPal capture] Order/purchase reference mismatch', { traceId, purchaseId });
+    return NextResponse.json({ error: 'PayPal order does not belong to this purchase.' }, { status: 403 });
+  }
+
+  const expectedItemId =
+    purchaseOrNull.itemType === 'beat' ? purchaseOrNull.beatId :
+    purchaseOrNull.itemType === 'release' ? purchaseOrNull.releaseId :
+    purchaseOrNull.itemType === 'video' ? purchaseOrNull.videoId :
+    purchaseOrNull.itemType === 'sample' ? purchaseOrNull.sampleId : null;
+  if (purchaseOrNull.itemType !== itemType || expectedItemId !== itemId) {
+    return NextResponse.json({ error: 'Purchase item does not match the PayPal checkout.' }, { status: 409 });
+  }
+
+  // Verify PayPal's own server-side reference. Vuka sets this reference when
+  // creating the order, so an unrelated PayPal order cannot confirm this row.
+  let paypalOrder: { purchase_units?: Array<{ reference_id?: string; amount?: { currency_code?: string; value?: string } }> };
+  try {
+    paypalOrder = await paypal.orders.get(orderId) as typeof paypalOrder;
+  } catch (err) {
+    logger.warn('[PayPal capture] Could not retrieve PayPal order', { traceId, orderId, error: String(err) });
+    return NextResponse.json({ error: 'Could not verify PayPal order. Please retry.' }, { status: 502 });
+  }
+  const paypalOrderUnit = paypalOrder.purchase_units?.[0];
+  if (!paypalOrderUnit || paypalOrderUnit.reference_id !== `vuka-order-${purchaseOrNull.id}` ||
+      paypalOrderUnit.amount?.currency_code !== 'USD' || !paypalOrderUnit.amount.value ||
+      !Number.isFinite(Number(paypalOrderUnit.amount.value)) || Number(paypalOrderUnit.amount.value) <= 0) {
+    logger.warn('[PayPal capture] PayPal order verification failed', { traceId, purchaseId });
+    return NextResponse.json({ error: 'PayPal order verification failed.' }, { status: 403 });
   }
 
   // Narrowed, non-null purchase reference — used everywhere below,
@@ -140,6 +174,17 @@ export async function POST(req: NextRequest) {
 
   const capture   = captureResult.purchase_units?.[0]?.payments?.captures?.[0];
   const amountUSD = parseFloat(capture?.amount?.value ?? '0');
+  const expectedUSD = Number(paypalOrderUnit.amount?.value);
+  if (
+    !capture || capture.status !== 'COMPLETED' ||
+    capture.amount?.currency_code !== 'USD' ||
+    !Number.isFinite(amountUSD) || amountUSD <= 0 ||
+    amountUSD.toFixed(2) !== expectedUSD.toFixed(2)
+  ) {
+    logger.error('[PayPal capture] Captured amount/currency did not match verified order', { traceId, purchaseId, orderId });
+    return NextResponse.json({ error: 'Captured payment did not match the verified PayPal order.' }, { status: 402 });
+  }
+
   const paypalFeeUSD = parseFloat(
     capture?.seller_receivable_breakdown?.paypal_fee?.value ?? '0'
   );
