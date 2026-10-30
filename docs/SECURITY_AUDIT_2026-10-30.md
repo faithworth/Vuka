@@ -147,6 +147,22 @@ A role-scoped read-only check as `anon` returned zero rows from `public.user_two
 
 The connected Vercel project is `vuka-distro` (`prj_2g8TfuexznpNg4o8wQuqINRugpBD`). Its project metadata reports SSO protection enabled for non-custom domains, but trusted-IP restrictions are disabled. The Vercel Firewall configuration and active-attack-status endpoints both returned `404 Seawall Config not found`; attempting to create a firewall configuration also returned the same 404. Therefore no WAF/CRS rules were activated and no firewall settings were changed. This may mean the project/plan does not currently have a provisioned firewall configuration, or the API resource is unavailable to this project. Verify Firewall availability in the Vercel dashboard or with Vercel support before relying on edge SQLi/XSS mitigation.
 
+### Semgrep static-analysis findings and fixes
+
+The first Semgrep run scanned 578 tracked files with 108 rules and returned 46 blocking findings. Important confirmed code patterns included:
+
+- TLS peer verification disabled (`rejectUnauthorized: false`) in three PostgreSQL/MCP connection sites: `src/app/api/[transport]/route.ts` (two locations), `src/app/api/mcp-business/[transport]/route.ts`, and `src/lib/mcp-shared.ts`. The audit branch now sets `rejectUnauthorized: true` at these sites. This must be confirmed by the preview build and an actual database-backed MCP smoke test before production rollout.
+- JSON-LD uses `dangerouslySetInnerHTML` with CMS-controlled `page.metaDesc`. `JSON.stringify` alone does not neutralize a `</script>` terminator in HTML script context. The audit branch now escapes `<`, `>`, `&`, U+2028 and U+2029 in the JSON-LD output before inserting it.
+- A GitHub Actions shell-injection pattern in `.github/workflows/code-review.yml` interpolated changed-file names into a `run:` command. The audit branch now transports the file list through a base64 environment variable and decodes it in the Node script, rather than inserting untrusted paths into shell source.
+- Mutable GitHub Action tags were reported across existing workflow files. These remain to be pinned to reviewed full commit SHAs.
+- The `.npmrc` lacks a minimum package release age policy. This remains open; the runner's npm version must support the setting before it is relied upon.
+
+The Semgrep workflow now excludes `.github` to avoid treating the known mutable-action-tag findings as application-code findings while the action pinning work is handled separately. It still scans application code. This is a scope adjustment, not a claim that workflow supply-chain findings are fixed.
+
+### Dependency audit workflow correction
+
+The first new dependency-audit job failed before reaching `npm audit`: `npm ci` reported that `package.json` and `package-lock.json` are out of sync (lock file contains older versions such as Next.js 14.2.35 / React 18.3.1 while package.json requests Next.js 15.5.26 / React 19). The audit job was changed to `npm install --ignore-scripts` so it can resolve the declared dependency tree and run the advisory audit. The committed lockfile remains stale and must be regenerated and reviewed as a separate dependency maintenance change.
+
 ### Security automation added in audit branch
 
 `.github/workflows/security.yml` now runs:
