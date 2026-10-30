@@ -129,8 +129,14 @@ async function _consumeBackupCode(userId: string, inputCode: string, row: TwoFac
   const idx = codes.indexOf(needle);
   if (idx === -1) return false;
   const remaining = codes.filter((_, i) => i !== idx);
-  await prisma.$executeRaw`UPDATE user_two_factor SET "backupCodes"=${encrypt(JSON.stringify(remaining))},"updatedAt"=NOW() WHERE "userId"=${userId}`;
-  return true;
+  // Compare-and-swap the encrypted code list so two concurrent requests
+  // cannot both consume the same one-time backup code.
+  const updated = await prisma.$executeRaw`
+    UPDATE user_two_factor
+    SET "backupCodes"=${encrypt(JSON.stringify(remaining))},"updatedAt"=NOW()
+    WHERE "userId"=${userId} AND "backupCodes"=${row.backupCodes}
+  `;
+  return Number(updated) === 1;
 }
 
 // ── Status & helpers ──────────────────────────────────────────
@@ -171,11 +177,13 @@ export async function create2FAChallenge(userId: string): Promise<string> {
 }
 
 export async function consume2FAChallenge(token: string): Promise<string | null> {
-  const rows = await prisma.$queryRaw<Array<{ userId: string; usedAt: Date | null; expiresAt: Date }>>`
-    SELECT "userId","usedAt","expiresAt" FROM two_factor_challenges WHERE token=${token} LIMIT 1
+  // Consume and return the challenge in one statement. A read-then-write
+  // sequence allows two concurrent requests to redeem the same token.
+  const rows = await prisma.$queryRaw<Array<{ userId: string }>>`
+    UPDATE two_factor_challenges
+    SET "usedAt"=NOW()
+    WHERE token=${token} AND "usedAt" IS NULL AND "expiresAt" > NOW()
+    RETURNING "userId"
   `;
-  const ch = rows[0];
-  if (!ch || ch.usedAt || ch.expiresAt < new Date()) return null;
-  await prisma.$executeRaw`UPDATE two_factor_challenges SET "usedAt"=NOW() WHERE token=${token}`;
-  return ch.userId;
+  return rows[0]?.userId ?? null;
 }
