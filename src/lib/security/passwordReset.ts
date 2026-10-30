@@ -56,12 +56,13 @@ export async function createPasswordResetToken(email: string): Promise<{
   `;
 
   const token = crypto.randomBytes(48).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const expiresAt = new Date(Date.now() + RESET_EXPIRY_MS);
   const id = crypto.randomUUID();
 
   await prisma.$executeRaw`
     INSERT INTO password_reset_tokens (id, "userId", email, token, "expiresAt", "createdAt")
-    VALUES (${id}, ${user.id}, ${user.email}, ${token}, ${expiresAt}, NOW())
+    VALUES (${id}, ${user.id}, ${user.email}, ${tokenHash}, ${expiresAt}, NOW())
   `;
 
   return { ok: true, token, userId: user.id, name: user.name };
@@ -75,8 +76,12 @@ export async function validatePasswordResetToken(token: string): Promise<{
   email?: string;
   error?: string;
 }> {
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  // The OR supports one-time validation of legacy plaintext tokens during rollout.
   const rows = await prisma.$queryRaw<ResetTokenRow[]>`
-    SELECT * FROM password_reset_tokens WHERE token = ${token} LIMIT 1
+    SELECT * FROM password_reset_tokens
+    WHERE token = ${tokenHash} OR token = ${token}
+    LIMIT 1
   `;
   const record = rows[0];
   if (!record) return { valid: false, error: 'Invalid or expired reset link.' };
@@ -91,8 +96,19 @@ export async function consumePasswordResetToken(
   token: string,
   newPassword: string
 ): Promise<{ ok: boolean; userId?: string; email?: string; error?: string }> {
-  const validation = await validatePasswordResetToken(token);
-  if (!validation.valid) return { ok: false, error: validation.error };
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  // Claim the token in one atomic statement. Concurrent requests cannot both
+  // pass validation and reset the password with the same one-time token.
+  const claimed = await prisma.$queryRaw<Array<{ userId: string; email: string }>>`
+    UPDATE password_reset_tokens
+    SET "usedAt" = NOW(), token = ${tokenHash}
+    WHERE (token = ${tokenHash} OR token = ${token})
+      AND "usedAt" IS NULL
+      AND "expiresAt" > NOW()
+    RETURNING "userId", email
+  `;
+  const record = claimed[0];
+  if (!record) return { ok: false, error: 'Invalid, expired, or already used reset link.' };
 
   const supabase = await createServiceClient();
 
@@ -101,7 +117,7 @@ export async function consumePasswordResetToken(
   if (listErr) return { ok: false, error: 'Failed to process password reset.' };
 
   const sbUser = list?.users?.find(
-    u => u.email?.toLowerCase() === validation.email?.toLowerCase()
+    u => u.email?.toLowerCase() === record.email.toLowerCase()
   );
   if (!sbUser) return { ok: false, error: 'Account not found.' };
 
@@ -111,12 +127,7 @@ export async function consumePasswordResetToken(
   );
   if (updateErr) return { ok: false, error: updateErr.message ?? 'Failed to update password.' };
 
-  // Mark token as used
-  await prisma.$executeRaw`
-    UPDATE password_reset_tokens SET "usedAt" = NOW() WHERE token = ${token}
-  `;
-
-  return { ok: true, userId: validation.userId, email: validation.email };
+  return { ok: true, userId: record.userId, email: record.email };
 }
 
 // ── URL helper ────────────────────────────────────────────────
