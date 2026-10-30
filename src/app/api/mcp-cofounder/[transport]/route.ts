@@ -7,6 +7,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import {
+  authorizeMcpRequest,
   supabase,
   writeAdminLog,
 } from "@/lib/mcp-shared";
@@ -337,16 +338,19 @@ const server = createMcpHandler(
   { basePath: "/api/mcp-cofounder", maxDuration: 120, verboseLogs: true }
 );
 
-export { server as GET, server as POST, server as DELETE };
+async function authenticatedHandler(request: Request) {
+  const denied = authorizeMcpRequest(request);
+  if (denied) return denied;
+  return server(request);
+}
+
+export { authenticatedHandler as GET, authenticatedHandler as POST, authenticatedHandler as DELETE };
 
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
+
     },
   });
 }

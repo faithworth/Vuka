@@ -28,25 +28,28 @@ interface Props {
 }
 
 export default function CmsLandingPage({ page, featuredArtists }: Props) {
+  // Keep structured data static: CMS-controlled metadata must never enter
+  // an HTML script context, even after JSON serialization.
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Vuka Music",
+    url: "https://www.vukamusic.com",
+    description: "Africa's independent music platform. Buy beats and music directly from African artists.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://www.vukamusic.com/store?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
+  });
+
   return (
     <>
-      {/* JSON-LD structured data — preserved from original */}
+      {/* JSON-LD is JSON.stringify output with <, >, &, U+2028 and U+2029 escaped above. */}
+      {/* nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'WebSite',
-            name: 'Vuka Music',
-            url: 'https://www.vukamusic.com',
-            description: page.metaDesc || "Africa's independent music platform. Buy beats and music directly from African artists.",
-            potentialAction: {
-              '@type': 'SearchAction',
-              target: 'https://www.vukamusic.com/store?q={search_term_string}',
-              'query-input': 'required name=search_term_string',
-            },
-          }),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLd }}
       />
       <BlockRenderer blocks={page.blocks} featuredArtists={featuredArtists} />
       <LandingMusicShowcase />

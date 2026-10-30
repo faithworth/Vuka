@@ -41,10 +41,8 @@ export async function GET(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────
   const authHeader = req.headers.get('authorization') ?? '';
   const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const secret =
-    bearerSecret ??
-    req.headers.get('x-cron-secret') ??
-    req.nextUrl.searchParams.get('secret');
+  // Secrets must only be supplied in headers; URLs are commonly logged.
+  const secret = bearerSecret ?? req.headers.get('x-cron-secret');
 
   if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

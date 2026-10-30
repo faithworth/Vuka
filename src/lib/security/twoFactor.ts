@@ -102,6 +102,7 @@ export async function disable2FA(userId: string, token: string): Promise<{ ok: b
   const validBackup = !validTotp && await _consumeBackupCode(userId, token, row);
   if (!validTotp && !validBackup) return { ok: false, error: 'Invalid code.' };
   await prisma.$executeRaw`UPDATE user_two_factor SET "isEnabled"=false,"enabledAt"=NULL,"updatedAt"=NOW() WHERE "userId"=${userId}`;
+  await prisma.$executeRaw`UPDATE two_factor_challenges SET "usedAt"=NOW() WHERE "userId"=${userId} AND "usedAt" IS NULL`;
   return { ok: true };
 }
 
@@ -129,8 +130,14 @@ async function _consumeBackupCode(userId: string, inputCode: string, row: TwoFac
   const idx = codes.indexOf(needle);
   if (idx === -1) return false;
   const remaining = codes.filter((_, i) => i !== idx);
-  await prisma.$executeRaw`UPDATE user_two_factor SET "backupCodes"=${encrypt(JSON.stringify(remaining))},"updatedAt"=NOW() WHERE "userId"=${userId}`;
-  return true;
+  // Compare-and-swap the encrypted code list so two concurrent requests
+  // cannot both consume the same one-time backup code.
+  const updated = await prisma.$executeRaw`
+    UPDATE user_two_factor
+    SET "backupCodes"=${encrypt(JSON.stringify(remaining))},"updatedAt"=NOW()
+    WHERE "userId"=${userId} AND "backupCodes"=${row.backupCodes}
+  `;
+  return Number(updated) === 1;
 }
 
 // ── Status & helpers ──────────────────────────────────────────
@@ -162,20 +169,38 @@ export async function regenerateBackupCodes(userId: string): Promise<string[]> {
 
 export async function create2FAChallenge(userId: string): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  // MFA proof is a server-validated session cookie, not a client-side flag.
+  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
   await prisma.$executeRaw`
     INSERT INTO two_factor_challenges (id,"userId",token,"expiresAt","createdAt")
-    VALUES (${crypto.randomUUID()},${userId},${token},${expiresAt},NOW())
+    VALUES (${crypto.randomUUID()},${userId},${tokenHash},${expiresAt},NOW())
   `;
   return token;
 }
 
-export async function consume2FAChallenge(token: string): Promise<string | null> {
-  const rows = await prisma.$queryRaw<Array<{ userId: string; usedAt: Date | null; expiresAt: Date }>>`
-    SELECT "userId","usedAt","expiresAt" FROM two_factor_challenges WHERE token=${token} LIMIT 1
+export async function validate2FAChallenge(token: string, userId: string): Promise<boolean> {
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return false;
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM two_factor_challenges
+    WHERE token=${tokenHash} AND "userId"=${userId}
+      AND "usedAt" IS NULL AND "expiresAt" > NOW()
+    LIMIT 1
   `;
-  const ch = rows[0];
-  if (!ch || ch.usedAt || ch.expiresAt < new Date()) return null;
-  await prisma.$executeRaw`UPDATE two_factor_challenges SET "usedAt"=NOW() WHERE token=${token}`;
-  return ch.userId;
+  return rows.length === 1;
+}
+
+export async function consume2FAChallenge(token: string): Promise<string | null> {
+  // Consume and return the challenge in one statement. A read-then-write
+  // sequence allows two concurrent requests to redeem the same token.
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return null;
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const rows = await prisma.$queryRaw<Array<{ userId: string }>>`
+    UPDATE two_factor_challenges
+    SET "usedAt"=NOW()
+    WHERE token=${tokenHash} AND "usedAt" IS NULL AND "expiresAt" > NOW()
+    RETURNING "userId"
+  `;
+  return rows[0]?.userId ?? null;
 }

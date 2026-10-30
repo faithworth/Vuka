@@ -1,7 +1,9 @@
 import { createServerSupabaseClient } from './supabase_server';
+import { cookies } from 'next/headers';
 import prisma from './prisma';
+import { user2FAEnabled, validate2FAChallenge } from '@/lib/security/twoFactor';
 
-export async function getServerUser() {
+export async function getServerUser(options: { skipMfa?: boolean } = {}) {
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -17,6 +19,15 @@ export async function getServerUser() {
       console.error('[Auth] DB lookup failed:', err instanceof Error ? err.message.split('\n')[0] : err);
       return null;
     });
+
+    if (!options.skipMfa && dbUser) {
+      const mfaEnabled = await user2FAEnabled(dbUser.id);
+      if (mfaEnabled) {
+        const cookieStore = await cookies();
+        const mfaToken = cookieStore.get('vuka_mfa')?.value ?? '';
+        if (!(await validate2FAChallenge(mfaToken, dbUser.id))) return null;
+      }
+    }
 
     return dbUser;
   } catch (err: unknown) {

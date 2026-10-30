@@ -49,9 +49,6 @@ function TwoFAForm() {
       }
 
       // Store challenge token
-      if (data.challengeToken) {
-        sessionStorage.setItem('vuka_2fa_ok', data.challengeToken);
-      }
 
       // Register device session after successful 2FA
       try {

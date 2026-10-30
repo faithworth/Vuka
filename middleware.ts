@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 // Routes that require an authenticated session at the edge; the specific
 // admin/moderator role check happens in the route handler itself (see the
@@ -46,6 +47,7 @@ const PUBLIC_PATHS = [
   '/auth/login',
   '/auth/register',
   '/auth/verify',
+  '/auth/2fa',
   '/api/health',
   '/api/migrate',
   '/api/auth/magic-link',
@@ -139,6 +141,43 @@ function isBlockedPath(pathname: string): boolean {
   return BLOCKED_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
 }
 
+function isMfaExemptPath(pathname: string): boolean {
+  return pathname === '/api/auth/2fa' || pathname === '/api/auth/me';
+}
+
+async function isMfaRequired(user: { email?: string }, token: string): Promise<boolean> {
+  if (!user.email) return false;
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  const { data: dbUser, error: userError } = await admin
+    .from('User').select('id').eq('email', user.email.toLowerCase()).maybeSingle();
+  if (userError) throw userError;
+  if (!dbUser?.id) return false;
+
+  const { data: twoFactor, error: twoFactorError } = await admin
+    .from('user_two_factor').select('isEnabled').eq('userId', dbUser.id).maybeSingle();
+  if (twoFactorError) throw twoFactorError;
+  if (twoFactor?.isEnabled !== true) return false;
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return true;
+
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  const { data: challenge, error: challengeError } = await admin
+    .from('two_factor_challenges')
+    .select('id')
+    .eq('userId', dbUser.id)
+    .eq('token', tokenHash)
+    .is('usedAt', null)
+    .gt('expiresAt', new Date().toISOString())
+    .maybeSingle();
+  if (challengeError) throw challengeError;
+  return !challenge;
+}
+
 function getClientIp(req: NextRequest): string {
   return (
     req.headers.get('cf-connecting-ip') ??
@@ -176,13 +215,13 @@ export async function middleware(req: NextRequest) {
       );
     }
 
-    const authHeader  = req.headers.get('authorization') ?? '';
-    const querySecret = req.nextUrl.searchParams.get('secret') ?? '';
+    const authHeader = req.headers.get('authorization') ?? '';
     const xCronHeader = req.headers.get('x-cron-secret') ?? '';
 
+    // Never accept CRON_SECRET in a URL: query strings can be copied into
+    // access logs, browser history, monitoring systems, and Referer headers.
     const validSecret =
       authHeader === `Bearer ${cronSecret}` ||
-      querySecret === cronSecret ||
       xCronHeader === cronSecret;
 
     if (!validSecret) {
@@ -226,7 +265,34 @@ export async function middleware(req: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // ── 6. Admin route enforcement ────────────────────────────────────────
+  // ── 6. Server-side MFA enforcement ─────────────────────────────────────
+  // A client-side redirect is not an authentication boundary. For users with
+  // 2FA enabled, validate the HttpOnly proof against the hashed, unexpired
+  // challenge row before allowing direct-Supabase pages or API routes through.
+  if (user && !isMfaExemptPath(pathname)) {
+    try {
+      const mfaRequired = await isMfaRequired(user, req.cookies.get('vuka_mfa')?.value ?? '');
+      if (mfaRequired) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'Two-factor verification required.', mfaRequired: true, traceId },
+            { status: 401, headers: { 'x-trace-id': traceId, 'Cache-Control': 'no-store' } }
+          );
+        }
+        const verifyUrl = new URL('/auth/2fa', req.url);
+        verifyUrl.searchParams.set('next', `${pathname}${req.nextUrl.search}`);
+        return NextResponse.redirect(verifyUrl);
+      }
+    } catch {
+      // Fail closed if the MFA state cannot be checked reliably.
+      return NextResponse.json(
+        { error: 'Authentication security check unavailable.', traceId },
+        { status: 503, headers: { 'x-trace-id': traceId, 'Cache-Control': 'no-store' } }
+      );
+    }
+  }
+
+  // ── 7. Admin route enforcement ────────────────────────────────────────
   if (isAdminPath(pathname)) {
     if (!user) {
       if (pathname.startsWith('/api/')) {

@@ -10,9 +10,17 @@ export async function GET(req: NextRequest) {
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const params = new URL(req.url).searchParams;
-    const type = params.get('type'); // 'photo' | 'cover'
+    const type = params.get('type') ?? 'photo'; // 'photo' | 'cover'
     const mimeType = params.get('mimeType') || 'image/jpeg';
-    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const imageExtensions: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+    const ext = imageExtensions[mimeType];
+    if ((type !== 'photo' && type !== 'cover') || !ext) {
+      return NextResponse.json({ error: 'Unsupported profile image type.' }, { status: 400 });
+    }
     const key = type === 'cover'
       ? `profiles/covers/${user.artist.id}.${ext}`
       : `profiles/photos/${user.artist.id}.${ext}`;
@@ -34,32 +42,38 @@ export async function POST(req: NextRequest) {
     const user = await requireArtist();
     if (!user?.artist) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { contentType, fileType } = await req.json();
+    const body = await req.json();
+    const contentType = typeof body?.contentType === 'string' ? body.contentType.trim().toLowerCase() : '';
+    const fileType = typeof body?.fileType === 'string' ? body.fileType : '';
     if (!contentType || !fileType) {
       return NextResponse.json({ error: 'contentType and fileType required' }, { status: 400 });
+    }
+
+    // Never derive an object extension from an arbitrary client MIME subtype.
+    // MIME values are declarations, not proof of file contents, but strict
+    // per-category allowlists prevent obvious HTML/script/executable uploads.
+    const allowedTypes: Record<string, Record<string, string>> = {
+      avatar: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' },
+      banner: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' },
+      artwork: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' },
+      eventCover: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' },
+      exclusiveThumb: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' },
+      audio: { 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/flac': 'flac', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3' },
+      exclusiveContent: {
+        'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/flac': 'flac',
+        'audio/mpeg': 'mp3', 'audio/mp3': 'mp3',
+        'video/mp4': 'mp4', 'video/quicktime': 'mov', 'application/pdf': 'pdf',
+      },
+    };
+    const ext = allowedTypes[fileType]?.[contentType];
+    if (!ext) {
+      return NextResponse.json({ error: 'File type is not allowed for this upload category.' }, { status: 415 });
     }
 
     const artistId = user.artist.id;
     const ts = Date.now(); // timestamp prevents cache collisions on re-upload
 
-    // Derive a safe file extension from the declared MIME type
-    function extFor(mime: string): string {
-      if (mime === 'image/png')  return 'png';
-      if (mime === 'image/webp') return 'webp';
-      if (mime === 'audio/wav' || mime === 'audio/x-wav') return 'wav';
-      if (mime === 'audio/flac') return 'flac';
-      if (mime === 'audio/mpeg' || mime === 'audio/mp3')  return 'mp3';
-      if (mime === 'image/jpeg') return 'jpg';
-      if (mime === 'application/pdf') return 'pdf';
-      if (mime === 'video/mp4') return 'mp4';
-      if (mime === 'video/quicktime') return 'mov';
-      // Fallback: grab the subtype
-      return mime.split('/')[1]?.split(';')[0] || 'bin';
-    }
-
-    const ext = extFor(contentType);
-
-    // Map fileType → R2 key prefix
+    // Map the validated fileType → R2 key prefix
     let key: string;
     switch (fileType) {
       case 'avatar':

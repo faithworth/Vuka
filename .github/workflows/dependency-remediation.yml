@@ -1,0 +1,51 @@
+name: Vuka Dependency Remediation
+
+on:
+  push:
+    branches: ["security/vuka-security-audit-2026-10"]
+    paths:
+      - ".github/workflows/dependency-remediation.yml"
+      - "package.json"
+      - ".npmrc"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vuka-dependency-remediation
+  cancel-in-progress: false
+
+jobs:
+  safe-updates:
+    name: Apply non-breaking npm security updates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: security/vuka-security-audit-2026-10
+          persist-credentials: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - name: Use npm release-age policy support
+        run: npm install --global npm@11.21.1
+      - name: Reconcile manifest and lockfile without lifecycle scripts
+        run: npm install --ignore-scripts
+      - name: Override vulnerable nested PostCSS
+        run: npm pkg set devDependencies.postcss=8.5.23 overrides.postcss=8.5.23 && npm install --ignore-scripts
+      - name: Apply only semver-compatible security fixes
+        run: npm audit fix --ignore-scripts || echo 'Remaining advisories require separately reviewed major-version upgrades.'
+      - name: Commit reviewed-scope lockfile changes to security branch
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "No non-breaking lockfile updates available."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "security: update lockfile with non-breaking npm fixes"
+          git fetch origin "security/vuka-security-audit-2026-10:refs/remotes/origin/security/vuka-security-audit-2026-10"
+          git rebase "origin/security/vuka-security-audit-2026-10"
+          git push origin "HEAD:security/vuka-security-audit-2026-10"

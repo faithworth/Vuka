@@ -18,6 +18,7 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { Client } from "pg";
 import {
+  authorizeMcpRequest,
   supabase,
   GITHUB_API,
   GITHUB_OWNER,
@@ -647,7 +648,7 @@ server.tool(
       "Subscriptions at risk of lapsing.",
       {},
       async () => {
-        const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+        const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
         await client.connect();
         try {
           const res = await client.query(
@@ -686,17 +687,20 @@ server.tool(
   { basePath: "/api/mcp-business", maxDuration: 120, verboseLogs: true }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+async function authenticatedHandler(request: Request) {
+  const denied = authorizeMcpRequest(request);
+  if (denied) return denied;
+  return handler(request);
+}
+
+export { authenticatedHandler as GET, authenticatedHandler as POST, authenticatedHandler as DELETE };
 
 // Minimal CORS preflight support (matches the original endpoint's patch).
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
+
     },
   });
 }

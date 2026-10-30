@@ -15,13 +15,33 @@ import { checkFeatureCap, countActiveServiceListings } from '@/lib/planGates';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const category = searchParams.get('category') || null;
-    const search   = searchParams.get('search')   || null;
-    const take     = Math.min(parseInt(searchParams.get('take') || '20'), 100);
-    const skip     = parseInt(searchParams.get('skip') || '0');
+    const rawCategory = searchParams.get('category');
+    const rawSearch = searchParams.get('search');
+    const category = rawCategory?.trim().slice(0, 80) || null;
+    const search = rawSearch?.trim().slice(0, 200) || null;
+    const parsedTake = Number.parseInt(searchParams.get('take') || '20', 10);
+    const parsedSkip = Number.parseInt(searchParams.get('skip') || '0', 10);
+    const take = Number.isFinite(parsedTake) ? Math.max(1, Math.min(parsedTake, 100)) : 20;
+    const skip = Number.isFinite(parsedSkip) ? Math.max(0, parsedSkip) : 0;
 
     // Raw query avoids Prisma crashing on portfolioUrls stored as jsonb string
-    // instead of native TEXT[] (type mismatch in existing rows).
+    // instead of native TEXT[] (type mismatch in existing rows). All external
+    // filters and pagination values are bound parameters, never SQL fragments.
+    const conditions = ['s."isActive" = true'];
+    const values: unknown[] = [];
+    if (category) {
+      values.push(category);
+      conditions.push(`s.category = $${values.length}`);
+    }
+    if (search) {
+      values.push(`%${search}%`);
+      conditions.push(`(s.title ILIKE $${values.length} OR s.description ILIKE $${values.length})`);
+    }
+    values.push(take);
+    const limitPlaceholder = values.length;
+    values.push(skip);
+    const offsetPlaceholder = values.length;
+
     const services = await queryRaw(
       `SELECT s.id, s."artistId", s.title, s.description, s.category,
               s.price, s."deliveryDays", s.packages, s.requirements,
@@ -32,11 +52,10 @@ export async function GET(req: NextRequest) {
               a."isVerified" AS "artist_isVerified"
          FROM "MarketplaceService" s
          JOIN "Artist" a ON a.id = s."artistId"
-        WHERE s."isActive" = true
-          ${category ? `AND s.category = '${category.replace(/'/g, "''")}'` : ''}
-          ${search   ? `AND (s.title ILIKE '%${search.replace(/'/g, "''")}%' OR s.description ILIKE '%${search.replace(/'/g, "''")}%')` : ''}
+        WHERE ${conditions.join(" AND ")}
         ORDER BY s."createdAt" DESC
-        LIMIT ${take} OFFSET ${skip}`,
+        LIMIT $${limitPlaceholder} OFFSET $${offsetPlaceholder}`,
+      ...values,
     );
 
     // Shape artist sub-object to match what the frontend expects

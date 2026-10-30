@@ -3,12 +3,12 @@
 // Shared helpers for Vuka's MCP endpoints. Extracted so the split
 // ChatGPT-facing endpoints (src/app/api/mcp-*/[transport]/route.ts) don't
 // each duplicate the Supabase client, GitHub helpers, and SQL guardrails.
-// The original src/app/api/[transport]/route.ts (used by Claude, all 81
-// tools) is untouched and still self-contained — this file is net-new and
-// only consumed by the new split endpoints.
+// All six MCP transport route groups import the shared bearer gate below;
+// the database and GitHub helper exports remain shared across split endpoints.
 
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
+export { authorizeMcpRequest } from "@/lib/security/mcpAuth";
 
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,7 +72,8 @@ export function validateReadOnlyQuery(query: string): string | null {
 export async function runReadOnlyQuery(query: string, rowLimit: number) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    // Keep certificate verification enabled to prevent database MITM attacks.
+    ssl: { rejectUnauthorized: true },
   });
   await client.connect();
   try {
