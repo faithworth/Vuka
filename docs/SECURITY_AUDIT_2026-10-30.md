@@ -6,6 +6,34 @@ Initial source-code audit of `faithworth/Vuka` (default branch `main`) with firs
 
 This is a source review plus read-only Supabase metadata/advisor inspection, not a penetration test. No customer record contents, Cloudflare R2 bucket policy, Vercel environment values, or live payment-provider dashboard settings were accessed. The Supabase checks read project/table metadata, advisor findings, function definitions, policy definitions, grants, and a role-scoped row-count test.
 
+## Threat coverage: SQL injection and common attack classes
+
+### SQL injection
+
+The inspected 2FA and password-reset database operations use Prisma tagged-template calls such as `prisma.$queryRaw\`... ${value} ...\`` and `prisma.$executeRaw\`... ${value} ...\``. Prisma parameterizes interpolated values in these tagged-template APIs; user values are not concatenated into SQL in the inspected examples. The central helper in `src/lib/prisma.ts` also exposes `$queryRawUnsafe` / `$executeRawUnsafe` wrappers that accept a SQL string plus values. Passing values separately can be parameterized, but any caller that concatenates or interpolates untrusted input into the SQL string would be vulnerable.
+
+**Status: NOT YET CERTIFIED.** GitHub code search was rate-limited during the extended audit, so every call site of the unsafe wrappers and every raw SQL construction could not be enumerated. The new Semgrep workflow scans for common OWASP/JavaScript issues, but it is not a substitute for a complete manual query review or adversarial SQL injection tests. Required completion: enumerate all `$queryRawUnsafe`, `$executeRawUnsafe`, `queryRaw`, `executeRaw`, `$queryRaw`, and `$executeRaw` call sites; confirm all dynamic values are bound parameters; remove or tightly constrain any dynamically assembled SQL; test quote, comment, boolean, UNION, time-delay and encoding payloads against staging endpoints without using production customer data.
+
+### Other attack classes in scope
+
+| Attack class | Current status |
+|---|---|
+| SQL injection | Parameterized patterns observed; complete call-site review pending |
+| Broken access control / IDOR | Route-by-route ownership review pending |
+| Authentication / account takeover | Server-side 2FA enforcement and registration trust boundary remain open |
+| Password reset abuse | Plaintext token and race issue remains open |
+| XSS / HTML injection | CSP weakened by unsafe-inline/eval; content rendering review pending |
+| CSRF | SameSite/cookie and origin checks require route-by-route review |
+| SSRF | URL-fetching endpoints and allowlists require review |
+| Malicious uploads | Dashboard upload MIME allowlist added in audit branch; content signature and size enforcement pending |
+| Path traversal | Middleware blocks several patterns; storage/download handlers still need canonical path and ownership review |
+| Brute force / credential stuffing | Rate limits exist but DB fallback fails open; credential-stuffing and IP trust need review |
+| Payment/webhook replay | PayPal capture binding improved; every provider webhook needs signature, amount, currency and idempotency tests |
+| DoS / resource exhaustion | Request/body limits, concurrency and provider-level WAF/DDoS configuration not verified |
+| Secrets / supply chain | New history secret scan and dependency audit workflow added; results pending |
+| Clickjacking / MIME sniffing | X-Frame-Options and nosniff headers observed |
+| Session theft / fixation | Session lifecycle, cookie flags and revocation need full verification |
+
 ## Confirmed findings
 
 ### HIGH — PayPal capture did not bind the supplied order to the requested purchase
@@ -43,12 +71,14 @@ If Upstash is unavailable, the limiter falls back to Postgres. If the database p
 
 **Status:** NOT FIXED. Decide per endpoint whether sensitive actions (login, password reset, payout, checkout, upload) should fail closed or use a durable independent fallback. Avoid a global change that could block all legitimate traffic.
 
-### MEDIUM — Upload URL issuance does not enforce a strict content-type/size policy
+### MEDIUM — Upload URL issuance does not enforce file-size or content-signature validation
 **Affected:** `src/app/api/dashboard/settings/upload-url/route.ts`, `src/lib/r2.ts`
 
-The authenticated artist upload endpoint accepts caller-supplied MIME types, derives extensions from those values (including a generic subtype fallback), and issues one-hour presigned PUT URLs without an application-level file-size limit or content inspection. Authentication and server-derived object-key prefixes are present, but these controls do not prevent oversized uploads or content-type spoofing.
+The authenticated artist upload endpoint previously accepted arbitrary MIME subtypes and derived object extensions from them. Authentication and server-derived object-key prefixes were present, but the original code did not enforce an upload size limit or inspect file contents.
 
-**Status:** NOT FIXED. Implement explicit file-type allowlists per upload category, size limits enforced by the upload path/bucket policy, and server-side validation before publishing/serving files. Do not assume the browser's MIME declaration proves file contents.
+**Remediation in audit branch:** explicit MIME allowlists now apply per upload category (images only for profile/artwork/event thumbnails; audio only for audio; a limited audio/video/PDF set for exclusive content). The GET legacy endpoint now only accepts photo/cover and JPEG/PNG/WebP. This blocks obvious HTML/script/executable MIME declarations but does not validate actual file signatures or impose a byte limit.
+
+**Status: PARTIALLY FIXED.** Add upload size enforcement at the R2 upload proxy or signed policy layer and inspect actual file signatures before publishing or serving files.
 
 ### MEDIUM — Password reset token is stored in plaintext and consumption is not atomic
 **Affected:** `src/lib/security/passwordReset.ts`
@@ -108,6 +138,15 @@ A role-scoped read-only check as `anon` returned zero rows from `public.user_two
 7. Backup frequency, restore testing, database point-in-time recovery, and R2 recovery.
 8. Full route-by-route authorization/IDOR review across all API modules.
 9. Dependency vulnerability scan, type-check, lint, unit tests, and production build on the PR branch.
+
+### Security automation added in audit branch
+
+`.github/workflows/security.yml` now runs:
+- `npm audit --audit-level=high` using the locked dependency tree (blocking on high/critical advisories).
+- Semgrep OWASP Top 10 and JavaScript static analysis.
+- Gitleaks over full Git history to detect committed secrets.
+
+These checks are committed to the audit branch only. Results are pending; scanners may report findings requiring triage and fixes.
 
 ## Immediate priorities
 
