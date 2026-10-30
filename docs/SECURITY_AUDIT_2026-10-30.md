@@ -125,7 +125,11 @@ The live Supabase security advisor returned:
 
 A role-scoped read-only check as `anon` returned zero rows from `public.user_two_factor`. The inspected `User`, `Artist`, `Purchase` and `AdminLog` tables each have a service-role-only policy; internal security tables such as `password_reset_tokens` and `two_factor_challenges` had RLS enabled with no policies. This is evidence of fail-closed RLS for those tested paths, not a full proof for every table or every API role.
 
-**Remediation prepared in PR #59:** migration `prisma/migrations/20261030140000_security_function_privileges/migration.sql` revokes public/anon/authenticated EXECUTE on `rls_auto_enable()` (when present) and pins the verification trigger function's search_path to `pg_catalog`. It has not been applied to production. The migration must pass the preview build and be reviewed before merge.
+**Migration application — production database:** Supabase `_prisma_migrations` confirms `20261030140000_security_function_privileges` started at `2026-10-30 13:42:53 UTC` and finished at `13:42:53.878 UTC`. It was applied by the Vercel preview build because Preview and Production share the same `DATABASE_URL` and `DIRECT_URL` environment-variable records. This contradicts the initial assumption that no production migration had run.
+
+**Post-migration verification:** `rls_auto_enable()` now denies EXECUTE to `anon`, `authenticated`, and `PUBLIC`. `protect_approved_verification_request()` is not SECURITY DEFINER and its body uses only `OLD`/`NEW` trigger records and built-ins; its stored setting is `search_path=pg_catalog`. The migration contains no table/data DDL or customer-row updates. No rollback is indicated by the observed function definitions and grants.
+
+**Pipeline remediation in audit branch:** `scripts/migrate.js` now exits before running migrations on Vercel deployments where `VERCEL_ENV` is not `production`. This prevents future preview builds from applying migrations to the shared production database. This guard is not yet deployed to production. Preview still shares production application secrets/database access; a separate staging Supabase project and preview-only environment variables are still required.
 
 ## Not yet verified — requires provider/dashboard access or execution
 
@@ -163,4 +167,4 @@ These checks are committed to the audit branch only. Results are pending; scanne
 
 ## Change control
 
-No changes in this audit branch have been merged into `main`. No production deployment has been intentionally triggered by merging this work. PR #59 is a draft pending CI and security review.
+No application-code changes in this audit branch have been merged into `main`. However, the Vercel Preview build ran the migration script against the shared Supabase production database and applied `20261030140000_security_function_privileges`; the application migration was verified as complete. This was an unintended consequence of Preview/Production sharing database environment variables. The audit branch now adds a Vercel Preview migration guard, but that guard is not deployed until reviewed and merged. PR #59 remains a draft pending CI and security review.
