@@ -129,7 +129,7 @@ A role-scoped read-only check as `anon` returned zero rows from `public.user_two
 
 **Post-migration verification:** `rls_auto_enable()` now denies EXECUTE to `anon`, `authenticated`, and `PUBLIC`. `protect_approved_verification_request()` is not SECURITY DEFINER and its body uses only `OLD`/`NEW` trigger records and built-ins; its stored setting is `search_path=pg_catalog`. The migration contains no table/data DDL or customer-row updates. No rollback is indicated by the observed function definitions and grants.
 
-**Pipeline remediation in audit branch:** `scripts/migrate.js` now exits before running migrations on Vercel deployments where `VERCEL_ENV` is not `production`. This prevents future preview builds from applying migrations to the shared production database. This guard is not yet deployed to production. Preview still shares production application secrets/database access; a separate staging Supabase project and preview-only environment variables are still required.
+**Pipeline remediation in audit branch:** `scripts/migrate.js` now exits before running migrations on Vercel deployments where `VERCEL_ENV` is not `production`. The subsequent Vercel preview build for commit `0e923b44095cc654372b44a9d5baefdd38ab6ebb` logged `[migrate] Vercel Preview deployment — skipping database migrations`, confirming the guard works in the preview build. The guard is not deployed to production until merge. Preview still shares production application secrets/database access; a separate staging Supabase project and preview-only environment variables are still required.
 
 ## Not yet verified — requires provider/dashboard access or execution
 
