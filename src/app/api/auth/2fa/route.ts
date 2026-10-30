@@ -75,6 +75,10 @@ async function handleSetup(
   user: { id: string; email: string },
   ip: string
 ) {
+  if (await user2FAEnabled(user.id)) {
+    return NextResponse.json({ error: 'Two-factor authentication is already enabled. Verify your current code before disabling it.' }, { status: 409 });
+  }
+
   const limited = await rateLimit(
     user.id,
     { key: 'twofa_setup', max: 5, windowMs: 3_600_000 },
