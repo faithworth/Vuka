@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     const values: unknown[] = [];
     if (category) {
       values.push(category);
-      conditions.push(`s.category = ${values.length}`);
+      conditions.push(`s.category = $${values.length}`);
     }
     if (search) {
       values.push(`%${search}%`);
