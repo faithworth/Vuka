@@ -165,10 +165,10 @@ The connected Vercel project is `vuka-distro` (`prj_2g8TfuexznpNg4o8wQuqINRugpBD
 The first Semgrep run scanned 578 tracked files with 108 rules and returned 46 blocking findings. Important confirmed code patterns included:
 
 - TLS peer verification disabled (`rejectUnauthorized: false`) in three PostgreSQL/MCP connection sites: `src/app/api/[transport]/route.ts` (two locations), `src/app/api/mcp-business/[transport]/route.ts`, and `src/lib/mcp-shared.ts`. The audit branch now sets `rejectUnauthorized: true` at these sites. This must be confirmed by the preview build and an actual database-backed MCP smoke test before production rollout.
-- JSON-LD uses `dangerouslySetInnerHTML` with CMS-controlled `page.metaDesc`. `JSON.stringify` alone does not neutralize a `</script>` terminator in HTML script context. The audit branch now escapes `<`, `>`, `&`, U+2028 and U+2029 in the JSON-LD output before inserting it.
+- JSON-LD uses `dangerouslySetInnerHTML` with CMS-controlled `page.metaDesc`. `JSON.stringify` alone does not neutralize a `</script>` terminator in HTML script context. The audit branch now uses a fixed, static JSON-LD string that contains no CMS-controlled fields, removing the dynamic script-context injection source entirely.
 - A GitHub Actions shell-injection pattern in `.github/workflows/code-review.yml` interpolated changed-file names into a `run:` command. The audit branch now transports the file list through a base64 environment variable and decodes it in the Node script, rather than inserting untrusted paths into shell source.
 - Mutable GitHub Action tags were reported across existing workflow files. These remain to be pinned to reviewed full commit SHAs.
-- The `.npmrc` lacks a minimum package release age policy. This remains open; the runner's npm version must support the setting before it is relied upon.
+- `.npmrc` now sets `min-release-age=7`; the security workflow upgrades npm to 11.10.0 before dependency resolution so the policy is supported. Existing non-security workflows still need a consistent npm-version update.
 
 The Semgrep workflow now excludes `.github` to avoid treating the known mutable-action-tag findings as application-code findings while the action pinning work is handled separately. It still scans application code. This is a scope adjustment, not a claim that workflow supply-chain findings are fixed.
 
