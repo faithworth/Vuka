@@ -17,12 +17,15 @@ jobs:
       - name: Get changed files
         id: changed
         run: |
-          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
-          echo "files=$(cat changed_files.txt | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          git diff --name-only "origin/${GITHUB_BASE_REF}"...HEAD > changed_files.txt
+          files_b64="$(base64 -w0 changed_files.txt)"
+          echo "files_b64=${files_b64}" >> "$GITHUB_OUTPUT"
 
       - name: Classify risk
         id: risk
-        run: node scripts/classify-pr-risk.js ${{ steps.changed.outputs.files }}
+        env:
+          CHANGED_FILES_B64: ${{ steps.changed.outputs.files_b64 }}
+        run: node scripts/classify-pr-risk.js
 
       - name: Comment risk tier on PR
         uses: actions/github-script@v7
