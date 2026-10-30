@@ -16,6 +16,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import {
+  authorizeMcpRequest,
   GITHUB_API,
   GITHUB_OWNER,
   GITHUB_REPO,
@@ -782,17 +783,20 @@ const handler = createMcpHandler(
   { basePath: "/api/mcp-github", maxDuration: 120, verboseLogs: true }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+async function authenticatedHandler(request: Request) {
+  const denied = authorizeMcpRequest(request);
+  if (denied) return denied;
+  return handler(request);
+}
+
+export { authenticatedHandler as GET, authenticatedHandler as POST, authenticatedHandler as DELETE };
 
 // Minimal CORS preflight support (matches the original endpoint's patch).
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
+
     },
   });
 }
