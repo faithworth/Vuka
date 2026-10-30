@@ -1,0 +1,63 @@
+name: Vuka Security Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "security/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vuka-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Block high and critical dependency advisories
+        run: npm audit --audit-level=high
+
+  static-analysis:
+    name: OWASP static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Semgrep
+        run: python -m pip install --disable-pip-version-check semgrep
+      - name: Scan JavaScript and TypeScript for common web vulnerabilities
+        run: >-
+          semgrep scan
+          --config p/owasp-top-ten
+          --config p/javascript
+          --error
+          --exclude node_modules
+          --exclude .next
+          --exclude coverage
+          .
+
+  secret-pattern-scan:
+    name: Secret pattern scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository history for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
