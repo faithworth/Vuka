@@ -31,6 +31,8 @@ jobs:
         run: npm install --global npm@11.21.1
       - name: Reconcile manifest and lockfile without lifecycle scripts
         run: npm install --ignore-scripts
+      - name: Update and deduplicate patched PostCSS
+        run: npm update postcss --ignore-scripts && npm dedupe --ignore-scripts
       - name: Apply only semver-compatible security fixes
         run: npm audit fix --ignore-scripts || echo 'Remaining advisories require separately reviewed major-version upgrades.'
       - name: Commit reviewed-scope lockfile changes to security branch
