@@ -26,7 +26,7 @@ export function authorizeMcpRequest(request: Request): Response | null {
   }
 
   const authorization = request.headers.get("authorization") ?? "";
-  const match = /^Bearer (\S+)$/i.exec(authorization);
+  const match = /^Bearer (\\S+)$/i.exec(authorization);
   const supplied = match?.[1] ?? "";
   const expectedDigest = createHash("sha256").update(expected, "utf8").digest();
   const suppliedDigest = createHash("sha256").update(supplied, "utf8").digest();
@@ -38,14 +38,13 @@ export function authorizeMcpRequest(request: Request): Response | null {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
-        "WWW-Authenticate": "Bearer realm=\\"Vuka MCP\\"",
+        "WWW-Authenticate": "Bearer",
       },
     });
   }
 
   return null;
 }
-
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
