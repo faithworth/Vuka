@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/dependency-remediation.yml"
       - "package.json"
+      - ".npmrc"
 
 permissions:
   contents: write
