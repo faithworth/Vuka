@@ -46,10 +46,11 @@ export default function CmsLandingPage({ page, featuredArtists }: Props) {
 
   return (
     <>
-      {/* JSON-LD structured data — preserved from original */}
+      {/* JSON-LD is JSON.stringify output with <, >, &, U+2028 and U+2029 escaped above. */}
+      {/* nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ /* nosemgrep: JSON-LD is JSON.stringify output with HTML/script delimiters escaped above. */ __html: jsonLd }}
+        dangerouslySetInnerHTML={{ __html: jsonLd }}
       />
       <BlockRenderer blocks={page.blocks} featuredArtists={featuredArtists} />
       <LandingMusicShowcase />
