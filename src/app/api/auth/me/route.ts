@@ -13,6 +13,8 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { user2FAEnabled, validate2FAChallenge } from '@/lib/security/twoFactor';
 import prisma from '@/lib/prisma';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? '').toLowerCase().trim();
@@ -88,6 +90,21 @@ export async function GET() {
 
     const role = dbUser.role ?? 'fan';
     const isAdmin = ['owner', 'super_admin', 'admin', 'moderator'].includes(role);
+
+    // The login page needs only role flags to choose the next route. Do not
+    // expose the full profile before a required second factor is completed.
+    if (await user2FAEnabled(dbUser.id)) {
+      const cookieStore = await cookies();
+      const mfaToken = cookieStore.get('vuka_mfa')?.value ?? '';
+      if (!(await validate2FAChallenge(mfaToken, dbUser.id))) {
+        return NextResponse.json({
+          mfaRequired: true,
+          role,
+          isArtist: !!dbUser.artist,
+          isIndustry: !!dbUser.industryUser,
+        });
+      }
+    }
 
     return NextResponse.json({
       id: dbUser.id,
