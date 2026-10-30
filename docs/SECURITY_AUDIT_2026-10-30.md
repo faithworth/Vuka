@@ -138,6 +138,15 @@ The workflow runs `npm audit --audit-level=critical || true`, so detected critic
 
 Project: `VUKA` (`zbudtlkgdjaztsjdrbmk`), active, PostgreSQL 17.6.
 
+### Live RLS / privilege checks (read-only)
+
+- All 112 ordinary tables in the `public` schema currently have row-level security enabled. None currently has `FORCE ROW LEVEL SECURITY`; the server-side service-role/application owner can bypass RLS as expected for trusted backend access.
+- `anon` and `authenticated` have table-level grants across the public tables, but the policy inventory returned only `service_role` policies. With RLS enabled and no anon/authenticated policies, those client roles are denied rows by RLS. This is safer than relying on table grants alone, but must be retested after policy changes.
+- The only `SECURITY DEFINER` public-schema function returned by the audit was `rls_auto_enable()`, which has `search_path=pg_catalog` and no anon/authenticated EXECUTE grants.
+- `protect_approved_verification_request()` is a normal trigger function with `search_path=pg_catalog`, but the live privilege inventory showed default EXECUTE grants to PUBLIC, anon and authenticated. A new migration `20261030160000_revoke_trigger_public_exec` now revokes those grants while retaining server/trigger operation. This migration is on the security branch and has not yet been applied to production.
+
+These checks confirm the table-level RLS state and function grants only; they do not replace a policy-by-policy review of data ownership or service-role key handling.
+
 The live Supabase security advisor returned:
 
 - All 112 public tables have RLS enabled; 99 have no policies (INFO). A catalog query found zero RLS policies granted to `anon`, `authenticated`, or `public`; the four inspected policies on `User`, `Artist`, `Purchase`, and `AdminLog` are restricted to `service_role`. This is fail-closed for direct API roles, but the app's Prisma server connection must still enforce authorization correctly.
