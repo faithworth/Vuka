@@ -153,8 +153,8 @@ The live Supabase security advisor returned:
 
 - All 112 public tables have RLS enabled; 99 have no policies (INFO). A catalog query found zero RLS policies granted to `anon`, `authenticated`, or `public`; the four inspected policies on `User`, `Artist`, `Purchase`, and `AdminLog` are restricted to `service_role`. This is fail-closed for direct API roles, but the app's Prisma server connection must still enforce authorization correctly.
 - 112 tables are visible in the GraphQL schema to `anon` and 112 to `authenticated` because those roles have SELECT grants. This exposes table/column metadata. Five separate read-only checks under the `anon` role returned zero rows for `User`, `Purchase`, `IndustryBankAccount`, `password_reset_tokens`, and `two_factor_challenges`; a separate check returned zero rows from `user_two_factor`. The advisor's schema-discoverability warning is real, but these checks did not find row-level data exposure through `anon`.
-- One public SECURITY DEFINER function, `public.rls_auto_enable()`, executable by `anon` and `authenticated`. It is an event-trigger function with `search_path=pg_catalog`; event-trigger functions are not ordinary RPC functions, but unnecessary EXECUTE grants should still be removed.
-- One trigger function, `public.protect_approved_verification_request()`, with mutable search_path. It is not SECURITY DEFINER and its current body uses built-ins/trigger records only; setting search_path to `pg_catalog` is appropriate.
+- One public SECURITY DEFINER function, `public.rls_auto_enable()`, was previously executable by `anon` and `authenticated`. The applied `20261030140000_security_function_privileges` migration revoked those grants and pinned `search_path=pg_catalog`; post-migration verification confirmed the change.
+- One trigger function, `public.protect_approved_verification_request()`, is not SECURITY DEFINER and its body uses built-ins/trigger records only. The applied migration pinned `search_path=pg_catalog`. PUBLIC/anon/authenticated EXECUTE grants are being revoked by the new migration `20261030160000_revoke_trigger_public_exec`, which is pending production deployment.
 - Leaked-password protection is disabled in Supabase Auth.
 
 A role-scoped read-only check as `anon` returned zero rows from `public.user_two_factor`. The inspected `User`, `Artist`, `Purchase` and `AdminLog` tables each have a service-role-only policy; internal security tables such as `password_reset_tokens` and `two_factor_challenges` had RLS enabled with no policies. This is evidence of fail-closed RLS for those tested paths, not a full proof for every table or every API role.
@@ -195,7 +195,7 @@ The `.github` exclusion was removed after action pinning. The latest Semgrep run
 
 ### Dependency audit workflow correction
 
-The first new dependency-audit job failed before reaching `npm audit`: `npm ci` reported that `package.json` and `package-lock.json` are out of sync (lock file contains older versions such as Next.js 14.2.35 / React 18.3.1 while package.json requests Next.js 15.5.26 / React 19). The audit job was changed to `npm install --ignore-scripts` so it can resolve the declared dependency tree and run the advisory audit. The committed lockfile remains stale and must be regenerated and reviewed as a separate dependency maintenance change.
+The first new dependency-audit job failed before reaching `npm audit`: `npm ci` reported that `package.json` and `package-lock.json` are out of sync (lock file contains older versions such as Next.js 14.2.35 / React 18.3.1 while package.json requests Next.js 15.5.26 / React 19). The audit job was changed to `npm install --ignore-scripts` so it can resolve the declared dependency tree and run the advisory audit. The lockfile has now been regenerated and reconciled with the manifest; the controlled dependency remediation updated the patched package versions and PostCSS override.
 
 ### Security automation added in audit branch
 
