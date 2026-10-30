@@ -154,7 +154,7 @@ The connected Vercel project is `vuka-distro` (`prj_2g8TfuexznpNg4o8wQuqINRugpBD
 - Semgrep OWASP Top 10 and JavaScript static analysis.
 - Gitleaks over full Git history to detect committed secrets.
 
-These checks are committed to the audit branch only. Results are pending; scanners may report findings requiring triage and fixes.
+These checks are committed to the audit branch only. Initial GitHub Actions results: full-history Gitleaks secret scan passed with no reported secret findings; the existing CI workflow passed type-check, lint, and tests. The new Semgrep OWASP scan and blocking npm audit were still running at the time of this report update; do not treat them as passed. The separate Tests workflow was also still running.
 
 ## Immediate priorities
 
