@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - name: Install npm 11 for release-age policy support
+        run: npm install -g npm@11.10.0
       - name: Install locked dependencies
         run: npm install --ignore-scripts
       - name: Block high and critical dependency advisories
