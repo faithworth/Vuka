@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 // Routes that require an authenticated session at the edge; the specific
 // admin/moderator role check happens in the route handler itself (see the
@@ -46,6 +47,7 @@ const PUBLIC_PATHS = [
   '/auth/login',
   '/auth/register',
   '/auth/verify',
+  '/auth/2fa',
   '/api/health',
   '/api/migrate',
   '/api/auth/magic-link',
@@ -137,6 +139,43 @@ function isCronPath(pathname: string): boolean {
 function isBlockedPath(pathname: string): boolean {
   const lower = pathname.toLowerCase();
   return BLOCKED_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
+}
+
+function isMfaExemptPath(pathname: string): boolean {
+  return pathname === '/api/auth/2fa' || pathname === '/api/auth/me';
+}
+
+async function isMfaRequired(user: { email?: string }, token: string): Promise<boolean> {
+  if (!user.email) return false;
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  const { data: dbUser, error: userError } = await admin
+    .from('User').select('id').eq('email', user.email).maybeSingle();
+  if (userError) throw userError;
+  if (!dbUser?.id) return false;
+
+  const { data: twoFactor, error: twoFactorError } = await admin
+    .from('user_two_factor').select('isEnabled').eq('userId', dbUser.id).maybeSingle();
+  if (twoFactorError) throw twoFactorError;
+  if (twoFactor?.isEnabled !== true) return false;
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) return true;
+
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  const { data: challenge, error: challengeError } = await admin
+    .from('two_factor_challenges')
+    .select('id')
+    .eq('userId', dbUser.id)
+    .eq('token', tokenHash)
+    .is('usedAt', null)
+    .gt('expiresAt', new Date().toISOString())
+    .maybeSingle();
+  if (challengeError) throw challengeError;
+  return !challenge;
 }
 
 function getClientIp(req: NextRequest): string {
