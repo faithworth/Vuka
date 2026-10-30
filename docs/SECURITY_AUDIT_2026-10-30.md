@@ -34,6 +34,15 @@ The inspected 2FA and password-reset database operations use Prisma tagged-templ
 | Clickjacking / MIME sniffing | X-Frame-Options and nosniff headers observed |
 | Session theft / fixation | Session lifecycle, cookie flags and revocation need full verification |
 
+## CRITICAL — Privileged MCP endpoints have no explicit authentication gate
+**Affected:** `src/app/api/[transport]/route.ts`, `src/app/api/mcp-business/[transport]/route.ts`, `src/lib/mcp-shared.ts`, `middleware.ts`
+
+Both MCP routes instantiate server-side Supabase clients with `SUPABASE_SERVICE_ROLE_KEY` and export the MCP handler directly for GET/POST/DELETE. The inspected route code contains no request authentication or per-tool authorization check before the handler is invoked. The CORS preflight handlers allow `Access-Control-Allow-Origin: *` and `Access-Control-Allow-Headers: *`. The middleware does not include these MCP routes in its admin or cron gates; ordinary unauthenticated requests are not rejected by the generic middleware path.
+
+The original MCP manifest includes a `run_sql_query` tool that sends caller-supplied SQL to PostgreSQL after regex checks, and the business MCP manifest exposes artist revenue, payout and purchase summaries using a service-role client. This is a critical trust-boundary issue: a remote caller may be able to invoke privileged tools without a verified identity. The SQL keyword filter is not a substitute for authentication, least-privilege database credentials, and per-tool authorization. The full tool set must be classified, and privileged operations must be protected by an authenticated bearer/OAuth mechanism or removed from the public manifest.
+
+**Status: NOT FIXED.** A safe fix requires an MCP authentication design and a new secret/configuration shared with the external ChatGPT connector. No `MCP_API_KEY` variable is currently configured in the Vercel project. Do not merge a fail-closed API-key gate until the key is created and the connector is updated, or the existing MCP integration will stop working. Until then, the exposed MCP routes on `main` remain a critical unresolved risk.
+
 ## Confirmed findings
 
 ### HIGH — PayPal capture did not bind the supplied order to the requested purchase
