@@ -14,6 +14,14 @@ const { execSync } = require('child_process');
 const isDev = process.env.NODE_ENV === 'development';
 const isCI  = process.env.CI === 'true' || process.env.VERCEL === '1';
 
+// Vercel Preview currently shares DATABASE_URL / DIRECT_URL with Production.
+// Never let a preview build mutate the production database. Preview deployments
+// must use a separate staging database before migrations are enabled there.
+if (process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production') {
+  console.log('[migrate] Vercel Preview deployment — skipping database migrations');
+  process.exit(0);
+}
+
 // Skip migrations if no DATABASE_URL (e.g. initial Vercel project setup)
 if (!process.env.DATABASE_URL) {
   console.log('[migrate] DATABASE_URL not set — skipping migrations');
