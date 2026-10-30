@@ -17,8 +17,8 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           cache: npm
@@ -37,7 +37,7 @@ jobs:
           $sig = Get-AuthenticodeSignature $exe.FullName
           if ($sig.Status -ne "Valid") { throw "Windows installer is not validly signed: $($sig.Status)" }
           Write-Host "Signed publisher: $($sig.SignerCertificate.Subject)"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: vuka-music-windows-signed
           path: apps/desktop/dist/*.exe
@@ -50,8 +50,8 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           cache: npm
@@ -73,7 +73,7 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           spctl --assess --verbose=2 --type exec "$APP"
           xcrun stapler validate "$APP"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: vuka-music-macos-signed
           path: apps/desktop/dist/*.dmg
@@ -85,7 +85,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: vuka-music-*-signed
           path: release-assets
