@@ -3,9 +3,8 @@
 // Shared helpers for Vuka's MCP endpoints. Extracted so the split
 // ChatGPT-facing endpoints (src/app/api/mcp-*/[transport]/route.ts) don't
 // each duplicate the Supabase client, GitHub helpers, and SQL guardrails.
-// The original src/app/api/[transport]/route.ts (used by Claude, all 81
-// tools) is untouched and still self-contained — this file is net-new and
-// only consumed by the new split endpoints.
+// All six MCP transport route groups import the shared bearer gate below;
+// the database and GitHub helper exports remain shared across split endpoints.
 
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
@@ -18,7 +17,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
  */
 export function authorizeMcpRequest(request: Request): Response | null {
   const expected = process.env.MCP_API_KEY;
-  if (!expected || expected.length < 32) {
+  if (!expected || !/^[a-f0-9]{96}$/i.test(expected)) {
     return new Response(JSON.stringify({ error: "MCP authentication is not configured." }), {
       status: 503,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
@@ -26,7 +25,7 @@ export function authorizeMcpRequest(request: Request): Response | null {
   }
 
   const authorization = request.headers.get("authorization") ?? "";
-  const match = /^Bearer ([^ ]+)$/i.exec(authorization);
+  const match = /^Bearer ([a-f0-9]{96})$/i.exec(authorization);
   const supplied = match?.[1] ?? "";
   const expectedDigest = createHash("sha256").update(expected, "utf8").digest();
   const suppliedDigest = createHash("sha256").update(supplied, "utf8").digest();
