@@ -30,7 +30,18 @@ interface Props {
 export default function CmsLandingPage({ page, featuredArtists }: Props) {
   // Keep structured data static: CMS-controlled metadata must never enter
   // an HTML script context, even after JSON serialization.
-  const jsonLd = '{"@context":"https://schema.org","@type":"WebSite","name":"Vuka Music","url":"https://www.vukamusic.com","description":"Africa\'s independent music platform. Buy beats and music directly from African artists.","potentialAction":{"@type":"SearchAction","target":"https://www.vukamusic.com/store?q={search_term_string}","query-input":"required name=search_term_string"}}';
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Vuka Music",
+    url: "https://www.vukamusic.com",
+    description: "Africa's independent music platform. Buy beats and music directly from African artists.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://www.vukamusic.com/store?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
+  });
 
   return (
     <>
