@@ -176,13 +176,13 @@ export async function middleware(req: NextRequest) {
       );
     }
 
-    const authHeader  = req.headers.get('authorization') ?? '';
-    const querySecret = req.nextUrl.searchParams.get('secret') ?? '';
+    const authHeader = req.headers.get('authorization') ?? '';
     const xCronHeader = req.headers.get('x-cron-secret') ?? '';
 
+    // Never accept CRON_SECRET in a URL: query strings can be copied into
+    // access logs, browser history, monitoring systems, and Referer headers.
     const validSecret =
       authHeader === `Bearer ${cronSecret}` ||
-      querySecret === cronSecret ||
       xCronHeader === cronSecret;
 
     if (!validSecret) {
