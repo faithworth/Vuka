@@ -117,12 +117,14 @@ The production Content Security Policy includes `'unsafe-inline'` and `'unsafe-e
 
 **Status:** NOT FIXED.
 
-### LOW/MEDIUM — Dependency audit is non-blocking
-**Affected:** `.github/workflows/ci.yml`
+### Dependency audit and supply-chain controls
+**Affected:** `package.json`, `package-lock.json`, `.npmrc`, `.github/workflows/security.yml`
 
-The workflow runs `npm audit --audit-level=critical || true`, so detected critical dependency vulnerabilities do not fail CI.
+The initial Vercel build reported 29 advisories (4 critical, 15 high, 6 moderate, 4 low). The security branch updated Next.js, eslint-config-next, Wrangler, Resend, Zod and Vitest; aligned Vite; added a patched PostCSS 8.5.23 override; and regenerated the lockfile. A fresh npm audit completed with **0 vulnerabilities**. The blocking security workflow uses `npm audit --audit-level=high`.
 
-**Status:** NOT FIXED. First obtain a current dependency audit and remediate any existing advisories, then make the security check blocking at an agreed severity. Avoid making CI fail on known unresolved advisories without a remediation plan.
+`.npmrc` enforces a seven-day minimum package release age. Explicit exceptions are limited to the reviewed security-fix packages `resend`, `wrangler` and `miniflare`, whose required patched releases were younger than the age threshold. The CI jobs use npm 11.21.1 to support this policy. GitHub Actions dependencies are pinned to immutable commit SHAs, and Semgrep scans workflow files as well as application code.
+
+**Status: FIXED ON AUDIT BRANCH; production rollout pending.** Re-run the audit after any future dependency update and do not use `npm audit fix --force` without a separately reviewed major-version migration.
 
 ## Positive controls observed
 
