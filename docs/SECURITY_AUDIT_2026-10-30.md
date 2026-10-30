@@ -22,7 +22,7 @@ The primary MCP SQL tool intentionally accepts a read-only SELECT/CTE string and
 
 | Attack class | Current status |
 |---|---|
-| SQL injection | Parameterized patterns observed; complete call-site review pending |
+| SQL injection | Unsafe helper call sites reviewed; marketplace filter injection fixed; staging payload tests pending |
 | Broken access control / IDOR | Route-by-route ownership review pending |
 | Authentication / account takeover | Central auth and edge middleware now enforce hashed HttpOnly MFA proof; registration trust boundary remains open |
 | Password reset abuse | Hashing and atomic one-time claim implemented on audit branch |
@@ -34,7 +34,7 @@ The primary MCP SQL tool intentionally accepts a read-only SELECT/CTE string and
 | Brute force / credential stuffing | Sensitive actions fail closed on dual-backend outage; DB counter concurrency and IP trust need review |
 | Payment/webhook replay | PayPal capture binding improved; every provider webhook needs signature, amount, currency and idempotency tests |
 | DoS / resource exhaustion | Request/body limits, concurrency and provider-level WAF/DDoS configuration not verified |
-| Secrets / supply chain | New history secret scan and dependency audit workflow added; results pending |
+| Secrets / supply chain | Gitleaks, Semgrep and npm audit passed; 0 dependency advisories; GitHub Actions pinned to SHAs |
 | Clickjacking / MIME sniffing | X-Frame-Options and nosniff headers observed |
 | Session theft / fixation | Session lifecycle, cookie flags and revocation need full verification |
 
