@@ -46,4 +46,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "security: update lockfile with non-breaking npm fixes"
+          git fetch origin "security/vuka-security-audit-2026-10:refs/remotes/origin/security/vuka-security-audit-2026-10"
+          git rebase "origin/security/vuka-security-audit-2026-10"
           git push origin "HEAD:security/vuka-security-audit-2026-10"
