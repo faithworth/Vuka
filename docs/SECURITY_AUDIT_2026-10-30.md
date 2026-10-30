@@ -188,10 +188,10 @@ The first Semgrep run scanned 578 tracked files with 108 rules and returned 46 b
 - TLS peer verification disabled (`rejectUnauthorized: false`) in three PostgreSQL/MCP connection sites: `src/app/api/[transport]/route.ts` (two locations), `src/app/api/mcp-business/[transport]/route.ts`, and `src/lib/mcp-shared.ts`. The audit branch now sets `rejectUnauthorized: true` at these sites. This must be confirmed by the preview build and an actual database-backed MCP smoke test before production rollout.
 - JSON-LD uses `dangerouslySetInnerHTML` with CMS-controlled `page.metaDesc`. `JSON.stringify` alone does not neutralize a `</script>` terminator in HTML script context. The audit branch now uses a fixed, static JSON-LD string that contains no CMS-controlled fields, removing the dynamic script-context injection source entirely.
 - A GitHub Actions shell-injection pattern in `.github/workflows/code-review.yml` interpolated changed-file names into a `run:` command. The audit branch now transports the file list through a base64 environment variable and decodes it in the Node script, rather than inserting untrusted paths into shell source.
-- Mutable GitHub Action tags were reported across existing workflow files. These remain to be pinned to reviewed full commit SHAs.
-- `.npmrc` now sets `min-release-age=7`; the security workflow upgrades npm to 11.10.0 before dependency resolution so the policy is supported. Existing non-security workflows still need a consistent npm-version update.
+- Mutable GitHub Action tags were reported across existing workflow files. All workflow action references are now pinned to reviewed immutable commit SHAs.
+- `.npmrc` enforces `min-release-age=7`; the security and remediation workflows use npm 11.21.1. Only the reviewed security-fix packages `resend`, `wrangler` and `miniflare` are excluded from the age gate because their patched releases were younger than seven days.
 
-The Semgrep workflow now excludes `.github` to avoid treating the known mutable-action-tag findings as application-code findings while the action pinning work is handled separately. It still scans application code. This is a scope adjustment, not a claim that workflow supply-chain findings are fixed.
+The `.github` exclusion was removed after action pinning. The latest Semgrep run scanned application code and workflow files and passed with no blocking findings.
 
 ### Dependency audit workflow correction
 
@@ -204,7 +204,7 @@ The first new dependency-audit job failed before reaching `npm audit`: `npm ci` 
 - Semgrep OWASP Top 10 and JavaScript static analysis.
 - Gitleaks over full Git history to detect committed secrets.
 
-These checks are committed to the audit branch only. Initial GitHub Actions results: full-history Gitleaks secret scan passed with no reported secret findings; the existing CI workflow passed type-check, lint, and tests. The new Semgrep OWASP scan and blocking npm audit were still running at the time of this report update; do not treat them as passed. The separate Tests workflow was also still running.
+These checks are committed to the audit branch only. Latest successful GitHub Actions results: full-history Gitleaks passed with no reported secret findings; Semgrep OWASP/JavaScript scan passed; `npm audit` found 0 vulnerabilities; existing CI passed type-check and lint; the separate Tests workflow passed. These results apply to the security branch, not the deployed Production application.
 
 ## Immediate priorities
 
