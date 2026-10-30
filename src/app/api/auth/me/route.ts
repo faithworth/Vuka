@@ -19,7 +19,7 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? '').toLowerCase().trim();
 
 export async function GET() {
   try {
-    const authUser = await getServerUser();
+    const authUser = await getServerUser({ skipMfa: true });
     if (!authUser) {
       // getServerUser returns null either when no session or when user not in DB.
       // Check if there's a Supabase session even though no DB user — can happen for admin.
