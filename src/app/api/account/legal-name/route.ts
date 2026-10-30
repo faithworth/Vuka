@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const raw = await req.json().catch(() => null);
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid legal name' }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid legal name' }, { status: 400 });
   }
 
   if (user.legalName) {
