@@ -25,13 +25,13 @@ The primary MCP SQL tool intentionally accepts a read-only SELECT/CTE string and
 | SQL injection | Parameterized patterns observed; complete call-site review pending |
 | Broken access control / IDOR | Route-by-route ownership review pending |
 | Authentication / account takeover | Server-side 2FA enforcement and registration trust boundary remain open |
-| Password reset abuse | Plaintext token and race issue remains open |
+| Password reset abuse | Hashing and atomic one-time claim implemented on audit branch |
 | XSS / HTML injection | CSP weakened by unsafe-inline/eval; content rendering review pending |
 | CSRF | SameSite/cookie and origin checks require route-by-route review |
 | SSRF | URL-fetching endpoints and allowlists require review |
 | Malicious uploads | Dashboard upload MIME allowlist added in audit branch; content signature and size enforcement pending |
 | Path traversal | Middleware blocks several patterns; storage/download handlers still need canonical path and ownership review |
-| Brute force / credential stuffing | Rate limits exist but DB fallback fails open; credential-stuffing and IP trust need review |
+| Brute force / credential stuffing | Sensitive actions fail closed on dual-backend outage; DB counter concurrency and IP trust need review |
 | Payment/webhook replay | PayPal capture binding improved; every provider webhook needs signature, amount, currency and idempotency tests |
 | DoS / resource exhaustion | Request/body limits, concurrency and provider-level WAF/DDoS configuration not verified |
 | Secrets / supply chain | New history secret scan and dependency audit workflow added; results pending |
@@ -86,7 +86,9 @@ Both middleware and the worker route accepted a `?secret=` query parameter. URLs
 
 If Upstash is unavailable, the limiter falls back to Postgres. If the database path also errors, the helper returns `false` (allow). This preserves availability but means brute-force and abuse controls are not fail-closed during a combined dependency outage.
 
-**Status:** NOT FIXED. Decide per endpoint whether sensitive actions (login, password reset, payout, checkout, upload) should fail closed or use a durable independent fallback. Avoid a global change that could block all legitimate traffic.
+**Remediation in audit branch:** if Redis and Postgres both fail, login, registration, magic-link, password-reset, email-verification, checkout, payout, bank-account and upload actions now fail closed. Less sensitive social/search/general API actions remain fail-open to avoid a platform-wide outage. The Postgres fallback still uses a read-then-write counter and needs concurrency/atomicity hardening; Redis remains the preferred atomic path.
+
+**Status: PARTIALLY FIXED ON AUDIT BRANCH; production rollout pending.
 
 ### MEDIUM — Upload URL issuance does not enforce file-size or content-signature validation
 **Affected:** `src/app/api/dashboard/settings/upload-url/route.ts`, `src/lib/r2.ts`
@@ -102,7 +104,9 @@ The authenticated artist upload endpoint previously accepted arbitrary MIME subt
 
 Reset tokens are high entropy but stored in plaintext. The code validates a token, updates the Supabase password, and only afterwards marks the token used. Concurrent requests can both pass the initial validation before either marks the token consumed.
 
-**Status:** NOT FIXED. Store only a cryptographic hash of reset tokens and atomically claim a valid, unused, unexpired token before changing the password. If the provider update fails after claiming, require a fresh reset link rather than making a token reusable.
+**Remediation in audit branch:** new reset tokens are stored as SHA-256 hashes. Consumption atomically claims an unused, unexpired token with `UPDATE ... WHERE usedAt IS NULL AND expiresAt > NOW() RETURNING` before changing the password, preventing concurrent replay. Legacy plaintext tokens remain temporarily accepted during the existing one-hour expiry window and are hashed when consumed. If the provider update fails after the atomic claim, the link remains consumed and the user must request another link.
+
+**Status: FIXED ON AUDIT BRANCH; production rollout pending.**
 
 ### LOW/MEDIUM — Content Security Policy permits unsafe script execution primitives
 **Affected:** `next.config.js`
