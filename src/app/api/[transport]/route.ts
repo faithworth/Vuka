@@ -104,7 +104,8 @@ function validateReadOnlyQuery(query: string): string | null {
 async function runReadOnlyQuery(query: string, rowLimit: number) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    // Verify the database TLS certificate; do not disable peer verification.
+    ssl: { rejectUnauthorized: true },
   });
   await client.connect();
   try {
@@ -2394,7 +2395,7 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
       "Subscriptions at risk of lapsing.",
       {},
       async () => {
-        const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+        const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
         await client.connect();
         try {
           const res = await client.query(
