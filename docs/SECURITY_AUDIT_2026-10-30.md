@@ -87,8 +87,8 @@ Project: `VUKA` (`zbudtlkgdjaztsjdrbmk`), active, PostgreSQL 17.6.
 
 The live Supabase security advisor returned:
 
-- 99 tables with RLS enabled but no policies (INFO). With RLS enabled and no matching policy, direct API roles are denied rows by default; this is not by itself proof of data exposure.
-- 112 tables visible in the GraphQL schema to `anon` and 112 visible to `authenticated` because those roles have SELECT grants. The advisor warns about schema discoverability. This does not establish row access where RLS denies rows.
+- All 112 public tables have RLS enabled; 99 have no policies (INFO). A catalog query found zero RLS policies granted to `anon`, `authenticated`, or `public`; the four inspected policies on `User`, `Artist`, `Purchase`, and `AdminLog` are restricted to `service_role`. This is fail-closed for direct API roles, but the app's Prisma server connection must still enforce authorization correctly.
+- 112 tables are visible in the GraphQL schema to `anon` and 112 to `authenticated` because those roles have SELECT grants. This exposes table/column metadata. Five separate read-only checks under the `anon` role returned zero rows for `User`, `Purchase`, `IndustryBankAccount`, `password_reset_tokens`, and `two_factor_challenges`; a separate check returned zero rows from `user_two_factor`. The advisor's schema-discoverability warning is real, but these checks did not find row-level data exposure through `anon`.
 - One public SECURITY DEFINER function, `public.rls_auto_enable()`, executable by `anon` and `authenticated`. It is an event-trigger function with `search_path=pg_catalog`; event-trigger functions are not ordinary RPC functions, but unnecessary EXECUTE grants should still be removed.
 - One trigger function, `public.protect_approved_verification_request()`, with mutable search_path. It is not SECURITY DEFINER and its current body uses built-ins/trigger records only; setting search_path to `pg_catalog` is appropriate.
 - Leaked-password protection is disabled in Supabase Auth.
