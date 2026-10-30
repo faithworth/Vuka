@@ -26,7 +26,7 @@ export function authorizeMcpRequest(request: Request): Response | null {
   }
 
   const authorization = request.headers.get("authorization") ?? "";
-  const match = /^Bearer ([^\\s]+)$/i.exec(authorization);
+  const match = /^Bearer (\S+)$/i.exec(authorization);
   const supplied = match?.[1] ?? "";
   const expectedDigest = createHash("sha256").update(expected, "utf8").digest();
   const suppliedDigest = createHash("sha256").update(supplied, "utf8").digest();
