@@ -3,6 +3,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
+import { authorizeMcpRequest } from "@/lib/mcp-shared";
 import { z } from "zod";
 
 // ── TEMPORARY ChatGPT-connector compatibility patch (bootstrap) ──────────
@@ -2513,17 +2514,20 @@ This is a draft only. Verify the target platform's actual DMCA submission proces
   { basePath: "/api", maxDuration: 120, verboseLogs: true }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+async function authenticatedHandler(request: Request) {
+  const denied = authorizeMcpRequest(request);
+  if (denied) return denied;
+  return handler(request);
+}
+
+export { authenticatedHandler as GET, authenticatedHandler as POST, authenticatedHandler as DELETE };
 
 // Minimal CORS preflight support (see compatibility note at top of file).
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
+
     },
   });
 }
