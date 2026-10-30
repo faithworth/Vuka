@@ -167,15 +167,15 @@ A role-scoped read-only check as `anon` returned zero rows from `public.user_two
 
 ## Not yet verified — requires provider/dashboard access or execution
 
-1. Supabase Auth settings: email confirmation, password policy, MFA settings, session lifetime, leaked-password protection, service-role key handling.
-2. Supabase database exposure: RLS policies, grants, exposed schemas, anon/authenticated role privileges, and whether the application database role is over-privileged.
+1. Supabase Auth settings: email confirmation, password policy, MFA/session lifetime, leaked-password protection (currently disabled), and service-role key handling.
+2. Supabase database: table RLS and grants were checked; complete policy-by-policy ownership review and application DB-role least-privilege review remain.
 3. Cloudflare R2: bucket visibility, public bucket configuration, CORS, token scope, lifecycle/retention, object size limits, and access to private verification documents.
-4. Vercel: production/preview environment separation, deployment protection, environment-variable scope, team access, build logs, and production deployment branch.
-5. GitHub: secret-scanning alert state, Dependabot alerts, branch protection/rulesets, required reviews, and historical secret exposure. Code-search results alone cannot establish that Git history is clean.
+4. Vercel: production/preview environment separation, deployment protection, environment-variable scope, team access, build logs, and production deployment branch. Preview still shares production secrets/database access.
+5. GitHub: Gitleaks full-history scan passed; Dependabot alert state, branch protection/rulesets and required reviews remain unverified.
 6. Live webhook replay/idempotency and payment reconciliation tests for every active provider.
 7. Backup frequency, restore testing, database point-in-time recovery, and R2 recovery.
 8. Full route-by-route authorization/IDOR review across all API modules.
-9. Dependency vulnerability scan, type-check, lint, unit tests, and production build on the PR branch.
+9. Latest branch type-check, lint, tests, Semgrep and npm audit passed; latest Vercel preview production build and live MCP/MFA smoke tests remain pending.
 
 ### Vercel firewall / WAF status
 
@@ -208,12 +208,12 @@ These checks are committed to the audit branch only. Latest successful GitHub Ac
 
 ## Immediate priorities
 
-1. Complete route-by-route MFA bypass testing for the new server-side gate.
-2. Bind registration/profile creation to verified Supabase identity.
-3. Fix password-reset token storage and atomic consumption.
-4. Finish upload validation/size enforcement and audit private-file download paths.
-5. Run provider/dashboard checks and restore tests.
-6. Run the complete automated test/build suite and review PR #59 before merge.
+1. Complete latest Vercel Preview build and test MCP 401/valid-bearer flows, MFA bypasses, and database-backed MCP operations.
+2. Bind registration/profile creation to a verified Supabase identity; ignore client-supplied role/email for privileged profile changes.
+3. Finish upload byte-size enforcement, file-signature inspection, and private-file download ownership checks.
+4. Complete route-by-route IDOR/authorization, CSRF/origin, SSRF, webhook idempotency, session revocation and DoS testing.
+5. Separate Preview from Production database/secrets, verify Supabase Auth and R2 provider settings, and confirm available WAF/DDoS protection.
+6. Review and merge PR #59 only after Preview smoke tests and all remaining high-risk items are resolved.
 
 ## Change control
 
