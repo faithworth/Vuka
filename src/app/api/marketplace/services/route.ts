@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     }
     if (search) {
       values.push(`%${search}%`);
-      conditions.push(`(s.title ILIKE ${values.length} OR s.description ILIKE ${values.length})`);
+      conditions.push(`(s.title ILIKE $${values.length} OR s.description ILIKE $${values.length})`);
     }
     values.push(take);
     const limitPlaceholder = values.length;
