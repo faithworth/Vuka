@@ -8,7 +8,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Client } from "pg";
-import { createHash, timingSafeEqual } from "node:crypto";
+export { authorizeMcpRequest } from "@/lib/security/mcpAuth";
 
 /**
  * Fail-closed bearer authentication shared by every Vuka MCP transport.
