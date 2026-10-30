@@ -265,7 +265,34 @@ export async function middleware(req: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // ── 6. Admin route enforcement ────────────────────────────────────────
+  // ── 6. Server-side MFA enforcement ─────────────────────────────────────
+  // A client-side redirect is not an authentication boundary. For users with
+  // 2FA enabled, validate the HttpOnly proof against the hashed, unexpired
+  // challenge row before allowing direct-Supabase pages or API routes through.
+  if (user && !isMfaExemptPath(pathname)) {
+    try {
+      const mfaRequired = await isMfaRequired(user, req.cookies.get('vuka_mfa')?.value ?? '');
+      if (mfaRequired) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'Two-factor verification required.', mfaRequired: true, traceId },
+            { status: 401, headers: { 'x-trace-id': traceId, 'Cache-Control': 'no-store' } }
+          );
+        }
+        const verifyUrl = new URL('/auth/2fa', req.url);
+        verifyUrl.searchParams.set('next', `${pathname}${req.nextUrl.search}`);
+        return NextResponse.redirect(verifyUrl);
+      }
+    } catch {
+      // Fail closed if the MFA state cannot be checked reliably.
+      return NextResponse.json(
+        { error: 'Authentication security check unavailable.', traceId },
+        { status: 503, headers: { 'x-trace-id': traceId, 'Cache-Control': 'no-store' } }
+      );
+    }
+  }
+
+  // ── 7. Admin route enforcement ────────────────────────────────────────
   if (isAdminPath(pathname)) {
     if (!user) {
       if (pathname.startsWith('/api/')) {
