@@ -154,7 +154,7 @@ async function isMfaRequired(user: { email?: string }, token: string): Promise<b
   );
 
   const { data: dbUser, error: userError } = await admin
-    .from('User').select('id').eq('email', user.email).maybeSingle();
+    .from('User').select('id').eq('email', user.email.toLowerCase()).maybeSingle();
   if (userError) throw userError;
   if (!dbUser?.id) return false;
 
